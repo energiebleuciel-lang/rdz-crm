@@ -240,14 +240,23 @@ async def get_leads(status: Optional[str] = None):
 
 # Endpoint to retry failed leads
 @api_router.post("/leads/retry-failed")
-async def retry_failed_leads():
+async def retry_failed_leads(form_id: Optional[str] = None):
     """Retry sending failed leads to external API"""
-    failed_leads = await db.leads.find({"api_status": "failed"}, {"_id": 0}).to_list(100)
+    query = {"api_status": "failed"}
+    if form_id:
+        query["form_id"] = form_id
+        
+    failed_leads = await db.leads.find(query, {"_id": 0}).to_list(100)
     
     results = {"retried": 0, "success": 0, "failed": 0}
     
     for lead_doc in failed_leads:
         results["retried"] += 1
+        
+        # Get form config for this lead
+        form_config = await db.form_configs.find_one({"form_id": lead_doc.get("form_id", "default")})
+        api_url = form_config.get("api_url", LEAD_API_URL) if form_config else LEAD_API_URL
+        api_key = form_config.get("api_key", LEAD_API_KEY) if form_config else LEAD_API_KEY
         
         lead_payload = {
             "phone": lead_doc["phone"],
@@ -266,10 +275,10 @@ async def retry_failed_leads():
         try:
             async with httpx.AsyncClient(timeout=30.0) as http_client:
                 response = await http_client.post(
-                    LEAD_API_URL,
+                    api_url,
                     json=lead_payload,
                     headers={
-                        "Authorization": LEAD_API_KEY,
+                        "Authorization": api_key,
                         "Content-Type": "application/json"
                     }
                 )
@@ -301,6 +310,83 @@ async def retry_failed_leads():
             logger.error(f"Retry failed for {lead_doc['id']}: {str(e)}")
     
     return results
+
+
+# ==================== ADMIN ENDPOINTS ====================
+
+@api_router.get("/admin/stats")
+async def get_admin_stats():
+    """Get global statistics for all leads"""
+    total = await db.leads.count_documents({})
+    success = await db.leads.count_documents({"api_status": "success"})
+    failed = await db.leads.count_documents({"api_status": "failed"})
+    duplicate = await db.leads.count_documents({"api_status": "duplicate"})
+    pending = await db.leads.count_documents({"api_status": "pending"})
+    
+    return {
+        "total": total,
+        "success": success,
+        "failed": failed,
+        "duplicate": duplicate,
+        "pending": pending
+    }
+
+
+@api_router.get("/admin/forms")
+async def get_admin_forms():
+    """Get all forms with their statistics"""
+    # Get unique form_ids from leads
+    pipeline = [
+        {"$group": {
+            "_id": {"form_id": "$form_id", "form_name": "$form_name"},
+            "total": {"$sum": 1},
+            "success": {"$sum": {"$cond": [{"$eq": ["$api_status", "success"]}, 1, 0]}},
+            "failed": {"$sum": {"$cond": [{"$eq": ["$api_status", "failed"]}, 1, 0]}},
+            "duplicate": {"$sum": {"$cond": [{"$eq": ["$api_status", "duplicate"]}, 1, 0]}},
+            "pending": {"$sum": {"$cond": [{"$eq": ["$api_status", "pending"]}, 1, 0]}},
+            "last_lead": {"$max": "$created_at"}
+        }},
+        {"$sort": {"last_lead": -1}}
+    ]
+    
+    results = await db.leads.aggregate(pipeline).to_list(100)
+    
+    forms = []
+    for r in results:
+        forms.append({
+            "form_id": r["_id"]["form_id"] or "default",
+            "form_name": r["_id"]["form_name"] or "Formulaire Principal",
+            "total": r["total"],
+            "success": r["success"],
+            "failed": r["failed"],
+            "duplicate": r["duplicate"],
+            "pending": r["pending"],
+            "last_lead": r["last_lead"]
+        })
+    
+    return {"forms": forms}
+
+
+@api_router.get("/admin/form-configs")
+async def get_form_configs():
+    """Get all form configurations"""
+    configs = await db.form_configs.find({}, {"_id": 0}).to_list(100)
+    return {"configs": configs}
+
+
+@api_router.post("/admin/form-configs")
+async def create_form_config(config: FormConfig):
+    """Create or update a form configuration"""
+    config_dict = config.model_dump()
+    config_dict["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.form_configs.update_one(
+        {"form_id": config.form_id},
+        {"$set": config_dict},
+        upsert=True
+    )
+    
+    return {"success": True, "message": f"Configuration {config.form_id} enregistrée"}
 
 # Include the router in the main app
 app.include_router(api_router)
