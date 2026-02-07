@@ -441,19 +441,19 @@ const IntroScreen = ({ onStart }) => (
       </div>
     </div>
 
-    <div className="bg-secondary/50 rounded-lg p-2 sm:p-3 mb-3">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm">
-        <div className="flex items-center gap-1">
-          <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-primary" />
-          <span className="text-foreground">Moins d'1 min</span>
+    <div className="bg-secondary/50 rounded-lg p-3 mb-3">
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Clock className="w-4 h-4 text-primary flex-shrink-0" />
+          <span className="text-sm text-foreground">Moins d'une minute</span>
         </div>
-        <div className="flex items-center gap-1">
-          <Shield className="w-3 h-3 sm:w-4 sm:h-4 text-accent" />
-          <span className="text-foreground">Gratuit</span>
+        <div className="flex items-center gap-2">
+          <Shield className="w-4 h-4 text-accent flex-shrink-0" />
+          <span className="text-sm text-foreground">Service gratuit, confidentiel et sécurisé</span>
         </div>
-        <div className="flex items-center gap-1">
-          <FileText className="w-3 h-3 sm:w-4 sm:h-4 text-primary" />
-          <span className="text-foreground">Document auto</span>
+        <div className="flex items-center gap-2">
+          <FileText className="w-4 h-4 text-primary flex-shrink-0" />
+          <span className="text-sm text-foreground">Document généré automatiquement en fin de simulation</span>
         </div>
       </div>
     </div>
