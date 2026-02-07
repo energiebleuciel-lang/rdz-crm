@@ -3,19 +3,19 @@ import React from 'react';
 // Logo simple avec drapeau français pour MaPrime-PanneauSolaire.fr
 export const LogoMaPrimePanneauSolaire = ({ className = "", size = "default" }) => {
   const sizes = {
-    small: { height: 32, textSize: "text-sm" },
-    default: { height: 36, textSize: "text-base" },
-    large: { height: 44, textSize: "text-lg" },
+    small: { height: 28, textSize: "text-xs" },
+    default: { height: 32, textSize: "text-sm" },
+    large: { height: 40, textSize: "text-base" },
   };
   
   const { height, textSize } = sizes[size] || sizes.default;
   
   return (
-    <div className={`flex items-center gap-3 ${className}`}>
+    <div className={`flex items-center gap-2 ${className}`}>
       {/* Drapeau français */}
       <div 
         className="flex-shrink-0 rounded overflow-hidden shadow-sm border border-border"
-        style={{ width: height * 1.5, height: height }}
+        style={{ width: height * 1.4, height: height }}
       >
         <div className="flex h-full">
           <div className="w-1/3 h-full bg-[#002395]" />
@@ -28,7 +28,7 @@ export const LogoMaPrimePanneauSolaire = ({ className = "", size = "default" }) 
         <span className={`font-bold text-foreground leading-tight tracking-tight ${textSize}`}>
           MaPrime-PanneauSolaire.fr
         </span>
-        <span className="text-xs text-muted-foreground font-medium">
+        <span className="text-[10px] sm:text-xs text-muted-foreground font-medium">
           Simulation d'éligibilité
         </span>
       </div>
