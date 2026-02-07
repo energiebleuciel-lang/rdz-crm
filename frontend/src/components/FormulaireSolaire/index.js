@@ -2,6 +2,9 @@ import React, { useState, useCallback } from 'react';
 import { Check, ChevronRight, Home, User, Phone, Mail, Zap, AlertCircle, Clock, Shield, FileText } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Progress } from '../ui/progress';
+import { LogoMaPrimeRenovSolaire, BadgeMaPrimeRenov, BadgeCEE, BadgeProgrammeNational } from './Logo';
+import SimulationLoader from './SimulationLoader';
+import { submitLead } from './api';
 
 // Liste des départements français métropolitains
 const DEPARTEMENTS_FRANCE = [
@@ -122,6 +125,7 @@ const FormulaireSolaire = () => {
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSimulation, setShowSimulation] = useState(false);
 
   // Validation du téléphone (9-10 chiffres)
   const validateTelephone = (tel) => {
@@ -189,15 +193,26 @@ const FormulaireSolaire = () => {
     }
   }, [etapeActuelle, validateEtape]);
 
-  // Soumission finale
+  // Soumission finale avec simulation
   const handleSubmit = async () => {
     setIsSubmitting(true);
-    
-    // Simuler un délai de traitement
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Redirection vers la LP
-    window.location.href = 'https://www.maprime-panneausolaire.fr/merci-outbrain/';
+    setShowSimulation(true);
+  };
+
+  // Appelé quand la simulation est terminée
+  const handleSimulationComplete = async () => {
+    try {
+      // Envoyer les données à l'API
+      const result = await submitLead(formData);
+      console.log('Lead submission result:', result);
+      
+      // Redirection vers la LP (que le lead soit créé ou doublon)
+      window.location.href = 'https://www.maprime-panneausolaire.fr/merci-outbrain/';
+    } catch (error) {
+      console.error('Error submitting lead:', error);
+      // En cas d'erreur, on redirige quand même pour ne pas bloquer l'utilisateur
+      window.location.href = 'https://www.maprime-panneausolaire.fr/merci-outbrain/';
+    }
   };
 
   // Calcul du pourcentage de progression
@@ -205,6 +220,14 @@ const FormulaireSolaire = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Simulation Loader */}
+      {showSimulation && (
+        <SimulationLoader 
+          onComplete={handleSimulationComplete} 
+          formData={formData}
+        />
+      )}
+
       {/* Header officiel */}
       <header className="header-banner">
         <div className="max-w-4xl mx-auto">
@@ -218,25 +241,11 @@ const FormulaireSolaire = () => {
       <div className="bg-card border-b border-border">
         <div className="max-w-4xl mx-auto px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                <Home className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <p className="font-semibold text-foreground text-sm">MaPrimeRénovSolaire.fr</p>
-                <p className="text-xs text-muted-foreground">Simulation de subvention</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="logo-badge">
-                <span className="text-xs font-medium text-muted-foreground">MaPrimeRénov'</span>
-              </div>
-              <div className="logo-badge">
-                <span className="text-xs font-medium text-muted-foreground">CEE</span>
-              </div>
-              <div className="logo-badge hidden sm:flex">
-                <span className="text-xs font-medium text-muted-foreground">Programme National</span>
-              </div>
+            <LogoMaPrimeRenovSolaire size="default" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <BadgeMaPrimeRenov />
+              <BadgeCEE />
+              <BadgeProgrammeNational className="hidden sm:flex" />
             </div>
           </div>
         </div>
@@ -318,7 +327,7 @@ const FormulaireSolaire = () => {
                   {isSubmitting ? (
                     <>
                       <span className="spinner" />
-                      Envoi en cours...
+                      Analyse en cours...
                     </>
                   ) : (
                     <>
@@ -606,19 +615,6 @@ const Etape3Coordonnees = ({ formData, onChange, errors, isSubmitting }) => (
         </p>
       )}
     </div>
-
-    {/* Simulation en cours */}
-    {isSubmitting && (
-      <div className="bg-accent-light rounded-lg p-4 mt-4">
-        <div className="flex items-center gap-3">
-          <div className="spinner text-accent" />
-          <p className="text-sm text-foreground">
-            Démarrage de la simulation de vos aides nationales...
-          </p>
-        </div>
-        <Progress value={60} className="h-1.5 mt-3" />
-      </div>
-    )}
   </div>
 );
 
