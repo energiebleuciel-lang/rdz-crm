@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { Check, ChevronRight, Home, User, Phone, Mail, AlertCircle, Clock, Shield, FileText, Info } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Progress } from '../ui/progress';
-import { LogoMaPrimePanneauSolaire, BadgeMaPrimeRenov, BadgeCEE, BadgeProgrammeNational } from './Logo';
+import { LogoMaPrimePanneauSolaire, BadgeMaPrimeRenov, BadgeCEE } from './Logo';
 import SimulationLoader from './SimulationLoader';
 import { submitLead } from './api';
 
