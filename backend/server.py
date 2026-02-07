@@ -91,7 +91,7 @@ async def get_status_checks():
 async def submit_lead(lead: LeadData):
     """
     Proxy endpoint to submit leads to the external API
-    This avoids CORS issues from the frontend
+    ALWAYS saves lead to MongoDB first, then sends to external API
     """
     timestamp = int(datetime.now(timezone.utc).timestamp())
     
@@ -100,7 +100,32 @@ async def submit_lead(lead: LeadData):
     if len(phone) == 9 and not phone.startswith('0'):
         phone = '0' + phone
     
-    # Prepare data for external API
+    # Prepare lead document for MongoDB
+    lead_doc = {
+        "id": str(uuid.uuid4()),
+        "phone": phone,
+        "nom": lead.nom,
+        "email": lead.email or "",
+        "departement": lead.departement or "",
+        "type_logement": lead.type_logement or "",
+        "statut_occupant": lead.statut_occupant or "",
+        "facture_electricite": lead.facture_electricite or "",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "register_date": timestamp,
+        "api_status": "pending",  # pending, success, failed, duplicate
+        "api_response": None,
+        "api_attempts": 0
+    }
+    
+    # STEP 1: ALWAYS save to MongoDB first (never lose a lead!)
+    try:
+        await db.leads.insert_one(lead_doc)
+        logger.info(f"Lead saved to MongoDB: {lead.nom}, phone: {phone}, id: {lead_doc['id']}")
+    except Exception as e:
+        logger.error(f"MongoDB Error: {str(e)}")
+        # Continue anyway - try to send to API
+    
+    # STEP 2: Send to external API
     lead_payload = {
         "phone": phone,
         "register_date": timestamp,
@@ -115,7 +140,10 @@ async def submit_lead(lead: LeadData):
         }
     }
     
-    logger.info(f"Submitting lead: {lead.nom}, phone: {phone}, dept: {lead.departement}")
+    logger.info(f"Sending lead to external API: {lead.nom}, phone: {phone}")
+    
+    api_status = "failed"
+    api_response = None
     
     try:
         async with httpx.AsyncClient(timeout=30.0) as http_client:
@@ -129,24 +157,126 @@ async def submit_lead(lead: LeadData):
             )
             
             data = response.json()
+            api_response = str(data)
             logger.info(f"API Response: status={response.status_code}, data={data}")
             
             if response.status_code == 201:
-                return LeadResponse(success=True, message="Lead créé avec succès")
+                api_status = "success"
+                result = LeadResponse(success=True, message="Lead créé avec succès")
             elif response.status_code == 200 and "doublon" in str(data.get("message", "")).lower():
-                return LeadResponse(success=True, message="Lead déjà enregistré", duplicate=True)
+                api_status = "duplicate"
+                result = LeadResponse(success=True, message="Lead déjà enregistré", duplicate=True)
             else:
-                return LeadResponse(
+                api_status = "failed"
+                result = LeadResponse(
                     success=False, 
                     message=data.get("message") or data.get("error") or "Erreur lors de la création"
                 )
                 
     except httpx.TimeoutException:
         logger.error("API Timeout")
-        return LeadResponse(success=False, message="Timeout - le serveur ne répond pas")
+        api_status = "failed"
+        api_response = "Timeout"
+        result = LeadResponse(success=False, message="Timeout - le serveur ne répond pas")
     except Exception as e:
         logger.error(f"API Error: {str(e)}")
-        return LeadResponse(success=False, message=f"Erreur: {str(e)}")
+        api_status = "failed"
+        api_response = str(e)
+        result = LeadResponse(success=False, message=f"Erreur: {str(e)}")
+    
+    # STEP 3: Update MongoDB with API result
+    try:
+        await db.leads.update_one(
+            {"id": lead_doc["id"]},
+            {"$set": {
+                "api_status": api_status,
+                "api_response": api_response,
+                "api_attempts": 1,
+                "last_attempt_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+    except Exception as e:
+        logger.error(f"MongoDB Update Error: {str(e)}")
+    
+    # Always return success to user (lead is saved anyway)
+    return LeadResponse(success=True, message="Lead enregistré avec succès")
+
+
+# Endpoint to get all leads (for admin)
+@api_router.get("/leads")
+async def get_leads(status: Optional[str] = None):
+    """Get all leads, optionally filtered by API status"""
+    query = {}
+    if status:
+        query["api_status"] = status
+    
+    leads = await db.leads.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    return {"leads": leads, "count": len(leads)}
+
+
+# Endpoint to retry failed leads
+@api_router.post("/leads/retry-failed")
+async def retry_failed_leads():
+    """Retry sending failed leads to external API"""
+    failed_leads = await db.leads.find({"api_status": "failed"}, {"_id": 0}).to_list(100)
+    
+    results = {"retried": 0, "success": 0, "failed": 0}
+    
+    for lead_doc in failed_leads:
+        results["retried"] += 1
+        
+        lead_payload = {
+            "phone": lead_doc["phone"],
+            "register_date": lead_doc["register_date"],
+            "nom": lead_doc["nom"],
+            "prenom": "",
+            "email": lead_doc.get("email", ""),
+            "custom_fields": {
+                "departement": {"value": lead_doc.get("departement", "")},
+                "type_logement": {"value": lead_doc.get("type_logement", "")},
+                "statut_occupant": {"value": lead_doc.get("statut_occupant", "")},
+                "facture_electricite": {"value": lead_doc.get("facture_electricite", "")},
+            }
+        }
+        
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as http_client:
+                response = await http_client.post(
+                    LEAD_API_URL,
+                    json=lead_payload,
+                    headers={
+                        "Authorization": LEAD_API_KEY,
+                        "Content-Type": "application/json"
+                    }
+                )
+                
+                data = response.json()
+                
+                if response.status_code == 201:
+                    api_status = "success"
+                    results["success"] += 1
+                elif "doublon" in str(data.get("message", "")).lower():
+                    api_status = "duplicate"
+                    results["success"] += 1
+                else:
+                    api_status = "failed"
+                    results["failed"] += 1
+                
+                await db.leads.update_one(
+                    {"id": lead_doc["id"]},
+                    {"$set": {
+                        "api_status": api_status,
+                        "api_response": str(data),
+                        "api_attempts": lead_doc.get("api_attempts", 0) + 1,
+                        "last_attempt_at": datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+                
+        except Exception as e:
+            results["failed"] += 1
+            logger.error(f"Retry failed for {lead_doc['id']}: {str(e)}")
+    
+    return results
 
 # Include the router in the main app
 app.include_router(api_router)
