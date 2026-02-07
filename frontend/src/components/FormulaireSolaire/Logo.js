@@ -4,8 +4,8 @@ import React from 'react';
 export const LogoMaPrimePanneauSolaire = ({ className = "", size = "default" }) => {
   const sizes = {
     small: { height: 32, textSize: "text-sm" },
-    default: { height: 40, textSize: "text-base" },
-    large: { height: 48, textSize: "text-lg" },
+    default: { height: 36, textSize: "text-base" },
+    large: { height: 44, textSize: "text-lg" },
   };
   
   const { height, textSize } = sizes[size] || sizes.default;
@@ -36,16 +36,14 @@ export const LogoMaPrimePanneauSolaire = ({ className = "", size = "default" }) 
   );
 };
 
-// Badges partenaires avec images externes
+// Badges partenaires avec images externes - taille uniforme 44px de hauteur
 export const BadgeMaPrimeRenov = ({ className = "" }) => (
   <div className={`flex items-center ${className}`}>
     <img 
-      src="http://mes-subventions-energie.fr/wp-content/uploads/2026/02/LOGO-MPR-5.png"
+      src="https://mes-subventions-energie.fr/wp-content/uploads/2026/02/LOGO-MPR-5.png"
       alt="MaPrimeRénov'"
-      className="h-10 w-auto object-contain"
-      onError={(e) => {
-        e.target.style.display = 'none';
-      }}
+      style={{ height: '44px', width: 'auto' }}
+      className="object-contain"
     />
   </div>
 );
@@ -53,25 +51,11 @@ export const BadgeMaPrimeRenov = ({ className = "" }) => (
 export const BadgeCEE = ({ className = "" }) => (
   <div className={`flex items-center ${className}`}>
     <img 
-      src="http://mes-subventions-energie.fr/wp-content/uploads/2026/02/LOGO-MPR-5-1.png-1.png"
+      src="https://mes-subventions-energie.fr/wp-content/uploads/2026/02/LOGO-MPR-5-1.png-1.png"
       alt="CEE"
-      className="h-10 w-auto object-contain"
-      onError={(e) => {
-        e.target.style.display = 'none';
-      }}
+      style={{ height: '44px', width: 'auto' }}
+      className="object-contain"
     />
-  </div>
-);
-
-export const BadgeProgrammeNational = ({ className = "" }) => (
-  <div className={`flex items-center gap-2 px-3 py-1.5 bg-card rounded-md shadow-sm border border-border ${className}`}>
-    <svg width="24" height="16" viewBox="0 0 24 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect width="8" height="16" fill="#002395" />
-      <rect x="8" width="8" height="16" fill="white" />
-      <rect x="16" width="8" height="16" fill="#ED2939" />
-      <rect x="0.5" y="0.5" width="23" height="15" stroke="#e2e8f0" strokeWidth="1" fill="none" />
-    </svg>
-    <span className="text-xs font-medium text-muted-foreground hidden sm:inline">Programme National</span>
   </div>
 );
 
