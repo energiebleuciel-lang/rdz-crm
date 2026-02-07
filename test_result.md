@@ -107,7 +107,7 @@ user_problem_statement: "Test the multi-step solar aid simulation form at https:
 frontend:
   - task: "Multi-step Solar Aid Simulation Form"
     implemented: true
-    working: false
+    working: true
     file: "/app/frontend/src/components/FormulaireSolaire/index.js"
     stuck_count: 1
     priority: "high"
