@@ -1,56 +1,57 @@
 import React, { useState, useEffect } from 'react';
 import { Progress } from '../ui/progress';
-import { Check, Shield, FileSearch, Database, Clock } from 'lucide-react';
+import { Check, Shield, FileSearch, Database, Clock, Home, MapPin } from 'lucide-react';
 
-// Étapes de la simulation avec messages réalistes
-const SIMULATION_STEPS = [
-  {
-    id: 1,
-    label: "Vérification de votre éligibilité régionale",
-    duration: 2000,
-    icon: Shield,
+// Configuration des simulations selon l'étape
+const SIMULATION_CONFIGS = {
+  logement: {
+    title: "Vérification de votre logement",
+    subtitle: "Analyse des critères d'éligibilité...",
+    steps: [
+      { id: 1, label: "Vérification du type de logement", duration: 1500, icon: Home },
+      { id: 2, label: "Analyse de votre situation", duration: 1800, icon: Shield },
+      { id: 3, label: "Calcul de votre consommation énergétique", duration: 2000, icon: Database },
+    ]
   },
-  {
-    id: 2,
-    label: "Analyse des aides départementales disponibles",
-    duration: 2500,
-    icon: FileSearch,
+  regional: {
+    title: "Simulation de vos aides régionales",
+    subtitle: "Analyse des aides de votre département...",
+    steps: [
+      { id: 1, label: "Vérification de votre éligibilité régionale", duration: 2000, icon: Shield },
+      { id: 2, label: "Analyse des aides départementales disponibles", duration: 2500, icon: MapPin },
+      { id: 3, label: "Consultation de la base MaPrimeRénov'", duration: 2000, icon: Database },
+    ]
   },
-  {
-    id: 3,
-    label: "Consultation de la base MaPrimeRénov'",
-    duration: 2000,
-    icon: Database,
-  },
-  {
-    id: 4,
-    label: "Calcul de vos subventions CEE",
-    duration: 1500,
-    icon: Clock,
-  },
-  {
-    id: 5,
-    label: "Génération de votre document personnalisé",
-    duration: 2000,
-    icon: Check,
-  },
-];
+  final: {
+    title: "Simulation de vos aides nationales",
+    subtitle: "Génération de votre document personnalisé...",
+    steps: [
+      { id: 1, label: "Vérification de votre éligibilité nationale", duration: 1800, icon: Shield },
+      { id: 2, label: "Calcul de vos subventions CEE", duration: 2200, icon: FileSearch },
+      { id: 3, label: "Consultation des barèmes officiels", duration: 1800, icon: Database },
+      { id: 4, label: "Estimation du montant des aides", duration: 2000, icon: Clock },
+      { id: 5, label: "Génération de votre document personnalisé", duration: 2200, icon: Check },
+    ]
+  }
+};
 
-export const SimulationLoader = ({ onComplete, formData }) => {
+export const SimulationLoader = ({ onComplete, formData, type = "final" }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [progress, setProgress] = useState(0);
   const [stepProgress, setStepProgress] = useState(0);
 
+  const config = SIMULATION_CONFIGS[type] || SIMULATION_CONFIGS.final;
+  const steps = config.steps;
+
   useEffect(() => {
-    let stepTimer;
     let progressInterval;
     
     const runSimulation = async () => {
-      for (let i = 0; i < SIMULATION_STEPS.length; i++) {
+      for (let i = 0; i < steps.length; i++) {
         setCurrentStep(i);
         setStepProgress(0);
         
-        const step = SIMULATION_STEPS[i];
+        const step = steps[i];
         const incrementPerMs = 100 / step.duration;
         
         // Animer la progression de l'étape
@@ -65,7 +66,7 @@ export const SimulationLoader = ({ onComplete, formData }) => {
             }
             setStepProgress(Math.min(localProgress, 100));
             // Calculer la progression globale
-            const globalProgress = ((i * 100) + localProgress) / SIMULATION_STEPS.length;
+            const globalProgress = ((i * 100) + localProgress) / steps.length;
             setProgress(Math.min(globalProgress, 100));
           }, 50);
         });
@@ -83,52 +84,51 @@ export const SimulationLoader = ({ onComplete, formData }) => {
     runSimulation();
     
     return () => {
-      clearTimeout(stepTimer);
       clearInterval(progressInterval);
     };
-  }, [onComplete]);
+  }, [onComplete, steps]);
 
-  const currentStepData = SIMULATION_STEPS[currentStep];
+  const currentStepData = steps[currentStep];
   const StepIcon = currentStepData?.icon || Shield;
 
   return (
     <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-lg bg-card rounded-2xl shadow-2xl p-8 animate-fade-in">
+      <div className="w-full max-w-lg bg-card rounded-2xl shadow-2xl p-6 md:p-8 animate-fade-in">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 relative">
+        <div className="text-center mb-6">
+          <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 relative">
             {/* Cercle de progression animé */}
-            <svg className="absolute inset-0 w-20 h-20 -rotate-90" viewBox="0 0 80 80">
+            <svg className="absolute inset-0 w-24 h-24 -rotate-90" viewBox="0 0 96 96">
               <circle
-                cx="40"
-                cy="40"
-                r="36"
+                cx="48"
+                cy="48"
+                r="42"
                 fill="none"
                 stroke="hsl(var(--muted))"
-                strokeWidth="4"
+                strokeWidth="6"
               />
               <circle
-                cx="40"
-                cy="40"
-                r="36"
+                cx="48"
+                cy="48"
+                r="42"
                 fill="none"
                 stroke="hsl(var(--primary))"
-                strokeWidth="4"
+                strokeWidth="6"
                 strokeLinecap="round"
-                strokeDasharray={`${2 * Math.PI * 36}`}
-                strokeDashoffset={`${2 * Math.PI * 36 * (1 - progress / 100)}`}
+                strokeDasharray={`${2 * Math.PI * 42}`}
+                strokeDashoffset={`${2 * Math.PI * 42 * (1 - progress / 100)}`}
                 className="transition-all duration-300"
               />
             </svg>
-            <span className="text-2xl font-bold text-primary">
+            <span className="text-3xl font-bold text-primary">
               {Math.round(progress)}%
             </span>
           </div>
-          <h2 className="text-xl font-semibold text-foreground mb-2">
-            Simulation en cours
+          <h2 className="text-xl font-semibold text-foreground mb-1">
+            {config.title}
           </h2>
           <p className="text-sm text-muted-foreground">
-            Veuillez patienter pendant que nous analysons votre dossier...
+            {config.subtitle}
           </p>
         </div>
 
@@ -138,8 +138,8 @@ export const SimulationLoader = ({ onComplete, formData }) => {
         </div>
 
         {/* Liste des étapes */}
-        <div className="space-y-3">
-          {SIMULATION_STEPS.map((step, index) => {
+        <div className="space-y-2">
+          {steps.map((step, index) => {
             const isCompleted = index < currentStep;
             const isCurrent = index === currentStep;
             const isPending = index > currentStep;
@@ -153,7 +153,7 @@ export const SimulationLoader = ({ onComplete, formData }) => {
                     ? 'bg-primary/10 border border-primary/20' 
                     : isCompleted 
                       ? 'bg-accent-light' 
-                      : 'bg-muted/50'
+                      : 'bg-muted/30'
                 }`}
               >
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
@@ -189,20 +189,25 @@ export const SimulationLoader = ({ onComplete, formData }) => {
                 </div>
 
                 {isCompleted && (
-                  <span className="text-xs text-accent font-medium">Validé</span>
+                  <span className="text-xs text-accent font-semibold">Validé</span>
                 )}
               </div>
             );
           })}
         </div>
 
-        {/* Info box */}
-        <div className="mt-6 p-4 bg-secondary/50 rounded-lg">
-          <p className="text-xs text-muted-foreground text-center">
-            <strong className="text-foreground">Département {formData?.departement || '...'}</strong> • 
-            Analyse des aides régionales et nationales en cours
-          </p>
-        </div>
+        {/* Info box avec département */}
+        {formData?.departement && (
+          <div className="mt-5 p-3 bg-secondary/50 rounded-lg">
+            <p className="text-xs text-muted-foreground text-center">
+              <span className="inline-flex items-center gap-1">
+                <MapPin className="w-3 h-3" />
+                <strong className="text-foreground">Département {formData.departement}</strong>
+              </span>
+              {' • '}Analyse des aides en cours
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
