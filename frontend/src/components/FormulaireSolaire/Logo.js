@@ -36,13 +36,13 @@ export const LogoMaPrimePanneauSolaire = ({ className = "", size = "default" }) 
   );
 };
 
-// Logo partenaires (image locale) - responsive
+// Logo partenaires (image locale) - responsive et aligné
 export const LogoPartenaires = ({ className = "" }) => (
-  <div className={`flex items-center ${className}`}>
+  <div className={`flex items-center flex-shrink-0 ${className}`}>
     <img 
       src="/site-independant.png"
       alt="Site indépendant - Partenaires officiels"
-      className="h-8 sm:h-10 w-auto object-contain"
+      className="h-8 sm:h-9 w-auto object-contain"
     />
   </div>
 );
