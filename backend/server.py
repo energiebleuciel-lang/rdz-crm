@@ -42,6 +42,21 @@ class StatusCheck(BaseModel):
 class StatusCheckCreate(BaseModel):
     client_name: str
 
+# Lead Model
+class LeadData(BaseModel):
+    phone: str
+    nom: str
+    email: Optional[str] = ""
+    departement: Optional[str] = ""
+    type_logement: Optional[str] = ""
+    statut_occupant: Optional[str] = ""
+    facture_electricite: Optional[str] = ""
+
+class LeadResponse(BaseModel):
+    success: bool
+    message: str
+    duplicate: Optional[bool] = False
+
 # Add your routes to the router instead of directly to app
 @api_router.get("/")
 async def root():
