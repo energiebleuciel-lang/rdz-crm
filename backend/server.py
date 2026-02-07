@@ -51,11 +51,23 @@ class LeadData(BaseModel):
     type_logement: Optional[str] = ""
     statut_occupant: Optional[str] = ""
     facture_electricite: Optional[str] = ""
+    # Multi-form support
+    form_id: Optional[str] = "default"
+    form_name: Optional[str] = "Formulaire Principal"
 
 class LeadResponse(BaseModel):
     success: bool
     message: str
     duplicate: Optional[bool] = False
+
+# Form Configuration Model
+class FormConfig(BaseModel):
+    form_id: str
+    form_name: str
+    api_url: str
+    api_key: str
+    redirect_url: str
+    active: bool = True
 
 # Add your routes to the router instead of directly to app
 @api_router.get("/")
