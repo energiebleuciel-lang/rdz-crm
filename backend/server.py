@@ -104,6 +104,7 @@ async def submit_lead(lead: LeadData):
     """
     Proxy endpoint to submit leads to the external API
     ALWAYS saves lead to MongoDB first, then sends to external API
+    Supports multiple forms with different API configurations
     """
     timestamp = int(datetime.now(timezone.utc).timestamp())
     
@@ -112,9 +113,21 @@ async def submit_lead(lead: LeadData):
     if len(phone) == 9 and not phone.startswith('0'):
         phone = '0' + phone
     
+    # Get form configuration (use default if not found)
+    form_config = await db.form_configs.find_one({"form_id": lead.form_id})
+    if not form_config:
+        # Use default config
+        api_url = LEAD_API_URL
+        api_key = LEAD_API_KEY
+    else:
+        api_url = form_config.get("api_url", LEAD_API_URL)
+        api_key = form_config.get("api_key", LEAD_API_KEY)
+    
     # Prepare lead document for MongoDB
     lead_doc = {
         "id": str(uuid.uuid4()),
+        "form_id": lead.form_id or "default",
+        "form_name": lead.form_name or "Formulaire Principal",
         "phone": phone,
         "nom": lead.nom,
         "email": lead.email or "",
@@ -124,18 +137,18 @@ async def submit_lead(lead: LeadData):
         "facture_electricite": lead.facture_electricite or "",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "register_date": timestamp,
-        "api_status": "pending",  # pending, success, failed, duplicate
+        "api_status": "pending",
         "api_response": None,
-        "api_attempts": 0
+        "api_attempts": 0,
+        "api_url": api_url  # Track which API was used
     }
     
     # STEP 1: ALWAYS save to MongoDB first (never lose a lead!)
     try:
         await db.leads.insert_one(lead_doc)
-        logger.info(f"Lead saved to MongoDB: {lead.nom}, phone: {phone}, id: {lead_doc['id']}")
+        logger.info(f"Lead saved to MongoDB: {lead.nom}, phone: {phone}, form: {lead.form_id}, id: {lead_doc['id']}")
     except Exception as e:
         logger.error(f"MongoDB Error: {str(e)}")
-        # Continue anyway - try to send to API
     
     # STEP 2: Send to external API
     lead_payload = {
@@ -152,7 +165,7 @@ async def submit_lead(lead: LeadData):
         }
     }
     
-    logger.info(f"Sending lead to external API: {lead.nom}, phone: {phone}")
+    logger.info(f"Sending lead to API: {api_url}")
     
     api_status = "failed"
     api_response = None
@@ -160,10 +173,10 @@ async def submit_lead(lead: LeadData):
     try:
         async with httpx.AsyncClient(timeout=30.0) as http_client:
             response = await http_client.post(
-                LEAD_API_URL,
+                api_url,
                 json=lead_payload,
                 headers={
-                    "Authorization": LEAD_API_KEY,
+                    "Authorization": api_key,
                     "Content-Type": "application/json"
                 }
             )
@@ -210,7 +223,6 @@ async def submit_lead(lead: LeadData):
     except Exception as e:
         logger.error(f"MongoDB Update Error: {str(e)}")
     
-    # Always return success to user (lead is saved anyway)
     return LeadResponse(success=True, message="Lead enregistré avec succès")
 
 
