@@ -419,22 +419,20 @@ const StepIndicator = ({ etapeActuelle }) => (
 // Écran d'introduction
 const IntroScreen = ({ onStart }) => (
   <div className="form-card animate-slide-up">
-    <div className="text-center mb-6">
-      <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-        <Home className="w-8 h-8 text-primary" />
+    <div className="text-center mb-4">
+      <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
+        <Home className="w-7 h-7 text-primary" />
       </div>
-      <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-3">
+      <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-2">
         Bienvenue sur MaPrime-PanneauSolaire.fr
       </h1>
-      <p className="text-muted-foreground">
-        Ce service vous permet de vérifier si votre logement répond aux critères requis pour 
-        <strong className="text-foreground"> faire partie </strong> 
-        du programme solaire.
+      <p className="text-sm text-muted-foreground">
+        Vérifiez si votre logement répond aux critères du programme solaire.
       </p>
     </div>
 
     {/* Avertissement propriétaires */}
-    <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-6">
+    <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4">
       <div className="flex items-center gap-3">
         <Info className="w-5 h-5 text-amber-600 flex-shrink-0" />
         <p className="text-sm font-medium text-amber-800">
@@ -443,46 +441,20 @@ const IntroScreen = ({ onStart }) => (
       </div>
     </div>
 
-    <div className="bg-secondary/50 rounded-xl p-4 mb-6">
-      <p className="text-sm text-foreground mb-3">
-        Seuls les logements éligibles reçoivent un document détaillé, valable 6 mois.
-      </p>
-      <div className="space-y-2">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-card rounded-lg flex items-center justify-center">
-            <Clock className="w-4 h-4 text-primary" />
-          </div>
-          <span className="text-sm text-foreground">Moins d'une minute</span>
+    <div className="bg-secondary/50 rounded-xl p-3 mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-2">
+          <Clock className="w-4 h-4 text-primary" />
+          <span className="text-sm text-foreground">Moins d'1 minute</span>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-card rounded-lg flex items-center justify-center">
-            <Shield className="w-4 h-4 text-accent" />
-          </div>
-          <span className="text-sm text-foreground">Service gratuit, confidentiel et sécurisé</span>
+        <div className="flex items-center gap-2">
+          <Shield className="w-4 h-4 text-accent" />
+          <span className="text-sm text-foreground">Gratuit et confidentiel</span>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-card rounded-lg flex items-center justify-center">
-            <FileText className="w-4 h-4 text-primary" />
-          </div>
-          <span className="text-sm text-foreground">Document généré automatiquement en fin de simulation</span>
+        <div className="flex items-center gap-2">
+          <FileText className="w-4 h-4 text-primary" />
+          <span className="text-sm text-foreground">Document automatique</span>
         </div>
-      </div>
-    </div>
-
-    {/* Indicateur des 3 étapes */}
-    <div className="bg-muted/50 rounded-xl p-4 mb-6">
-      <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide">
-        3 étapes simples
-      </p>
-      <div className="flex justify-between">
-        {ETAPES.map((etape, index) => (
-          <div key={etape.id} className="flex flex-col items-center text-center flex-1">
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mb-2">
-              <etape.icon className="w-4 h-4 text-primary" />
-            </div>
-            <span className="text-xs font-medium text-foreground">{etape.titre}</span>
-          </div>
-        ))}
       </div>
     </div>
 
