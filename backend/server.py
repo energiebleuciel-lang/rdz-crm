@@ -338,7 +338,10 @@ async def get_admin_forms():
     # Get unique form_ids from leads
     pipeline = [
         {"$group": {
-            "_id": {"form_id": "$form_id", "form_name": "$form_name"},
+            "_id": {
+                "form_id": {"$ifNull": ["$form_id", "default"]},
+                "form_name": {"$ifNull": ["$form_name", "Formulaire Principal"]}
+            },
             "total": {"$sum": 1},
             "success": {"$sum": {"$cond": [{"$eq": ["$api_status", "success"]}, 1, 0]}},
             "failed": {"$sum": {"$cond": [{"$eq": ["$api_status", "failed"]}, 1, 0]}},
@@ -353,9 +356,11 @@ async def get_admin_forms():
     
     forms = []
     for r in results:
+        form_id = r["_id"].get("form_id") or "default"
+        form_name = r["_id"].get("form_name") or "Formulaire Principal"
         forms.append({
-            "form_id": r["_id"]["form_id"] or "default",
-            "form_name": r["_id"]["form_name"] or "Formulaire Principal",
+            "form_id": form_id,
+            "form_name": form_name,
             "total": r["total"],
             "success": r["success"],
             "failed": r["failed"],
