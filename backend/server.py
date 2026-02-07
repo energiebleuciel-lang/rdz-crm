@@ -6,9 +6,10 @@ import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List
+from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone
+import httpx
 
 
 ROOT_DIR = Path(__file__).parent
@@ -18,6 +19,10 @@ load_dotenv(ROOT_DIR / '.env')
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
+
+# API Lead Configuration
+LEAD_API_URL = 'https://maison-du-lead.com/lead/api/create_lead/'
+LEAD_API_KEY = '0c21a444-2fc9-412f-9092-658cb6d62de6'
 
 # Create the main app without a prefix
 app = FastAPI()
