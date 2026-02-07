@@ -419,52 +419,52 @@ const StepIndicator = ({ etapeActuelle }) => (
 // Écran d'introduction
 const IntroScreen = ({ onStart }) => (
   <div className="form-card animate-slide-up">
-    <div className="text-center mb-4">
-      <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
-        <Home className="w-7 h-7 text-primary" />
+    <div className="text-center mb-3">
+      <div className="w-12 h-12 sm:w-14 sm:h-14 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-2">
+        <Home className="w-6 h-6 sm:w-7 sm:h-7 text-primary" />
       </div>
-      <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-2">
+      <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground mb-1">
         Bienvenue sur MaPrime-PanneauSolaire.fr
       </h1>
-      <p className="text-sm text-muted-foreground">
+      <p className="text-xs sm:text-sm text-muted-foreground">
         Vérifiez si votre logement répond aux critères du programme solaire.
       </p>
     </div>
 
     {/* Avertissement propriétaires */}
-    <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4">
-      <div className="flex items-center gap-3">
-        <Info className="w-5 h-5 text-amber-600 flex-shrink-0" />
-        <p className="text-sm font-medium text-amber-800">
+    <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 sm:p-3 mb-3">
+      <div className="flex items-center gap-2">
+        <Info className="w-4 h-4 text-amber-600 flex-shrink-0" />
+        <p className="text-xs sm:text-sm font-medium text-amber-800">
           Programme réservé aux propriétaires de maison
         </p>
       </div>
     </div>
 
-    <div className="bg-secondary/50 rounded-xl p-3 mb-4">
-      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-        <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4 text-primary" />
-          <span className="text-sm text-foreground">Moins d'1 minute</span>
+    <div className="bg-secondary/50 rounded-lg p-2 sm:p-3 mb-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm">
+        <div className="flex items-center gap-1">
+          <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-primary" />
+          <span className="text-foreground">Moins d'1 min</span>
         </div>
-        <div className="flex items-center gap-2">
-          <Shield className="w-4 h-4 text-accent" />
-          <span className="text-sm text-foreground">Gratuit et confidentiel</span>
+        <div className="flex items-center gap-1">
+          <Shield className="w-3 h-3 sm:w-4 sm:h-4 text-accent" />
+          <span className="text-foreground">Gratuit</span>
         </div>
-        <div className="flex items-center gap-2">
-          <FileText className="w-4 h-4 text-primary" />
-          <span className="text-sm text-foreground">Document automatique</span>
+        <div className="flex items-center gap-1">
+          <FileText className="w-3 h-3 sm:w-4 sm:h-4 text-primary" />
+          <span className="text-foreground">Document auto</span>
         </div>
       </div>
     </div>
 
     <Button
       onClick={onStart}
-      className="w-full btn-primary-gradient flex items-center justify-center gap-2 text-base"
+      className="w-full btn-primary-gradient flex items-center justify-center gap-2 text-sm sm:text-base"
       size="lg"
     >
       Commencer ma simulation
-      <ChevronRight className="w-5 h-5" />
+      <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
     </Button>
   </div>
 );
