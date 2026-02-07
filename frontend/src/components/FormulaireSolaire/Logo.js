@@ -36,14 +36,13 @@ export const LogoMaPrimePanneauSolaire = ({ className = "", size = "default" }) 
   );
 };
 
-// Logo partenaires (image externe unique)
+// Logo partenaires (image locale)
 export const LogoPartenaires = ({ className = "" }) => (
   <div className={`flex items-center ${className}`}>
     <img 
-      src="https://mes-subventions-energie.fr/wp-content/uploads/2025/12/site-independant-2-1.png"
+      src="/site-independant.png"
       alt="Site indépendant - Partenaires officiels"
       className="h-12 w-auto object-contain"
-      crossOrigin="anonymous"
     />
   </div>
 );
