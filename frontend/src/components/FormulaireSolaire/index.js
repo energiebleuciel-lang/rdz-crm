@@ -254,7 +254,7 @@ const FormulaireSolaire = () => {
       </div>
 
       {/* Contenu principal */}
-      <main className="max-w-2xl mx-auto px-4 py-6 md:py-10">
+      <main className="max-w-2xl mx-auto px-3 py-4 sm:px-4 sm:py-6 md:py-10">
         {etapeActuelle === 0 ? (
           <IntroScreen onStart={handleNextEtape} />
         ) : (
