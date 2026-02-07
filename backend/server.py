@@ -86,6 +86,68 @@ async def get_status_checks():
     
     return status_checks
 
+# Lead submission endpoint (proxy to avoid CORS issues)
+@api_router.post("/submit-lead", response_model=LeadResponse)
+async def submit_lead(lead: LeadData):
+    """
+    Proxy endpoint to submit leads to the external API
+    This avoids CORS issues from the frontend
+    """
+    timestamp = int(datetime.now(timezone.utc).timestamp())
+    
+    # Format phone number
+    phone = ''.join(filter(str.isdigit, lead.phone))
+    if len(phone) == 9 and not phone.startswith('0'):
+        phone = '0' + phone
+    
+    # Prepare data for external API
+    lead_payload = {
+        "phone": phone,
+        "register_date": timestamp,
+        "nom": lead.nom,
+        "prenom": "",
+        "email": lead.email or "",
+        "custom_fields": {
+            "departement": {"value": lead.departement or ""},
+            "type_logement": {"value": lead.type_logement or ""},
+            "statut_occupant": {"value": lead.statut_occupant or ""},
+            "facture_electricite": {"value": lead.facture_electricite or ""},
+        }
+    }
+    
+    logger.info(f"Submitting lead: {lead.nom}, phone: {phone}, dept: {lead.departement}")
+    
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as http_client:
+            response = await http_client.post(
+                LEAD_API_URL,
+                json=lead_payload,
+                headers={
+                    "Authorization": LEAD_API_KEY,
+                    "Content-Type": "application/json"
+                }
+            )
+            
+            data = response.json()
+            logger.info(f"API Response: status={response.status_code}, data={data}")
+            
+            if response.status_code == 201:
+                return LeadResponse(success=True, message="Lead créé avec succès")
+            elif response.status_code == 200 and "doublon" in str(data.get("message", "")).lower():
+                return LeadResponse(success=True, message="Lead déjà enregistré", duplicate=True)
+            else:
+                return LeadResponse(
+                    success=False, 
+                    message=data.get("message") or data.get("error") or "Erreur lors de la création"
+                )
+                
+    except httpx.TimeoutException:
+        logger.error("API Timeout")
+        return LeadResponse(success=False, message="Timeout - le serveur ne répond pas")
+    except Exception as e:
+        logger.error(f"API Error: {str(e)}")
+        return LeadResponse(success=False, message=f"Erreur: {str(e)}")
+
 # Include the router in the main app
 app.include_router(api_router)
 
