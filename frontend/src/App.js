@@ -1363,18 +1363,6 @@ const FormsPage = () => {
   const [lps, setLps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [editingForm, setEditingForm] = useState(null);
-  const [formData, setFormData] = useState({
-    sub_account_id: '', lp_ids: [], code: '', name: '', product_type: 'panneaux',
-    source_type: 'native', source_name: '', api_key: '', tracking_type: 'redirect',
-const FormsPage = () => {
-  const { authFetch } = useAuth();
-  const { selectedCRM } = useCRM();
-  const [forms, setForms] = useState([]);
-  const [accounts, setAccounts] = useState([]);
-  const [lps, setLps] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
   const [showDuplicateModal, setShowDuplicateModal] = useState(null);
   const [editingForm, setEditingForm] = useState(null);
   const [duplicateData, setDuplicateData] = useState({ new_code: '', new_name: '', new_api_key: '' });
