@@ -160,6 +160,7 @@ const Sidebar = () => {
 
   // Section: Administration
   const adminItems = [
+    { path: '/leads', icon: Users, label: 'Leads' },
     { path: '/users', icon: Shield, label: 'Utilisateurs' },
     { path: '/activity', icon: Activity, label: 'Journal activité' },
     { path: '/settings', icon: Settings, label: 'Paramètres' },
