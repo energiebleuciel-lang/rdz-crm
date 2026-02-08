@@ -425,6 +425,7 @@ const LoginPage = () => {
 
 const DashboardPage = () => {
   const { authFetch } = useAuth();
+  const { selectedCRM } = useCRM();
   const [stats, setStats] = useState(null);
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -432,14 +433,15 @@ const DashboardPage = () => {
 
   useEffect(() => {
     loadData();
-  }, [period]);
+  }, [period, selectedCRM]);
 
   const loadData = async () => {
     setLoading(true);
     try {
+      const crmParam = selectedCRM ? `&crm_id=${selectedCRM}` : '';
       const [statsRes, leadsRes] = await Promise.all([
-        authFetch(`${API}/api/analytics/stats?period=${period}`),
-        authFetch(`${API}/api/leads?limit=10`)
+        authFetch(`${API}/api/analytics/stats?period=${period}${crmParam}`),
+        authFetch(`${API}/api/leads?limit=10${crmParam}`)
       ]);
       
       if (statsRes.ok) setStats(await statsRes.json());
@@ -553,19 +555,21 @@ const DashboardPage = () => {
 
 const LeadsPage = () => {
   const { authFetch } = useAuth();
+  const { selectedCRM } = useCRM();
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ status: '', form_code: '' });
 
   useEffect(() => {
     loadLeads();
-  }, [filters]);
+  }, [filters, selectedCRM]);
 
   const loadLeads = async () => {
     setLoading(true);
     const params = new URLSearchParams();
     if (filters.status) params.set('status', filters.status);
     if (filters.form_code) params.set('form_code', filters.form_code);
+    if (selectedCRM) params.set('crm_id', selectedCRM);
     
     try {
       const res = await authFetch(`${API}/api/leads?${params.toString()}&limit=200`);
@@ -663,27 +667,33 @@ const LeadsPage = () => {
 
 const SubAccountsPage = () => {
   const { authFetch } = useAuth();
+  const { selectedCRM, crms: globalCrms } = useCRM();
   const [accounts, setAccounts] = useState([]);
   const [crms, setCrms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingAccount, setEditingAccount] = useState(null);
-  const [formData, setFormData] = useState({
-    crm_id: '', name: '', domain: '', logo_url: '', logo_secondary_url: '',
-    privacy_policy_url: '', terms_url: '', layout: 'center', primary_color: '#3B82F6',
+  const [showLegalModal, setShowLegalModal] = useState(null);
+  const defaultFormData = {
+    crm_id: '', name: '', domain: '', product_type: 'solaire',
+    logo_left_url: '', logo_right_url: '', favicon_url: '',
+    privacy_policy_text: '', legal_mentions_text: '',
+    layout: 'center', primary_color: '#3B82F6',
     tracking_pixel_header: '', tracking_cta_code: '', tracking_conversion_type: 'redirect',
     tracking_conversion_code: '', tracking_redirect_url: '', notes: ''
-  });
+  };
+  const [formData, setFormData] = useState(defaultFormData);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [selectedCRM]);
 
   const loadData = async () => {
     setLoading(true);
     try {
+      const crmParam = selectedCRM ? `?crm_id=${selectedCRM}` : '';
       const [accountsRes, crmsRes] = await Promise.all([
-        authFetch(`${API}/api/sub-accounts`),
+        authFetch(`${API}/api/sub-accounts${crmParam}`),
         authFetch(`${API}/api/crms`)
       ]);
       if (accountsRes.ok) setAccounts((await accountsRes.json()).sub_accounts || []);
@@ -704,7 +714,7 @@ const SubAccountsPage = () => {
       if (res.ok) {
         setShowModal(false);
         setEditingAccount(null);
-        setFormData({ crm_id: '', name: '', domain: '', logo_url: '', layout: 'center', primary_color: '#3B82F6', tracking_conversion_type: 'redirect', notes: '' });
+        setFormData(defaultFormData);
         loadData();
       }
     } catch (e) {
@@ -714,7 +724,7 @@ const SubAccountsPage = () => {
 
   const editAccount = (account) => {
     setEditingAccount(account);
-    setFormData(account);
+    setFormData({ ...defaultFormData, ...account });
     setShowModal(true);
   };
 
@@ -728,114 +738,266 @@ const SubAccountsPage = () => {
     }
   };
 
+  const productTypes = {
+    solaire: { label: 'Panneaux solaires', color: 'bg-yellow-100 text-yellow-700' },
+    pompe: { label: 'Pompe à chaleur', color: 'bg-blue-100 text-blue-700' },
+    isolation: { label: 'Isolation', color: 'bg-green-100 text-green-700' },
+    autre: { label: 'Autre', color: 'bg-slate-100 text-slate-700' }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-800">Sous-comptes</h1>
-        <button onClick={() => { setEditingAccount(null); setShowModal(true); }} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+        <button onClick={() => { setEditingAccount(null); setFormData({ ...defaultFormData, crm_id: selectedCRM || '' }); setShowModal(true); }} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
           <Plus className="w-4 h-4" />
           Nouveau sous-compte
         </button>
       </div>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {accounts.map(account => (
-          <div key={account.id} className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <h3 className="font-semibold text-slate-800">{account.name}</h3>
-                <p className="text-sm text-slate-500">{account.domain || 'Pas de domaine'}</p>
+      {accounts.length === 0 ? (
+        <div className="bg-white rounded-xl p-8 shadow-sm border border-slate-200 text-center">
+          <Building className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+          <p className="text-slate-500">Aucun sous-compte trouvé</p>
+          <p className="text-sm text-slate-400 mt-1">
+            {selectedCRM ? 'Créez votre premier sous-compte pour ce CRM' : 'Sélectionnez un CRM ou créez un sous-compte'}
+          </p>
+        </div>
+      ) : (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {accounts.map(account => (
+            <div key={account.id} className="bg-white rounded-xl p-4 shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-semibold text-slate-800">{account.name}</h3>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${productTypes[account.product_type]?.color || productTypes.autre.color}`}>
+                      {productTypes[account.product_type]?.label || 'Autre'}
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-500 flex items-center gap-1">
+                    <Globe className="w-3 h-3" />
+                    {account.domain || 'Pas de domaine'}
+                  </p>
+                </div>
+                <div className="flex gap-1">
+                  <button onClick={() => editAccount(account)} className="p-1.5 hover:bg-slate-100 rounded" title="Modifier">
+                    <Edit className="w-4 h-4 text-slate-600" />
+                  </button>
+                  <button onClick={() => deleteAccount(account.id)} className="p-1.5 hover:bg-slate-100 rounded" title="Supprimer">
+                    <Trash2 className="w-4 h-4 text-red-600" />
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-1">
-                <button onClick={() => editAccount(account)} className="p-1 hover:bg-slate-100 rounded">
-                  <Edit className="w-4 h-4 text-slate-600" />
-                </button>
-                <button onClick={() => deleteAccount(account.id)} className="p-1 hover:bg-slate-100 rounded">
-                  <Trash2 className="w-4 h-4 text-red-600" />
-                </button>
+              
+              {/* Logos preview */}
+              <div className="flex items-center gap-2 mb-3 min-h-[32px]">
+                {account.logo_left_url && (
+                  <img src={account.logo_left_url} alt="Logo gauche" className="h-8 max-w-[80px] object-contain" />
+                )}
+                {account.logo_right_url && (
+                  <img src={account.logo_right_url} alt="Logo droit" className="h-8 max-w-[80px] object-contain ml-auto" />
+                )}
+                {!account.logo_left_url && !account.logo_right_url && (
+                  <span className="text-xs text-slate-400 flex items-center gap-1">
+                    <Image className="w-3 h-3" /> Pas de logo
+                  </span>
+                )}
               </div>
-            </div>
-            <div className="text-xs text-slate-500 space-y-1">
-              <p>CRM: {crms.find(c => c.id === account.crm_id)?.name || 'Non défini'}</p>
-              <p>Tracking: {account.tracking_conversion_type}</p>
-              <p>Layout: {account.layout}</p>
-            </div>
-          </div>
-        ))}
-      </div>
 
+              <div className="text-xs text-slate-500 space-y-1 border-t border-slate-100 pt-3">
+                <p className="flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full ${crms.find(c => c.id === account.crm_id)?.slug === 'mdl' ? 'bg-blue-500' : 'bg-green-500'}`} />
+                  {crms.find(c => c.id === account.crm_id)?.name || 'CRM non défini'}
+                </p>
+                <div className="flex items-center justify-between">
+                  <span>Tracking: {account.tracking_conversion_type}</span>
+                  {(account.privacy_policy_text || account.legal_mentions_text) && (
+                    <button 
+                      onClick={() => setShowLegalModal(account)} 
+                      className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                    >
+                      <Shield className="w-3 h-3" /> Légal
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Legal Text Modal */}
+      <Modal isOpen={!!showLegalModal} onClose={() => setShowLegalModal(null)} title={`Textes légaux - ${showLegalModal?.name || ''}`}>
+        <div className="space-y-4">
+          {showLegalModal?.privacy_policy_text && (
+            <div>
+              <h4 className="font-medium text-slate-800 mb-2 flex items-center gap-2">
+                <Shield className="w-4 h-4" /> Politique de confidentialité
+              </h4>
+              <div className="bg-slate-50 p-4 rounded-lg text-sm text-slate-600 max-h-60 overflow-auto whitespace-pre-wrap">
+                {showLegalModal.privacy_policy_text}
+              </div>
+            </div>
+          )}
+          {showLegalModal?.legal_mentions_text && (
+            <div>
+              <h4 className="font-medium text-slate-800 mb-2 flex items-center gap-2">
+                <FileText className="w-4 h-4" /> Mentions légales
+              </h4>
+              <div className="bg-slate-50 p-4 rounded-lg text-sm text-slate-600 max-h-60 overflow-auto whitespace-pre-wrap">
+                {showLegalModal.legal_mentions_text}
+              </div>
+            </div>
+          )}
+          {!showLegalModal?.privacy_policy_text && !showLegalModal?.legal_mentions_text && (
+            <p className="text-slate-500 text-center py-4">Aucun texte légal configuré</p>
+          )}
+        </div>
+      </Modal>
+
+      {/* Edit/Create Modal */}
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editingAccount ? 'Modifier le sous-compte' : 'Nouveau sous-compte'}>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">CRM</label>
-              <select value={formData.crm_id} onChange={e => setFormData({ ...formData, crm_id: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" required>
-                <option value="">Sélectionner</option>
-                {crms.map(crm => <option key={crm.id} value={crm.id}>{crm.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Nom du compte</label>
-              <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Domaine</label>
-              <input type="text" value={formData.domain} onChange={e => setFormData({ ...formData, domain: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="exemple.fr" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Layout</label>
-              <select value={formData.layout} onChange={e => setFormData({ ...formData, layout: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg">
-                <option value="left">Gauche</option>
-                <option value="center">Centre</option>
-                <option value="right">Droite</option>
-              </select>
+        <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+          {/* Section: Informations générales */}
+          <div className="bg-slate-50 p-4 rounded-lg space-y-4">
+            <h4 className="font-medium text-slate-800 flex items-center gap-2">
+              <Building className="w-4 h-4" /> Informations générales
+            </h4>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">CRM *</label>
+                <select value={formData.crm_id} onChange={e => setFormData({ ...formData, crm_id: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" required>
+                  <option value="">Sélectionner</option>
+                  {crms.map(crm => <option key={crm.id} value={crm.id}>{crm.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nom du compte *</label>
+                <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" required />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Domaine</label>
+                <input type="text" value={formData.domain || ''} onChange={e => setFormData({ ...formData, domain: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="exemple.fr" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Type de produit</label>
+                <select value={formData.product_type} onChange={e => setFormData({ ...formData, product_type: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg">
+                  <option value="solaire">Panneaux solaires</option>
+                  <option value="pompe">Pompe à chaleur</option>
+                  <option value="isolation">Isolation</option>
+                  <option value="autre">Autre</option>
+                </select>
+              </div>
             </div>
           </div>
 
+          {/* Section: Logos */}
+          <div className="bg-slate-50 p-4 rounded-lg space-y-4">
+            <h4 className="font-medium text-slate-800 flex items-center gap-2">
+              <Image className="w-4 h-4" /> Logos
+            </h4>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Logo gauche (URL)</label>
+                <input type="url" value={formData.logo_left_url || ''} onChange={e => setFormData({ ...formData, logo_left_url: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="https://..." />
+                {formData.logo_left_url && (
+                  <img src={formData.logo_left_url} alt="Preview" className="mt-2 h-10 object-contain" onError={e => e.target.style.display = 'none'} />
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Logo droit (URL)</label>
+                <input type="url" value={formData.logo_right_url || ''} onChange={e => setFormData({ ...formData, logo_right_url: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="https://..." />
+                {formData.logo_right_url && (
+                  <img src={formData.logo_right_url} alt="Preview" className="mt-2 h-10 object-contain" onError={e => e.target.style.display = 'none'} />
+                )}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Favicon (URL)</label>
+              <input type="url" value={formData.favicon_url || ''} onChange={e => setFormData({ ...formData, favicon_url: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="https://..." />
+            </div>
+          </div>
+
+          {/* Section: Textes légaux */}
+          <div className="bg-slate-50 p-4 rounded-lg space-y-4">
+            <h4 className="font-medium text-slate-800 flex items-center gap-2">
+              <Shield className="w-4 h-4" /> Textes légaux (popup)
+            </h4>
+            <p className="text-xs text-slate-500">Ces textes s'afficheront dans une popup sur le formulaire, pas comme des liens externes.</p>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Politique de confidentialité</label>
+              <textarea 
+                value={formData.privacy_policy_text || ''} 
+                onChange={e => setFormData({ ...formData, privacy_policy_text: e.target.value })} 
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg" 
+                rows={4} 
+                placeholder="Texte de votre politique de confidentialité..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Mentions légales</label>
+              <textarea 
+                value={formData.legal_mentions_text || ''} 
+                onChange={e => setFormData({ ...formData, legal_mentions_text: e.target.value })} 
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg" 
+                rows={4} 
+                placeholder="Texte de vos mentions légales..."
+              />
+            </div>
+          </div>
+
+          {/* Section: Tracking */}
+          <div className="bg-slate-50 p-4 rounded-lg space-y-4">
+            <h4 className="font-medium text-slate-800 flex items-center gap-2">
+              <Target className="w-4 h-4" /> Tracking & Conversion
+            </h4>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Type de tracking</label>
+                <select value={formData.tracking_conversion_type} onChange={e => setFormData({ ...formData, tracking_conversion_type: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg">
+                  <option value="code">Code JS (après téléphone)</option>
+                  <option value="redirect">Page de redirection</option>
+                  <option value="both">Les deux</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Layout du formulaire</label>
+                <select value={formData.layout} onChange={e => setFormData({ ...formData, layout: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg">
+                  <option value="left">Gauche</option>
+                  <option value="center">Centre</option>
+                  <option value="right">Droite</option>
+                </select>
+              </div>
+            </div>
+
+            {(formData.tracking_conversion_type === 'code' || formData.tracking_conversion_type === 'both') && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Code tracking conversion</label>
+                <textarea value={formData.tracking_conversion_code || ''} onChange={e => setFormData({ ...formData, tracking_conversion_code: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-xs" rows={3} placeholder="<script>fbq('track', 'Lead');</script>" />
+              </div>
+            )}
+
+            {(formData.tracking_conversion_type === 'redirect' || formData.tracking_conversion_type === 'both') && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">URL de redirection</label>
+                <input type="url" value={formData.tracking_redirect_url || ''} onChange={e => setFormData({ ...formData, tracking_redirect_url: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="https://exemple.fr/merci/" />
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Pixel Header (dans &lt;head&gt;)</label>
+              <textarea value={formData.tracking_pixel_header || ''} onChange={e => setFormData({ ...formData, tracking_pixel_header: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-xs" rows={3} placeholder="<!-- Facebook Pixel, Google Ads, etc. -->" />
+            </div>
+          </div>
+
+          {/* Section: Notes */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">URL Logo principal</label>
-            <input type="url" value={formData.logo_url} onChange={e => setFormData({ ...formData, logo_url: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+            <label className="block text-sm font-medium text-slate-700 mb-1">Notes internes</label>
+            <textarea value={formData.notes || ''} onChange={e => setFormData({ ...formData, notes: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" rows={2} placeholder="Notes visibles uniquement dans le dashboard..." />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Politique de confidentialité (URL)</label>
-            <input type="url" value={formData.privacy_policy_url} onChange={e => setFormData({ ...formData, privacy_policy_url: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Type de tracking conversion</label>
-            <select value={formData.tracking_conversion_type} onChange={e => setFormData({ ...formData, tracking_conversion_type: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg">
-              <option value="code">Code (après téléphone)</option>
-              <option value="redirect">Page de redirection</option>
-              <option value="both">Les deux</option>
-            </select>
-          </div>
-
-          {(formData.tracking_conversion_type === 'code' || formData.tracking_conversion_type === 'both') && (
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Code tracking conversion</label>
-              <textarea value={formData.tracking_conversion_code} onChange={e => setFormData({ ...formData, tracking_conversion_code: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" rows={3} placeholder="<script>...</script>" />
-            </div>
-          )}
-
-          {(formData.tracking_conversion_type === 'redirect' || formData.tracking_conversion_type === 'both') && (
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">URL de redirection</label>
-              <input type="url" value={formData.tracking_redirect_url} onChange={e => setFormData({ ...formData, tracking_redirect_url: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="https://exemple.fr/merci/" />
-            </div>
-          )}
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Pixel Header (à mettre dans &lt;head&gt;)</label>
-            <textarea value={formData.tracking_pixel_header} onChange={e => setFormData({ ...formData, tracking_pixel_header: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" rows={3} placeholder="Code Facebook Pixel, Google Ads, etc." />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
-            <textarea value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" rows={2} />
-          </div>
-
-          <div className="flex justify-end gap-2 pt-4">
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-200 sticky bottom-0 bg-white py-4">
             <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Annuler</button>
             <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">{editingAccount ? 'Modifier' : 'Créer'}</button>
           </div>
