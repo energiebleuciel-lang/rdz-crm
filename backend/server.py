@@ -402,6 +402,29 @@ async def get_crms(user: dict = Depends(get_current_user)):
     crms = await db.crms.find({}, {"_id": 0}).to_list(100)
     return {"crms": crms}
 
+@api_router.get("/crms/{crm_id}")
+async def get_crm(crm_id: str, user: dict = Depends(get_current_user)):
+    crm = await db.crms.find_one({"id": crm_id}, {"_id": 0})
+    if not crm:
+        raise HTTPException(status_code=404, detail="CRM non trouvé")
+    return crm
+
+@api_router.put("/crms/{crm_id}")
+async def update_crm(crm_id: str, crm_update: CRMUpdate, user: dict = Depends(require_admin)):
+    """Update CRM including commandes (orders by product/department)"""
+    update_data = {k: v for k, v in crm_update.model_dump().items() if v is not None}
+    if not update_data:
+        raise HTTPException(status_code=400, detail="Aucune donnée à mettre à jour")
+    
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    result = await db.crms.update_one({"id": crm_id}, {"$set": update_data})
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="CRM non trouvé")
+    
+    await log_activity(user["id"], user["email"], "update", "crm", crm_id, "CRM mis à jour (commandes)")
+    return {"success": True}
+
 @api_router.post("/crms")
 async def create_crm(crm: CRMCreate, user: dict = Depends(require_admin)):
     crm_doc = {
