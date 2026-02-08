@@ -1605,7 +1605,8 @@ const FormsPage = () => {
     account_id: '', lp_ids: [], code: '', name: '', url: '', product_type: 'panneaux',
     source_type: 'native', source_name: '', tracking_type: 'redirect',
     redirect_url_name: '', notes: '', status: 'active',
-    form_type: 'standalone', html_code: '', crm_api_key: ''
+    form_type: 'standalone', html_code: '', crm_api_key: '',
+    exclude_from_routing: false  // Exclusion du routage inter-CRM
   });
 
   useEffect(() => {
