@@ -2070,7 +2070,7 @@ const ScriptGeneratorPage = () => {
           </div>
           <div className="p-4">
             <pre className="bg-slate-50 text-slate-800 p-4 rounded-lg overflow-x-auto text-sm whitespace-pre-wrap font-mono border border-slate-200">
-              {generatedScript.brief}
+              {generatedBrief.brief}
             </pre>
           </div>
         </div>
