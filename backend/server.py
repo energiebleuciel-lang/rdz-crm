@@ -1476,7 +1476,7 @@ Couleur secondaire : {account.get('secondary_color', '#1e40af') if account else 
 
 @api_router.get("/generate-script/form/{form_id}")
 async def generate_form_script(form_id: str, user: dict = Depends(get_current_user)):
-    """Generate tracking and integration info for Form"""
+    """Generate configuration brief for Form - text format for Emergent"""
     form = await db.forms.find_one({"id": form_id}, {"_id": 0})
     if not form:
         raise HTTPException(status_code=404, detail="Formulaire non trouvé")
@@ -1485,53 +1485,67 @@ async def generate_form_script(form_id: str, user: dict = Depends(get_current_us
     account_id = form.get("account_id") or form.get("sub_account_id")
     account = await db.accounts.find_one({"id": account_id}, {"_id": 0}) if account_id else None
     
-    backend_url = os.environ.get("BACKEND_URL", "https://rdz-group-ltd.online")
+    # Get linked LPs
+    lp_ids = form.get('lp_ids', [])
+    linked_lps = []
+    if lp_ids:
+        linked_lps = await db.lps.find({"id": {"$in": lp_ids}}, {"_id": 0, "code": 1, "name": 1}).to_list(100)
     
-    # Form start tracking script
-    form_start_script = f"""<!-- Tracking Form Start - {form['code']} -->
-<script>
-fetch('{backend_url}/api/track/form-start', {{
-  method: 'POST',
-  headers: {{'Content-Type': 'application/json'}},
-  body: JSON.stringify({{ form_code: '{form['code']}', lp_code: new URLSearchParams(window.location.search).get('lp') || '' }})
-}});
-</script>"""
-
-    # Conversion tracking - get from account if not overridden in form
-    tracking_type = form.get("tracking_type", "redirect")
-    redirect_url = form.get("redirect_url_override") or (account.get("redirect_url") if account else "") or "(Non configuré)"
-    conversion_code = (account.get("conversion_code") if account else "") or "(Non configuré)"
+    lps_text = "\n".join([f"  - {lp.get('code')} : {lp.get('name')}" for lp in linked_lps]) if linked_lps else "Aucune LP liée (formulaire standalone)"
     
-    if tracking_type == "gtm":
-        conversion_info = f"Code de conversion GTM (déclenché après validation téléphone 10 chiffres):\n{conversion_code}"
-    elif tracking_type == "redirect":
-        conversion_info = f"Redirection vers: {redirect_url}"
+    # Tracking type description
+    tracking_type = form.get('tracking_type', 'redirect')
+    if tracking_type == 'gtm':
+        tracking_desc = "GTM - Déclencher le code de conversion après validation du téléphone (10 chiffres)"
+    elif tracking_type == 'redirect':
+        tracking_desc = "Redirection - Rediriger vers une page merci après soumission"
     else:
-        conversion_info = "Aucun tracking de conversion configuré"
+        tracking_desc = "Aucun tracking de conversion"
     
-    instructions = f"""
-📋 INSTRUCTIONS POUR {form['code']}
+    # Build text brief
+    brief = f"""=== BRIEF FORMULAIRE : {form.get('code', 'Non défini')} ===
 
-1️⃣ TRACKING DÉMARRAGE (à mettre au chargement du formulaire)
-{form_start_script}
+NOM : {form.get('name', 'Non défini')}
+TYPE DE PRODUIT : {form.get('product_type', 'panneaux')}
+SOURCE : {form.get('source_name', 'Non défini')} ({form.get('source_type', 'native')})
 
-2️⃣ CONFIGURATION API
-- URL Backend: {backend_url}/api/submit-lead
-- Form Code: {form['code']}
-- Clé API CRM: {form.get('api_key', '(Non configuré)')}
-- Compte: {account.get('name', 'Non défini') if account else 'Non défini'}
+--- MODE ---
+Type : {form.get('form_type', 'standalone')} {'(formulaire intégré dans une LP)' if form.get('form_type') == 'integrated' else '(formulaire sur page séparée)'}
 
-3️⃣ TRACKING CONVERSION
-Type: {tracking_type}
-{conversion_info}
+LPs liées :
+{lps_text}
 
-4️⃣ LPs LIÉES
-{', '.join(form.get('lp_ids', [])) or '(Aucune LP liée)'}
+--- COMPTE ---
+Nom du compte : {account.get('name', 'Non défini') if account else 'Non défini'}
 
-⚠️ Le tracking conversion (GTM) ne se déclenche qu'après validation du téléphone (10 chiffres).
+--- LOGOS ---
+Intégrer logo : {account.get('logo_left_url', 'Non') if account and account.get('logo_left_url') else 'Non'}
+Logo URL : {account.get('logo_left_url', '') if account else ''}
+
+--- CHAMPS OBLIGATOIRES ---
+- Téléphone (10 chiffres) : OUI
+- Nom : OUI  
+- Département/Code postal : OUI
+
+--- TRACKING CONVERSION ---
+Type : {tracking_type}
+Description : {tracking_desc}
+
+Code de conversion (si GTM) :
+{account.get('conversion_code', 'Non configuré') if account else 'Non configuré'}
+
+URL de redirection (si redirect) :
+{form.get('redirect_url_override') or (account.get('redirect_url') if account else '') or 'Non configuré'}
+
+--- API CRM ---
+Clé API : {form.get('api_key', 'Non configuré')}
+CRM destination : {'MDL' if account and 'mdl' in account.get('name', '').lower() else 'ZR7' if account else 'Non défini'}
+
+--- NOTES ---
+{form.get('generation_notes', 'Aucune note')}
 """
     
-    return {"form_start_script": form_start_script, "instructions": instructions, "form": form}
+    return {"brief": brief, "form": form, "account": account}
 
 # ==================== USERS MANAGEMENT ====================
 
