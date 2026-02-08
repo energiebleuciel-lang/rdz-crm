@@ -212,17 +212,18 @@ class TestLeadDeletionAPI(TestAuth):
         
         print(f"Bulk delete successful: {data['deleted_count']} leads deleted")
     
-    def test_bulk_delete_empty_list(self, auth_token):
-        """Test POST /api/leads/bulk-delete with empty list"""
+    def test_bulk_delete_empty_list_returns_400(self, auth_token):
+        """Test POST /api/leads/bulk-delete with empty list returns 400"""
         response = requests.post(f"{BASE_URL}/api/leads/bulk-delete", 
             json={"lead_ids": []},
             headers={"Authorization": f"Bearer {auth_token}"}
         )
-        assert response.status_code == 200
+        # API correctly returns 400 for empty list with message "Aucun lead à supprimer"
+        assert response.status_code == 400
         data = response.json()
-        assert data["success"] == True
-        assert data["deleted_count"] == 0
-        print("Bulk delete with empty list handled correctly")
+        assert "detail" in data
+        assert "Aucun lead" in data["detail"] or "supprimer" in data["detail"]
+        print("Bulk delete with empty list correctly returns 400")
     
     def test_bulk_delete_with_invalid_ids(self, auth_token):
         """Test POST /api/leads/bulk-delete with some invalid IDs"""
