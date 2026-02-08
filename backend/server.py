@@ -1428,7 +1428,9 @@ async def generate_lp_script(lp_id: str, user: dict = Depends(get_current_user))
     if not lp:
         raise HTTPException(status_code=404, detail="LP non trouvée")
     
-    sub_account = await db.accounts.find_one({"id": lp.get("sub_account_id")}, {"_id": 0})
+    # Get account (try both field names for compatibility)
+    account_id = lp.get("account_id") or lp.get("sub_account_id")
+    account = await db.accounts.find_one({"id": account_id}, {"_id": 0}) if account_id else None
     
     backend_url = os.environ.get("BACKEND_URL", "https://rdz-group-ltd.online")
     
@@ -1452,14 +1454,16 @@ async def generate_lp_script(lp_id: str, user: dict = Depends(get_current_user))
 </script>"""
 
     # Add pixel if configured
-    if sub_account and sub_account.get("tracking_pixel_header"):
-        script = sub_account["tracking_pixel_header"] + "\n\n" + script
+    if account and account.get("tracking_pixel_header"):
+        script = account["tracking_pixel_header"] + "\n\n" + script
+    
+    pixel_header = account.get('tracking_pixel_header', '(Non configuré)') if account else '(Aucun compte associé)'
     
     instructions = f"""
 📋 INSTRUCTIONS POUR {lp['code']}
 
 1️⃣ PIXEL HEADER (à mettre dans <head>)
-{sub_account.get('tracking_pixel_header', '(Non configuré pour ce compte)')}
+{pixel_header}
 
 2️⃣ SCRIPT TRACKING CTA (à mettre avant </body>)
 {script}
@@ -1467,6 +1471,7 @@ async def generate_lp_script(lp_id: str, user: dict = Depends(get_current_user))
 3️⃣ CONFIGURATION
 - Sélecteur CTA : {lp.get('cta_selector', '.cta-btn')}
 - Source : {lp.get('source_name', 'Non défini')}
+- Compte : {account.get('name', 'Non défini') if account else 'Non défini'}
 
 ⚠️ Ce script se déclenche quand un visiteur clique sur un bouton CTA.
 """
