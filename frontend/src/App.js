@@ -2861,23 +2861,79 @@ const GuidePage = () => {
                 </div>
               </div>
 
+              {/* Documentation API */}
+              <div className="bg-slate-900 rounded-lg p-4 text-white">
+                <h4 className="font-semibold text-green-400 mb-3">📡 DOCUMENTATION API - Envoi des Leads</h4>
+                <div className="space-y-3 text-sm font-mono">
+                  <div>
+                    <span className="text-blue-400">Endpoint :</span>
+                    <code className="ml-2 text-yellow-300">POST /api/submit-lead</code>
+                  </div>
+                  <div>
+                    <span className="text-blue-400">Header :</span>
+                    <code className="ml-2 text-gray-300">Content-Type: application/json</code>
+                  </div>
+                  <div className="pt-2">
+                    <span className="text-blue-400">Body (JSON) :</span>
+                    <pre className="mt-2 text-xs bg-slate-800 p-3 rounded overflow-x-auto">
+{`{
+  "form_code": "VOTRE-CODE-FORM",  // OBLIGATOIRE
+  "phone": "0612345678",           // OBLIGATOIRE
+  "nom": "Dupont",                 // optionnel
+  "prenom": "Jean",                // optionnel
+  "civilite": "M.",                // optionnel (M., Mme)
+  "email": "email@example.com",    // optionnel
+  "departement": "75",             // optionnel
+  "code_postal": "75001",          // optionnel
+  "superficie_logement": "120",    // optionnel
+  "chauffage_actuel": "Gaz",       // optionnel
+  "type_logement": "Maison",       // optionnel
+  "statut_occupant": "Propriétaire", // optionnel
+  "facture_electricite": "150"     // optionnel
+}`}
+                    </pre>
+                  </div>
+                  <div className="pt-2">
+                    <span className="text-blue-400">Exemple JavaScript :</span>
+                    <pre className="mt-2 text-xs bg-slate-800 p-3 rounded overflow-x-auto">
+{`fetch('/api/submit-lead', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    form_code: 'MON-FORM-001',
+    phone: document.getElementById('phone').value,
+    nom: document.getElementById('nom').value,
+    email: document.getElementById('email').value
+  })
+})
+.then(res => res.json())
+.then(data => {
+  if (data.success) {
+    // Redirection page merci
+    window.location.href = '/merci';
+  }
+});`}
+                    </pre>
+                  </div>
+                </div>
+              </div>
+
               <div className="bg-green-50 rounded-lg p-4">
-                <h4 className="font-semibold text-green-800 mb-2">📋 Champs du formulaire (API)</h4>
-                <p className="text-sm text-green-700 mb-2">
-                  <strong>Obligatoire :</strong> phone (téléphone)
-                </p>
-                <p className="text-sm text-green-700">
-                  <strong>Optionnels :</strong> nom, prenom, civilite, email, departement, code_postal, 
-                  superficie_logement, chauffage_actuel, type_logement, statut_occupant, facture_electricite
-                </p>
+                <h4 className="font-semibold text-green-800 mb-2">✅ Réponse API</h4>
+                <pre className="text-sm text-green-700 bg-white p-2 rounded">
+{`{
+  "success": true,
+  "message": "Lead enregistré",
+  "status": "success" // ou "failed", "duplicate", "no_config"
+}`}
+                </pre>
               </div>
 
               <div className="bg-yellow-50 rounded-lg p-4">
                 <h4 className="font-semibold text-yellow-800 mb-2">⚠️ Important</h4>
                 <p className="text-sm text-yellow-700">
-                  Le formulaire HTML envoie les leads vers <code className="bg-white px-1 rounded">/api/submit-lead</code> 
-                  avec le <code className="bg-white px-1 rounded">form_code</code> du formulaire. 
-                  Ce CRM stocke le lead puis le redistribue automatiquement vers ZR7/MDL.
+                  Seul le <strong>téléphone</strong> est obligatoire. Le lead est envoyé automatiquement 
+                  vers ZR7/MDL si la <code className="bg-white px-1 rounded">crm_api_key</code> est configurée sur le formulaire.
                 </p>
               </div>
             </div>
