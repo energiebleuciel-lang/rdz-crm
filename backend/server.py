@@ -2259,7 +2259,7 @@ async def generate_form_brief(selection: BriefSelectionForm, user: dict = Depend
     lines.append("Pour envoyer les leads depuis votre formulaire HTML vers ce CRM :")
     lines.append("")
     lines.append(f"🔑 CLÉ API : {form.get('internal_api_key', 'NON GÉNÉRÉE')}")
-    lines.append(f"📍 ENDPOINT : POST {os.environ.get('BACKEND_URL', 'https://votre-domaine.com')}/api/submit-lead")
+    lines.append(f"📍 ENDPOINT : POST https://rdz-group-ltd.online/api/submit-lead")
     lines.append("")
     lines.append("📋 HEADERS :")
     lines.append("   Content-Type: application/json")
