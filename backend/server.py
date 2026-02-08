@@ -1509,7 +1509,7 @@ async def create_comment(comment: CommentCreate, user: dict = Depends(get_curren
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.comments.insert_one(comment_doc)
-    await log_activity(user["id"], user["email"], "comment", comment.entity_type, comment.entity_id, f"Commentaire ajouté")
+    await log_activity(user["id"], user["email"], "comment", comment.entity_type, comment.entity_id, "Commentaire ajouté")
     return {"success": True, "comment": {k: v for k, v in comment_doc.items() if k != "_id"}}
 
 # ==================== ACTIVITY LOG ====================
