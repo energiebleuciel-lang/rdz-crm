@@ -14,86 +14,73 @@ Créer un CRM multi-tenant pour la gestion de leads solaires. Le système centra
 ### Flux des Leads
 ```
 [Formulaire Web]
-     ↓ (Lead soumis via /api/submit-lead)
-[CE CRM] → Stocke le lead
-     ↓ (Si phone valide + crm_api_key configurée)
-[ZR7 ou MDL] → Envoi instantané via leur API
-     ↓ (Job nocturne à 03h00)
-[Retry des leads échoués] → POST /api/leads/retry-failed
+     ↓ (Lead soumis via /api/submit-lead avec form_code)
+[CE CRM] → Stocke le lead (tous les champs)
+     ↓ (Si téléphone présent + crm_api_key configurée → envoi instantané)
+[ZR7 ou MDL] → Via leur API avec crm_api_key
+     ↓ (Tous les jours à 03h00)
+[Job nocturne] → Réessaie les leads échoués des dernières 24h
 ```
 
 ### Structure des Données
 ```
 CRM (MDL ou ZR7)
-  └── Compte (plusieurs par CRM)
+  └── Compte (Client, Site, Domaine)
         ├── Logos (principal, secondaire, petit, favicon)
         ├── Bibliothèque d'images (bannières, produits)
         ├── Codes GTM (pixel, conversion, CTA)
         ├── URLs de redirection nommées
         ├── Textes légaux
-        ├── Types de produits
         ├── Landing Pages (avec code HTML)
-        └── Formulaires (avec clé API CRM + code HTML)
-              ├── crm_api_key (clé ZR7/MDL fournie)
-              └── internal_api_key (auto-générée)
+        └── Formulaires
+              ├── internal_api_key (auto-générée, pour recevoir les leads)
+              └── crm_api_key (fournie par l'utilisateur, pour envoyer vers ZR7/MDL)
 ```
 
 ## APIs CRM Destination
 - **ZR7 Digital**: `POST https://app.zr7-digital.fr/lead/api/create_lead/`
 - **Maison du Lead**: `POST https://app.maisonsdulead.fr/lead/api/create_lead/`
 - **Format**: JSON avec Header `Authorization: <token>`
-- **Champs requis**: `phone`, `register_date`
-- **Champs optionnels**: `nom`, `prenom`, `email`, `custom_fields`
+- **Champs**: phone, register_date, nom, prenom, email, custom_fields (superficie_logement, chauffage_actuel, departement, code_postal, type_logement, statut_occupant, facture_electricite)
 
 ## Fonctionnalités Implémentées
 
-### Phase 1-5 (Complétées - voir historique)
+### Phase 1-7 (Complétées - voir historique)
 
-### Phase 6 - Gestion Utilisateurs Avancée (Complété - 08/02/2026)
-- [x] Ajout champ `allowed_accounts` aux utilisateurs
-- [x] Interface de sélection des comptes autorisés par utilisateur
-- [x] Modal de modification utilisateur avec multi-sélection de comptes
-
-### Phase 7 - Intégration CRM & Lead Routing (Complété - 08/02/2026)
-- [x] **Clé API CRM par formulaire** : Chaque formulaire stocke sa `crm_api_key` (ZR7/MDL)
-- [x] **Clé API interne auto-générée** : `internal_api_key` UUID générée à la création
-- [x] **Envoi instantané des leads** : Si phone valide + config présente → envoi immédiat vers ZR7/MDL
-- [x] **Job nocturne retry** : `POST /api/leads/retry-failed?hours=24` pour réessayer les leads échoués
-- [x] **Bibliothèque d'images au niveau Compte** : Onglet "Images" pour stocker bannières, produits, etc.
-- [x] **Interface formulaire mise à jour** : Section "Intégration CRM (ZR7/MDL)" avec champ clé API
-- [x] **Duplication formulaire** : Requiert nouvelle `crm_api_key`, génère nouvelle `internal_api_key`
+### Phase 8 - Finalisation (Complété - 08/02/2026)
+- [x] **Clé API interne visible dans la liste** : Colonne "Clé API (pour vos scripts)" avec bouton copier
+- [x] **Suppression réservée aux Admins** : Leads, formulaires, LP, comptes - seuls les admins peuvent supprimer
+- [x] **Pas de validation stricte du téléphone** : Le téléphone est requis mais pas de validation du format
+- [x] **Tous les champs ZR7/MDL** : prenom, civilite, superficie_logement, chauffage_actuel ajoutés
+- [x] **Génération clés manquantes** : Endpoint `/api/forms/generate-missing-keys` pour les formulaires existants
+- [x] **Régénération clé** : Endpoint `/api/forms/{id}/regenerate-key` pour régénérer une clé
+- [x] **Guide d'utilisation réécrit** : Reflète le fonctionnement réel du CRM avec sections claires
+- [x] **Brief Generator amélioré** : Inclut internal_api_key et crm_api_key + images du compte
 
 ## API Endpoints Principaux
 
 ### Leads
-- `POST /api/submit-lead` - Soumet un lead (envoi instantané si config OK)
+- `POST /api/submit-lead` - Soumet un lead (téléphone requis, envoi instantané si config OK)
 - `POST /api/leads/retry/{lead_id}` - Réessayer un lead spécifique
 - `POST /api/leads/retry-failed?hours=24` - Job nocturne retry des leads échoués
-- `DELETE /api/leads/{id}` - Supprimer un lead
-- `POST /api/leads/bulk-delete` - Supprimer plusieurs leads
+- `DELETE /api/leads/{id}` - Supprimer un lead (ADMIN ONLY)
+- `POST /api/leads/bulk-delete` - Supprimer plusieurs leads (ADMIN ONLY)
 
 ### Formulaires
-- `POST /api/forms` - Créer (génère `internal_api_key`)
+- `POST /api/forms` - Créer (génère `internal_api_key` automatiquement)
 - `PUT /api/forms/{id}` - Modifier
-- `POST /api/forms/{id}/duplicate?new_code=X&new_name=Y&new_crm_api_key=Z` - Dupliquer
-
-### Comptes
-- `POST /api/accounts` - Créer (avec `images: [{name, url}]`)
-- `PUT /api/accounts/{id}` - Modifier (bibliothèque images incluse)
+- `DELETE /api/forms/{id}` - Supprimer (ADMIN ONLY)
+- `POST /api/forms/{id}/duplicate` - Dupliquer avec nouvelle clé
+- `POST /api/forms/generate-missing-keys` - Générer les clés manquantes (ADMIN ONLY)
+- `POST /api/forms/{id}/regenerate-key` - Régénérer la clé
 
 ### Brief Generator
-- `POST /api/generate-brief/lp` - Générer brief LP
-- `POST /api/generate-brief/form` - Générer brief formulaire
+- `POST /api/generate-brief/lp` - Générer brief LP (avec images du compte)
+- `POST /api/generate-brief/form` - Générer brief formulaire (avec internal_api_key + crm_api_key)
 
 ## Credentials de Test
 - **Email**: energiebleuciel@gmail.com
 - **Password**: 92Ruemarxdormoy
-
-## Tests Effectués
-- `/app/test_reports/iteration_1.json` - Tests filtrage CRM (26/26 PASS)
-- `/app/test_reports/iteration_2.json` - Tests nouvelles fonctionnalités (32/32 PASS)
-- `/app/test_reports/iteration_3.json` - Tests refactoring compte/leads (14/14 PASS)
-- `/app/test_reports/iteration_4.json` - Tests intégration CRM (17/17 PASS, 100%)
 
 ## Backlog
 
@@ -103,9 +90,13 @@ CRM (MDL ou ZR7)
 ### P1 - Améliorations
 - [ ] Générateur de LP HTML avec style officiel
 - [ ] Générateur de Formulaires HTML avec GTM intégré
-- [ ] Mise à jour Guide d'utilisation
 
 ### P2 - Technique
 - [ ] Refactoring Frontend (App.js > 4000 lignes)
 - [ ] Refactoring Backend (server.py vers modules)
 - [ ] Graphiques visuels dans Dashboard Comparatif
+
+## Rôles Utilisateurs
+- **Admin** : Accès complet + peut supprimer (leads, formulaires, LP, comptes)
+- **Éditeur** : Créer et modifier. Pas de suppression
+- **Lecteur** : Consultation uniquement
