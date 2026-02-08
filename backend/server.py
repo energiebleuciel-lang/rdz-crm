@@ -1554,17 +1554,29 @@ async def generate_form_brief(selection: BriefSelectionForm, user: dict = Depend
     account_id = form.get("account_id") or form.get("sub_account_id")
     account = await db.accounts.find_one({"id": account_id}, {"_id": 0}) if account_id else None
     
+    # Count leads for this form
+    lead_count = await db.leads.count_documents({"form_code": form.get('code')})
+    
     # Build brief based on selection
     lines = [f"=== BRIEF FORMULAIRE : {form.get('code', '')} ===", ""]
     lines.append(f"Nom : {form.get('name', '')}")
+    lines.append(f"URL : {form.get('url', '')}")
     lines.append(f"Compte : {account.get('name', '') if account else 'Non défini'}")
+    lines.append(f"Source : {form.get('source_name', '')} ({form.get('source_type', '')})")
     lines.append(f"Type produit : {form.get('product_type', 'panneaux')}")
-    lines.append(f"Type : {form.get('form_type', 'standalone')}")
+    lines.append(f"Type : {'Intégré dans LP' if form.get('form_type') == 'integrated' else 'Page séparée'}")
+    lines.append(f"Tracking : {form.get('tracking_type', 'redirect')}")
+    lines.append(f"Nombre de leads : {lead_count}")
     lines.append("")
     lines.append("--- CHAMPS OBLIGATOIRES ---")
     lines.append("- Téléphone (10 chiffres)")
     lines.append("- Nom")
     lines.append("- Département")
+    
+    # Clé API dynamique (saisie au moment de générer)
+    if selection.api_key:
+        lines.append("")
+        lines.append(f"Clé API CRM : {selection.api_key}")
     
     if selection.include_logo_main and account:
         lines.append("")
@@ -1597,14 +1609,15 @@ async def generate_form_brief(selection: BriefSelectionForm, user: dict = Depend
         lines.append("--- POLITIQUE CONFIDENTIALITÉ ---")
         lines.append(account.get('privacy_policy_text', 'Non configuré'))
     
-    if selection.include_api_key:
-        lines.append("")
-        lines.append(f"Clé API CRM : {form.get('api_key', 'Non configuré')}")
-    
     if selection.include_notes:
         lines.append("")
         lines.append("--- NOTES ---")
-        lines.append(form.get('generation_notes', '') or account.get('notes', '') if account else '')
+        lines.append(form.get('notes', '') or (account.get('notes', '') if account else ''))
+    
+    if selection.include_html_code and form.get('html_code'):
+        lines.append("")
+        lines.append("--- CODE HTML DU FORMULAIRE ---")
+        lines.append(form.get('html_code', ''))
     
     return {"brief": "\n".join(lines), "form": form, "account": account}
 
