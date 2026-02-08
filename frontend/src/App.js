@@ -863,7 +863,8 @@ const AccountsPage = () => {
       ...defaultFormData, 
       ...account, 
       product_types: account.product_types || ['solaire'],
-      named_redirect_urls: account.named_redirect_urls || []
+      named_redirect_urls: account.named_redirect_urls || [],
+      images: account.images || []
     });
     setActiveTab('general');
     setShowModal(true);
@@ -887,6 +888,22 @@ const AccountsPage = () => {
     setFormData({
       ...formData,
       named_redirect_urls: formData.named_redirect_urls.filter((_, i) => i !== index)
+    });
+  };
+
+  const addImage = () => {
+    if (!newImage.name || !newImage.url) return;
+    setFormData({
+      ...formData,
+      images: [...(formData.images || []), { ...newImage }]
+    });
+    setNewImage({ name: '', url: '' });
+  };
+
+  const removeImage = (index) => {
+    setFormData({
+      ...formData,
+      images: formData.images.filter((_, i) => i !== index)
     });
   };
 
