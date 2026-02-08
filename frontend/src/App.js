@@ -1844,49 +1844,15 @@ const FormsPage = () => {
                 </div>
               </div>
             )}
-          </div>
-
-          {/* Section: Départements autorisés */}
-          <div className="bg-blue-50 p-4 rounded-lg space-y-4">
-            <div className="flex items-center justify-between">
-              <h4 className="font-medium text-blue-800 flex items-center gap-2">
-                <Globe className="w-4 h-4" /> Départements autorisés (France métropolitaine)
-              </h4>
-              <div className="flex gap-2">
-                <button type="button" onClick={selectAllDepartments} className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">
-                  Tout sélectionner
-                </button>
-                <button type="button" onClick={clearAllDepartments} className="text-xs px-2 py-1 bg-slate-500 text-white rounded hover:bg-slate-600">
-                  Tout désélectionner
-                </button>
-              </div>
-            </div>
-            <p className="text-xs text-blue-600">
-              {(formData.allowed_departments || []).length === 0 
-                ? '⚠️ Aucun département sélectionné = TOUS les départements (01-95) seront acceptés par défaut'
-                : `✅ ${(formData.allowed_departments || []).length} département(s) sélectionné(s)`
-              }
-            </p>
-            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-1 max-h-48 overflow-y-auto bg-white p-2 rounded border border-blue-200">
-              {DEPARTMENTS_FR.map(dept => (
-                <label 
-                  key={dept.code} 
-                  className={`flex items-center gap-1 p-1 rounded cursor-pointer text-xs ${
-                    (formData.allowed_departments || []).includes(dept.code) 
-                      ? 'bg-blue-100 text-blue-800' 
-                      : 'hover:bg-slate-50'
-                  }`}
-                  title={dept.name}
-                >
-                  <input 
-                    type="checkbox" 
-                    checked={(formData.allowed_departments || []).includes(dept.code)}
-                    onChange={() => toggleDepartment(dept.code)}
-                    className="w-3 h-3 rounded"
-                  />
-                  <span>{dept.code}</span>
-                </label>
-              ))}
+            
+            {/* Info validations automatiques */}
+            <div className="bg-white p-3 rounded border border-orange-200">
+              <p className="text-xs text-slate-600">
+                <strong>⚠️ Validations automatiques dans le script :</strong><br/>
+                • Téléphone obligatoire<br/>
+                • Nom obligatoire (min 2 caractères)<br/>
+                • Département France métropolitaine uniquement (01-95, 2A, 2B)
+              </p>
             </div>
           </div>
 
