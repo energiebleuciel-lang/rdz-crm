@@ -86,13 +86,15 @@ class GenerationOptions(BaseModel):
     show_certification: bool = True
     custom_css: Optional[str] = ""
 
-# Form template configuration per sub-account
+# Form template configuration per account
 class FormTemplateConfig(BaseModel):
     # Required fields
     phone_required: bool = True
     phone_digits: int = 10
     nom_required: bool = True
     # Optional fields to show
+    show_civilite: bool = True
+    show_prenom: bool = True
     show_email: bool = True
     show_departement: bool = True
     show_code_postal: bool = True
@@ -101,35 +103,44 @@ class FormTemplateConfig(BaseModel):
     show_facture: bool = True
     # France metro postal codes only (01-95)
     postal_code_france_metro_only: bool = True
-    # Default logos for forms
-    form_logo_left_asset_id: Optional[str] = ""
-    form_logo_right_asset_id: Optional[str] = ""
     # Form style
     form_style: str = "modern"  # modern, classic, minimal
 
-class SubAccountCreate(BaseModel):
+# Account model (renamed from SubAccount)
+class AccountCreate(BaseModel):
     crm_id: str
     name: str
     domain: Optional[str] = ""
     product_types: List[str] = ["solaire"]  # Can have multiple: solaire, pac, isolation
-    logo_left_url: Optional[str] = ""
-    logo_right_url: Optional[str] = ""
+    # Logos
+    logo_main_url: Optional[str] = ""  # Logo principal (gauche)
+    logo_secondary_url: Optional[str] = ""  # Logo secondaire (droite)  
+    logo_small_url: Optional[str] = ""  # Petit logo / badge
     favicon_url: Optional[str] = ""
+    # Textes légaux
     privacy_policy_text: Optional[str] = ""  # Texte direct, pas URL
-    legal_mentions_text: Optional[str] = ""  # Texte direct, pas URL
+    legal_mentions_text: Optional[str] = ""
+    # Style
     layout: str = "center"  # left, right, center
     primary_color: Optional[str] = "#3B82F6"
-    tracking_pixel_header: Optional[str] = ""
-    tracking_cta_code: Optional[str] = ""
-    tracking_conversion_type: str = "redirect"  # code, redirect, both
-    tracking_conversion_code: Optional[str] = ""
-    tracking_redirect_url: Optional[str] = ""
+    secondary_color: Optional[str] = "#1E40AF"
+    style_officiel: bool = False  # Look officiel/gov style
+    # TRACKING GTM - Au niveau du compte
+    gtm_pixel_header: Optional[str] = ""  # Code dans <head> (Facebook Pixel, etc.)
+    gtm_conversion_code: Optional[str] = ""  # Code de conversion (déclenché après validation tel)
+    gtm_cta_code: Optional[str] = ""  # Code CTA click
+    # Redirect URL par défaut
+    default_redirect_url: Optional[str] = ""
+    # Notes
     notes: Optional[str] = ""
     # Form template configuration
     form_template: Optional[FormTemplateConfig] = None
 
+# For backwards compatibility, keep SubAccountCreate as alias
+SubAccountCreate = AccountCreate
+
 class LPCreate(BaseModel):
-    sub_account_id: str
+    account_id: str  # Renamed from sub_account_id
     code: str  # LP-TAB-V1
     name: str
     url: Optional[str] = ""
@@ -144,10 +155,10 @@ class LPCreate(BaseModel):
     lp_type: str = "redirect"  # redirect (LP redirects to form URL), integrated (form embedded in LP)
     form_url: Optional[str] = ""  # URL of external form (for redirect type)
     # Generation notes/comments
-    generation_notes: Optional[str] = ""  # Additional comments for script generation
+    generation_notes: Optional[str] = ""
 
 class FormCreate(BaseModel):
-    sub_account_id: str
+    account_id: str  # Renamed from sub_account_id
     lp_ids: List[str] = []  # List of LP IDs linked to this form
     code: str  # PV-TAB-001
     name: str
@@ -155,9 +166,15 @@ class FormCreate(BaseModel):
     source_type: str
     source_name: str
     api_key: str  # API key for the CRM
-    tracking_type: str = "redirect"  # gtm, redirect, none
-    tracking_code: Optional[str] = ""  # GTM code if tracking_type is gtm
-    redirect_url: Optional[str] = ""
+    # Tracking type - juste le choix, le code est dans le compte
+    tracking_type: str = "gtm"  # gtm, redirect, none
+    # Override redirect URL (sinon utilise celle du compte)
+    redirect_url_override: Optional[str] = ""
+    screenshot_url: Optional[str] = ""
+    notes: Optional[str] = ""
+    status: str = "active"
+    # Generation notes
+    generation_notes: Optional[str] = ""
     screenshot_url: Optional[str] = ""
     notes: Optional[str] = ""
     status: str = "active"
