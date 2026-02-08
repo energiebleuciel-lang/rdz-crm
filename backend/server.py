@@ -611,6 +611,31 @@ async def delete_form(form_id: str, user: dict = Depends(require_admin)):
     await log_activity(user["id"], user["email"], "delete", "form", form_id, "Formulaire supprimé")
     return {"success": True}
 
+@api_router.post("/forms/{form_id}/duplicate")
+async def duplicate_form(form_id: str, new_code: str, new_name: str, new_api_key: str, user: dict = Depends(get_current_user)):
+    """Duplicate a Form with a new code, name, and API key"""
+    form = await db.forms.find_one({"id": form_id}, {"_id": 0})
+    if not form:
+        raise HTTPException(status_code=404, detail="Formulaire non trouvé")
+    
+    # Create new form with same config but new code/name/api_key
+    new_form = {
+        **form,
+        "id": str(uuid.uuid4()),
+        "code": new_code,
+        "name": new_name,
+        "api_key": new_api_key,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": user["id"],
+        "status": "active"
+    }
+    # Remove updated_at if exists
+    new_form.pop("updated_at", None)
+    
+    await db.forms.insert_one(new_form)
+    await log_activity(user["id"], user["email"], "duplicate", "form", new_form["id"], f"Formulaire dupliqué: {form['code']} -> {new_code}")
+    return {"success": True, "form": {k: v for k, v in new_form.items() if k != "_id"}}
+
 # ==================== TRACKING ENDPOINTS (PUBLIC) ====================
 
 @api_router.post("/track/cta-click")
