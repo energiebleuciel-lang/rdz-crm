@@ -551,7 +551,7 @@ async def get_account(account_id: str, user: dict = Depends(get_current_user)):
 
 @api_router.get("/sub-accounts/{account_id}")
 async def get_sub_account_compat(account_id: str, user: dict = Depends(get_current_user)):
-    account = await db.sub_accounts.find_one({"id": account_id}, {"_id": 0})
+    account = await db.accounts.find_one({"id": account_id}, {"_id": 0})
     if not account:
         raise HTTPException(status_code=404, detail="Sous-compte non trouvé")
     return account
@@ -564,7 +564,7 @@ async def create_account(account: AccountCreate, user: dict = Depends(get_curren
         "created_at": datetime.now(timezone.utc).isoformat(),
         "created_by": user["id"]
     }
-    await db.sub_accounts.insert_one(account_doc)
+    await db.accounts.insert_one(account_doc)
     await log_activity(user["id"], user["email"], "create", "account", account_doc["id"], f"Compte créé: {account.name}")
     return {"success": True, "account": {k: v for k, v in account_doc.items() if k != "_id"}}
 
