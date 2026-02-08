@@ -18,9 +18,9 @@ Créer un CRM multi-tenant pour la gestion de leads solaires permettant de:
 ```
 CRMs (tenants)
 └── Sub-accounts (projects/websites)
-    ├── Landing Pages
+    ├── Landing Pages (redirect ou intégré)
     │   └── CTA tracking
-    ├── Forms
+    ├── Forms (tracking redirect/GTM/aucun)
     │   └── Conversion tracking
     └── Leads
 ```
@@ -35,26 +35,47 @@ CRMs (tenants)
 - [x] Guide d'utilisation intégré
 
 ### Phase 2 - Filtrage CRM & Sous-comptes (Complété - 08/02/2026)
-- [x] **Filtrage strict par CRM** sur toutes les pages:
-  - Dashboard, Leads, Landing Pages, Formulaires, Analytics, Générateur Scripts
-- [x] **Nouveau formulaire Sous-comptes** avec:
-  - Informations générales: nom, domaine, type de produit (solaire/pompe/isolation)
-  - Logos: logo gauche (URL), logo droit (URL), favicon
-  - Textes légaux (popup, pas URL): politique confidentialité, mentions légales
-  - Tracking: type conversion, layout formulaire, pixel header, URL redirection
+- [x] Filtrage strict par CRM sur toutes les pages
+- [x] Formulaire Sous-comptes avec: logos gauche/droit, textes légaux popup, type de produit
+
+### Phase 3 - Fonctionnalités Avancées (Complété - 08/02/2026)
+- [x] **Bibliothèque d'Assets**:
+  - Stocker URLs d'images/logos avec labels personnalisés
+  - Filtres: Tous / Globaux / Par sous-compte
+  - CRUD complet avec preview
+
+- [x] **Gestion des Leads**:
+  - Suppression de leads (simple et multiple)
+  - Checkboxes de sélection avec "Tout sélectionner"
+  - Validation: téléphone 10 chiffres, nom obligatoire (min 2 chars)
+  - Code postal France métropolitaine uniquement (01-95)
+
+- [x] **Types de LP**:
+  - **Redirect**: LP redirige vers formulaire externe (URL à saisir)
+  - **Intégré**: Formulaire directement dans la LP
+  - Duplication de LP (nouveau code/nom)
+  - Commentaires pour génération scripts
+
+- [x] **Tracking Formulaire**:
+  - **Redirect**: Page de merci (pas besoin de GTM)
+  - **GTM / Code JS**: Event tracking
+  - **Aucun**: Pas de tracking
+  - Duplication de formulaire (seule la clé API change)
+  - Commentaires pour génération
 
 ### Pages Disponibles
 1. **Tableau de bord** - Stats et derniers leads
 2. **Analytics** - Taux de conversion, winners/losers
-3. **Leads** - Liste avec filtres et export CSV
-4. **Landing Pages** - CRUD avec stats CTA
-5. **Formulaires** - CRUD avec stats conversion
-6. **Sous-comptes** - Configuration par site/projet
-7. **Générateur Scripts** - Code tracking pour LPs et Forms
-8. **Guide d'utilisation** - Documentation intégrée
-9. **Utilisateurs** - Gestion admin
-10. **Journal activité** - Logs admin
-11. **Paramètres** - Configuration
+3. **Leads** - Liste avec filtres, suppression, export CSV
+4. **Landing Pages** - CRUD, types redirect/intégré, duplication
+5. **Formulaires** - CRUD, tracking redirect/GTM, duplication
+6. **Sous-comptes** - Configuration par site/projet, templates
+7. **Bibliothèque Assets** - URLs images/logos avec labels
+8. **Générateur Scripts** - Code tracking pour LPs et Forms
+9. **Guide d'utilisation** - Documentation intégrée
+10. **Utilisateurs** - Gestion admin
+11. **Journal activité** - Logs admin
+12. **Paramètres** - Configuration CRMs
 
 ## Credentials de Test
 - **Email**: energiebleuciel@gmail.com
@@ -63,31 +84,29 @@ CRMs (tenants)
 ## API Endpoints Principaux
 - `POST /api/auth/login` - Connexion
 - `GET /api/crms` - Liste des CRMs
-- `GET /api/sub-accounts?crm_id=xxx` - Sous-comptes (filtré par CRM)
-- `GET /api/lps?crm_id=xxx` - Landing Pages (filtré par CRM)
-- `GET /api/forms?crm_id=xxx` - Formulaires (filtré par CRM)
-- `GET /api/leads?crm_id=xxx` - Leads (filtré par CRM)
-- `GET /api/analytics/stats?crm_id=xxx` - Statistiques (filtré par CRM)
-- `GET /api/analytics/winners?crm_id=xxx` - Winners/Losers (filtré par CRM)
-- `POST /api/submit-lead` - Soumission lead (public)
-- `POST /api/track/cta-click` - Tracking CTA (public)
-- `POST /api/track/form-start` - Tracking form start (public)
+- `GET /api/sub-accounts?crm_id=xxx` - Sous-comptes
+- `GET/POST /api/assets` - Bibliothèque d'assets
+- `GET /api/lps?crm_id=xxx` - Landing Pages
+- `POST /api/lps/{id}/duplicate` - Dupliquer LP
+- `GET /api/forms?crm_id=xxx` - Formulaires
+- `POST /api/forms/{id}/duplicate` - Dupliquer Form (nouvelle clé API)
+- `GET /api/leads?crm_id=xxx` - Leads
+- `DELETE /api/leads/{id}` - Supprimer lead
+- `DELETE /api/leads` - Supprimer plusieurs leads
+- `POST /api/submit-lead` - Soumission lead (validation: phone 10, nom required, CP France metro)
+- `GET /api/analytics/stats?crm_id=xxx` - Statistiques
 
 ## Backlog (P1/P2/P3)
 
-### P1 - Fonctionnalités Core
-- [ ] Fonctionnalité CRUD complète pour Landing Pages
-- [ ] Fonctionnalité CRUD complète pour Formulaires
-- [ ] Générateur de scripts dynamique et fonctionnel
-- [ ] Page Analytics avec graphiques et comparaisons
-- [ ] Journal d'activité fonctionnel
+### P1 - Prochaines étapes
+- [ ] Générateur de LP et Formulaires (système génère le code HTML/CSS/JS)
+- [ ] Templates de formulaire par sous-compte (champs à afficher par défaut)
+- [ ] Sélection d'assets depuis la bibliothèque lors de création LP/Form
 
 ### P2 - Améliorations
-- [ ] Refactoring Frontend: découper App.js (2000+ lignes) en composants
+- [ ] Refactoring Frontend: découper App.js (2500+ lignes) en composants
 - [ ] Upload d'images pour logos (au lieu d'URLs)
-- [ ] Preview/screenshots de LPs et Forms dans le dashboard
-- [ ] Duplication de campagnes (LP Taboola -> Outbrain)
-- [ ] Commentaires sur LPs et Forms
+- [ ] Preview/screenshots de LPs et Forms
 
 ### P3 - Futur
 - [ ] Redéploiement sur Hostinger VPS (remplacer prototype)
@@ -96,9 +115,14 @@ CRMs (tenants)
 - [ ] API webhooks pour intégrations externes
 
 ## Notes Techniques
-- Le frontend est un fichier monolithique (`App.js` ~2000 lignes) - refactoring recommandé
+- Le frontend est un fichier monolithique (`App.js` ~2500 lignes) - refactoring recommandé
 - Version déployée sur VPS Hostinger: prototype basique
 - Version locale: CRM complet avec toutes les fonctionnalités
+
+## Tests
+- `/app/test_reports/iteration_1.json` - Tests filtrage CRM (26/26 PASS)
+- `/app/test_reports/iteration_2.json` - Tests nouvelles fonctionnalités (32/32 PASS)
+- `/app/backend/tests/test_new_features.py` - Tests unitaires backend
 
 ## Intégrations Externes
 - **Maison du Lead API**: https://maison-du-lead.com/lead/api/create_lead/
