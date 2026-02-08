@@ -3497,7 +3497,7 @@ const AssetsPage = () => {
                   {asset.sub_account_id ? (
                     <>
                       <Building className="w-3 h-3" />
-                      {accounts.find(a => a.id === asset.sub_account_id)?.name || 'Sous-compte'}
+                      {accounts.find(a => a.id === asset.sub_account_id)?.name || 'Compte'}
                     </>
                   ) : (
                     <>
