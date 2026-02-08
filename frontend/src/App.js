@@ -3427,7 +3427,7 @@ const AssetsPage = () => {
           <h1 className="text-2xl font-bold text-slate-800">Bibliothèque d'Assets</h1>
           <p className="text-sm text-slate-500">Stockez vos URLs d'images et logos pour les réutiliser facilement</p>
         </div>
-        <button onClick={() => { setEditingAsset(null); setFormData({ label: '', url: '', asset_type: 'image', sub_account_id: '', crm_id: '' }); setShowModal(true); }} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+        <button onClick={() => { setEditingAsset(null); setFormData({ label: '', url: '', asset_type: 'image', account_id: '', crm_id: '' }); setShowModal(true); }} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
           <Plus className="w-4 h-4" />
           Nouvel Asset
         </button>
