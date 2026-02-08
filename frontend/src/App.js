@@ -1497,8 +1497,6 @@ const FormsPage = () => {
       setError('Erreur de connexion');
     }
   };
-    }
-  };
 
   const duplicateForm = async () => {
     if (!showDuplicateModal || !duplicateData.new_code || !duplicateData.new_name || !duplicateData.new_api_key) return;
