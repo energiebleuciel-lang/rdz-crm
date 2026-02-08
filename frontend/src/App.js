@@ -4080,7 +4080,7 @@ function App() {
           <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
           <Route path="/compare" element={<ProtectedRoute><CompareDashboard /></ProtectedRoute>} />
           <Route path="/analytics" element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
-          <Route path="/leads" element={<ProtectedRoute><LeadsPage /></ProtectedRoute>} />
+          <Route path="/leads" element={<AdminRoute><LeadsPage /></AdminRoute>} />
           <Route path="/lps" element={<ProtectedRoute><LPsPage /></ProtectedRoute>} />
           <Route path="/forms" element={<ProtectedRoute><FormsPage /></ProtectedRoute>} />
           <Route path="/accounts" element={<ProtectedRoute><SubAccountsPage /></ProtectedRoute>} />
