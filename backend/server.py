@@ -54,12 +54,12 @@ class SubAccountCreate(BaseModel):
     crm_id: str
     name: str
     domain: Optional[str] = ""
-    logo_url: Optional[str] = ""
-    logo_secondary_url: Optional[str] = ""
+    product_type: str = "solaire"  # solaire, pompe, isolation, autre
+    logo_left_url: Optional[str] = ""
+    logo_right_url: Optional[str] = ""
     favicon_url: Optional[str] = ""
-    privacy_policy_url: Optional[str] = ""
-    terms_url: Optional[str] = ""
-    legal_mentions_url: Optional[str] = ""
+    privacy_policy_text: Optional[str] = ""  # Texte direct, pas URL
+    legal_mentions_text: Optional[str] = ""  # Texte direct, pas URL
     layout: str = "center"  # left, right, center
     primary_color: Optional[str] = "#3B82F6"
     tracking_pixel_header: Optional[str] = ""
