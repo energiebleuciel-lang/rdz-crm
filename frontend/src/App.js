@@ -1693,55 +1693,40 @@ const FormsPage = () => {
                 <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" required />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Clé API CRM *</label>
-                <input type="text" value={formData.api_key} onChange={e => setFormData({ ...formData, api_key: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-sm" placeholder="uuid-xxx-xxx" required />
+                <label className="block text-sm font-medium text-slate-700 mb-1">URL du formulaire</label>
+                <input type="url" value={formData.url || ''} onChange={e => setFormData({ ...formData, url: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="https://..." />
               </div>
             </div>
           </div>
 
-          {/* Section: Tracking */}
+          {/* Section: Type et Tracking */}
           <div className="bg-green-50 p-4 rounded-lg space-y-4">
             <h4 className="font-medium text-green-800 flex items-center gap-2">
-              <Target className="w-4 h-4" /> Tracking de conversion
+              <Target className="w-4 h-4" /> Type et Tracking
             </h4>
-            <p className="text-xs text-green-700">Pour les formulaires de <strong>redirection</strong>, pas besoin de tracking GTM (la redirection suffit).</p>
             
-            <div className="grid md:grid-cols-3 gap-3">
-              <label className={`p-3 border-2 rounded-lg cursor-pointer transition-colors ${formData.tracking_type === 'redirect' ? 'border-green-500 bg-green-100' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
-                <input type="radio" name="tracking_type" value="redirect" checked={formData.tracking_type === 'redirect'} onChange={e => setFormData({ ...formData, tracking_type: e.target.value })} className="sr-only" />
-                <div className="font-medium text-slate-800 text-sm">Redirection</div>
-                <p className="text-xs text-slate-500 mt-1">Page de merci</p>
-              </label>
-              <label className={`p-3 border-2 rounded-lg cursor-pointer transition-colors ${formData.tracking_type === 'gtm' ? 'border-yellow-500 bg-yellow-100' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
-                <input type="radio" name="tracking_type" value="gtm" checked={formData.tracking_type === 'gtm'} onChange={e => setFormData({ ...formData, tracking_type: e.target.value })} className="sr-only" />
-                <div className="font-medium text-slate-800 text-sm">GTM / Code JS</div>
-                <p className="text-xs text-slate-500 mt-1">Event tracking</p>
-              </label>
-              <label className={`p-3 border-2 rounded-lg cursor-pointer transition-colors ${formData.tracking_type === 'none' ? 'border-slate-500 bg-slate-100' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
-                <input type="radio" name="tracking_type" value="none" checked={formData.tracking_type === 'none'} onChange={e => setFormData({ ...formData, tracking_type: e.target.value })} className="sr-only" />
-                <div className="font-medium text-slate-800 text-sm">Aucun</div>
-                <p className="text-xs text-slate-500 mt-1">Pas de tracking</p>
-              </label>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Type de formulaire</label>
+                <select value={formData.form_type} onChange={e => setFormData({ ...formData, form_type: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg">
+                  <option value="standalone">Page séparée</option>
+                  <option value="integrated">Intégré dans LP</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Type de tracking</label>
+                <select value={formData.tracking_type} onChange={e => setFormData({ ...formData, tracking_type: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg">
+                  <option value="redirect">Redirection (page merci)</option>
+                  <option value="gtm">GTM / Code JS</option>
+                  <option value="none">Aucun</option>
+                </select>
+              </div>
             </div>
-
-            {formData.tracking_type === 'redirect' && (
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">URL de redirection (page merci)</label>
-                <input type="url" value={formData.redirect_url || ''} onChange={e => setFormData({ ...formData, redirect_url: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="https://..." />
-              </div>
-            )}
-
-            {formData.tracking_type === 'gtm' && (
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Code tracking (GTM / JS)</label>
-                <textarea value={formData.tracking_code || ''} onChange={e => setFormData({ ...formData, tracking_code: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-xs" rows={3} placeholder="dataLayer.push({event: 'conversion'});" />
-              </div>
-            )}
           </div>
 
           {/* Section: Source */}
           <div className="bg-slate-50 p-4 rounded-lg space-y-4">
-            <h4 className="font-medium text-slate-800">Source de trafic</h4>
+            <h4 className="font-medium text-slate-800">Source de diffusion</h4>
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Type de source</label>
