@@ -191,6 +191,8 @@ class FormCreate(BaseModel):
     html_code: Optional[str] = ""  # Code HTML complet du formulaire
     # Clés API pour l'intégration des leads
     crm_api_key: Optional[str] = ""  # Clé API du CRM destination (ZR7/MDL) - fournie par vous
+    # Départements autorisés (France métropolitaine 01-95, 2A, 2B)
+    allowed_departments: List[str] = []  # Vide = tous acceptés
     # Notes
     notes: Optional[str] = ""
     status: str = "active"
