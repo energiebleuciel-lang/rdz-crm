@@ -50,6 +50,21 @@ class CRMCreate(BaseModel):
     api_url: str
     description: Optional[str] = ""
 
+# Diffusion source types (Native, Google Ads, etc.)
+class DiffusionSourceCreate(BaseModel):
+    name: str  # "Taboola", "Outbrain", "Google Ads"
+    category: str  # "native", "google", "facebook", "tiktok", "other"
+    is_active: bool = True
+
+# Product type with instructions
+class ProductTypeCreate(BaseModel):
+    name: str  # "Panneaux solaires", "Pompe à chaleur"
+    slug: str  # "solaire", "pac", "isolation"
+    aide_montant: str  # "10 000€"
+    aides_liste: List[str]  # ["MaPrimeRenov", "CEE", "TVA réduite"]
+    description: Optional[str] = ""
+    is_active: bool = True
+
 # Asset library for images/logos
 class AssetCreate(BaseModel):
     label: str  # "Logo principal bleu"
@@ -57,6 +72,19 @@ class AssetCreate(BaseModel):
     asset_type: str = "image"  # image, logo, favicon, background
     sub_account_id: Optional[str] = None  # None = global asset, otherwise specific to sub-account
     crm_id: Optional[str] = None  # For filtering
+
+# LP/Form generation options
+class GenerationOptions(BaseModel):
+    style_officiel: bool = False  # Look official/gov style
+    primary_color: str = "#3B82F6"
+    secondary_color: str = "#1E40AF"
+    background_color: str = "#FFFFFF"
+    logo_count: int = 1  # 1 or 2 logos
+    logo_left_asset_id: Optional[str] = ""
+    logo_right_asset_id: Optional[str] = ""
+    show_trust_badges: bool = True
+    show_certification: bool = True
+    custom_css: Optional[str] = ""
 
 # Form template configuration per sub-account
 class FormTemplateConfig(BaseModel):
@@ -83,7 +111,7 @@ class SubAccountCreate(BaseModel):
     crm_id: str
     name: str
     domain: Optional[str] = ""
-    product_type: str = "solaire"  # solaire, pompe, isolation, autre
+    product_types: List[str] = ["solaire"]  # Can have multiple: solaire, pac, isolation
     logo_left_url: Optional[str] = ""
     logo_right_url: Optional[str] = ""
     favicon_url: Optional[str] = ""
