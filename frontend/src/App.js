@@ -4503,6 +4503,7 @@ const SettingsPage = () => {
     setEditingCRM(crm);
     setCommandesData(crm.commandes || { PAC: [], PV: [], ITE: [] });
     setLeadPrices(crm.lead_prices || { PAC: 0, PV: 0, ITE: 0 });
+    setRoutingLimits(crm.routing_limits || { PAC: 0, PV: 0, ITE: 0 });
   };
 
   const toggleDept = (product, dept) => {
