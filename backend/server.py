@@ -625,6 +625,12 @@ async def delete_product_type(type_id: str, user: dict = Depends(require_admin))
 @api_router.get("/accounts")
 async def get_accounts(crm_id: Optional[str] = None, user: dict = Depends(get_current_user)):
     query = {"crm_id": crm_id} if crm_id else {}
+    
+    # Appliquer le filtre par comptes autorisés (sécurité multi-tenant)
+    account_filter = get_account_filter(user)
+    if account_filter:
+        query = {**query, **account_filter}
+    
     accounts = await db.accounts.find(query, {"_id": 0}).to_list(100)
     return {"accounts": accounts}
 
