@@ -814,6 +814,8 @@ const AccountsPage = () => {
     layout: 'center', primary_color: '#3B82F6', secondary_color: '#1E40AF', style_officiel: false,
     // GTM Tracking - au niveau du compte
     gtm_pixel_header: '', gtm_conversion_code: '', gtm_cta_code: '',
+    // URLs de redirection nommées
+    named_redirect_urls: [],  // [{name: "Google", url: "..."}, ...]
     default_redirect_url: '', notes: '',
     form_template: {
       phone_required: true, phone_digits: 10, nom_required: true,
@@ -823,6 +825,7 @@ const AccountsPage = () => {
     }
   };
   const [formData, setFormData] = useState(defaultFormData);
+  const [newRedirectUrl, setNewRedirectUrl] = useState({ name: '', url: '' });
 
   useEffect(() => { loadData(); }, [selectedCRM]);
 
