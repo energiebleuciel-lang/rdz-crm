@@ -50,6 +50,35 @@ class CRMCreate(BaseModel):
     api_url: str
     description: Optional[str] = ""
 
+# Asset library for images/logos
+class AssetCreate(BaseModel):
+    label: str  # "Logo principal bleu"
+    url: str  # URL of the image
+    asset_type: str = "image"  # image, logo, favicon, background
+    sub_account_id: Optional[str] = None  # None = global asset, otherwise specific to sub-account
+    crm_id: Optional[str] = None  # For filtering
+
+# Form template configuration per sub-account
+class FormTemplateConfig(BaseModel):
+    # Required fields
+    phone_required: bool = True
+    phone_digits: int = 10
+    nom_required: bool = True
+    # Optional fields to show
+    show_email: bool = True
+    show_departement: bool = True
+    show_code_postal: bool = True
+    show_type_logement: bool = True
+    show_statut_occupant: bool = True
+    show_facture: bool = True
+    # France metro postal codes only (01-95)
+    postal_code_france_metro_only: bool = True
+    # Default logos for forms
+    form_logo_left_asset_id: Optional[str] = ""
+    form_logo_right_asset_id: Optional[str] = ""
+    # Form style
+    form_style: str = "modern"  # modern, classic, minimal
+
 class SubAccountCreate(BaseModel):
     crm_id: str
     name: str
@@ -68,6 +97,8 @@ class SubAccountCreate(BaseModel):
     tracking_conversion_code: Optional[str] = ""
     tracking_redirect_url: Optional[str] = ""
     notes: Optional[str] = ""
+    # Form template configuration
+    form_template: Optional[FormTemplateConfig] = None
 
 class LPCreate(BaseModel):
     sub_account_id: str
@@ -81,6 +112,11 @@ class LPCreate(BaseModel):
     diffusion_url: Optional[str] = ""
     notes: Optional[str] = ""
     status: str = "active"  # active, paused, archived
+    # LP type configuration
+    lp_type: str = "redirect"  # redirect (LP redirects to form URL), integrated (form embedded in LP)
+    form_url: Optional[str] = ""  # URL of external form (for redirect type)
+    # Generation notes/comments
+    generation_notes: Optional[str] = ""  # Additional comments for script generation
 
 class FormCreate(BaseModel):
     sub_account_id: str
@@ -91,18 +127,25 @@ class FormCreate(BaseModel):
     source_type: str
     source_name: str
     api_key: str  # API key for the CRM
-    tracking_type: str = "redirect"  # code, redirect, both
-    tracking_code: Optional[str] = ""
+    tracking_type: str = "redirect"  # gtm, redirect, none
+    tracking_code: Optional[str] = ""  # GTM code if tracking_type is gtm
     redirect_url: Optional[str] = ""
     screenshot_url: Optional[str] = ""
     notes: Optional[str] = ""
     status: str = "active"
+    # Form type
+    form_type: str = "standalone"  # standalone (separate page), integrated (in LP)
+    # Generation notes/comments
+    generation_notes: Optional[str] = ""  # Additional comments for script generation
+    # Override template settings (if different from sub-account defaults)
+    custom_fields_config: Optional[Dict[str, Any]] = None
 
 class LeadData(BaseModel):
     phone: str
     nom: str
     email: Optional[str] = ""
     departement: Optional[str] = ""
+    code_postal: Optional[str] = ""
     type_logement: Optional[str] = ""
     statut_occupant: Optional[str] = ""
     facture_electricite: Optional[str] = ""
@@ -122,6 +165,35 @@ class CTAClickTrack(BaseModel):
 class FormStartTrack(BaseModel):
     form_code: str
     lp_code: Optional[str] = ""
+
+# Validation helper for France metro postal codes (01-95)
+FRANCE_METRO_DEPTS = [str(i).zfill(2) for i in range(1, 96)] + ["2A", "2B"]
+
+def validate_phone_fr(phone: str) -> tuple:
+    """Validate French phone number (10 digits)"""
+    digits = ''.join(filter(str.isdigit, phone))
+    if len(digits) == 9 and not digits.startswith('0'):
+        digits = '0' + digits
+    if len(digits) != 10:
+        return False, "Le téléphone doit contenir 10 chiffres"
+    if not digits.startswith('0'):
+        return False, "Le téléphone doit commencer par 0"
+    return True, digits
+
+def validate_postal_code_fr(code: str) -> tuple:
+    """Validate French metropolitan postal code"""
+    if not code:
+        return True, code
+    digits = ''.join(filter(str.isdigit, code))
+    if len(digits) != 5:
+        return False, "Le code postal doit contenir 5 chiffres"
+    dept = digits[:2]
+    if dept not in FRANCE_METRO_DEPTS and digits[:3] not in ["971", "972", "973", "974", "976"]:
+        # Allow DOM-TOM but can be restricted
+        pass
+    if dept not in FRANCE_METRO_DEPTS:
+        return False, "Code postal France métropolitaine uniquement (01-95)"
+    return True, digits
 
 # ==================== AUTH HELPERS ====================
 
