@@ -1033,79 +1033,151 @@ async def send_lead_to_crm(lead_doc: dict, api_url: str, api_key: str) -> tuple:
 @api_router.post("/submit-lead")
 async def submit_lead(lead: LeadData):
     """
-    Soumission de lead - Enregistre dans la DB et envoie vers ZR7/MDL si config présente
-    
-    IMPORTANT: Pas de validation stricte côté serveur.
-    - Le téléphone est requis pour l'envoi vers CRM
-    - Tous les autres champs sont optionnels
-    - La validation du format téléphone est gérée côté formulaire
+    Soumission de lead avec ROUTAGE INTELLIGENT :
+    1. Vérifier si le CRM d'origine a une commande pour ce produit/département
+    2. Si NON, vérifier si l'autre CRM a une commande
+    3. Si AUCUN n'a de commande, envoyer au CRM d'origine (fallback)
+    4. Protection anti-doublon : pas d'envoi 2 fois le même jour
     """
-    # Utiliser le timestamp fourni ou en générer un
     timestamp = lead.register_date or int(datetime.now(timezone.utc).timestamp())
-    
-    # Le téléphone tel qu'il est fourni (pas de validation de format)
     phone = lead.phone.strip() if lead.phone else ""
     
-    # Vérifier que le téléphone est présent (seule condition obligatoire)
     if not phone:
         raise HTTPException(status_code=400, detail="Le numéro de téléphone est requis")
     
-    # Get form config - try both account_id and sub_account_id for compatibility
+    # Get form config
     form_config = await db.forms.find_one({"code": lead.form_code})
-    api_url = ""
-    api_key = ""
-    account_id = None
+    if not form_config:
+        raise HTTPException(status_code=404, detail="Formulaire non trouvé")
     
-    if form_config:
-        account_id = form_config.get("account_id") or form_config.get("sub_account_id")
-        account = await db.accounts.find_one({"id": account_id}) if account_id else None
-        crm = await db.crms.find_one({"id": account.get("crm_id")}) if account else None
+    account_id = form_config.get("account_id") or form_config.get("sub_account_id")
+    account = await db.accounts.find_one({"id": account_id}) if account_id else None
+    origin_crm = await db.crms.find_one({"id": account.get("crm_id")}) if account else None
+    
+    # Type de produit du formulaire (PAC, PV, ITE)
+    product_type = form_config.get("product_type", "PV").upper()
+    # Mapper les anciens noms
+    product_map = {"PANNEAUX": "PV", "POMPES": "PAC", "ISOLATION": "ITE", "SOLAIRE": "PV"}
+    product_type = product_map.get(product_type, product_type)
+    
+    departement = lead.departement or ""
+    
+    # === PROTECTION ANTI-DOUBLON ===
+    # Vérifier si ce téléphone a déjà été envoyé aujourd'hui
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    existing_today = await db.leads.find_one({
+        "phone": phone,
+        "sent_to_crm": True,
+        "created_at": {"$gte": today_start.isoformat()}
+    })
+    
+    if existing_today:
+        # Lead déjà envoyé aujourd'hui - on le stocke mais on n'envoie pas
+        lead_doc = {
+            "id": str(uuid.uuid4()),
+            "form_id": lead.form_id or "",
+            "form_code": lead.form_code or "",
+            "lp_code": lead.lp_code or "",
+            "account_id": account_id or "",
+            "product_type": product_type,
+            "phone": phone,
+            "nom": (lead.nom or "").strip(),
+            "prenom": (lead.prenom or "").strip(),
+            "civilite": lead.civilite or "",
+            "email": lead.email or "",
+            "departement": departement,
+            "code_postal": lead.code_postal or "",
+            "superficie_logement": lead.superficie_logement or "",
+            "chauffage_actuel": lead.chauffage_actuel or "",
+            "type_logement": lead.type_logement or "",
+            "statut_occupant": lead.statut_occupant or "",
+            "facture_electricite": lead.facture_electricite or "",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "register_date": timestamp,
+            "api_status": "duplicate_today",
+            "api_response": f"Déjà envoyé aujourd'hui (lead_id: {existing_today['id']})",
+            "sent_to_crm": False,
+            "retry_count": 0
+        }
+        await db.leads.insert_one(lead_doc)
+        return {"success": True, "message": "Lead enregistré (doublon du jour)", "status": "duplicate_today"}
+    
+    # === ROUTAGE INTELLIGENT ===
+    # Récupérer tous les CRMs pour le routage
+    all_crms = await db.crms.find({}, {"_id": 0}).to_list(10)
+    
+    target_crm = None
+    routing_reason = ""
+    
+    # 1. Vérifier si le CRM d'origine a une commande pour ce produit/département
+    if origin_crm:
+        origin_commandes = origin_crm.get("commandes", {})
+        origin_depts = origin_commandes.get(product_type, [])
         
-        # URL API du CRM destination
-        api_url = crm.get("api_url") if crm else ""
-        # Clé API spécifique à ce formulaire (fournie par l'utilisateur)
-        api_key = form_config.get("crm_api_key") or form_config.get("api_key") or ""
+        if departement in origin_depts or not origin_depts:
+            # CRM d'origine a la commande OU pas de config (fallback)
+            target_crm = origin_crm
+            routing_reason = "origin_has_order" if departement in origin_depts else "origin_fallback"
+        else:
+            # 2. CRM d'origine n'a PAS la commande - chercher un autre CRM
+            for other_crm in all_crms:
+                if other_crm.get("id") != origin_crm.get("id"):
+                    other_commandes = other_crm.get("commandes", {})
+                    other_depts = other_commandes.get(product_type, [])
+                    
+                    if departement in other_depts:
+                        target_crm = other_crm
+                        routing_reason = f"rerouted_to_{other_crm.get('slug', 'other')}"
+                        break
+            
+            # 3. Aucun CRM n'a la commande - fallback vers l'origine
+            if not target_crm:
+                target_crm = origin_crm
+                routing_reason = "no_order_fallback_origin"
     
-    # Déterminer si on peut envoyer vers le CRM (téléphone présent + config)
-    can_send_to_crm = bool(phone and api_url and api_key)
+    # Déterminer l'URL et la clé API
+    api_url = target_crm.get("api_url", "") if target_crm else ""
+    api_key = form_config.get("crm_api_key") or form_config.get("api_key") or ""
     
-    # Stocker TOUS les champs du lead (format doc API ZR7/MDL)
+    can_send = bool(phone and api_url and api_key)
+    
+    # Stocker le lead
     lead_doc = {
         "id": str(uuid.uuid4()),
         "form_id": lead.form_id or "",
         "form_code": lead.form_code or "",
         "lp_code": lead.lp_code or "",
         "account_id": account_id or "",
-        # Champs principaux
+        "product_type": product_type,
+        "origin_crm_id": origin_crm.get("id") if origin_crm else "",
+        "target_crm_id": target_crm.get("id") if target_crm else "",
+        "routing_reason": routing_reason,
         "phone": phone,
         "nom": (lead.nom or "").strip(),
         "prenom": (lead.prenom or "").strip(),
         "civilite": lead.civilite or "",
         "email": lead.email or "",
-        # Custom fields ZR7/MDL
-        "departement": lead.departement or "",
+        "departement": departement,
         "code_postal": lead.code_postal or "",
         "superficie_logement": lead.superficie_logement or "",
         "chauffage_actuel": lead.chauffage_actuel or "",
         "type_logement": lead.type_logement or "",
         "statut_occupant": lead.statut_occupant or "",
         "facture_electricite": lead.facture_electricite or "",
-        # Métadonnées
         "created_at": datetime.now(timezone.utc).isoformat(),
         "register_date": timestamp,
-        "api_status": "pending" if can_send_to_crm else "no_config",
+        "api_status": "pending" if can_send else "no_config",
         "api_url": api_url,
         "sent_to_crm": False,
         "retry_count": 0
     }
     
-    # Save to DB first
     await db.leads.insert_one(lead_doc)
     
     api_status = "no_config"
     
-    # Envoi instantané vers le CRM SI téléphone valide ET config présente
-    if can_send_to_crm:
+    # Envoi instantané
+    if can_send:
         api_status, api_response = await send_lead_to_crm(lead_doc, api_url, api_key)
         
         await db.leads.update_one(
@@ -1118,7 +1190,7 @@ async def submit_lead(lead: LeadData):
             }}
         )
     
-    return {"success": True, "message": "Lead enregistré", "status": api_status}
+    return {"success": True, "message": "Lead enregistré", "status": api_status, "routing": routing_reason}
 
 # ==================== LEADS MANAGEMENT ====================
 
