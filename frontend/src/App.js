@@ -139,6 +139,7 @@ const Sidebar = () => {
     { path: '/lps', icon: Layers, label: 'Landing Pages' },
     { path: '/forms', icon: FileText, label: 'Formulaires' },
     { path: '/accounts', icon: Building, label: 'Sous-comptes' },
+    { path: '/assets', icon: FolderOpen, label: 'Bibliothèque Assets' },
     { path: '/generator', icon: Code, label: 'Générateur Scripts' },
     { path: '/guide', icon: HelpCircle, label: 'Guide d\'utilisation' },
   ];
