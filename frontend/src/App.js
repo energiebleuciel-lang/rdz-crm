@@ -3281,11 +3281,7 @@ const CompareDashboard = () => {
       ) : stats ? (
         <>
           {/* Stats Totaux */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
-              <p className="text-xs text-slate-500 uppercase tracking-wide">Clics CTA</p>
-              <p className="text-2xl font-bold text-slate-800">{stats.totals?.cta_clicks || 0}</p>
-            </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
               <p className="text-xs text-slate-500 uppercase tracking-wide">Forms Démarrés</p>
               <p className="text-2xl font-bold text-blue-600">{stats.totals?.forms_started || 0}</p>
