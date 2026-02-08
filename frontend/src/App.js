@@ -1097,6 +1097,66 @@ const AccountsPage = () => {
             </div>
           )}
 
+          {/* Tab: Images Library */}
+          {activeTab === 'images' && (
+            <div className="space-y-4">
+              <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                <h4 className="font-medium text-purple-800 flex items-center gap-2"><FolderOpen className="w-4 h-4" /> Bibliothèque d'images du compte</h4>
+                <p className="text-sm text-purple-700 mt-1">Stockez ici toutes les images utilisées pour ce compte (bannières, produits, etc.) pour les retrouver facilement lors de la génération de briefs.</p>
+              </div>
+              
+              {/* Liste des images existantes */}
+              {(formData.images || []).length > 0 && (
+                <div className="grid grid-cols-2 gap-3">
+                  {formData.images.map((img, idx) => (
+                    <div key={idx} className="border border-slate-200 rounded-lg overflow-hidden bg-white">
+                      <div className="aspect-video bg-slate-100 flex items-center justify-center">
+                        <img src={img.url} alt={img.name} className="max-h-full max-w-full object-contain" onError={(e) => e.target.style.display = 'none'} />
+                      </div>
+                      <div className="p-2 flex items-center justify-between">
+                        <span className="text-sm font-medium text-slate-700 truncate">{img.name}</span>
+                        <button type="button" onClick={() => removeImage(idx)} className="p-1 text-red-600 hover:bg-red-100 rounded">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {(formData.images || []).length === 0 && (
+                <div className="text-center py-8 text-slate-400">
+                  <Image className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p>Aucune image ajoutée</p>
+                </div>
+              )}
+              
+              {/* Ajouter une nouvelle image */}
+              <div className="border-t pt-4">
+                <label className="block text-sm font-medium text-slate-700 mb-2">Ajouter une image</label>
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    value={newImage.name} 
+                    onChange={e => setNewImage({ ...newImage, name: e.target.value })}
+                    placeholder="Nom (ex: Bannière principale)" 
+                    className="w-48 px-2 py-1 text-sm border border-slate-300 rounded" 
+                  />
+                  <input 
+                    type="url" 
+                    value={newImage.url} 
+                    onChange={e => setNewImage({ ...newImage, url: e.target.value })}
+                    placeholder="URL de l'image (https://...)" 
+                    className="flex-1 px-2 py-1 text-sm border border-slate-300 rounded" 
+                  />
+                  <button type="button" onClick={addImage} className="px-3 py-1 bg-purple-600 text-white text-sm rounded hover:bg-purple-700">
+                    Ajouter
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Tab: Tracking GTM */}
           {activeTab === 'tracking' && (
             <div className="space-y-4">
