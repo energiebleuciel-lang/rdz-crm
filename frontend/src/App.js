@@ -4529,7 +4529,7 @@ const SettingsPage = () => {
       const res = await authFetch(`${API}/api/crms/${editingCRM.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ commandes: commandesData, lead_prices: leadPrices })
+        body: JSON.stringify({ commandes: commandesData, lead_prices: leadPrices, routing_limits: routingLimits })
       });
       if (res.ok) {
         setEditingCRM(null);
