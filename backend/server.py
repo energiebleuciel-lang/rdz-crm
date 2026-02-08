@@ -1077,14 +1077,17 @@ async def delete_lead(lead_id: str, user: dict = Depends(get_current_user)):
     await log_activity(user["id"], user["email"], "delete", "lead", lead_id, "Lead supprimé")
     return {"success": True}
 
-@api_router.delete("/leads")
-async def delete_multiple_leads(lead_ids: List[str], user: dict = Depends(get_current_user)):
+class BulkDeleteRequest(BaseModel):
+    lead_ids: List[str]
+
+@api_router.post("/leads/bulk-delete")
+async def delete_multiple_leads(request: BulkDeleteRequest, user: dict = Depends(get_current_user)):
     """Delete multiple leads"""
-    if not lead_ids:
+    if not request.lead_ids:
         raise HTTPException(status_code=400, detail="Aucun lead à supprimer")
     
-    result = await db.leads.delete_many({"id": {"$in": lead_ids}})
-    await log_activity(user["id"], user["email"], "delete", "leads", ",".join(lead_ids[:5]), f"{result.deleted_count} leads supprimés")
+    result = await db.leads.delete_many({"id": {"$in": request.lead_ids}})
+    await log_activity(user["id"], user["email"], "delete", "leads", ",".join(request.lead_ids[:5]), f"{result.deleted_count} leads supprimés")
     return {"success": True, "deleted_count": result.deleted_count}
 
 # ==================== ANALYTICS ====================
