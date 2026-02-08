@@ -69,6 +69,12 @@ CRM (MDL ou ZR7)
 - [x] Création des 6 comptes par défaut (MDL, ZR7, SPOOT, AZ, OBJECTIF ACADEMIE, AUDIT GREEN)
 - [x] Routes API rétrocompatibles (/api/sub-accounts fonctionne toujours)
 
+### Phase 6 - Gestion Utilisateurs Avancée (Complété - 08/02/2026)
+- [x] Ajout champ `allowed_accounts` aux utilisateurs
+- [x] Interface de sélection des comptes autorisés par utilisateur
+- [x] Modal de modification utilisateur avec multi-sélection de comptes
+- [x] Mise à jour complète du Guide d'utilisation
+
 ### Pages Disponibles
 1. **Tableau de bord** - Stats et derniers leads
 2. **Dashboard Comparatif** - Compare par source/CRM en temps réel
