@@ -4,7 +4,8 @@ import {
   BarChart3, Users, CheckCircle, XCircle, RefreshCw, Download, Eye, Search, Copy, 
   Settings, Plus, LogOut, Home, Layers, FileText, TrendingUp, MessageSquare, 
   Activity, ChevronRight, ChevronDown, Edit, Trash2, ExternalLink, Code,
-  Building, Globe, Image, Shield, Bell, Filter, Calendar, Award, AlertTriangle
+  Building, Globe, Image, Shield, Bell, Filter, Calendar, Award, AlertTriangle,
+  HelpCircle, BookOpen, Zap, Target, MousePointer, Send, Database, Lock
 } from 'lucide-react';
 
 const API = process.env.REACT_APP_BACKEND_URL || '';
