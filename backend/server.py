@@ -1426,6 +1426,169 @@ async def get_activity_logs(limit: int = 100, user: dict = Depends(require_admin
 
 # ==================== SCRIPT GENERATOR ====================
 
+class BriefSelectionLP(BaseModel):
+    lp_id: str
+    include_logo_main: bool = False
+    include_logo_secondary: bool = False
+    include_logo_small: bool = False
+    include_favicon: bool = False
+    include_gtm_pixel: bool = False
+    include_gtm_conversion: bool = False
+    include_gtm_cta: bool = False
+    include_privacy_policy: bool = False
+    include_legal_mentions: bool = False
+    include_colors: bool = False
+    include_redirect_url: Optional[str] = None  # Nom de l'URL de redirection à inclure
+    include_notes: bool = False
+
+class BriefSelectionForm(BaseModel):
+    form_id: str
+    include_logo_main: bool = False
+    include_logo_secondary: bool = False
+    include_gtm_pixel: bool = False
+    include_gtm_conversion: bool = False
+    include_privacy_policy: bool = False
+    include_redirect_url: Optional[str] = None
+    include_api_key: bool = False
+    include_notes: bool = False
+
+@api_router.post("/generate-brief/lp")
+async def generate_lp_brief(selection: BriefSelectionLP, user: dict = Depends(get_current_user)):
+    """Generate LP brief based on selected elements"""
+    lp = await db.lps.find_one({"id": selection.lp_id}, {"_id": 0})
+    if not lp:
+        raise HTTPException(status_code=404, detail="LP non trouvée")
+    
+    account_id = lp.get("account_id") or lp.get("sub_account_id")
+    account = await db.accounts.find_one({"id": account_id}, {"_id": 0}) if account_id else None
+    
+    # Build brief based on selection
+    lines = [f"=== BRIEF LP : {lp.get('code', '')} ===", ""]
+    lines.append(f"Nom : {lp.get('name', '')}")
+    lines.append(f"Compte : {account.get('name', '') if account else 'Non défini'}")
+    lines.append(f"Domaine : {account.get('domain', '') if account else ''}")
+    lines.append("")
+    
+    if selection.include_logo_main and account:
+        lines.append(f"Logo principal : {account.get('logo_main_url', 'Non défini')}")
+    if selection.include_logo_secondary and account:
+        lines.append(f"Logo secondaire : {account.get('logo_secondary_url', 'Non défini')}")
+    if selection.include_logo_small and account:
+        lines.append(f"Petit logo : {account.get('logo_small_url', 'Non défini')}")
+    if selection.include_favicon and account:
+        lines.append(f"Favicon : {account.get('favicon_url', 'Non défini')}")
+    
+    if selection.include_gtm_pixel and account:
+        lines.append("")
+        lines.append("--- PIXEL GTM (header) ---")
+        lines.append(account.get('gtm_pixel_header', 'Non configuré'))
+    
+    if selection.include_gtm_conversion and account:
+        lines.append("")
+        lines.append("--- CODE CONVERSION GTM ---")
+        lines.append(account.get('gtm_conversion_code', 'Non configuré'))
+    
+    if selection.include_gtm_cta and account:
+        lines.append("")
+        lines.append("--- CODE CTA GTM ---")
+        lines.append(account.get('gtm_cta_code', 'Non configuré'))
+    
+    if selection.include_redirect_url and account:
+        lines.append("")
+        lines.append(f"--- URL REDIRECTION ({selection.include_redirect_url}) ---")
+        named_urls = account.get('named_redirect_urls', [])
+        found_url = next((u.get('url', '') for u in named_urls if u.get('name') == selection.include_redirect_url), None)
+        if found_url:
+            lines.append(found_url)
+        else:
+            lines.append(account.get('default_redirect_url', 'Non configuré'))
+    
+    if selection.include_privacy_policy and account:
+        lines.append("")
+        lines.append("--- POLITIQUE CONFIDENTIALITÉ ---")
+        lines.append(account.get('privacy_policy_text', 'Non configuré'))
+    
+    if selection.include_legal_mentions and account:
+        lines.append("")
+        lines.append("--- MENTIONS LÉGALES ---")
+        lines.append(account.get('legal_mentions_text', 'Non configuré'))
+    
+    if selection.include_colors and account:
+        lines.append("")
+        lines.append(f"Couleur principale : {account.get('primary_color', '#3B82F6')}")
+        lines.append(f"Couleur secondaire : {account.get('secondary_color', '#1E40AF')}")
+    
+    if selection.include_notes:
+        lines.append("")
+        lines.append("--- NOTES ---")
+        lines.append(lp.get('generation_notes', '') or account.get('notes', '') if account else '')
+    
+    return {"brief": "\n".join(lines), "lp": lp, "account": account}
+
+@api_router.post("/generate-brief/form")
+async def generate_form_brief(selection: BriefSelectionForm, user: dict = Depends(get_current_user)):
+    """Generate Form brief based on selected elements"""
+    form = await db.forms.find_one({"id": selection.form_id}, {"_id": 0})
+    if not form:
+        raise HTTPException(status_code=404, detail="Formulaire non trouvé")
+    
+    account_id = form.get("account_id") or form.get("sub_account_id")
+    account = await db.accounts.find_one({"id": account_id}, {"_id": 0}) if account_id else None
+    
+    # Build brief based on selection
+    lines = [f"=== BRIEF FORMULAIRE : {form.get('code', '')} ===", ""]
+    lines.append(f"Nom : {form.get('name', '')}")
+    lines.append(f"Compte : {account.get('name', '') if account else 'Non défini'}")
+    lines.append(f"Type produit : {form.get('product_type', 'panneaux')}")
+    lines.append(f"Type : {form.get('form_type', 'standalone')}")
+    lines.append("")
+    lines.append("--- CHAMPS OBLIGATOIRES ---")
+    lines.append("- Téléphone (10 chiffres)")
+    lines.append("- Nom")
+    lines.append("- Département")
+    
+    if selection.include_logo_main and account:
+        lines.append("")
+        lines.append(f"Logo principal : {account.get('logo_main_url', 'Non défini')}")
+    if selection.include_logo_secondary and account:
+        lines.append(f"Logo secondaire : {account.get('logo_secondary_url', 'Non défini')}")
+    
+    if selection.include_gtm_pixel and account:
+        lines.append("")
+        lines.append("--- PIXEL GTM (header) ---")
+        lines.append(account.get('gtm_pixel_header', 'Non configuré'))
+    
+    if selection.include_gtm_conversion and account:
+        lines.append("")
+        lines.append("--- CODE CONVERSION GTM ---")
+        lines.append(account.get('gtm_conversion_code', 'Non configuré'))
+    
+    if selection.include_redirect_url and account:
+        lines.append("")
+        lines.append(f"--- URL REDIRECTION ({selection.include_redirect_url}) ---")
+        named_urls = account.get('named_redirect_urls', [])
+        found_url = next((u.get('url', '') for u in named_urls if u.get('name') == selection.include_redirect_url), None)
+        if found_url:
+            lines.append(found_url)
+        else:
+            lines.append(account.get('default_redirect_url', 'Non configuré'))
+    
+    if selection.include_privacy_policy and account:
+        lines.append("")
+        lines.append("--- POLITIQUE CONFIDENTIALITÉ ---")
+        lines.append(account.get('privacy_policy_text', 'Non configuré'))
+    
+    if selection.include_api_key:
+        lines.append("")
+        lines.append(f"Clé API CRM : {form.get('api_key', 'Non configuré')}")
+    
+    if selection.include_notes:
+        lines.append("")
+        lines.append("--- NOTES ---")
+        lines.append(form.get('generation_notes', '') or account.get('notes', '') if account else '')
+    
+    return {"brief": "\n".join(lines), "form": form, "account": account}
+
 @api_router.get("/generate-script/lp/{lp_id}")
 async def generate_lp_script(lp_id: str, user: dict = Depends(get_current_user)):
     """Generate configuration brief for LP - text format for Emergent"""
