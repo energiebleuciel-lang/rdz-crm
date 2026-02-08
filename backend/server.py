@@ -1423,7 +1423,7 @@ async def get_activity_logs(limit: int = 100, user: dict = Depends(require_admin
 
 @api_router.get("/generate-script/lp/{lp_id}")
 async def generate_lp_script(lp_id: str, user: dict = Depends(get_current_user)):
-    """Generate tracking script for LP"""
+    """Generate configuration brief for LP - text format for Emergent"""
     lp = await db.lps.find_one({"id": lp_id}, {"_id": 0})
     if not lp:
         raise HTTPException(status_code=404, detail="LP non trouvée")
@@ -1432,51 +1432,47 @@ async def generate_lp_script(lp_id: str, user: dict = Depends(get_current_user))
     account_id = lp.get("account_id") or lp.get("sub_account_id")
     account = await db.accounts.find_one({"id": account_id}, {"_id": 0}) if account_id else None
     
-    backend_url = os.environ.get("BACKEND_URL", "https://rdz-group-ltd.online")
-    
-    script = f"""<!-- Tracking CTA - {lp['code']} -->
-<script>
-(function() {{
-  var lpCode = '{lp['code']}';
-  var backendUrl = '{backend_url}';
-  
-  // Track CTA clicks
-  document.querySelectorAll('{lp.get('cta_selector', '.cta-btn')}').forEach(function(btn) {{
-    btn.addEventListener('click', function() {{
-      fetch(backendUrl + '/api/track/cta-click', {{
-        method: 'POST',
-        headers: {{'Content-Type': 'application/json'}},
-        body: JSON.stringify({{ lp_code: lpCode, domain: window.location.hostname }})
-      }});
-    }});
-  }});
-}})();
-</script>"""
+    # Build text brief
+    brief = f"""=== BRIEF LP : {lp.get('code', 'Non défini')} ===
 
-    # Add pixel if configured
-    if account and account.get("tracking_pixel_header"):
-        script = account["tracking_pixel_header"] + "\n\n" + script
-    
-    pixel_header = account.get('tracking_pixel_header', '(Non configuré)') if account else '(Aucun compte associé)'
-    
-    instructions = f"""
-📋 INSTRUCTIONS POUR {lp['code']}
+NOM : {lp.get('name', 'Non défini')}
+TYPE : {lp.get('lp_type', 'redirect')} {'(formulaire intégré dans la LP)' if lp.get('lp_type') == 'integrated' else '(redirection vers formulaire externe)'}
+SOURCE : {lp.get('source_name', 'Non défini')} ({lp.get('source_type', 'native')})
 
-1️⃣ PIXEL HEADER (à mettre dans <head>)
-{pixel_header}
+--- COMPTE ---
+Nom du compte : {account.get('name', 'Non défini') if account else 'Non défini'}
+Domaine : {account.get('domain', 'Non défini') if account else 'Non défini'}
 
-2️⃣ SCRIPT TRACKING CTA (à mettre avant </body>)
-{script}
+--- LOGOS ---
+Logo principal (gauche) : {account.get('logo_left_url', 'Non défini') if account else 'Non défini'}
+Logo secondaire (droite) : {account.get('logo_right_url', 'Non défini') if account else 'Non défini'}
+Petit logo (favicon) : {account.get('logo_small_url', 'Non défini') if account else 'Non défini'}
 
-3️⃣ CONFIGURATION
-- Sélecteur CTA : {lp.get('cta_selector', '.cta-btn')}
-- Source : {lp.get('source_name', 'Non défini')}
-- Compte : {account.get('name', 'Non défini') if account else 'Non défini'}
+--- TRACKING GTM ---
+Pixel Header (dans <head>) : 
+{account.get('gtm_head', 'Non configuré') if account else 'Non configuré'}
 
-⚠️ Ce script se déclenche quand un visiteur clique sur un bouton CTA.
+Code GTM Body :
+{account.get('gtm_body', 'Non configuré') if account else 'Non configuré'}
+
+--- CTA ---
+Sélecteur CSS des boutons CTA : {lp.get('cta_selector', '.cta-btn')}
+URL de redirection CTA : {lp.get('form_url', 'Non défini')}
+
+--- LÉGAL ---
+Politique de confidentialité : {account.get('privacy_policy_url', 'Non défini') if account else 'Non défini'}
+Mentions légales : {account.get('legal_mentions_url', 'Non défini') if account else 'Non défini'}
+Texte popup légal : {account.get('legal_popup_text', 'Non défini') if account else 'Non défini'}
+
+--- COULEURS ---
+Couleur principale : {account.get('primary_color', '#2563eb') if account else '#2563eb'}
+Couleur secondaire : {account.get('secondary_color', '#1e40af') if account else '#1e40af'}
+
+--- NOTES ---
+{lp.get('generation_notes', 'Aucune note')}
 """
     
-    return {"script": script, "instructions": instructions, "lp": lp}
+    return {"brief": brief, "lp": lp, "account": account}
 
 @api_router.get("/generate-script/form/{form_id}")
 async def generate_form_script(form_id: str, user: dict = Depends(get_current_user)):
