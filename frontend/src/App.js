@@ -1423,7 +1423,6 @@ const LPsPage = () => {
               <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">Intégré</span> : 
               <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">Redirection</span>
             },
-            { key: 'stats', label: 'Clics CTA', render: v => v?.cta_clicks || 0 },
             { key: 'stats', label: 'Leads', render: v => v?.leads || 0 },
             { key: 'status', label: 'Statut', render: v => <StatusBadge status={v} /> },
             { 
