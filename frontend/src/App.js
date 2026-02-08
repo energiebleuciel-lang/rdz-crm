@@ -1511,7 +1511,7 @@ const FormsPage = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-800">Formulaires</h1>
-        <button onClick={() => { setEditingForm(null); setFormData({ sub_account_id: '', lp_ids: [], code: '', name: '', product_type: 'panneaux', source_type: 'native', source_name: '', api_key: '', tracking_type: 'redirect', status: 'active', form_type: 'standalone', generation_notes: '' }); setShowModal(true); }} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+        <button onClick={() => { setEditingForm(null); setFormData({ account_id: '', lp_ids: [], code: '', name: '', product_type: 'panneaux', source_type: 'native', source_name: '', api_key: '', tracking_type: 'redirect', status: 'active', form_type: 'standalone', generation_notes: '' }); setShowModal(true); }} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
           <Plus className="w-4 h-4" />
           Nouveau formulaire
         </button>
