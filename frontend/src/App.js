@@ -1748,13 +1748,24 @@ const FormsPage = () => {
           {/* Section: Notes */}
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Notes internes</label>
-              <textarea value={formData.notes || ''} onChange={e => setFormData({ ...formData, notes: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" rows={2} />
+              <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+              <textarea value={formData.notes || ''} onChange={e => setFormData({ ...formData, notes: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" rows={2} placeholder="Notes personnelles..." />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Commentaires pour génération</label>
-              <textarea value={formData.generation_notes || ''} onChange={e => setFormData({ ...formData, generation_notes: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" rows={2} placeholder="Instructions supplémentaires..." />
-            </div>
+          </div>
+
+          {/* Section: Code HTML */}
+          <div className="bg-purple-50 p-4 rounded-lg space-y-4">
+            <h4 className="font-medium text-purple-800 flex items-center gap-2">
+              <Code className="w-4 h-4" /> Code HTML du formulaire
+            </h4>
+            <textarea 
+              value={formData.html_code || ''} 
+              onChange={e => setFormData({ ...formData, html_code: e.target.value })} 
+              className="w-full px-3 py-2 border border-purple-300 rounded-lg font-mono text-xs bg-white" 
+              rows={8} 
+              placeholder="Coller ici le code HTML complet du formulaire..."
+            />
+            <p className="text-xs text-purple-600">Stockez le code HTML de votre formulaire pour référence</p>
           </div>
 
           <div className="flex justify-end gap-2 pt-4 border-t border-slate-200 sticky bottom-0 bg-white py-4">
