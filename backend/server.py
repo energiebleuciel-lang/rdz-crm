@@ -329,8 +329,19 @@ async def delete_sub_account(account_id: str, user: dict = Depends(require_admin
 # ==================== LP ENDPOINTS ====================
 
 @api_router.get("/lps")
-async def get_lps(sub_account_id: Optional[str] = None, user: dict = Depends(get_current_user)):
-    query = {"sub_account_id": sub_account_id} if sub_account_id else {}
+async def get_lps(sub_account_id: Optional[str] = None, crm_id: Optional[str] = None, user: dict = Depends(get_current_user)):
+    query = {}
+    if sub_account_id:
+        query["sub_account_id"] = sub_account_id
+    elif crm_id:
+        # Get all sub-accounts for this CRM
+        sub_accounts = await db.sub_accounts.find({"crm_id": crm_id}, {"id": 1}).to_list(100)
+        sub_account_ids = [sa["id"] for sa in sub_accounts]
+        if sub_account_ids:
+            query["sub_account_id"] = {"$in": sub_account_ids}
+        else:
+            return {"lps": []}
+    
     lps = await db.lps.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
     
     # Add stats for each LP
