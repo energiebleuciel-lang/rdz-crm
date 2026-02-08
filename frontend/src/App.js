@@ -3612,6 +3612,7 @@ function App() {
           <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+          <Route path="/compare" element={<ProtectedRoute><CompareDashboard /></ProtectedRoute>} />
           <Route path="/analytics" element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
           <Route path="/leads" element={<ProtectedRoute><LeadsPage /></ProtectedRoute>} />
           <Route path="/lps" element={<ProtectedRoute><LPsPage /></ProtectedRoute>} />
@@ -3622,6 +3623,8 @@ function App() {
           <Route path="/guide" element={<ProtectedRoute><GuidePage /></ProtectedRoute>} />
           <Route path="/users" element={<ProtectedRoute><UsersPage /></ProtectedRoute>} />
           <Route path="/activity" element={<ProtectedRoute><ActivityPage /></ProtectedRoute>} />
+          <Route path="/diffusion" element={<ProtectedRoute><DiffusionSourcesPage /></ProtectedRoute>} />
+          <Route path="/products" element={<ProtectedRoute><ProductTypesPage /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
