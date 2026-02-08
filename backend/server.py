@@ -1715,6 +1715,7 @@ async def generate_form_brief(selection: BriefSelectionForm, user: dict = Depend
     
     account_id = form.get("account_id") or form.get("sub_account_id")
     account = await db.accounts.find_one({"id": account_id}, {"_id": 0}) if account_id else None
+    crm = await db.crms.find_one({"id": account.get("crm_id")}) if account else None
     
     # Count leads for this form
     lead_count = await db.leads.count_documents({"form_code": form.get('code')})
@@ -1724,27 +1725,56 @@ async def generate_form_brief(selection: BriefSelectionForm, user: dict = Depend
     lines.append(f"Nom : {form.get('name', '')}")
     lines.append(f"URL : {form.get('url', '')}")
     lines.append(f"Compte : {account.get('name', '') if account else 'Non défini'}")
+    lines.append(f"CRM destination : {crm.get('name', 'Non défini') if crm else 'Non défini'}")
     lines.append(f"Source : {form.get('source_name', '')} ({form.get('source_type', '')})")
     lines.append(f"Type produit : {form.get('product_type', 'panneaux')}")
     lines.append(f"Type : {'Intégré dans LP' if form.get('form_type') == 'integrated' else 'Page séparée'}")
     lines.append(f"Tracking : {form.get('tracking_type', 'redirect')}")
     lines.append(f"Nombre de leads : {lead_count}")
+    
+    # === SECTION CLÉS API ===
     lines.append("")
-    lines.append("--- CHAMPS OBLIGATOIRES ---")
-    lines.append("- Téléphone (10 chiffres)")
-    lines.append("- Nom")
-    lines.append("- Département")
+    lines.append("=== CONFIGURATION API ===")
     
-    # Clé API dynamique (saisie au moment de générer)
-    if selection.api_key:
+    # Clé API interne (pour recevoir les leads sur CE CRM)
+    if selection.include_internal_api_key and form.get('internal_api_key'):
         lines.append("")
-        lines.append(f"Clé API CRM : {selection.api_key}")
+        lines.append("--- CLÉ API INTERNE (pour envoyer les leads vers ce CRM) ---")
+        lines.append(f"Clé : {form.get('internal_api_key')}")
+        lines.append(f"Endpoint : POST /api/submit-lead")
+        lines.append(f"Header : Content-Type: application/json")
+        lines.append(f"Body : {{ \"phone\": \"...\", \"nom\": \"...\", \"form_code\": \"{form.get('code')}\" }}")
     
+    # Clé API CRM destination (ZR7/MDL) - saisie dynamiquement
+    if selection.crm_api_key:
+        lines.append("")
+        lines.append("--- CLÉ API CRM DESTINATION (ZR7/MDL) ---")
+        lines.append(f"Clé : {selection.crm_api_key}")
+        if crm:
+            lines.append(f"URL API : {crm.get('api_url', 'Non configurée')}")
+    
+    # Champs du formulaire
+    lines.append("")
+    lines.append("=== CHAMPS DU FORMULAIRE ===")
+    lines.append("Obligatoire : Téléphone")
+    lines.append("Optionnels : nom, prenom, civilite, email, departement, code_postal,")
+    lines.append("             superficie_logement, chauffage_actuel, type_logement,")
+    lines.append("             statut_occupant, facture_electricite")
+    
+    # Logos
     if selection.include_logo_main and account:
         lines.append("")
         lines.append(f"Logo principal : {account.get('logo_main_url', 'Non défini')}")
     if selection.include_logo_secondary and account:
         lines.append(f"Logo secondaire : {account.get('logo_secondary_url', 'Non défini')}")
+    
+    # Images du compte
+    if selection.include_images and account:
+        account_images = account.get('images', [])
+        for img_name in selection.include_images:
+            img = next((i for i in account_images if i.get('name') == img_name), None)
+            if img:
+                lines.append(f"Image '{img_name}' : {img.get('url', 'Non défini')}")
     
     if selection.include_gtm_pixel and account:
         lines.append("")
