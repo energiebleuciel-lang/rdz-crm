@@ -2831,6 +2831,7 @@ function App() {
           <Route path="/lps" element={<ProtectedRoute><LPsPage /></ProtectedRoute>} />
           <Route path="/forms" element={<ProtectedRoute><FormsPage /></ProtectedRoute>} />
           <Route path="/accounts" element={<ProtectedRoute><SubAccountsPage /></ProtectedRoute>} />
+          <Route path="/assets" element={<ProtectedRoute><AssetsPage /></ProtectedRoute>} />
           <Route path="/generator" element={<ProtectedRoute><ScriptGeneratorPage /></ProtectedRoute>} />
           <Route path="/guide" element={<ProtectedRoute><GuidePage /></ProtectedRoute>} />
           <Route path="/users" element={<ProtectedRoute><UsersPage /></ProtectedRoute>} />
