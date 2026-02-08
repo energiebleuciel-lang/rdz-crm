@@ -1187,6 +1187,7 @@ const LPsPage = () => {
   const [showDuplicateModal, setShowDuplicateModal] = useState(null);
   const [editingLP, setEditingLP] = useState(null);
   const [duplicateData, setDuplicateData] = useState({ new_code: '', new_name: '' });
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     account_id: '', code: '', name: '', url: '', source_type: 'native',
     source_name: '', cta_selector: '.cta-btn', screenshot_url: '', diffusion_url: '', notes: '', status: 'active',
