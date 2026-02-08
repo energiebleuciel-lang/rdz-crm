@@ -1680,6 +1680,13 @@ const FormsPage = () => {
     }
   };
 
+  const productTypes = [
+    { value: '', label: 'Tous', icon: '📋' },
+    { value: 'panneaux', label: 'PV', icon: '☀️' },
+    { value: 'pompes', label: 'PAC', icon: '🔥' },
+    { value: 'isolation', label: 'ITE', icon: '🏠' },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -1688,6 +1695,27 @@ const FormsPage = () => {
           <Plus className="w-4 h-4" />
           Nouveau formulaire
         </button>
+      </div>
+
+      {/* Filtre par type de produit */}
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-slate-500">Filtrer par produit :</span>
+        <div className="flex gap-1">
+          {productTypes.map(pt => (
+            <button
+              key={pt.value}
+              onClick={() => setProductFilter(pt.value)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                productFilter === pt.value
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              {pt.icon} {pt.label}
+            </button>
+          ))}
+        </div>
+        <span className="text-xs text-slate-400 ml-2">({forms.length} formulaires)</span>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200">
