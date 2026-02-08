@@ -398,6 +398,58 @@ async def delete_sub_account(account_id: str, user: dict = Depends(require_admin
     await log_activity(user["id"], user["email"], "delete", "sub_account", account_id, "Sous-compte supprimé")
     return {"success": True}
 
+# ==================== ASSETS ENDPOINTS ====================
+
+@api_router.get("/assets")
+async def get_assets(crm_id: Optional[str] = None, sub_account_id: Optional[str] = None, global_only: bool = False, user: dict = Depends(get_current_user)):
+    """Get assets - can filter by CRM, sub-account, or get only global assets"""
+    query = {}
+    
+    if global_only:
+        query["sub_account_id"] = None
+    elif sub_account_id:
+        # Get assets for specific sub-account + global assets
+        query["$or"] = [{"sub_account_id": sub_account_id}, {"sub_account_id": None}]
+    elif crm_id:
+        # Get assets for all sub-accounts of this CRM + global assets
+        sub_accounts = await db.sub_accounts.find({"crm_id": crm_id}, {"id": 1}).to_list(100)
+        sub_account_ids = [sa["id"] for sa in sub_accounts]
+        query["$or"] = [{"sub_account_id": {"$in": sub_account_ids}}, {"sub_account_id": None}, {"crm_id": crm_id}]
+    
+    assets = await db.assets.find(query, {"_id": 0}).sort("created_at", -1).to_list(200)
+    return {"assets": assets}
+
+@api_router.post("/assets")
+async def create_asset(asset: AssetCreate, user: dict = Depends(get_current_user)):
+    asset_doc = {
+        "id": str(uuid.uuid4()),
+        **asset.model_dump(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": user["id"]
+    }
+    await db.assets.insert_one(asset_doc)
+    await log_activity(user["id"], user["email"], "create", "asset", asset_doc["id"], f"Asset créé: {asset.label}")
+    return {"success": True, "asset": {k: v for k, v in asset_doc.items() if k != "_id"}}
+
+@api_router.put("/assets/{asset_id}")
+async def update_asset(asset_id: str, asset: AssetCreate, user: dict = Depends(get_current_user)):
+    result = await db.assets.update_one(
+        {"id": asset_id},
+        {"$set": {**asset.model_dump(), "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Asset non trouvé")
+    await log_activity(user["id"], user["email"], "update", "asset", asset_id, f"Asset modifié: {asset.label}")
+    return {"success": True}
+
+@api_router.delete("/assets/{asset_id}")
+async def delete_asset(asset_id: str, user: dict = Depends(get_current_user)):
+    result = await db.assets.delete_one({"id": asset_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Asset non trouvé")
+    await log_activity(user["id"], user["email"], "delete", "asset", asset_id, "Asset supprimé")
+    return {"success": True}
+
 # ==================== LP ENDPOINTS ====================
 
 @api_router.get("/lps")
