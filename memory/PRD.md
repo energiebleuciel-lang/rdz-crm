@@ -103,6 +103,8 @@ CRM (MDL ou ZR7)
 - `DELETE /api/accounts/{id}` - Supprimer un compte
 - `DELETE /api/leads/{id}` - Supprimer un lead
 - `POST /api/leads/bulk-delete` - Supprimer plusieurs leads (body: {lead_ids: [...]})
+- `GET /api/users` - Liste des utilisateurs
+- `PUT /api/users/{id}` - Modifier utilisateur (rôle + comptes autorisés)
 - `GET /api/analytics/compare` - Dashboard comparatif avec filtres
 - `POST /api/lps/{id}/duplicate` - Dupliquer LP
 - `POST /api/forms/{id}/duplicate` - Dupliquer Form
