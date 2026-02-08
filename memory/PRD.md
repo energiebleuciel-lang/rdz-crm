@@ -29,6 +29,20 @@ CRM multi-tenant pour centraliser et redistribuer les leads solaires (PAC, PV, I
 
 ## Fonctionnalités Implémentées
 
+### Phase 12 - Protection & Traçabilité (08/02/2026)
+- [x] **Protection des formulaires** :
+  - DELETE archive au lieu de supprimer (leads conservés)
+  - Clé API CRM protégée (non modifiable après création)
+  - Product_type protégé (non modifiable)
+  - Suppression permanente uniquement avec code de confirmation
+- [x] **Traçabilité complète des leads** :
+  - `target_crm_name` / `target_crm_slug` : Plateforme cible
+  - `status_detail` : "envoyé/zr7" ou "envoyé/mdl"
+  - Colonnes Produit (PV/PAC/ITE) et Plateforme sur page Leads
+- [x] **Tests API réels réussis** :
+  - ZR7 Digital : ✅ Leads envoyés avec succès
+  - Maison du Lead : ✅ Leads envoyés avec succès
+
 ### Phase 11 - Sécurité & Analytics (08/02/2026)
 - [x] **Sécurité multi-tenant** : Filtrage des données par `allowed_accounts` pour utilisateurs non-admin
   - `/api/accounts` : filtre par comptes autorisés
