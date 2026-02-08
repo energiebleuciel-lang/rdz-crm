@@ -117,6 +117,10 @@ class NamedRedirectURL(BaseModel):
     name: str  # "Google", "Taboola", "Facebook"
     url: str
 
+class AccountImage(BaseModel):
+    name: str  # "Bannière principale", "Image produit"
+    url: str
+
 class AccountCreate(BaseModel):
     crm_id: str
     name: str
@@ -127,6 +131,8 @@ class AccountCreate(BaseModel):
     logo_secondary_url: Optional[str] = ""  # Logo secondaire (droite)  
     logo_small_url: Optional[str] = ""  # Petit logo / badge
     favicon_url: Optional[str] = ""
+    # Bibliothèque d'images du compte
+    images: List[AccountImage] = []  # [{"name": "Bannière", "url": "..."}, ...]
     # Textes légaux
     privacy_policy_text: Optional[str] = ""  # Texte direct, pas URL
     legal_mentions_text: Optional[str] = ""
@@ -183,6 +189,8 @@ class FormCreate(BaseModel):
     redirect_url_name: Optional[str] = ""  # Nom de l'URL de redirection (depuis le compte)
     # Stockage du code HTML
     html_code: Optional[str] = ""  # Code HTML complet du formulaire
+    # Clés API pour l'intégration des leads
+    crm_api_key: Optional[str] = ""  # Clé API du CRM destination (ZR7/MDL) - fournie par vous
     # Notes
     notes: Optional[str] = ""
     status: str = "active"
