@@ -3333,7 +3333,7 @@ const AssetsPage = () => {
   const [editingAsset, setEditingAsset] = useState(null);
   const [filter, setFilter] = useState('all'); // all, global, account
   const [formData, setFormData] = useState({
-    label: '', url: '', asset_type: 'image', sub_account_id: '', crm_id: ''
+    label: '', url: '', asset_type: 'image', account_id: '', crm_id: ''
   });
 
   useEffect(() => {
@@ -3346,7 +3346,7 @@ const AssetsPage = () => {
       const crmParam = selectedCRM ? `?crm_id=${selectedCRM}` : '';
       const [assetsRes, accountsRes] = await Promise.all([
         authFetch(`${API}/api/assets${crmParam}`),
-        authFetch(`${API}/api/sub-accounts${crmParam}`)
+        authFetch(`${API}/api/accounts${crmParam}`)
       ]);
       if (assetsRes.ok) setAssets((await assetsRes.json()).assets || []);
       if (accountsRes.ok) setAccounts((await accountsRes.json()).accounts || []);
@@ -3364,7 +3364,7 @@ const AssetsPage = () => {
     // Clean up data - set null for global assets
     const submitData = {
       ...formData,
-      sub_account_id: formData.sub_account_id || null,
+      sub_account_id: formData.account_id || null,
       crm_id: formData.crm_id || selectedCRM || null
     };
     
@@ -3373,7 +3373,7 @@ const AssetsPage = () => {
       if (res.ok) {
         setShowModal(false);
         setEditingAsset(null);
-        setFormData({ label: '', url: '', asset_type: 'image', sub_account_id: '', crm_id: '' });
+        setFormData({ label: '', url: '', asset_type: 'image', account_id: '', crm_id: '' });
         loadData();
       }
     } catch (e) {
@@ -3387,7 +3387,7 @@ const AssetsPage = () => {
       label: asset.label,
       url: asset.url,
       asset_type: asset.asset_type,
-      sub_account_id: asset.sub_account_id || '',
+      account_id: asset.sub_account_id || '',
       crm_id: asset.crm_id || ''
     });
     setShowModal(true);
