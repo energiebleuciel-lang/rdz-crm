@@ -1006,6 +1006,8 @@ async def submit_lead(lead: LeadData):
     # Save to DB first
     await db.leads.insert_one(lead_doc)
     
+    api_status = "no_config"
+    
     # Envoi instantané vers le CRM SI téléphone valide ET config présente
     if can_send_to_crm:
         api_status, api_response = await send_lead_to_crm(lead_doc, api_url, api_key)
@@ -1019,9 +1021,6 @@ async def submit_lead(lead: LeadData):
                 "sent_at": datetime.now(timezone.utc).isoformat()
             }}
         )
-        {"id": lead_doc["id"]},
-        {"$set": {"api_status": api_status, "api_response": api_response}}
-    )
     
     return {"success": True, "message": "Lead enregistré", "status": api_status}
 
