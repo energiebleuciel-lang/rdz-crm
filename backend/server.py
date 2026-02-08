@@ -150,8 +150,8 @@ class LPCreate(BaseModel):
     code: str  # LP-TAB-V1
     name: str
     url: Optional[str] = ""
-    source_type: str  # native, google, facebook, tiktok
-    source_name: str  # Taboola, Outbrain, Google Ads
+    source_type: str = "native"  # native, google, facebook, tiktok
+    source_name: Optional[str] = ""  # Taboola, Outbrain, Google Ads
     cta_selector: str = ".cta-btn"
     screenshot_url: Optional[str] = ""
     diffusion_url: Optional[str] = ""
