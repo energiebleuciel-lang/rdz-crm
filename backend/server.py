@@ -907,21 +907,39 @@ async def track_form_start(data: FormStartTrack):
 # ==================== LEAD SUBMISSION ====================
 
 async def send_lead_to_crm(lead_doc: dict, api_url: str, api_key: str) -> tuple:
-    """Helper function to send a lead to external CRM (ZR7/MDL)"""
+    """Helper function to send a lead to external CRM (ZR7/MDL)
+    Format conforme à la doc API ZR7/MDL
+    """
+    # Build custom_fields avec tous les champs de la doc
+    custom_fields = {}
+    
+    # Ajouter chaque champ s'il existe
+    if lead_doc.get("superficie_logement"):
+        custom_fields["superficie_logement"] = {"value": lead_doc["superficie_logement"]}
+    if lead_doc.get("chauffage_actuel"):
+        custom_fields["chauffage_actuel"] = {"value": lead_doc["chauffage_actuel"]}
+    if lead_doc.get("departement"):
+        custom_fields["departement"] = {"value": lead_doc["departement"]}
+    if lead_doc.get("code_postal"):
+        custom_fields["code_postal"] = {"value": lead_doc["code_postal"]}
+    if lead_doc.get("type_logement"):
+        custom_fields["type_logement"] = {"value": lead_doc["type_logement"]}
+    if lead_doc.get("statut_occupant"):
+        custom_fields["statut_occupant"] = {"value": lead_doc["statut_occupant"]}
+    if lead_doc.get("facture_electricite"):
+        custom_fields["facture_electricite"] = {"value": lead_doc["facture_electricite"]}
+    
     lead_payload = {
         "phone": lead_doc["phone"],
         "register_date": lead_doc["register_date"],
-        "nom": lead_doc["nom"],
-        "prenom": "",
+        "nom": lead_doc.get("nom", ""),
+        "prenom": lead_doc.get("prenom", ""),
         "email": lead_doc.get("email", ""),
-        "custom_fields": {
-            "departement": {"value": lead_doc.get("departement", "")},
-            "code_postal": {"value": lead_doc.get("code_postal", "")},
-            "type_logement": {"value": lead_doc.get("type_logement", "")},
-            "statut_occupant": {"value": lead_doc.get("statut_occupant", "")},
-            "facture_electricite": {"value": lead_doc.get("facture_electricite", "")}
-        }
     }
+    
+    # Ajouter custom_fields seulement s'il y en a
+    if custom_fields:
+        lead_payload["custom_fields"] = custom_fields
     
     api_status = "failed"
     api_response = None
