@@ -4101,6 +4101,7 @@ const BillingPage = () => {
   useEffect(() => {
     if (dateFrom && dateTo) {
       loadBillingData();
+      loadBillingHistory();
     }
   }, [dateFrom, dateTo]);
 
@@ -4115,6 +4116,64 @@ const BillingPage = () => {
       console.error(e);
     }
     setLoading(false);
+  };
+
+  const loadBillingHistory = async () => {
+    try {
+      const year = new Date(dateFrom).getFullYear();
+      const res = await authFetch(`${API}/api/billing/history?year=${year}`);
+      if (res.ok) {
+        const data = await res.json();
+        setBillingHistory(data.history || []);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const markAsInvoiced = async () => {
+    if (!invoiceData.from_crm_id || !invoiceData.to_crm_id) return;
+    
+    const date = new Date(dateFrom);
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    
+    try {
+      const res = await authFetch(`${API}/api/billing/mark-invoiced`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          year,
+          month,
+          from_crm_id: invoiceData.from_crm_id,
+          to_crm_id: invoiceData.to_crm_id,
+          amount: invoiceData.amount,
+          lead_count: invoiceData.lead_count,
+          notes: invoiceData.notes
+        })
+      });
+      if (res.ok) {
+        setShowInvoiceModal(false);
+        setInvoiceData({ from_crm_id: '', to_crm_id: '', amount: 0, lead_count: 0, notes: '' });
+        loadBillingHistory();
+        alert('Période marquée comme facturée !');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Erreur lors du marquage');
+    }
+  };
+
+  const deleteBillingRecord = async (id) => {
+    if (!window.confirm('Supprimer cet enregistrement de facturation ?')) return;
+    try {
+      const res = await authFetch(`${API}/api/billing/history/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        loadBillingHistory();
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const archiveOldLeads = async () => {
