@@ -2290,7 +2290,7 @@ const GuidePage = () => {
   const sections = [
     { id: 'intro', label: 'Introduction', icon: BookOpen },
     { id: 'crm-selector', label: 'Sélecteur CRM', icon: Building },
-    { id: 'accounts', label: 'Sous-comptes', icon: Database },
+    { id: 'accounts', label: 'Comptes', icon: Database },
     { id: 'lps', label: 'Landing Pages', icon: Layers },
     { id: 'forms', label: 'Formulaires', icon: FileText },
     { id: 'tracking', label: 'Tracking', icon: Target },
@@ -2355,10 +2355,11 @@ const GuidePage = () => {
                 <h4 className="font-semibold text-blue-800 mb-2">🎯 Fonctionnalités principales</h4>
                 <ul className="text-sm text-blue-700 space-y-1">
                   <li>• <strong>Multi-CRM</strong> : Gérer MDL et ZR7 séparément</li>
-                  <li>• <strong>Sous-comptes</strong> : Un compte par site/domaine</li>
+                  <li>• <strong>Comptes</strong> : Un compte par site/domaine (MDL, SPOOT, ZR7, AZ...)</li>
                   <li>• <strong>Tracking complet</strong> : Pixels, CTA, conversions</li>
                   <li>• <strong>Analytics</strong> : Statistiques et gagnants/perdants</li>
                   <li>• <strong>Générateur de scripts</strong> : Code prêt à copier</li>
+                  <li>• <strong>Gestion utilisateurs</strong> : Rôles et comptes autorisés par personne</li>
                 </ul>
               </div>
 
@@ -2366,12 +2367,26 @@ const GuidePage = () => {
                 <h4 className="font-semibold text-slate-800 mb-2">📊 Structure des données</h4>
                 <pre className="text-sm text-slate-600 bg-white p-3 rounded border border-slate-200">
 {`CRM (MDL ou ZR7)
-  └── Sous-compte (1 par site/domaine)
+  └── Compte (MDL, SPOOT, ZR7, AZ, etc.)
         ├── Landing Pages (LP)
         │     └── Tracking CTA (clics)
         └── Formulaires
               └── Leads (données)`}
                 </pre>
+              </div>
+
+              <div className="bg-green-50 rounded-lg p-4">
+                <h4 className="font-semibold text-green-800 mb-2">📦 Comptes par défaut</h4>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <strong className="text-green-800">Maison du Lead:</strong>
+                    <p className="text-green-700">MDL, SPOOT, OBJECTIF ACADEMIE, AUDIT GREEN</p>
+                  </div>
+                  <div>
+                    <strong className="text-green-800">ZR7 Digital:</strong>
+                    <p className="text-green-700">ZR7, AZ</p>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -2416,56 +2431,48 @@ const GuidePage = () => {
             </div>
           )}
 
-          {/* Sous-comptes */}
+          {/* Comptes */}
           {activeSection === 'accounts' && (
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
               <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                 <Database className="w-5 h-5 text-blue-600" />
-                Sous-comptes
+                Comptes
               </h2>
               
               <p className="text-slate-600">
-                Un sous-compte représente <strong>un site/domaine spécifique</strong>. 
-                Chaque sous-compte a ses propres configurations.
+                Un compte représente <strong>un site/domaine spécifique</strong>. 
+                Chaque compte a ses propres configurations (logos, GTM, légal).
               </p>
 
               <div className="bg-green-50 rounded-lg p-4">
-                <h4 className="font-semibold text-green-800 mb-3">📋 Informations à renseigner</h4>
+                <h4 className="font-semibold text-green-800 mb-3">📋 Configuration d'un compte</h4>
                 <div className="grid md:grid-cols-2 gap-3 text-sm">
                   <div className="bg-white p-3 rounded border border-green-200">
-                    <strong className="text-green-800">CRM</strong>
-                    <p className="text-green-700">MDL ou ZR7</p>
+                    <strong className="text-green-800">Général</strong>
+                    <p className="text-green-700">CRM, Nom, Domaine, Types produits, Couleurs</p>
                   </div>
                   <div className="bg-white p-3 rounded border border-green-200">
-                    <strong className="text-green-800">Nom du compte</strong>
-                    <p className="text-green-700">Ex: "Solaire Pro"</p>
+                    <strong className="text-green-800">Logos</strong>
+                    <p className="text-green-700">Principal, Secondaire, Petit logo, Favicon</p>
                   </div>
                   <div className="bg-white p-3 rounded border border-green-200">
-                    <strong className="text-green-800">Domaine</strong>
-                    <p className="text-green-700">Ex: maprime-solaire.fr</p>
+                    <strong className="text-green-800">Tracking GTM</strong>
+                    <p className="text-green-700">Pixel header, Code conversion, CTA click</p>
                   </div>
                   <div className="bg-white p-3 rounded border border-green-200">
-                    <strong className="text-green-800">Layout</strong>
-                    <p className="text-green-700">Gauche / Centre / Droite</p>
-                  </div>
-                  <div className="bg-white p-3 rounded border border-green-200">
-                    <strong className="text-green-800">URL Logo</strong>
-                    <p className="text-green-700">Logo du site</p>
-                  </div>
-                  <div className="bg-white p-3 rounded border border-green-200">
-                    <strong className="text-green-800">Politique confidentialité</strong>
-                    <p className="text-green-700">URL de la page</p>
+                    <strong className="text-green-800">Légal</strong>
+                    <p className="text-green-700">Politique confidentialité, Mentions légales</p>
                   </div>
                 </div>
               </div>
 
               <div className="bg-orange-50 rounded-lg p-4">
-                <h4 className="font-semibold text-orange-800 mb-2">🎯 Tracking par sous-compte</h4>
+                <h4 className="font-semibold text-orange-800 mb-2">🎯 Tracking GTM au niveau du compte</h4>
                 <ul className="text-sm text-orange-700 space-y-2">
-                  <li><strong>Pixel Header</strong> : Code Facebook/Google à mettre dans &lt;head&gt;</li>
-                  <li><strong>Type conversion</strong> : Code / Redirection / Les deux</li>
-                  <li><strong>Code conversion</strong> : Script après envoi téléphone</li>
-                  <li><strong>URL redirection</strong> : Page merci après soumission</li>
+                  <li><strong>Pixel Header</strong> : Code Facebook/Google dans &lt;head&gt;</li>
+                  <li><strong>Code conversion</strong> : Script déclenché après validation téléphone (10 chiffres)</li>
+                  <li><strong>Code CTA</strong> : Script au clic sur les boutons CTA</li>
+                  <li><strong>URL redirection</strong> : Page merci par défaut</li>
                 </ul>
               </div>
             </div>
@@ -2486,23 +2493,23 @@ const GuidePage = () => {
               <div className="bg-blue-50 rounded-lg p-4">
                 <h4 className="font-semibold text-blue-800 mb-3">📋 Créer une LP</h4>
                 <div className="space-y-2 text-sm text-blue-700">
+                  <p><strong>Compte</strong> : Sélectionner le compte associé (MDL, SPOOT, ZR7...)</p>
                   <p><strong>Code LP</strong> : Identifiant unique (ex: LP-TAB-V1)</p>
-                  <p><strong>Nom</strong> : Description claire</p>
-                  <p><strong>Type source</strong> : Native / Google / Facebook / TikTok</p>
-                  <p><strong>Source</strong> : Taboola, Outbrain, etc.</p>
+                  <p><strong>Type</strong> : Redirect (vers form externe) ou Intégré (form dans LP)</p>
+                  <p><strong>Source</strong> : Taboola, Outbrain, Google Ads, etc.</p>
                   <p><strong>Sélecteur CTA</strong> : Classe CSS des boutons (ex: .cta-btn)</p>
                 </div>
               </div>
 
               <div className="bg-purple-50 rounded-lg p-4">
-                <h4 className="font-semibold text-purple-800 mb-2">🖱️ Tracking CTA</h4>
+                <h4 className="font-semibold text-purple-800 mb-2">🖱️ Tracking CTA (au niveau LP)</h4>
                 <p className="text-sm text-purple-700 mb-3">
-                  Le tracking CTA permet de savoir combien de visiteurs cliquent sur vos boutons CTA.
+                  Le tracking CTA est généré au niveau de chaque LP pour compter les clics sur vos boutons.
                 </p>
                 <div className="bg-white p-3 rounded border border-purple-200">
-                  <p className="text-xs text-purple-600 mb-1">Script à coller sur TOUS les boutons CTA :</p>
+                  <p className="text-xs text-purple-600 mb-1">Pour obtenir le script :</p>
                   <code className="text-xs text-purple-800">
-                    Allez dans "Générateur Scripts" → Sélectionnez la LP → Copiez le code
+                    Générateur Scripts → Sélectionnez la LP → Copiez le code
                   </code>
                 </div>
               </div>
@@ -2514,6 +2521,14 @@ const GuidePage = () => {
                   <li>• <strong>Forms démarrés</strong> : Visiteurs arrivés sur le formulaire</li>
                   <li>• <strong>Leads</strong> : Formulaires soumis avec succès</li>
                 </ul>
+              </div>
+
+              <div className="bg-green-50 rounded-lg p-4">
+                <h4 className="font-semibold text-green-800 mb-2">📋 Dupliquer une LP</h4>
+                <p className="text-sm text-green-700">
+                  Cliquez sur l'icône de duplication pour créer une copie avec un nouveau code.
+                  Utile pour tester différentes versions (A/B testing).
+                </p>
               </div>
             </div>
           )}
@@ -2534,10 +2549,11 @@ const GuidePage = () => {
               <div className="bg-green-50 rounded-lg p-4">
                 <h4 className="font-semibold text-green-800 mb-3">📋 Créer un formulaire</h4>
                 <div className="space-y-2 text-sm text-green-700">
+                  <p><strong>Compte</strong> : Sélectionner le compte associé</p>
                   <p><strong>Code Form</strong> : Identifiant unique (ex: PV-TAB-001)</p>
                   <p><strong>Type produit</strong> : Panneaux / Pompes / Isolation</p>
                   <p><strong>Source</strong> : Taboola, Outbrain, etc.</p>
-                  <p><strong>Clé API CRM</strong> : Fournie par vous à chaque création</p>
+                  <p><strong>Clé API CRM</strong> : Token d'authentification (fourni par le CRM)</p>
                 </div>
               </div>
 
@@ -2545,18 +2561,27 @@ const GuidePage = () => {
                 <h4 className="font-semibold text-orange-800 mb-2">🎯 Tracking conversion</h4>
                 <div className="space-y-3 text-sm">
                   <div className="bg-white p-3 rounded border border-orange-200">
-                    <strong className="text-orange-800">Option 1 : Code</strong>
-                    <p className="text-orange-700">Script déclenché après envoi du téléphone</p>
+                    <strong className="text-orange-800">Redirection</strong>
+                    <p className="text-orange-700">Redirige vers une page /merci/ avec pixel (pas besoin de GTM)</p>
                   </div>
                   <div className="bg-white p-3 rounded border border-orange-200">
-                    <strong className="text-orange-800">Option 2 : Redirection</strong>
-                    <p className="text-orange-700">Redirige vers une page /merci/ avec pixel</p>
+                    <strong className="text-orange-800">GTM / Code JS</strong>
+                    <p className="text-orange-700">Script déclenché après validation du téléphone (10 chiffres)</p>
                   </div>
                   <div className="bg-white p-3 rounded border border-orange-200">
-                    <strong className="text-orange-800">Option 3 : Les deux</strong>
-                    <p className="text-orange-700">Code déclenché + redirection</p>
+                    <strong className="text-orange-800">Aucun</strong>
+                    <p className="text-orange-700">Pas de tracking conversion</p>
                   </div>
                 </div>
+              </div>
+
+              <div className="bg-yellow-50 rounded-lg p-4">
+                <h4 className="font-semibold text-yellow-800 mb-2">⚠️ Validation obligatoire</h4>
+                <ul className="text-sm text-yellow-700 space-y-1">
+                  <li>• <strong>Téléphone</strong> : 10 chiffres obligatoires</li>
+                  <li>• <strong>Nom</strong> : Minimum 2 caractères</li>
+                  <li>• <strong>Code postal</strong> : France métropolitaine (01-95)</li>
+                </ul>
               </div>
             </div>
           )}
@@ -2573,53 +2598,32 @@ const GuidePage = () => {
                 <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
                   <h4 className="font-semibold text-blue-800 flex items-center gap-2">
                     <MousePointer className="w-4 h-4" />
-                    1. Pixel Header (LP + Formulaire)
+                    1. Pixel Header (configuré au niveau COMPTE)
                   </h4>
                   <p className="text-sm text-blue-700 mt-2">
-                    Code Facebook Pixel, Google Ads, etc. à mettre dans le &lt;head&gt; de la page.
+                    Code Facebook Pixel, Google Ads, etc. dans le &lt;head&gt;. Configurez-le dans les paramètres du compte.
                   </p>
-                  <div className="bg-white mt-2 p-2 rounded text-xs text-blue-600">
-                    <strong>Où :</strong> Header de la LP ET du formulaire
-                  </div>
                 </div>
 
                 <div className="p-4 border border-purple-200 rounded-lg bg-purple-50">
                   <h4 className="font-semibold text-purple-800 flex items-center gap-2">
                     <MousePointer className="w-4 h-4" />
-                    2. Tracking CTA (LP seulement)
+                    2. Tracking CTA (généré au niveau LP)
                   </h4>
                   <p className="text-sm text-purple-700 mt-2">
-                    Script sur les boutons CTA pour compter les clics.
+                    Script sur les boutons CTA pour compter les clics. Généré via le Générateur de Scripts.
                   </p>
-                  <div className="bg-white mt-2 p-2 rounded text-xs text-purple-600">
-                    <strong>Où :</strong> Sur TOUS les boutons CTA de la LP
-                  </div>
-                  <div className="bg-white mt-2 p-2 rounded text-xs text-purple-600">
-                    <strong>Généré par :</strong> Le générateur de scripts
-                  </div>
                 </div>
 
                 <div className="p-4 border border-green-200 rounded-lg bg-green-50">
                   <h4 className="font-semibold text-green-800 flex items-center gap-2">
                     <Send className="w-4 h-4" />
-                    3. Tracking Conversion (Formulaire seulement)
+                    3. Tracking Conversion (configuré au niveau COMPTE et FORM)
                   </h4>
                   <p className="text-sm text-green-700 mt-2">
-                    Se déclenche après l'envoi du formulaire (téléphone validé).
+                    Se déclenche après validation du téléphone (10 chiffres). Le code est dans le compte, le type dans le form.
                   </p>
-                  <div className="bg-white mt-2 p-2 rounded text-xs text-green-600">
-                    <strong>Options :</strong> Code JavaScript / Page de redirection / Les deux
-                  </div>
                 </div>
-              </div>
-
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <h4 className="font-semibold text-yellow-800 mb-2">⚠️ Rappel important</h4>
-                <ul className="text-sm text-yellow-700 space-y-1">
-                  <li>• <strong>Pixel</strong> = LP + Formulaire (vous fournissez le code)</li>
-                  <li>• <strong>CTA</strong> = LP seulement (généré par le dashboard)</li>
-                  <li>• <strong>Conversion</strong> = Formulaire seulement (vous choisissez le type)</li>
-                </ul>
               </div>
             </div>
           )}
@@ -2648,6 +2652,206 @@ const GuidePage = () => {
                   <p className="text-sm text-red-700">Erreur lors de l'envoi (retry possible)</p>
                 </div>
                 <div className="p-4 bg-orange-50 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertTriangle className="w-5 h-5 text-orange-600" />
+                    <strong className="text-orange-800">Doublon</strong>
+                  </div>
+                  <p className="text-sm text-orange-700">Le téléphone existe déjà dans le CRM</p>
+                </div>
+                <div className="p-4 bg-slate-50 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <RefreshCw className="w-5 h-5 text-slate-600" />
+                    <strong className="text-slate-800">En attente</strong>
+                  </div>
+                  <p className="text-sm text-slate-600">Envoi en cours ou non encore traité</p>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 rounded-lg p-4">
+                <h4 className="font-semibold text-blue-800 mb-2">📋 Actions disponibles</h4>
+                <ul className="text-sm text-blue-700 space-y-1">
+                  <li>• <strong>Retry</strong> : Réessayer l'envoi d'un lead en échec</li>
+                  <li>• <strong>Supprimer</strong> : Supprimer un lead (test) individuellement</li>
+                  <li>• <strong>Supprimer en masse</strong> : Cocher plusieurs leads et supprimer</li>
+                  <li>• <strong>Export CSV</strong> : Télécharger la liste des leads</li>
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {/* Analytics */}
+          {activeSection === 'analytics' && (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-blue-600" />
+                Analytics
+              </h2>
+
+              <div className="bg-blue-50 rounded-lg p-4">
+                <h4 className="font-semibold text-blue-800 mb-2">📊 Dashboard comparatif</h4>
+                <p className="text-sm text-blue-700">
+                  Comparez les performances par source de diffusion (Native, Google, Facebook, TikTok) et par CRM.
+                  Filtrez par période pour voir l'évolution.
+                </p>
+              </div>
+
+              <div className="bg-green-50 rounded-lg p-4">
+                <h4 className="font-semibold text-green-800 mb-2">🏆 Métriques clés</h4>
+                <ul className="text-sm text-green-700 space-y-1">
+                  <li>• <strong>Clics CTA</strong> : Visiteurs ayant cliqué sur un bouton</li>
+                  <li>• <strong>Forms démarrés</strong> : Visiteurs ayant ouvert le formulaire</li>
+                  <li>• <strong>Leads</strong> : Formulaires soumis avec succès</li>
+                  <li>• <strong>Taux conversion</strong> : % Forms démarrés → Leads</li>
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {/* Generator */}
+          {activeSection === 'generator' && (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <Code className="w-5 h-5 text-blue-600" />
+                Générateur de Scripts
+              </h2>
+
+              <div className="bg-purple-50 rounded-lg p-4">
+                <h4 className="font-semibold text-purple-800 mb-2">🔧 Scripts disponibles</h4>
+                <ul className="text-sm text-purple-700 space-y-2">
+                  <li>
+                    <strong>Script LP (Tracking CTA)</strong>
+                    <p className="text-purple-600">Code à insérer pour tracker les clics sur les boutons CTA</p>
+                  </li>
+                  <li>
+                    <strong>Script Form (Démarrage)</strong>
+                    <p className="text-purple-600">Code pour tracker quand un visiteur ouvre le formulaire</p>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="bg-yellow-50 rounded-lg p-4">
+                <h4 className="font-semibold text-yellow-800 mb-2">⚠️ Important</h4>
+                <p className="text-sm text-yellow-700">
+                  Les codes GTM (Pixel, Conversion) sont configurés au niveau du <strong>Compte</strong>.
+                  Le Générateur ne génère que le code de tracking CTA et Form Start.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Users */}
+          {activeSection === 'users' && (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <Shield className="w-5 h-5 text-blue-600" />
+                Gestion des Utilisateurs
+              </h2>
+
+              <div className="bg-blue-50 rounded-lg p-4">
+                <h4 className="font-semibold text-blue-800 mb-2">👥 Rôles disponibles</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="bg-white p-3 rounded border border-blue-200">
+                    <strong className="text-purple-800">Admin</strong>
+                    <p className="text-blue-700">Accès complet : gestion utilisateurs, suppression, configuration</p>
+                  </div>
+                  <div className="bg-white p-3 rounded border border-blue-200">
+                    <strong className="text-blue-800">Éditeur</strong>
+                    <p className="text-blue-700">Créer et modifier LP, Forms, Comptes. Pas de suppression ni gestion utilisateurs</p>
+                  </div>
+                  <div className="bg-white p-3 rounded border border-blue-200">
+                    <strong className="text-slate-800">Lecteur</strong>
+                    <p className="text-blue-700">Consultation uniquement. Aucune modification possible</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-green-50 rounded-lg p-4">
+                <h4 className="font-semibold text-green-800 mb-2">🔐 Comptes autorisés</h4>
+                <p className="text-sm text-green-700 mb-3">
+                  Vous pouvez restreindre l'accès d'un utilisateur à certains comptes seulement.
+                </p>
+                <div className="space-y-2 text-sm">
+                  <div className="bg-white p-3 rounded border border-green-200">
+                    <strong className="text-green-800">Aucun compte sélectionné</strong>
+                    <p className="text-green-700">→ L'utilisateur a accès à TOUS les comptes</p>
+                  </div>
+                  <div className="bg-white p-3 rounded border border-green-200">
+                    <strong className="text-green-800">Comptes spécifiques sélectionnés</strong>
+                    <p className="text-green-700">→ L'utilisateur ne voit QUE les comptes cochés (ex: AUDIT GREEN, OBJECTIF ACADEMIE)</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-orange-50 rounded-lg p-4">
+                <h4 className="font-semibold text-orange-800 mb-2">📝 Exemple d'utilisation</h4>
+                <p className="text-sm text-orange-700">
+                  Un commercial externe ne travaille que sur le compte "AUDIT GREEN" → 
+                  Créez-lui un compte Lecteur avec uniquement "AUDIT GREEN" dans les comptes autorisés.
+                  Il ne verra que les LP, Forms et Leads de ce compte.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Workflow */}
+          {activeSection === 'workflow' && (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <Zap className="w-5 h-5 text-blue-600" />
+                Workflow Complet
+              </h2>
+
+              <div className="space-y-4">
+                <div className="flex gap-4 items-start">
+                  <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold shrink-0">1</div>
+                  <div>
+                    <h4 className="font-semibold text-slate-800">Configurer le Compte</h4>
+                    <p className="text-sm text-slate-600">Ajouter les logos, les codes GTM (pixel header, conversion), les textes légaux</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 items-start">
+                  <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold shrink-0">2</div>
+                  <div>
+                    <h4 className="font-semibold text-slate-800">Créer la Landing Page</h4>
+                    <p className="text-sm text-slate-600">Définir le code LP, la source (Taboola...), le type (redirect/intégré)</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 items-start">
+                  <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold shrink-0">3</div>
+                  <div>
+                    <h4 className="font-semibold text-slate-800">Générer le script CTA</h4>
+                    <p className="text-sm text-slate-600">Aller dans Générateur Scripts → Copier le code de tracking CTA → Coller sur la LP</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 items-start">
+                  <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold shrink-0">4</div>
+                  <div>
+                    <h4 className="font-semibold text-slate-800">Créer le Formulaire</h4>
+                    <p className="text-sm text-slate-600">Définir le code Form, la clé API CRM, le type de tracking (redirect/GTM)</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 items-start">
+                  <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold shrink-0">5</div>
+                  <div>
+                    <h4 className="font-semibold text-slate-800">Lancer la campagne</h4>
+                    <p className="text-sm text-slate-600">Publier la LP et le formulaire avec les scripts de tracking intégrés</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 items-start">
+                  <div className="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold shrink-0">6</div>
+                  <div>
+                    <h4 className="font-semibold text-slate-800">Suivre les performances</h4>
+                    <p className="text-sm text-slate-600">Dashboard → Comparatif → Analyser clics CTA, forms démarrés, leads, taux conversion</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
                   <div className="flex items-center gap-2 mb-2">
                     <AlertTriangle className="w-5 h-5 text-orange-600" />
                     <strong className="text-orange-800">Doublon</strong>
