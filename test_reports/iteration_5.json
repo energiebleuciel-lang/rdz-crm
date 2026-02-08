@@ -1,0 +1,100 @@
+{
+  "summary": "Completed comprehensive testing of new billing and archiving features. All 21 backend API tests passed (100%). Frontend UI testing verified all new features: Billing page with CRM stats, lead prices configuration in Settings, product type filter on Forms page, and archive functionality.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_billing_archive_features.py",
+    "/app/test_reports/pytest/pytest_billing_archive.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "GET /api/billing/dashboard returns complete CRM stats with leads_originated, leads_received, leads_rerouted_out, leads_rerouted_in, amount_to_invoice, amount_to_pay, net_balance",
+    "POST /api/leads/archive?months=3 correctly archives leads older than specified months to leads_archived collection",
+    "GET /api/leads/archived returns archived leads with pagination support",
+    "PUT /api/crms/{id} with lead_prices correctly updates CRM pricing configuration",
+    "GET /api/forms?product_type=panneaux|pompes|isolation correctly filters forms by product type",
+    "Billing page displays CRM cards with stats per product (PAC, PV, ITE) and configured prices",
+    "Settings page modal shows lead prices inputs with € symbol for PAC, PV, ITE",
+    "Forms page has filter buttons (Tous, PV, PAC, ITE) that correctly filter the forms list"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_billing_archive_features.py"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "email": "energiebleuciel@gmail.com",
+    "password": "92Ruemarxdormoy"
+  },
+  "seed_data_creation": "Used existing CRM data. Updated Maison du Lead with lead_prices: PAC=28€, PV=22€, ITE=35€ and commandes for testing",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All new billing and archiving features tested and working: 1) Billing page (/billing) shows CRM stats with leads originated/received/routed and amounts to invoice/pay, 2) Settings page has 'Configurer Commandes' modal with lead prices inputs (PAC, PV, ITE in euros), 3) Forms page has product type filter buttons (Tous/PV/PAC/ITE), 4) POST /api/leads/archive?months=3 archives old leads, 5) GET /api/leads/archived retrieves archived leads. Lead prices are configured per CRM and used for inter-CRM billing calculations.",
+  "features_tested": [
+    {
+      "feature": "GET /api/billing/dashboard",
+      "status": "PASS",
+      "details": "Returns crm_stats array with leads counts by product, amounts, and transfers"
+    },
+    {
+      "feature": "Billing dashboard date range filter",
+      "status": "PASS",
+      "details": "Accepts date_from and date_to parameters for filtering period"
+    },
+    {
+      "feature": "POST /api/leads/archive",
+      "status": "PASS",
+      "details": "Archives leads older than specified months, requires admin auth"
+    },
+    {
+      "feature": "GET /api/leads/archived",
+      "status": "PASS",
+      "details": "Returns archived leads with count and total, supports date filters"
+    },
+    {
+      "feature": "PUT /api/crms/{id} with lead_prices",
+      "status": "PASS",
+      "details": "Updates CRM with lead_prices object {PAC: float, PV: float, ITE: float}"
+    },
+    {
+      "feature": "GET /api/forms with product_type filter",
+      "status": "PASS",
+      "details": "Filters forms by product_type=panneaux|pompes|isolation"
+    },
+    {
+      "feature": "Frontend: Billing page",
+      "status": "PASS",
+      "details": "Shows CRM cards with stats, date filters, archive button, help section"
+    },
+    {
+      "feature": "Frontend: Settings lead prices modal",
+      "status": "PASS",
+      "details": "Shows PAC/PV/ITE price inputs with € symbol in Configurer Commandes modal"
+    },
+    {
+      "feature": "Frontend: Forms product filter",
+      "status": "PASS",
+      "details": "Filter buttons (Tous/PV/PAC/ITE) correctly filter forms list"
+    },
+    {
+      "feature": "Billing amounts calculation",
+      "status": "PASS",
+      "details": "net_balance = amount_to_invoice - amount_to_pay calculated correctly"
+    },
+    {
+      "feature": "Transfers structure",
+      "status": "PASS",
+      "details": "transfers array contains from_crm, to_crm, count, amount, by_product"
+    }
+  ],
+  "external_apis_note": "ZR7 and MDL are REAL external CRM APIs - not mocked. Lead routing and billing calculations depend on configured commandes and lead_prices."
+}
