@@ -1321,6 +1321,7 @@ const FormsPage = () => {
 
 const AnalyticsPage = () => {
   const { authFetch } = useAuth();
+  const { selectedCRM } = useCRM();
   const [stats, setStats] = useState(null);
   const [winners, setWinners] = useState(null);
   const [period, setPeriod] = useState('week');
@@ -1328,14 +1329,15 @@ const AnalyticsPage = () => {
 
   useEffect(() => {
     loadData();
-  }, [period]);
+  }, [period, selectedCRM]);
 
   const loadData = async () => {
     setLoading(true);
     try {
+      const crmParam = selectedCRM ? `&crm_id=${selectedCRM}` : '';
       const [statsRes, winnersRes] = await Promise.all([
-        authFetch(`${API}/api/analytics/stats?period=${period}`),
-        authFetch(`${API}/api/analytics/winners?period=${period}`)
+        authFetch(`${API}/api/analytics/stats?period=${period}${crmParam}`),
+        authFetch(`${API}/api/analytics/winners?period=${period}${crmParam}`)
       ]);
       if (statsRes.ok) setStats(await statsRes.json());
       if (winnersRes.ok) setWinners(await winnersRes.json());
