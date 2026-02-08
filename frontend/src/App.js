@@ -1175,11 +1175,6 @@ const AccountsPage = () => {
                 <textarea value={formData.gtm_conversion_code || ''} onChange={e => setFormData({ ...formData, gtm_conversion_code: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-xs" rows={4} placeholder="fbq('track', 'Lead');\ndataLayer.push({event: 'conversion'});" />
                 <p className="text-xs text-slate-500 mt-1">Exécuté après validation du téléphone (10 chiffres requis)</p>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Code CTA Click</label>
-                <textarea value={formData.gtm_cta_code || ''} onChange={e => setFormData({ ...formData, gtm_cta_code: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-xs" rows={3} placeholder="dataLayer.push({event: 'cta_click'});" />
-                <p className="text-xs text-slate-500 mt-1">Exécuté au clic sur les boutons CTA</p>
-              </div>
               
               {/* URLs de redirection nommées */}
               <div className="border-t pt-4">
