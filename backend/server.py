@@ -960,17 +960,29 @@ async def update_form(form_id: str, form: FormCreate, user: dict = Depends(get_c
     # Préparer les données de mise à jour
     update_data = form.model_dump()
     
-    # PROTECTION: Préserver la clé API CRM d'origine (ne peut pas être modifiée)
+    # ============ CHAMPS PROTÉGÉS (non modifiables après création) ============
+    
+    # PROTECTION 1: Le CODE FORMULAIRE ne peut JAMAIS être modifié
+    # (sinon les formulaires web externes cesseraient de fonctionner)
+    update_data["code"] = existing_form["code"]
+    
+    # PROTECTION 2: Préserver la clé API CRM d'origine
     if existing_form.get("crm_api_key"):
         update_data["crm_api_key"] = existing_form["crm_api_key"]
     
-    # Préserver internal_api_key
+    # PROTECTION 3: Préserver internal_api_key
     if existing_form.get("internal_api_key"):
         update_data["internal_api_key"] = existing_form["internal_api_key"]
     
-    # Préserver le product_type d'origine (critique pour le routage)
+    # PROTECTION 4: Préserver le product_type d'origine (critique pour le routage)
     if existing_form.get("product_type"):
         update_data["product_type"] = existing_form["product_type"]
+    
+    # PROTECTION 5: Préserver le sub_account_id (lien avec le compte)
+    if existing_form.get("sub_account_id"):
+        update_data["sub_account_id"] = existing_form["sub_account_id"]
+    
+    # =========================================================================
     
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
     
@@ -980,8 +992,8 @@ async def update_form(form_id: str, form: FormCreate, user: dict = Depends(get_c
     )
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Formulaire non trouvé")
-    await log_activity(user["id"], user["email"], "update", "form", form_id, f"Formulaire modifié: {form.code}")
-    return {"success": True}
+    await log_activity(user["id"], user["email"], "update", "form", form_id, f"Formulaire modifié: {existing_form['code']}")
+    return {"success": True, "protected_fields": ["code", "crm_api_key", "product_type", "sub_account_id"]}
 
 @api_router.delete("/forms/{form_id}")
 async def delete_form(form_id: str, user: dict = Depends(require_admin)):
