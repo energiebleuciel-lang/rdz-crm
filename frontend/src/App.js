@@ -1113,10 +1113,13 @@ const LPsPage = () => {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(null);
   const [editingLP, setEditingLP] = useState(null);
+  const [duplicateData, setDuplicateData] = useState({ new_code: '', new_name: '' });
   const [formData, setFormData] = useState({
     sub_account_id: '', code: '', name: '', url: '', source_type: 'native',
-    source_name: '', cta_selector: '.cta-btn', screenshot_url: '', diffusion_url: '', notes: '', status: 'active'
+    source_name: '', cta_selector: '.cta-btn', screenshot_url: '', diffusion_url: '', notes: '', status: 'active',
+    lp_type: 'redirect', form_url: '', generation_notes: ''
   });
 
   useEffect(() => {
@@ -1151,6 +1154,30 @@ const LPsPage = () => {
         setEditingLP(null);
         loadData();
       }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const duplicateLP = async () => {
+    if (!showDuplicateModal || !duplicateData.new_code || !duplicateData.new_name) return;
+    try {
+      const res = await authFetch(`${API}/api/lps/${showDuplicateModal.id}/duplicate?new_code=${encodeURIComponent(duplicateData.new_code)}&new_name=${encodeURIComponent(duplicateData.new_name)}`, { method: 'POST' });
+      if (res.ok) {
+        setShowDuplicateModal(null);
+        setDuplicateData({ new_code: '', new_name: '' });
+        loadData();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const deleteLP = async (id) => {
+    if (!window.confirm('Supprimer cette LP ?')) return;
+    try {
+      await authFetch(`${API}/api/lps/${id}`, { method: 'DELETE' });
+      loadData();
     } catch (e) {
       console.error(e);
     }
