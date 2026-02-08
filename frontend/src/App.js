@@ -1458,7 +1458,7 @@ const FormsPage = () => {
         authFetch(`${API}/api/lps${crmParam}`)
       ]);
       if (formsRes.ok) setForms((await formsRes.json()).forms || []);
-      if (accountsRes.ok) setAccounts((await accountsRes.json()).sub_accounts || []);
+      if (accountsRes.ok) setAccounts((await accountsRes.json()).accounts || []);
       if (lpsRes.ok) setLps((await lpsRes.json()).lps || []);
     } catch (e) {
       console.error(e);
@@ -3349,7 +3349,7 @@ const AssetsPage = () => {
         authFetch(`${API}/api/sub-accounts${crmParam}`)
       ]);
       if (assetsRes.ok) setAssets((await assetsRes.json()).assets || []);
-      if (accountsRes.ok) setAccounts((await accountsRes.json()).sub_accounts || []);
+      if (accountsRes.ok) setAccounts((await accountsRes.json()).accounts || []);
     } catch (e) {
       console.error(e);
     }
