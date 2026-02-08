@@ -168,25 +168,24 @@ class LPCreate(BaseModel):
     status: str = "active"
 
 class FormCreate(BaseModel):
-    account_id: str  # Renamed from sub_account_id
-    lp_ids: List[str] = []  # List of LP IDs linked to this form
-    code: str  # PV-TAB-001
+    account_id: str
+    code: str  # Code unique (PV-TAB-001)
     name: str
+    url: Optional[str] = ""  # URL du formulaire
     product_type: str = "panneaux"  # panneaux, pompes, isolation
     source_type: str = "native"
-    source_name: Optional[str] = ""
-    api_key: Optional[str] = ""  # API key for the CRM
-    # Tracking type - juste le choix, le code est dans le compte
+    source_name: Optional[str] = ""  # Taboola, Outbrain, etc.
+    # Type de formulaire
+    form_type: str = "standalone"  # standalone (page séparée) ou integrated (dans LP)
+    lp_ids: List[str] = []  # LPs liées à ce formulaire
+    # Tracking
     tracking_type: str = "redirect"  # gtm, redirect, none
-    # Override redirect URL (sinon utilise celle du compte)
-    redirect_url_override: Optional[str] = ""
-    screenshot_url: Optional[str] = ""
+    redirect_url_name: Optional[str] = ""  # Nom de l'URL de redirection (depuis le compte)
+    # Stockage du code HTML
+    html_code: Optional[str] = ""  # Code HTML complet du formulaire
+    # Notes
     notes: Optional[str] = ""
     status: str = "active"
-    # Form type
-    form_type: str = "standalone"  # standalone (separate page), integrated (in LP)
-    # Generation notes/comments
-    generation_notes: Optional[str] = ""  # Additional comments for script generation
     # Override template settings (if different from sub-account defaults)
     custom_fields_config: Optional[Dict[str, Any]] = None
 
