@@ -1600,6 +1600,7 @@ const FormsPage = () => {
   const [editingForm, setEditingForm] = useState(null);
   const [duplicateData, setDuplicateData] = useState({ new_code: '', new_name: '', new_crm_api_key: '' });
   const [error, setError] = useState('');
+  const [productFilter, setProductFilter] = useState(''); // Nouveau filtre produit
   const [formData, setFormData] = useState({
     account_id: '', lp_ids: [], code: '', name: '', url: '', product_type: 'panneaux',
     source_type: 'native', source_name: '', tracking_type: 'redirect',
@@ -1609,16 +1610,20 @@ const FormsPage = () => {
 
   useEffect(() => {
     loadData();
-  }, [selectedCRM]);
+  }, [selectedCRM, productFilter]);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const crmParam = selectedCRM ? `?crm_id=${selectedCRM}` : '';
+      let crmParam = selectedCRM ? `crm_id=${selectedCRM}` : '';
+      let productParam = productFilter ? `product_type=${productFilter}` : '';
+      let queryParams = [crmParam, productParam].filter(Boolean).join('&');
+      let queryString = queryParams ? `?${queryParams}` : '';
+      
       const [formsRes, accountsRes, lpsRes] = await Promise.all([
-        authFetch(`${API}/api/forms${crmParam}`),
-        authFetch(`${API}/api/accounts${crmParam}`),
-        authFetch(`${API}/api/lps${crmParam}`)
+        authFetch(`${API}/api/forms${queryString}`),
+        authFetch(`${API}/api/accounts${selectedCRM ? `?crm_id=${selectedCRM}` : ''}`),
+        authFetch(`${API}/api/lps${selectedCRM ? `?crm_id=${selectedCRM}` : ''}`)
       ]);
       if (formsRes.ok) setForms((await formsRes.json()).forms || []);
       if (accountsRes.ok) setAccounts((await accountsRes.json()).accounts || []);
