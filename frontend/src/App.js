@@ -1907,19 +1907,26 @@ const ScriptGeneratorPage = () => {
 const UsersPage = () => {
   const { authFetch, user: currentUser } = useAuth();
   const [users, setUsers] = useState([]);
+  const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [newUser, setNewUser] = useState({ email: '', password: '', nom: '', role: 'viewer' });
+  const [showEditModal, setShowEditModal] = useState(null);
+  const [newUser, setNewUser] = useState({ email: '', password: '', nom: '', role: 'viewer', allowed_accounts: [] });
+  const [editData, setEditData] = useState({ role: '', allowed_accounts: [] });
   const [error, setError] = useState('');
 
   useEffect(() => {
-    loadUsers();
+    loadData();
   }, []);
 
-  const loadUsers = async () => {
+  const loadData = async () => {
     try {
-      const res = await authFetch(`${API}/api/users`);
-      if (res.ok) setUsers((await res.json()).users || []);
+      const [usersRes, accountsRes] = await Promise.all([
+        authFetch(`${API}/api/users`),
+        authFetch(`${API}/api/accounts`)
+      ]);
+      if (usersRes.ok) setUsers((await usersRes.json()).users || []);
+      if (accountsRes.ok) setAccounts((await accountsRes.json()).accounts || []);
     } catch (e) {
       console.error(e);
     }
@@ -1936,8 +1943,8 @@ const UsersPage = () => {
       });
       if (res.ok) {
         setShowModal(false);
-        setNewUser({ email: '', password: '', nom: '', role: 'viewer' });
-        loadUsers();
+        setNewUser({ email: '', password: '', nom: '', role: 'viewer', allowed_accounts: [] });
+        loadData();
       } else {
         const data = await res.json();
         setError(data.detail || 'Erreur lors de la création');
@@ -1947,10 +1954,25 @@ const UsersPage = () => {
     }
   };
 
-  const updateRole = async (userId, role) => {
+  const openEditModal = (user) => {
+    setEditData({
+      role: user.role,
+      allowed_accounts: user.allowed_accounts || []
+    });
+    setShowEditModal(user);
+  };
+
+  const updateUser = async () => {
+    if (!showEditModal) return;
     try {
-      await authFetch(`${API}/api/users/${userId}/role?role=${role}`, { method: 'PUT' });
-      loadUsers();
+      const res = await authFetch(`${API}/api/users/${showEditModal.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(editData)
+      });
+      if (res.ok) {
+        setShowEditModal(null);
+        loadData();
+      }
     } catch (e) {
       console.error(e);
     }
@@ -1960,16 +1982,42 @@ const UsersPage = () => {
     if (!window.confirm('Supprimer cet utilisateur ?')) return;
     try {
       await authFetch(`${API}/api/users/${userId}`, { method: 'DELETE' });
-      loadUsers();
+      loadData();
     } catch (e) {
       console.error(e);
     }
   };
 
+  const toggleAccount = (accountId, isEdit = false) => {
+    if (isEdit) {
+      const current = editData.allowed_accounts || [];
+      if (current.includes(accountId)) {
+        setEditData({ ...editData, allowed_accounts: current.filter(id => id !== accountId) });
+      } else {
+        setEditData({ ...editData, allowed_accounts: [...current, accountId] });
+      }
+    } else {
+      const current = newUser.allowed_accounts || [];
+      if (current.includes(accountId)) {
+        setNewUser({ ...newUser, allowed_accounts: current.filter(id => id !== accountId) });
+      } else {
+        setNewUser({ ...newUser, allowed_accounts: [...current, accountId] });
+      }
+    }
+  };
+
+  const getAccountNames = (accountIds) => {
+    if (!accountIds || accountIds.length === 0) return 'Tous les comptes';
+    return accountIds.map(id => accounts.find(a => a.id === id)?.name || id).join(', ');
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-800">Utilisateurs</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Utilisateurs</h1>
+          <p className="text-sm text-slate-500">Gérez les accès et les comptes autorisés par utilisateur</p>
+        </div>
         <button 
           onClick={() => setShowModal(true)} 
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -1980,92 +2028,192 @@ const UsersPage = () => {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-        <Table
-          columns={[
-            { key: 'nom', label: 'Nom' },
-            { key: 'email', label: 'Email' },
-            { key: 'role', label: 'Rôle', render: (v, row) => (
-              <select 
-                value={v} 
-                onChange={e => updateRole(row.id, e.target.value)}
-                disabled={row.id === currentUser?.id}
-                className="px-2 py-1 border border-slate-300 rounded text-sm"
-              >
-                <option value="admin">Admin</option>
-                <option value="editor">Éditeur</option>
-                <option value="viewer">Lecteur</option>
-              </select>
-            )},
-            { key: 'created_at', label: 'Créé le', render: v => new Date(v).toLocaleDateString('fr-FR') },
-            { key: 'actions', label: '', render: (_, row) => row.id !== currentUser?.id && (
-              <button onClick={() => deleteUser(row.id)} className="p-1 hover:bg-slate-100 rounded text-red-600">
-                <Trash2 className="w-4 h-4" />
-              </button>
-            )}
-          ]}
-          data={users}
-        />
+        {loading ? (
+          <div className="p-8 text-center"><RefreshCw className="w-8 h-8 animate-spin text-blue-600 mx-auto" /></div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Nom</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Email</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Rôle</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Comptes autorisés</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Créé le</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map(user => (
+                  <tr key={user.id} className="border-b border-slate-100 hover:bg-slate-50">
+                    <td className="py-3 px-4 text-sm font-medium text-slate-800">{user.nom}</td>
+                    <td className="py-3 px-4 text-sm text-slate-600">{user.email}</td>
+                    <td className="py-3 px-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        user.role === 'admin' ? 'bg-purple-100 text-purple-700' :
+                        user.role === 'editor' ? 'bg-blue-100 text-blue-700' :
+                        'bg-slate-100 text-slate-700'
+                      }`}>
+                        {user.role === 'admin' ? 'Admin' : user.role === 'editor' ? 'Éditeur' : 'Lecteur'}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="text-xs text-slate-600 max-w-xs truncate" title={getAccountNames(user.allowed_accounts)}>
+                        {(!user.allowed_accounts || user.allowed_accounts.length === 0) ? (
+                          <span className="text-green-600 font-medium">✓ Tous les comptes</span>
+                        ) : (
+                          <span>{user.allowed_accounts.length} compte(s): {getAccountNames(user.allowed_accounts)}</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 text-sm text-slate-500">{new Date(user.created_at).toLocaleDateString('fr-FR')}</td>
+                    <td className="py-3 px-4">
+                      {user.id !== currentUser?.id && (
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => openEditModal(user)} className="p-1.5 hover:bg-slate-100 rounded" title="Modifier">
+                            <Edit className="w-4 h-4 text-slate-600" />
+                          </button>
+                          <button onClick={() => deleteUser(user.id)} className="p-1.5 hover:bg-slate-100 rounded" title="Supprimer">
+                            <Trash2 className="w-4 h-4 text-red-600" />
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Nouvel utilisateur">
-        <form onSubmit={createUser} className="space-y-4">
-          {error && (
-            <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm">{error}</div>
-          )}
-          
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Nom</label>
-            <input
-              type="text"
-              value={newUser.nom}
-              onChange={e => setNewUser({ ...newUser, nom: e.target.value })}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-              required
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
-            <input
-              type="email"
-              value={newUser.email}
-              onChange={e => setNewUser({ ...newUser, email: e.target.value })}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-              required
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Mot de passe</label>
-            <input
-              type="password"
-              value={newUser.password}
-              onChange={e => setNewUser({ ...newUser, password: e.target.value })}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-              required
-              minLength={6}
-            />
-          </div>
-          
+      {/* Modal: Modifier utilisateur */}
+      <Modal isOpen={!!showEditModal} onClose={() => setShowEditModal(null)} title={`Modifier: ${showEditModal?.nom || ''}`}>
+        <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Rôle</label>
             <select
-              value={newUser.role}
-              onChange={e => setNewUser({ ...newUser, role: e.target.value })}
+              value={editData.role}
+              onChange={e => setEditData({ ...editData, role: e.target.value })}
               className="w-full px-3 py-2 border border-slate-300 rounded-lg"
             >
               <option value="viewer">Lecteur (voir seulement)</option>
               <option value="editor">Éditeur (créer, modifier)</option>
               <option value="admin">Admin (tout accès)</option>
             </select>
-            <p className="text-xs text-slate-500 mt-1">
-              {newUser.role === 'viewer' && 'Peut uniquement consulter les données'}
-              {newUser.role === 'editor' && 'Peut créer et modifier LP, Forms, Sous-comptes'}
-              {newUser.role === 'admin' && 'Accès complet incluant gestion utilisateurs et suppression'}
-            </p>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Comptes autorisés</label>
+            <p className="text-xs text-slate-500 mb-3">
+              Sélectionnez les comptes auxquels cet utilisateur a accès. Si aucun n'est sélectionné, l'utilisateur a accès à tous les comptes.
+            </p>
+            <div className="space-y-2 max-h-60 overflow-y-auto border border-slate-200 rounded-lg p-3">
+              {accounts.map(account => (
+                <label key={account.id} className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={(editData.allowed_accounts || []).includes(account.id)}
+                    onChange={() => toggleAccount(account.id, true)}
+                    className="rounded border-slate-300 text-blue-600"
+                  />
+                  <span className="text-sm text-slate-700">{account.name}</span>
+                </label>
+              ))}
+            </div>
+            {editData.allowed_accounts?.length === 0 && (
+              <p className="text-xs text-green-600 mt-2">✓ Accès à tous les comptes</p>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-200">
+            <button type="button" onClick={() => setShowEditModal(null)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">
+              Annuler
+            </button>
+            <button onClick={updateUser} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+              Enregistrer
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal: Nouvel utilisateur */}
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Nouvel utilisateur">
+        <form onSubmit={createUser} className="space-y-4">
+          {error && (
+            <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm">{error}</div>
+          )}
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Nom</label>
+              <input
+                type="text"
+                value={newUser.nom}
+                onChange={e => setNewUser({ ...newUser, nom: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+              <input
+                type="email"
+                value={newUser.email}
+                onChange={e => setNewUser({ ...newUser, email: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                required
+              />
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Mot de passe</label>
+              <input
+                type="password"
+                value={newUser.password}
+                onChange={e => setNewUser({ ...newUser, password: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                required
+                minLength={6}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Rôle</label>
+              <select
+                value={newUser.role}
+                onChange={e => setNewUser({ ...newUser, role: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+              >
+                <option value="viewer">Lecteur</option>
+                <option value="editor">Éditeur</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Comptes autorisés</label>
+            <p className="text-xs text-slate-500 mb-3">
+              Sélectionnez les comptes auxquels cet utilisateur aura accès. Laissez vide pour accès à tous.
+            </p>
+            <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border border-slate-200 rounded-lg p-3">
+              {accounts.map(account => (
+                <label key={account.id} className="flex items-center gap-2 p-1.5 hover:bg-slate-50 rounded cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={(newUser.allowed_accounts || []).includes(account.id)}
+                    onChange={() => toggleAccount(account.id, false)}
+                    className="rounded border-slate-300 text-blue-600"
+                  />
+                  <span className="text-sm text-slate-700">{account.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-200">
             <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">
               Annuler
             </button>
