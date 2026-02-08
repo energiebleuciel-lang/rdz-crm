@@ -1757,6 +1757,7 @@ const FormsPage = () => {
                 </div>
               </div>
             )}
+          </div>
 
           {/* Section: Source */}
           <div className="bg-slate-50 p-4 rounded-lg space-y-4">
