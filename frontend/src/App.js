@@ -1837,8 +1837,20 @@ const FormsPage = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Code formulaire *</label>
-                <input type="text" value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="PV-TAB-001" required />
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Code formulaire * {editingForm && <span className="text-xs text-orange-600 ml-1">🔒 Non modifiable</span>}
+                </label>
+                <input 
+                  type="text" 
+                  value={formData.code} 
+                  onChange={e => !editingForm && setFormData({ ...formData, code: e.target.value })} 
+                  className={`w-full px-3 py-2 border rounded-lg ${editingForm ? 'bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed' : 'border-slate-300'}`}
+                  placeholder="PV-TAB-001" 
+                  required 
+                  readOnly={!!editingForm}
+                  title={editingForm ? "Le code formulaire ne peut pas être modifié (utilisé par les formulaires web externes)" : ""}
+                />
+                {editingForm && <p className="text-xs text-slate-500 mt-1">Ce code est utilisé par les formulaires web. Il ne peut pas être modifié.</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Nom *</label>
@@ -1851,8 +1863,10 @@ const FormsPage = () => {
             </div>
 
             {/* PRODUIT - CHOIX IMPORTANT */}
-            <div className="bg-yellow-100 p-4 rounded-lg border-2 border-yellow-400">
-              <label className="block text-sm font-bold text-yellow-800 mb-2">🎯 TYPE DE PRODUIT *</label>
+            <div className={`p-4 rounded-lg border-2 ${editingForm ? 'bg-slate-50 border-slate-300' : 'bg-yellow-100 border-yellow-400'}`}>
+              <label className={`block text-sm font-bold mb-2 ${editingForm ? 'text-slate-600' : 'text-yellow-800'}`}>
+                🎯 TYPE DE PRODUIT * {editingForm && <span className="text-xs text-orange-600 ml-1">🔒 Non modifiable</span>}
+              </label>
               <div className="flex gap-2">
                 {[
                   { value: 'panneaux', label: '☀️ Panneaux Solaires (PV)', color: 'yellow' },
@@ -1862,21 +1876,25 @@ const FormsPage = () => {
                   <button
                     key={prod.value}
                     type="button"
-                    onClick={() => setFormData({ ...formData, product_type: prod.value })}
+                    onClick={() => !editingForm && setFormData({ ...formData, product_type: prod.value })}
+                    disabled={!!editingForm}
                     className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all ${
                       formData.product_type === prod.value
                         ? prod.color === 'yellow' ? 'bg-yellow-500 text-white ring-2 ring-yellow-600' :
                           prod.color === 'red' ? 'bg-red-500 text-white ring-2 ring-red-600' :
                           'bg-blue-500 text-white ring-2 ring-blue-600'
-                        : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
+                        : editingForm ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
                     }`}
                   >
                     {prod.label}
                   </button>
                 ))}
               </div>
-              <p className="text-xs text-yellow-700 mt-2">
-                ⚠️ Chaque formulaire = 1 seul type de produit. Ce choix détermine le routage et la facturation.
+              <p className={`text-xs mt-2 ${editingForm ? 'text-slate-500' : 'text-yellow-700'}`}>
+                {editingForm 
+                  ? '🔒 Le type de produit ne peut pas être modifié après création (lié au routage et à la facturation).'
+                  : '⚠️ Chaque formulaire = 1 seul type de produit. Ce choix détermine le routage et la facturation.'
+                }
               </p>
             </div>
           </div>
