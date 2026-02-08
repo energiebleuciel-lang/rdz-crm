@@ -1515,10 +1515,10 @@ const FormsPage = () => {
   const [duplicateData, setDuplicateData] = useState({ new_code: '', new_name: '', new_api_key: '' });
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
-    account_id: '', lp_ids: [], code: '', name: '', product_type: 'panneaux',
-    source_type: 'native', source_name: '', api_key: '', tracking_type: 'redirect',
-    tracking_code: '', redirect_url: '', notes: '', status: 'active',
-    form_type: 'standalone', generation_notes: ''
+    account_id: '', lp_ids: [], code: '', name: '', url: '', product_type: 'panneaux',
+    source_type: 'native', source_name: '', tracking_type: 'redirect',
+    redirect_url_name: '', notes: '', status: 'active',
+    form_type: 'standalone', html_code: ''
   });
 
   useEffect(() => {
