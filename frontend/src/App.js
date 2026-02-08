@@ -1818,6 +1818,36 @@ const FormsPage = () => {
                 <input type="url" value={formData.url || ''} onChange={e => setFormData({ ...formData, url: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="https://..." />
               </div>
             </div>
+
+            {/* PRODUIT - CHOIX IMPORTANT */}
+            <div className="bg-yellow-100 p-4 rounded-lg border-2 border-yellow-400">
+              <label className="block text-sm font-bold text-yellow-800 mb-2">🎯 TYPE DE PRODUIT *</label>
+              <div className="flex gap-2">
+                {[
+                  { value: 'panneaux', label: '☀️ Panneaux Solaires (PV)', color: 'yellow' },
+                  { value: 'pompes', label: '🔥 Pompes à Chaleur (PAC)', color: 'red' },
+                  { value: 'isolation', label: '🏠 Isolation (ITE)', color: 'blue' }
+                ].map(prod => (
+                  <button
+                    key={prod.value}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, product_type: prod.value })}
+                    className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all ${
+                      formData.product_type === prod.value
+                        ? prod.color === 'yellow' ? 'bg-yellow-500 text-white ring-2 ring-yellow-600' :
+                          prod.color === 'red' ? 'bg-red-500 text-white ring-2 ring-red-600' :
+                          'bg-blue-500 text-white ring-2 ring-blue-600'
+                        : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    {prod.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-yellow-700 mt-2">
+                ⚠️ Chaque formulaire = 1 seul type de produit. Ce choix détermine le routage et la facturation.
+              </p>
+            </div>
           </div>
 
           {/* Section: Type et Tracking */}
