@@ -138,6 +138,7 @@ const Sidebar = () => {
     { path: '/forms', icon: FileText, label: 'Formulaires' },
     { path: '/accounts', icon: Building, label: 'Sous-comptes' },
     { path: '/generator', icon: Code, label: 'Générateur Scripts' },
+    { path: '/guide', icon: HelpCircle, label: 'Guide d\'utilisation' },
   ];
 
   const adminItems = [
