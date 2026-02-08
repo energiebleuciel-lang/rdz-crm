@@ -764,13 +764,22 @@ const SubAccountsPage = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingAccount, setEditingAccount] = useState(null);
   const [showLegalModal, setShowLegalModal] = useState(null);
+  const [activeTab, setActiveTab] = useState('general'); // general, logos, legal, tracking, template
   const defaultFormData = {
     crm_id: '', name: '', domain: '', product_type: 'solaire',
     logo_left_url: '', logo_right_url: '', favicon_url: '',
     privacy_policy_text: '', legal_mentions_text: '',
     layout: 'center', primary_color: '#3B82F6',
     tracking_pixel_header: '', tracking_cta_code: '', tracking_conversion_type: 'redirect',
-    tracking_conversion_code: '', tracking_redirect_url: '', notes: ''
+    tracking_conversion_code: '', tracking_redirect_url: '', notes: '',
+    // Form template config
+    form_template: {
+      phone_required: true, phone_digits: 10, nom_required: true,
+      show_email: true, show_departement: true, show_code_postal: true,
+      show_type_logement: true, show_statut_occupant: true, show_facture: true,
+      postal_code_france_metro_only: true, form_logo_left_asset_id: '', form_logo_right_asset_id: '',
+      form_style: 'modern'
+    }
   };
   const [formData, setFormData] = useState(defaultFormData);
 
