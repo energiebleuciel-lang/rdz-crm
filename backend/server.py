@@ -1067,53 +1067,107 @@ async def get_leads(
 
 @api_router.post("/leads/retry/{lead_id}")
 async def retry_lead(lead_id: str, user: dict = Depends(get_current_user)):
+    """Retry sending a single lead to CRM"""
     lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
     if not lead:
         raise HTTPException(status_code=404, detail="Lead non trouvé")
     
+    # Vérifier que le lead a un téléphone valide
+    if not lead.get("phone"):
+        return {"success": False, "error": "Lead sans numéro de téléphone"}
+    
     # Get API config
     form_config = await db.forms.find_one({"code": lead.get("form_code")})
-    api_key = form_config.get("api_key") if form_config else "0c21a444-2fc9-412f-9092-658cb6d62de6"
-    api_url = lead.get("api_url", "https://maison-du-lead.com/lead/api/create_lead/")
+    if not form_config:
+        return {"success": False, "error": "Configuration formulaire non trouvée"}
     
-    lead_payload = {
-        "phone": lead["phone"],
-        "register_date": lead["register_date"],
-        "nom": lead["nom"],
-        "prenom": "",
-        "email": lead.get("email", ""),
-        "custom_fields": {
-            "departement": {"value": lead.get("departement", "")},
-            "type_logement": {"value": lead.get("type_logement", "")},
-            "statut_occupant": {"value": lead.get("statut_occupant", "")},
-            "facture_electricite": {"value": lead.get("facture_electricite", "")}
-        }
-    }
+    # Get account and CRM info
+    account_id = form_config.get("account_id") or form_config.get("sub_account_id")
+    account = await db.accounts.find_one({"id": account_id}) if account_id else None
+    crm = await db.crms.find_one({"id": account.get("crm_id")}) if account else None
     
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as http_client:
-            response = await http_client.post(
-                api_url,
-                json=lead_payload,
-                headers={"Authorization": api_key, "Content-Type": "application/json"}
-            )
-            data = response.json()
-            
-            if response.status_code == 201:
-                api_status = "success"
-            elif "doublon" in str(data.get("message", "")).lower():
-                api_status = "duplicate"
-            else:
-                api_status = "failed"
-            
-            await db.leads.update_one(
-                {"id": lead_id},
-                {"$set": {"api_status": api_status, "api_response": str(data), "retried_at": datetime.now(timezone.utc).isoformat()}}
-            )
-            
-            return {"success": True, "status": api_status}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
+    api_url = crm.get("api_url") if crm else lead.get("api_url", "")
+    api_key = form_config.get("crm_api_key") or form_config.get("api_key") or ""
+    
+    if not api_url or not api_key:
+        return {"success": False, "error": "Configuration API manquante (URL ou clé)"}
+    
+    # Use the helper function
+    api_status, api_response = await send_lead_to_crm(lead, api_url, api_key)
+    
+    await db.leads.update_one(
+        {"id": lead_id},
+        {"$set": {
+            "api_status": api_status, 
+            "api_response": api_response, 
+            "retried_at": datetime.now(timezone.utc).isoformat(),
+            "sent_to_crm": api_status in ["success", "duplicate"],
+            "retry_count": lead.get("retry_count", 0) + 1
+        }}
+    )
+    
+    return {"success": True, "status": api_status}
+
+@api_router.post("/leads/retry-failed")
+async def retry_failed_leads(hours: int = 24, user: dict = Depends(get_current_user)):
+    """
+    Job nocturne - Retry tous les leads échoués des dernières X heures
+    À appeler via cron à 03h00: curl -X POST /api/leads/retry-failed?hours=24
+    """
+    cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
+    
+    # Trouver les leads échoués dans la période
+    failed_leads = await db.leads.find({
+        "api_status": "failed",
+        "sent_to_crm": False,
+        "created_at": {"$gte": cutoff_time.isoformat()},
+        "phone": {"$exists": True, "$ne": ""}
+    }, {"_id": 0}).to_list(1000)
+    
+    results = {"total": len(failed_leads), "success": 0, "failed": 0, "skipped": 0}
+    
+    for lead in failed_leads:
+        # Get form config
+        form_config = await db.forms.find_one({"code": lead.get("form_code")})
+        if not form_config:
+            results["skipped"] += 1
+            continue
+        
+        # Get account and CRM info
+        account_id = form_config.get("account_id") or form_config.get("sub_account_id")
+        account = await db.accounts.find_one({"id": account_id}) if account_id else None
+        crm = await db.crms.find_one({"id": account.get("crm_id")}) if account else None
+        
+        api_url = crm.get("api_url") if crm else ""
+        api_key = form_config.get("crm_api_key") or form_config.get("api_key") or ""
+        
+        if not api_url or not api_key:
+            results["skipped"] += 1
+            continue
+        
+        # Retry send
+        api_status, api_response = await send_lead_to_crm(lead, api_url, api_key)
+        
+        await db.leads.update_one(
+            {"id": lead["id"]},
+            {"$set": {
+                "api_status": api_status,
+                "api_response": api_response,
+                "retried_at": datetime.now(timezone.utc).isoformat(),
+                "sent_to_crm": api_status in ["success", "duplicate"],
+                "retry_count": lead.get("retry_count", 0) + 1
+            }}
+        )
+        
+        if api_status in ["success", "duplicate"]:
+            results["success"] += 1
+        else:
+            results["failed"] += 1
+    
+    await log_activity(user["id"], user["email"], "retry_batch", "leads", "", 
+                      f"Retry nocturne: {results['success']} succès, {results['failed']} échecs, {results['skipped']} ignorés")
+    
+    return {"success": True, "results": results}
 
 @api_router.delete("/leads/{lead_id}")
 async def delete_lead(lead_id: str, user: dict = Depends(get_current_user)):
