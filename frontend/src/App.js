@@ -810,6 +810,7 @@ const AccountsPage = () => {
   const defaultFormData = {
     crm_id: '', name: '', domain: '', product_types: ['solaire'],
     logo_main_url: '', logo_secondary_url: '', logo_small_url: '', favicon_url: '',
+    images: [],  // Bibliothèque d'images [{name: "Bannière", url: "..."}, ...]
     privacy_policy_text: '', legal_mentions_text: '',
     layout: 'center', primary_color: '#3B82F6', secondary_color: '#1E40AF', style_officiel: false,
     // GTM Tracking - au niveau du compte
@@ -826,6 +827,7 @@ const AccountsPage = () => {
   };
   const [formData, setFormData] = useState(defaultFormData);
   const [newRedirectUrl, setNewRedirectUrl] = useState({ name: '', url: '' });
+  const [newImage, setNewImage] = useState({ name: '', url: '' });
 
   useEffect(() => { loadData(); }, [selectedCRM]);
 
