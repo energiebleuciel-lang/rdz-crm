@@ -527,9 +527,9 @@ const DashboardPage = () => {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard icon={Users} label="Clics CTA" value={stats?.cta_clicks || 0} color="purple" />
         <StatCard icon={FileText} label="Forms démarrés" value={stats?.forms_started || 0} color="blue" />
         <StatCard icon={CheckCircle} label="Leads reçus" value={stats?.leads_total || 0} color="green" />
+        <StatCard icon={Send} label="Envoyés CRM" value={stats?.leads_sent || 0} color="purple" />
         <StatCard icon={XCircle} label="Échecs" value={stats?.leads_failed || 0} color="red" />
       </div>
 
@@ -539,11 +539,11 @@ const DashboardPage = () => {
           <div className="space-y-3">
             <div>
               <div className="flex justify-between text-sm mb-1">
-                <span className="text-slate-600">CTA → Formulaire</span>
-                <span className="font-medium">{stats?.cta_to_form_rate || 0}%</span>
+                <span className="text-slate-600">Formulaire → Lead</span>
+                <span className="font-medium">{stats?.form_to_lead_rate || 0}%</span>
               </div>
               <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-blue-500 rounded-full" style={{ width: `${stats?.cta_to_form_rate || 0}%` }} />
+                <div className="h-full bg-blue-500 rounded-full" style={{ width: `${stats?.form_to_lead_rate || 0}%` }} />
               </div>
             </div>
             <div>
