@@ -140,7 +140,6 @@ const Sidebar = () => {
 
   // Section: Gestion
   const gestionItems = [
-    { path: '/leads', icon: Users, label: 'Leads' },
     { path: '/accounts', icon: Building, label: 'Comptes' },
     { path: '/lps', icon: Layers, label: 'Landing Pages' },
     { path: '/forms', icon: FileText, label: 'Formulaires' },
