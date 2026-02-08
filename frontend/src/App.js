@@ -1724,9 +1724,10 @@ const FormsPage = () => {
               return <span className={`text-xs font-bold px-2 py-1 rounded ${productColors[v] || 'bg-slate-100 text-slate-700'}`}>{productLabels[v] || v}</span>;
             }},
             { key: 'source_name', label: 'Source' },
-            { key: 'stats', label: 'Démarrés', render: v => <span className="text-blue-600 font-medium">{v?.started || 0}</span> },
-            { key: 'stats', label: 'Complétés', render: v => <span className="text-green-600 font-medium">{v?.completed || 0}</span> },
-            { key: 'stats', label: '% Transfo', render: v => {
+            { key: 'stats_started', label: 'Démarrés', render: (_, row) => <span className="text-blue-600 font-medium">{row.stats?.started || 0}</span> },
+            { key: 'stats_completed', label: 'Complétés', render: (_, row) => <span className="text-green-600 font-medium">{row.stats?.completed || 0}</span> },
+            { key: 'stats_transfo', label: '% Transfo', render: (_, row) => {
+              const v = row.stats;
               const rate = v?.conversion_rate || 0;
               const color = rate >= 50 ? 'bg-green-100 text-green-700' : rate >= 25 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700';
               return <span className={`text-xs font-bold px-2 py-0.5 rounded ${color}`}>{rate}%</span>;
