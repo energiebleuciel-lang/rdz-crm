@@ -198,14 +198,23 @@ class FormCreate(BaseModel):
     custom_fields_config: Optional[Dict[str, Any]] = None
 
 class LeadData(BaseModel):
-    phone: str
-    nom: str
+    # Champs requis par ZR7/MDL API
+    phone: str  # Obligatoire pour l'envoi
+    register_date: Optional[int] = None  # Timestamp auto-généré si absent
+    # Champs optionnels (tous de la doc API)
+    nom: Optional[str] = ""
+    prenom: Optional[str] = ""
+    civilite: Optional[str] = ""  # M., Mme
     email: Optional[str] = ""
+    # Custom fields ZR7/MDL
     departement: Optional[str] = ""
     code_postal: Optional[str] = ""
-    type_logement: Optional[str] = ""
-    statut_occupant: Optional[str] = ""
+    superficie_logement: Optional[str] = ""  # "120m²"
+    chauffage_actuel: Optional[str] = ""  # "Électrique", "Gaz", "Fioul"
+    type_logement: Optional[str] = ""  # Maison, Appartement
+    statut_occupant: Optional[str] = ""  # Propriétaire, Locataire
     facture_electricite: Optional[str] = ""
+    # Référence formulaire/LP
     form_id: Optional[str] = "default"
     form_code: Optional[str] = ""
     lp_code: Optional[str] = ""
