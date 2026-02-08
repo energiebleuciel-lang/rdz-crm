@@ -17,10 +17,10 @@ CRM multi-tenant pour centraliser et redistribuer les leads solaires (PAC, PV, I
      ↓
 [Anti-doublon] → Même téléphone + même produit/jour ?
      ↓ (non)
-[Routage intelligent] → Si commandes configurées + formulaire non exclu
+[Routage intelligent] → Si commandes configurées + formulaire non exclu + limite non atteinte
      → CRM origine a commande ? → Envoi vers origine
-     → Sinon, autre CRM a commande ? → Reroutage
-     → Aucun ? → Fallback vers origine
+     → Sinon, autre CRM a commande + limite OK ? → Reroutage
+     → Aucun ou limite atteinte ? → Fallback vers origine
      ↓
 [ZR7 ou MDL] → Via API externe
      ↓
@@ -30,23 +30,36 @@ CRM multi-tenant pour centraliser et redistribuer les leads solaires (PAC, PV, I
 ## Fonctionnalités Implémentées
 
 ### Phase 10 - Finalisation (08/02/2026)
+- [x] **Sélection produit visible** : Gros boutons jaunes PAC/PV/ITE dans le formulaire
+- [x] **Limites inter-CRM** : Nombre max de leads par produit par mois qu'un CRM peut recevoir
+- [x] **Nettoyage CTA** : Suppression des stats CTA non utilisées
 - [x] **Marquage facturation** : Bouton "Marquer ce mois comme facturé" avec historique
-- [x] **Exclusion routage** : Checkbox par formulaire pour éviter reroutage (doublons cross-CRM)
-- [x] **Anti-doublon amélioré** : Même téléphone + même produit/jour (PAC, PV, ITE indépendants)
-- [x] **Guide refait** : 7 sections (Intro, Démarrage, Formulaires, Routage, Facturation, API, FAQ)
-- [x] **Filtres produit** : Boutons Tous/PV/PAC/ITE sur page Formulaires
+- [x] **Exclusion routage** : Checkbox par formulaire pour éviter reroutage
+- [x] **Anti-doublon amélioré** : Même téléphone + même produit/jour
+- [x] **Guide refait** : 7 sections claires
 
-### Phase 9 - Facturation Inter-CRM
+### Phases Précédentes
 - [x] Dashboard facturation avec stats par CRM
 - [x] Configuration prix par lead (PAC/PV/ITE en €)
 - [x] Archivage automatique (> 3 mois)
-
-### Phases Précédentes
 - [x] Gestion Comptes, LPs, Formulaires
-- [x] Générateur de Briefs avec validations automatiques
+- [x] Générateur de Briefs
 - [x] Routage intelligent basé sur commandes (départements 01-95)
 - [x] Rôles Admin/Éditeur/Lecteur
 - [x] Job nocturne retry leads échoués
+
+## Configuration CRM (Paramètres)
+
+### Commandes
+- Départements par produit (PAC, PV, ITE) où ce CRM accepte des leads
+- Si un département n'est pas dans les commandes, le lead peut être rerouté
+
+### Prix par lead
+- Prix en € par produit pour calculer la facturation inter-CRM
+
+### Limites de routage
+- Nombre max de leads inter-CRM par produit par mois (0 = illimité)
+- Si limite atteinte, pas de reroutage vers ce CRM
 
 ## Règles Métier Clés
 
@@ -56,12 +69,11 @@ CRM multi-tenant pour centraliser et redistribuer les leads solaires (PAC, PV, I
 
 ### Exclusion Routage Inter-CRM
 - Formulaires de redirection marqués "Exclure du routage"
-- Évite de livrer 2x le même client (ex: PAC sur MDL + PV via redirect sur ZR7)
+- Évite de livrer 2x le même client cross-CRM
 
-### Routage Intelligent (Optionnel)
-- S'active uniquement si commandes configurées
-- Formulaire non exclu + département présent
-- Fallback vers CRM d'origine si aucune commande trouvée
+### Limites de Routage
+- Ex: ZR7 peut recevoir max 100 PAC/mois des autres CRMs
+- Si limite atteinte, les leads restent sur leur CRM d'origine
 
 ## Endpoints Principaux
 
@@ -77,50 +89,37 @@ POST /api/leads/archive        # Archiver > 3 mois
 GET /api/billing/dashboard     # Stats par CRM et période
 POST /api/billing/mark-invoiced # Marquer période facturée
 GET /api/billing/history       # Historique facturations
-DELETE /api/billing/history/{id} # Supprimer enregistrement
 ```
 
-### Formulaires
+### CRM Configuration
 ```
-GET /api/forms?product_type=panneaux # Avec filtre produit
-POST /api/forms               # Créer (avec exclude_from_routing)
-PUT /api/forms/{id}           # Modifier
+PUT /api/crms/{id}
+Body: {
+  "commandes": {"PAC": ["75", "92"], "PV": ["13"], "ITE": []},
+  "lead_prices": {"PAC": 25.0, "PV": 20.0, "ITE": 30.0},
+  "routing_limits": {"PAC": 100, "PV": 200, "ITE": 50}
+}
 ```
 
 ## Schéma DB
+
+### crms
+```json
+{
+  "name": "Maison du Lead",
+  "slug": "mdl",
+  "commandes": {"PAC": ["75", "92"], "PV": [], "ITE": []},
+  "lead_prices": {"PAC": 28.0, "PV": 22.0, "ITE": 35.0},
+  "routing_limits": {"PAC": 100, "PV": 200, "ITE": 0}
+}
+```
 
 ### forms
 ```json
 {
   "code": "PV-TAB-001",
   "product_type": "panneaux",
-  "crm_api_key": "uuid",
-  "internal_api_key": "uuid",
   "exclude_from_routing": false
-}
-```
-
-### leads
-```json
-{
-  "phone": "0612345678",
-  "product_type": "PV",
-  "origin_crm_id": "uuid",
-  "target_crm_id": "uuid",
-  "routing_reason": "direct_to_origin | rerouted_to_zr7"
-}
-```
-
-### billing_history
-```json
-{
-  "year": 2026,
-  "month": 2,
-  "from_crm_id": "uuid",
-  "to_crm_id": "uuid",
-  "amount": 500.00,
-  "lead_count": 20,
-  "notes": "Facture #123"
 }
 ```
 
@@ -131,14 +130,14 @@ PUT /api/forms/{id}           # Modifier
 ## Backlog
 
 ### P0 - Sécurité
-- [ ] Backend filtrage par allowed_accounts (faille sécurité)
+- [ ] Backend filtrage par allowed_accounts
 
 ### P1 - Améliorations
 - [ ] Graphiques visuels dashboard facturation
 - [ ] Export CSV des leads/facturations
 
 ### P2 - Technique
-- [ ] Refactoring App.js (4800+ lignes)
+- [ ] Refactoring App.js (5000+ lignes)
 - [ ] Refactoring server.py en modules
 
 ## Déploiement
