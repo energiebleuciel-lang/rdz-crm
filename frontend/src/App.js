@@ -4274,6 +4274,55 @@ const BillingPage = () => {
         </div>
       )}
 
+      {/* Historique des facturations */}
+      {billingHistory.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200">
+          <div className="p-4 border-b border-slate-200">
+            <h3 className="font-semibold text-slate-800">Historique des facturations</h3>
+            <p className="text-xs text-slate-500">Périodes marquées comme facturées</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50">
+                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Période</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">De</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Vers</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">Leads</th>
+                  <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">Montant</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Notes</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {billingHistory.map((record) => (
+                  <tr key={record.id} className="border-b border-slate-100">
+                    <td className="py-3 px-4 text-sm font-medium text-slate-700">
+                      {String(record.month).padStart(2, '0')}/{record.year}
+                    </td>
+                    <td className="py-3 px-4 text-sm text-slate-700">{record.from_crm_name}</td>
+                    <td className="py-3 px-4 text-sm text-slate-700">→ {record.to_crm_name}</td>
+                    <td className="py-3 px-4 text-sm text-center text-slate-600">{record.lead_count}</td>
+                    <td className="py-3 px-4 text-sm text-right font-bold text-green-600">{formatCurrency(record.amount)}</td>
+                    <td className="py-3 px-4 text-sm text-slate-500 max-w-[200px] truncate">{record.notes || '-'}</td>
+                    <td className="py-3 px-4 text-center">
+                      <button
+                        onClick={() => deleteBillingRecord(record.id)}
+                        className="p-1 text-red-600 hover:bg-red-100 rounded"
+                        title="Supprimer"
+                        data-testid={`delete-billing-${record.id}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Aide */}
       <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
         <h4 className="font-medium text-blue-800 mb-2">Comment ça fonctionne ?</h4>
@@ -4287,6 +4336,102 @@ const BillingPage = () => {
           <li>• Configurez les prix dans <strong>Paramètres → Configurer Commandes</strong></li>
         </ul>
       </div>
+
+      {/* Modal Marquer comme facturé */}
+      <Modal isOpen={showInvoiceModal} onClose={() => setShowInvoiceModal(false)} title="Marquer ce mois comme facturé">
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600">
+            Enregistrez une facturation inter-CRM pour la période sélectionnée ({dateFrom ? new Date(dateFrom).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : 'Non définie'}).
+          </p>
+          
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">CRM payeur *</label>
+              <select
+                value={invoiceData.from_crm_id}
+                onChange={e => setInvoiceData({ ...invoiceData, from_crm_id: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                data-testid="invoice-from-crm"
+              >
+                <option value="">Sélectionner</option>
+                {billingData?.crm_stats?.map(crm => (
+                  <option key={crm.crm_id} value={crm.crm_id}>{crm.crm_name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">CRM receveur *</label>
+              <select
+                value={invoiceData.to_crm_id}
+                onChange={e => setInvoiceData({ ...invoiceData, to_crm_id: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                data-testid="invoice-to-crm"
+              >
+                <option value="">Sélectionner</option>
+                {billingData?.crm_stats?.map(crm => (
+                  <option key={crm.crm_id} value={crm.crm_id}>{crm.crm_name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Nombre de leads</label>
+              <input
+                type="number"
+                value={invoiceData.lead_count}
+                onChange={e => setInvoiceData({ ...invoiceData, lead_count: parseInt(e.target.value) || 0 })}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                min="0"
+                data-testid="invoice-lead-count"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Montant (€)</label>
+              <input
+                type="number"
+                value={invoiceData.amount}
+                onChange={e => setInvoiceData({ ...invoiceData, amount: parseFloat(e.target.value) || 0 })}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                min="0"
+                step="0.01"
+                data-testid="invoice-amount"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+            <textarea
+              value={invoiceData.notes}
+              onChange={e => setInvoiceData({ ...invoiceData, notes: e.target.value })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+              rows={2}
+              placeholder="Notes optionnelles..."
+              data-testid="invoice-notes"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-200">
+            <button
+              type="button"
+              onClick={() => setShowInvoiceModal(false)}
+              className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={markAsInvoiced}
+              disabled={!invoiceData.from_crm_id || !invoiceData.to_crm_id}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+              data-testid="confirm-invoice-btn"
+            >
+              Marquer comme facturé
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
