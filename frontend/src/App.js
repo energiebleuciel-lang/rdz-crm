@@ -3057,7 +3057,7 @@ Content-Type: application/json
   "phone": "0612345678",
   "nom": "Dupont",
   "prenom": "Jean",
-  "email": "email@example.com",
+  "email": "client@email.fr",
   "departement": "75",
   "code_postal": "75001",
   "civilite": "M.",
