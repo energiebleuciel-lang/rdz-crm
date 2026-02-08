@@ -1438,7 +1438,7 @@ const FormsPage = () => {
   const [editingForm, setEditingForm] = useState(null);
   const [duplicateData, setDuplicateData] = useState({ new_code: '', new_name: '', new_api_key: '' });
   const [formData, setFormData] = useState({
-    sub_account_id: '', lp_ids: [], code: '', name: '', product_type: 'panneaux',
+    account_id: '', lp_ids: [], code: '', name: '', product_type: 'panneaux',
     source_type: 'native', source_name: '', api_key: '', tracking_type: 'redirect',
     tracking_code: '', redirect_url: '', notes: '', status: 'active',
     form_type: 'standalone', generation_notes: ''
@@ -1454,7 +1454,7 @@ const FormsPage = () => {
       const crmParam = selectedCRM ? `?crm_id=${selectedCRM}` : '';
       const [formsRes, accountsRes, lpsRes] = await Promise.all([
         authFetch(`${API}/api/forms${crmParam}`),
-        authFetch(`${API}/api/sub-accounts${crmParam}`),
+        authFetch(`${API}/api/accounts${crmParam}`),
         authFetch(`${API}/api/lps${crmParam}`)
       ]);
       if (formsRes.ok) setForms((await formsRes.json()).forms || []);
