@@ -1418,6 +1418,7 @@ const AnalyticsPage = () => {
 
 const ScriptGeneratorPage = () => {
   const { authFetch } = useAuth();
+  const { selectedCRM } = useCRM();
   const [lps, setLps] = useState([]);
   const [forms, setForms] = useState([]);
   const [selectedLP, setSelectedLP] = useState('');
@@ -1427,13 +1428,14 @@ const ScriptGeneratorPage = () => {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [selectedCRM]);
 
   const loadData = async () => {
     try {
+      const crmParam = selectedCRM ? `?crm_id=${selectedCRM}` : '';
       const [lpsRes, formsRes] = await Promise.all([
-        authFetch(`${API}/api/lps`),
-        authFetch(`${API}/api/forms`)
+        authFetch(`${API}/api/lps${crmParam}`),
+        authFetch(`${API}/api/forms${crmParam}`)
       ]);
       if (lpsRes.ok) setLps((await lpsRes.json()).lps || []);
       if (formsRes.ok) setForms((await formsRes.json()).forms || []);
