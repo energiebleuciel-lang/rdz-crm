@@ -857,7 +857,12 @@ const AccountsPage = () => {
 
   const editAccount = (account) => {
     setEditingAccount(account);
-    setFormData({ ...defaultFormData, ...account, product_types: account.product_types || ['solaire'] });
+    setFormData({ 
+      ...defaultFormData, 
+      ...account, 
+      product_types: account.product_types || ['solaire'],
+      named_redirect_urls: account.named_redirect_urls || []
+    });
     setActiveTab('general');
     setShowModal(true);
   };
@@ -865,6 +870,22 @@ const AccountsPage = () => {
   const deleteAccount = async (id) => {
     if (!window.confirm('Supprimer ce compte ?')) return;
     try { await authFetch(`${API}/api/accounts/${id}`, { method: 'DELETE' }); loadData(); } catch (e) { console.error(e); }
+  };
+
+  const addRedirectUrl = () => {
+    if (!newRedirectUrl.name || !newRedirectUrl.url) return;
+    setFormData({
+      ...formData,
+      named_redirect_urls: [...(formData.named_redirect_urls || []), { ...newRedirectUrl }]
+    });
+    setNewRedirectUrl({ name: '', url: '' });
+  };
+
+  const removeRedirectUrl = (index) => {
+    setFormData({
+      ...formData,
+      named_redirect_urls: formData.named_redirect_urls.filter((_, i) => i !== index)
+    });
   };
 
   const toggleProductType = (slug) => {
