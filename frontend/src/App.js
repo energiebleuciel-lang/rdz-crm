@@ -2718,14 +2718,12 @@ const GuidePage = () => {
 
   const sections = [
     { id: 'intro', label: 'Introduction', icon: BookOpen },
-    { id: 'architecture', label: 'Architecture', icon: Database },
-    { id: 'accounts', label: 'Comptes', icon: Building },
+    { id: 'quickstart', label: 'Démarrage Rapide', icon: Zap },
     { id: 'forms', label: 'Formulaires', icon: FileText },
-    { id: 'lps', label: 'Landing Pages', icon: Layers },
-    { id: 'leads', label: 'Flux des Leads', icon: Send },
-    { id: 'generator', label: 'Générateur Briefs', icon: Code },
-    { id: 'users', label: 'Utilisateurs', icon: Shield },
-    { id: 'workflow', label: 'Workflow Complet', icon: Zap },
+    { id: 'routing', label: 'Routage Inter-CRM', icon: RefreshCw },
+    { id: 'billing', label: 'Facturation', icon: TrendingUp },
+    { id: 'api', label: 'API & Intégration', icon: Code },
+    { id: 'faq', label: 'FAQ', icon: HelpCircle },
   ];
 
   return (
