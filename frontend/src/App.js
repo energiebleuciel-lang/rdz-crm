@@ -1478,6 +1478,7 @@ const FormsPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     const url = editingForm ? `${API}/api/forms/${editingForm.id}` : `${API}/api/forms`;
     const method = editingForm ? 'PUT' : 'POST';
     
@@ -1487,9 +1488,15 @@ const FormsPage = () => {
         setShowModal(false);
         setEditingForm(null);
         loadData();
+      } else {
+        const data = await res.json();
+        setError(data.detail || 'Erreur lors de la création');
       }
     } catch (e) {
       console.error(e);
+      setError('Erreur de connexion');
+    }
+  };
     }
   };
 
