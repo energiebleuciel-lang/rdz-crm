@@ -1367,7 +1367,22 @@ const FormsPage = () => {
   const [formData, setFormData] = useState({
     sub_account_id: '', lp_ids: [], code: '', name: '', product_type: 'panneaux',
     source_type: 'native', source_name: '', api_key: '', tracking_type: 'redirect',
-    tracking_code: '', redirect_url: '', notes: '', status: 'active'
+const FormsPage = () => {
+  const { authFetch } = useAuth();
+  const { selectedCRM } = useCRM();
+  const [forms, setForms] = useState([]);
+  const [accounts, setAccounts] = useState([]);
+  const [lps, setLps] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(null);
+  const [editingForm, setEditingForm] = useState(null);
+  const [duplicateData, setDuplicateData] = useState({ new_code: '', new_name: '', new_api_key: '' });
+  const [formData, setFormData] = useState({
+    sub_account_id: '', lp_ids: [], code: '', name: '', product_type: 'panneaux',
+    source_type: 'native', source_name: '', api_key: '', tracking_type: 'redirect',
+    tracking_code: '', redirect_url: '', notes: '', status: 'active',
+    form_type: 'standalone', generation_notes: ''
   });
 
   useEffect(() => {
@@ -1409,11 +1424,35 @@ const FormsPage = () => {
     }
   };
 
+  const duplicateForm = async () => {
+    if (!showDuplicateModal || !duplicateData.new_code || !duplicateData.new_name || !duplicateData.new_api_key) return;
+    try {
+      const res = await authFetch(`${API}/api/forms/${showDuplicateModal.id}/duplicate?new_code=${encodeURIComponent(duplicateData.new_code)}&new_name=${encodeURIComponent(duplicateData.new_name)}&new_api_key=${encodeURIComponent(duplicateData.new_api_key)}`, { method: 'POST' });
+      if (res.ok) {
+        setShowDuplicateModal(null);
+        setDuplicateData({ new_code: '', new_name: '', new_api_key: '' });
+        loadData();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const deleteForm = async (id) => {
+    if (!window.confirm('Supprimer ce formulaire ?')) return;
+    try {
+      await authFetch(`${API}/api/forms/${id}`, { method: 'DELETE' });
+      loadData();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-800">Formulaires</h1>
-        <button onClick={() => { setEditingForm(null); setFormData({ sub_account_id: '', lp_ids: [], code: '', name: '', product_type: 'panneaux', source_type: 'native', source_name: '', api_key: '', tracking_type: 'redirect', status: 'active' }); setShowModal(true); }} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+        <button onClick={() => { setEditingForm(null); setFormData({ sub_account_id: '', lp_ids: [], code: '', name: '', product_type: 'panneaux', source_type: 'native', source_name: '', api_key: '', tracking_type: 'redirect', status: 'active', form_type: 'standalone', generation_notes: '' }); setShowModal(true); }} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
           <Plus className="w-4 h-4" />
           Nouveau formulaire
         </button>
@@ -1425,17 +1464,29 @@ const FormsPage = () => {
             { key: 'code', label: 'Code', render: v => <span className="font-mono text-sm bg-slate-100 px-2 py-1 rounded">{v}</span> },
             { key: 'name', label: 'Nom' },
             { key: 'source_name', label: 'Source' },
+            { key: 'tracking_type', label: 'Tracking', render: v => v === 'gtm' ? 
+              <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded">GTM</span> : 
+              v === 'none' ? <span className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded">Aucun</span> :
+              <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">Redirect</span>
+            },
             { key: 'stats', label: 'Démarrés', render: v => v?.started || 0 },
             { key: 'stats', label: 'Complétés', render: v => v?.completed || 0 },
-            { key: 'stats', label: 'Taux', render: v => `${v?.conversion_rate || 0}%` },
             { key: 'status', label: 'Statut', render: v => <StatusBadge status={v} /> },
             { 
               key: 'actions', 
               label: '', 
               render: (_, row) => (
-                <button onClick={() => { setEditingForm(row); setFormData(row); setShowModal(true); }} className="p-1 hover:bg-slate-100 rounded">
-                  <Edit className="w-4 h-4 text-slate-600" />
-                </button>
+                <div className="flex gap-1">
+                  <button onClick={() => { setEditingForm(row); setFormData(row); setShowModal(true); }} className="p-1 hover:bg-slate-100 rounded" title="Modifier">
+                    <Edit className="w-4 h-4 text-slate-600" />
+                  </button>
+                  <button onClick={() => { setShowDuplicateModal(row); setDuplicateData({ new_code: row.code + '-COPY', new_name: row.name + ' (copie)', new_api_key: '' }); }} className="p-1 hover:bg-slate-100 rounded" title="Dupliquer">
+                    <Copy className="w-4 h-4 text-blue-600" />
+                  </button>
+                  <button onClick={() => deleteForm(row.id)} className="p-1 hover:bg-slate-100 rounded" title="Supprimer">
+                    <Trash2 className="w-4 h-4 text-red-600" />
+                  </button>
+                </div>
               )
             }
           ]}
@@ -1443,21 +1494,144 @@ const FormsPage = () => {
         />
       </div>
 
+      {/* Modal Duplicate Form */}
+      <Modal isOpen={!!showDuplicateModal} onClose={() => setShowDuplicateModal(null)} title="Dupliquer le formulaire">
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600">
+            Dupliquer <strong>{showDuplicateModal?.name}</strong>. Seule la <strong>clé API</strong> sera différente.
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Nouveau code *</label>
+            <input type="text" value={duplicateData.new_code} onChange={e => setDuplicateData({ ...duplicateData, new_code: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" required />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Nouveau nom *</label>
+            <input type="text" value={duplicateData.new_name} onChange={e => setDuplicateData({ ...duplicateData, new_name: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" required />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Nouvelle clé API CRM *</label>
+            <input type="text" value={duplicateData.new_api_key} onChange={e => setDuplicateData({ ...duplicateData, new_api_key: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-sm" placeholder="uuid-xxx-xxx" required />
+            <p className="text-xs text-slate-500 mt-1">La clé API fournie par le CRM pour cette campagne</p>
+          </div>
+          <div className="flex justify-end gap-2 pt-4">
+            <button type="button" onClick={() => setShowDuplicateModal(null)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Annuler</button>
+            <button onClick={duplicateForm} disabled={!duplicateData.new_api_key} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">Dupliquer</button>
+          </div>
+        </div>
+      </Modal>
+
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editingForm ? 'Modifier le formulaire' : 'Nouveau formulaire'}>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid md:grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+          {/* Section: Informations générales */}
+          <div className="bg-slate-50 p-4 rounded-lg space-y-4">
+            <h4 className="font-medium text-slate-800 flex items-center gap-2">
+              <FileText className="w-4 h-4" /> Informations générales
+            </h4>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Sous-compte *</label>
+                <select value={formData.sub_account_id} onChange={e => setFormData({ ...formData, sub_account_id: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" required>
+                  <option value="">Sélectionner</option>
+                  {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Code formulaire *</label>
+                <input type="text" value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="PV-TAB-001" required />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nom *</label>
+                <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" required />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Clé API CRM *</label>
+                <input type="text" value={formData.api_key} onChange={e => setFormData({ ...formData, api_key: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-sm" placeholder="uuid-xxx-xxx" required />
+              </div>
+            </div>
+          </div>
+
+          {/* Section: Tracking */}
+          <div className="bg-green-50 p-4 rounded-lg space-y-4">
+            <h4 className="font-medium text-green-800 flex items-center gap-2">
+              <Target className="w-4 h-4" /> Tracking de conversion
+            </h4>
+            <p className="text-xs text-green-700">Pour les formulaires de <strong>redirection</strong>, pas besoin de tracking GTM (la redirection suffit).</p>
+            
+            <div className="grid md:grid-cols-3 gap-3">
+              <label className={`p-3 border-2 rounded-lg cursor-pointer transition-colors ${formData.tracking_type === 'redirect' ? 'border-green-500 bg-green-100' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
+                <input type="radio" name="tracking_type" value="redirect" checked={formData.tracking_type === 'redirect'} onChange={e => setFormData({ ...formData, tracking_type: e.target.value })} className="sr-only" />
+                <div className="font-medium text-slate-800 text-sm">Redirection</div>
+                <p className="text-xs text-slate-500 mt-1">Page de merci</p>
+              </label>
+              <label className={`p-3 border-2 rounded-lg cursor-pointer transition-colors ${formData.tracking_type === 'gtm' ? 'border-yellow-500 bg-yellow-100' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
+                <input type="radio" name="tracking_type" value="gtm" checked={formData.tracking_type === 'gtm'} onChange={e => setFormData({ ...formData, tracking_type: e.target.value })} className="sr-only" />
+                <div className="font-medium text-slate-800 text-sm">GTM / Code JS</div>
+                <p className="text-xs text-slate-500 mt-1">Event tracking</p>
+              </label>
+              <label className={`p-3 border-2 rounded-lg cursor-pointer transition-colors ${formData.tracking_type === 'none' ? 'border-slate-500 bg-slate-100' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
+                <input type="radio" name="tracking_type" value="none" checked={formData.tracking_type === 'none'} onChange={e => setFormData({ ...formData, tracking_type: e.target.value })} className="sr-only" />
+                <div className="font-medium text-slate-800 text-sm">Aucun</div>
+                <p className="text-xs text-slate-500 mt-1">Pas de tracking</p>
+              </label>
+            </div>
+
+            {formData.tracking_type === 'redirect' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">URL de redirection (page merci)</label>
+                <input type="url" value={formData.redirect_url || ''} onChange={e => setFormData({ ...formData, redirect_url: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="https://..." />
+              </div>
+            )}
+
+            {formData.tracking_type === 'gtm' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Code tracking (GTM / JS)</label>
+                <textarea value={formData.tracking_code || ''} onChange={e => setFormData({ ...formData, tracking_code: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-xs" rows={3} placeholder="dataLayer.push({event: 'conversion'});" />
+              </div>
+            )}
+          </div>
+
+          {/* Section: Source */}
+          <div className="bg-slate-50 p-4 rounded-lg space-y-4">
+            <h4 className="font-medium text-slate-800">Source de trafic</h4>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Type de source</label>
+                <select value={formData.source_type} onChange={e => setFormData({ ...formData, source_type: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg">
+                  <option value="native">Native (Taboola, Outbrain)</option>
+                  <option value="google">Google Ads</option>
+                  <option value="facebook">Facebook Ads</option>
+                  <option value="tiktok">TikTok Ads</option>
+                  <option value="other">Autre</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nom de la source</label>
+                <input type="text" value={formData.source_name || ''} onChange={e => setFormData({ ...formData, source_name: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="Taboola, Outbrain, etc." />
+              </div>
+            </div>
+          </div>
+
+          {/* Section: Notes */}
+          <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Sous-compte</label>
-              <select value={formData.sub_account_id} onChange={e => setFormData({ ...formData, sub_account_id: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" required>
-                <option value="">Sélectionner</option>
-                {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-              </select>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Notes internes</label>
+              <textarea value={formData.notes || ''} onChange={e => setFormData({ ...formData, notes: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" rows={2} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Code formulaire</label>
-              <input type="text" value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="PV-TAB-001" required />
+              <label className="block text-sm font-medium text-slate-700 mb-1">Commentaires pour génération</label>
+              <textarea value={formData.generation_notes || ''} onChange={e => setFormData({ ...formData, generation_notes: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" rows={2} placeholder="Instructions supplémentaires..." />
             </div>
-            <div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-200 sticky bottom-0 bg-white py-4">
+            <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Annuler</button>
+            <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">{editingForm ? 'Modifier' : 'Créer'}</button>
+          </div>
+        </form>
+      </Modal>
+    </div>
+  );
+};
               <label className="block text-sm font-medium text-slate-700 mb-1">Nom</label>
               <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" required />
             </div>
