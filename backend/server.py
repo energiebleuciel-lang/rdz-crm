@@ -768,16 +768,30 @@ async def delete_asset(asset_id: str, user: dict = Depends(require_admin)):
 @api_router.get("/lps")
 async def get_lps(sub_account_id: Optional[str] = None, crm_id: Optional[str] = None, user: dict = Depends(get_current_user)):
     query = {}
+    
+    # Appliquer le filtre par comptes autorisés (sécurité multi-tenant)
+    account_filter = get_account_ids_filter(user)
+    allowed_account_ids = user.get("allowed_accounts", []) if user.get("role") != "admin" and user.get("allowed_accounts") else None
+    
     if sub_account_id:
+        # Vérifier que l'utilisateur a accès à ce compte
+        if allowed_account_ids and sub_account_id not in allowed_account_ids:
+            return {"lps": []}
         query["sub_account_id"] = sub_account_id
     elif crm_id:
         # Get all sub-accounts for this CRM
-        sub_accounts = await db.accounts.find({"crm_id": crm_id}, {"id": 1}).to_list(100)
+        crm_query = {"crm_id": crm_id}
+        if allowed_account_ids:
+            crm_query["id"] = {"$in": allowed_account_ids}
+        sub_accounts = await db.accounts.find(crm_query, {"id": 1}).to_list(100)
         sub_account_ids = [sa["id"] for sa in sub_accounts]
         if sub_account_ids:
             query["sub_account_id"] = {"$in": sub_account_ids}
         else:
             return {"lps": []}
+    elif allowed_account_ids:
+        # Pas de filtre CRM, mais l'utilisateur a des restrictions
+        query["sub_account_id"] = {"$in": allowed_account_ids}
     
     lps = await db.lps.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
     
