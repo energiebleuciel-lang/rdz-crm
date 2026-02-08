@@ -1082,10 +1082,14 @@ async def submit_lead(lead: LeadData):
     
     departement = lead.departement or ""
     
-    # === PROTECTION ANTI-DOUBLON ===
+    # Vérifier si ce formulaire est exclu du routage inter-CRM
+    exclude_from_routing = form_config.get("exclude_from_routing", False)
+    
+    # === PROTECTION ANTI-DOUBLON (même téléphone + même produit par jour) ===
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     existing_today = await db.leads.find_one({
         "phone": phone,
+        "product_type": product_type,  # Même produit
         "sent_to_crm": True,
         "created_at": {"$gte": today_start.isoformat()}
     })
@@ -1113,12 +1117,12 @@ async def submit_lead(lead: LeadData):
             "created_at": datetime.now(timezone.utc).isoformat(),
             "register_date": timestamp,
             "api_status": "duplicate_today",
-            "api_response": f"Déjà envoyé aujourd'hui (lead_id: {existing_today['id']})",
+            "api_response": f"Doublon {product_type} du jour (lead_id: {existing_today['id']})",
             "sent_to_crm": False,
             "retry_count": 0
         }
         await db.leads.insert_one(lead_doc)
-        return {"success": True, "message": "Lead enregistré (doublon du jour)", "status": "duplicate_today"}
+        return {"success": True, "message": f"Lead enregistré (doublon {product_type} du jour)", "status": "duplicate_today"}
     
     # === ROUTAGE ===
     target_crm = origin_crm
@@ -1128,7 +1132,11 @@ async def submit_lead(lead: LeadData):
     origin_commandes = origin_crm.get("commandes", {}) if origin_crm else {}
     commandes_actives = bool(origin_commandes and any(origin_commandes.values()))
     
-    if commandes_actives and departement:
+    # Routage intelligent SEULEMENT si:
+    # - Commandes configurées
+    # - Département présent
+    # - Formulaire NON exclu du routage
+    if commandes_actives and departement and not exclude_from_routing:
         # Les commandes sont configurées → routage intelligent
         origin_depts = origin_commandes.get(product_type, [])
         
