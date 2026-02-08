@@ -368,17 +368,147 @@ async def create_crm(crm: CRMCreate, user: dict = Depends(require_admin)):
 
 @api_router.post("/crms/init")
 async def init_crms(user: dict = Depends(require_admin)):
-    """Initialize default CRMs"""
+    """Initialize default CRMs, sub-accounts, diffusion sources and product types"""
     existing = await db.crms.count_documents({})
     if existing > 0:
         return {"message": "CRMs déjà initialisés"}
     
+    # Create CRMs
+    mdl_id = str(uuid.uuid4())
+    zr7_id = str(uuid.uuid4())
     crms = [
-        {"id": str(uuid.uuid4()), "name": "Maison du Lead", "slug": "mdl", "api_url": "https://maison-du-lead.com/lead/api/create_lead/", "description": "CRM Maison du Lead", "created_at": datetime.now(timezone.utc).isoformat()},
-        {"id": str(uuid.uuid4()), "name": "ZR7 Digital", "slug": "zr7", "api_url": "https://app.zr7-digital.fr/lead/api/create_lead/", "description": "CRM ZR7", "created_at": datetime.now(timezone.utc).isoformat()}
+        {"id": mdl_id, "name": "Maison du Lead", "slug": "mdl", "api_url": "https://maison-du-lead.com/lead/api/create_lead/", "description": "CRM Maison du Lead", "created_at": datetime.now(timezone.utc).isoformat()},
+        {"id": zr7_id, "name": "ZR7 Digital", "slug": "zr7", "api_url": "https://app.zr7-digital.fr/lead/api/create_lead/", "description": "CRM ZR7", "created_at": datetime.now(timezone.utc).isoformat()}
     ]
     await db.crms.insert_many(crms)
-    return {"success": True, "message": "CRMs initialisés"}
+    
+    # Create Sub-accounts
+    sub_accounts = [
+        # MDL sub-accounts
+        {"id": str(uuid.uuid4()), "crm_id": mdl_id, "name": "MDL", "domain": "", "product_types": ["solaire", "pac", "isolation"], "created_at": datetime.now(timezone.utc).isoformat()},
+        {"id": str(uuid.uuid4()), "crm_id": mdl_id, "name": "BRANDSPOT", "domain": "", "product_types": ["solaire", "pac"], "created_at": datetime.now(timezone.utc).isoformat()},
+        {"id": str(uuid.uuid4()), "crm_id": mdl_id, "name": "OBJECTIF ACADEMIE", "domain": "", "product_types": ["solaire"], "created_at": datetime.now(timezone.utc).isoformat()},
+        {"id": str(uuid.uuid4()), "crm_id": mdl_id, "name": "AUDIT GREEN", "domain": "", "product_types": ["solaire", "pac", "isolation"], "created_at": datetime.now(timezone.utc).isoformat()},
+        # ZR7 sub-accounts
+        {"id": str(uuid.uuid4()), "crm_id": zr7_id, "name": "ZR7", "domain": "", "product_types": ["solaire", "pac", "isolation"], "created_at": datetime.now(timezone.utc).isoformat()},
+        {"id": str(uuid.uuid4()), "crm_id": zr7_id, "name": "AZ", "domain": "", "product_types": ["solaire", "pac"], "created_at": datetime.now(timezone.utc).isoformat()},
+    ]
+    await db.sub_accounts.insert_many(sub_accounts)
+    
+    # Create diffusion sources
+    diffusion_sources = [
+        # Native
+        {"id": str(uuid.uuid4()), "name": "Taboola", "category": "native", "is_active": True, "created_at": datetime.now(timezone.utc).isoformat()},
+        {"id": str(uuid.uuid4()), "name": "Outbrain", "category": "native", "is_active": True, "created_at": datetime.now(timezone.utc).isoformat()},
+        {"id": str(uuid.uuid4()), "name": "MGID", "category": "native", "is_active": True, "created_at": datetime.now(timezone.utc).isoformat()},
+        {"id": str(uuid.uuid4()), "name": "Mediago", "category": "native", "is_active": True, "created_at": datetime.now(timezone.utc).isoformat()},
+        {"id": str(uuid.uuid4()), "name": "Yahoo Gemini", "category": "native", "is_active": True, "created_at": datetime.now(timezone.utc).isoformat()},
+        # Google
+        {"id": str(uuid.uuid4()), "name": "Google Ads", "category": "google", "is_active": True, "created_at": datetime.now(timezone.utc).isoformat()},
+        {"id": str(uuid.uuid4()), "name": "YouTube Ads", "category": "google", "is_active": True, "created_at": datetime.now(timezone.utc).isoformat()},
+        # Meta
+        {"id": str(uuid.uuid4()), "name": "Facebook Ads", "category": "facebook", "is_active": True, "created_at": datetime.now(timezone.utc).isoformat()},
+        {"id": str(uuid.uuid4()), "name": "Instagram Ads", "category": "facebook", "is_active": True, "created_at": datetime.now(timezone.utc).isoformat()},
+        # TikTok
+        {"id": str(uuid.uuid4()), "name": "TikTok Ads", "category": "tiktok", "is_active": True, "created_at": datetime.now(timezone.utc).isoformat()},
+    ]
+    await db.diffusion_sources.insert_many(diffusion_sources)
+    
+    # Create product types with instructions
+    product_types = [
+        {
+            "id": str(uuid.uuid4()), 
+            "name": "Panneaux solaires", 
+            "slug": "solaire", 
+            "aide_montant": "10 000€",
+            "aides_liste": ["MaPrimeRenov", "CEE", "Autoconsommation", "TVA réduite"],
+            "description": "Installation de panneaux photovoltaïques",
+            "is_active": True,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        },
+        {
+            "id": str(uuid.uuid4()), 
+            "name": "Pompe à chaleur", 
+            "slug": "pac", 
+            "aide_montant": "10 000€",
+            "aides_liste": ["MaPrimeRenov", "CEE", "TVA réduite"],
+            "description": "Installation de pompe à chaleur air/eau",
+            "is_active": True,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        },
+        {
+            "id": str(uuid.uuid4()), 
+            "name": "Isolation Extérieure", 
+            "slug": "isolation", 
+            "aide_montant": "13 000€",
+            "aides_liste": ["MaPrimeRenov", "CEE", "TVA réduite"],
+            "description": "Isolation thermique par l'extérieur (ITE)",
+            "is_active": True,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        },
+    ]
+    await db.product_types.insert_many(product_types)
+    
+    return {"success": True, "message": "CRMs, sous-comptes, sources de diffusion et types de produits initialisés"}
+
+# ==================== DIFFUSION SOURCES ENDPOINTS ====================
+
+@api_router.get("/diffusion-sources")
+async def get_diffusion_sources(category: Optional[str] = None, user: dict = Depends(get_current_user)):
+    query = {"category": category} if category else {}
+    sources = await db.diffusion_sources.find(query, {"_id": 0}).sort("name", 1).to_list(100)
+    return {"sources": sources}
+
+@api_router.post("/diffusion-sources")
+async def create_diffusion_source(source: DiffusionSourceCreate, user: dict = Depends(get_current_user)):
+    source_doc = {
+        "id": str(uuid.uuid4()),
+        **source.model_dump(),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.diffusion_sources.insert_one(source_doc)
+    return {"success": True, "source": {k: v for k, v in source_doc.items() if k != "_id"}}
+
+@api_router.delete("/diffusion-sources/{source_id}")
+async def delete_diffusion_source(source_id: str, user: dict = Depends(require_admin)):
+    result = await db.diffusion_sources.delete_one({"id": source_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Source non trouvée")
+    return {"success": True}
+
+# ==================== PRODUCT TYPES ENDPOINTS ====================
+
+@api_router.get("/product-types")
+async def get_product_types(user: dict = Depends(get_current_user)):
+    types = await db.product_types.find({}, {"_id": 0}).to_list(100)
+    return {"product_types": types}
+
+@api_router.post("/product-types")
+async def create_product_type(product: ProductTypeCreate, user: dict = Depends(get_current_user)):
+    product_doc = {
+        "id": str(uuid.uuid4()),
+        **product.model_dump(),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.product_types.insert_one(product_doc)
+    return {"success": True, "product_type": {k: v for k, v in product_doc.items() if k != "_id"}}
+
+@api_router.put("/product-types/{type_id}")
+async def update_product_type(type_id: str, product: ProductTypeCreate, user: dict = Depends(get_current_user)):
+    result = await db.product_types.update_one(
+        {"id": type_id},
+        {"$set": {**product.model_dump(), "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Type de produit non trouvé")
+    return {"success": True}
+
+@api_router.delete("/product-types/{type_id}")
+async def delete_product_type(type_id: str, user: dict = Depends(require_admin)):
+    result = await db.product_types.delete_one({"id": type_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Type de produit non trouvé")
+    return {"success": True}
 
 # ==================== SUB-ACCOUNT ENDPOINTS ====================
 
