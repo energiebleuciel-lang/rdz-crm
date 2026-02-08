@@ -4039,6 +4039,37 @@ const ProtectedRoute = ({ children }) => {
   );
 };
 
+// Route protégée pour les admins uniquement
+const AdminRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-100">
+        <RefreshCw className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+  
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  // Rediriger vers dashboard si pas admin
+  if (user.role !== 'admin') {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return (
+    <div className="flex min-h-screen bg-slate-100">
+      <Sidebar />
+      <main className="flex-1 p-6 overflow-auto">
+        {children}
+      </main>
+    </div>
+  );
+};
+
 function App() {
   return (
     <AuthProvider>
