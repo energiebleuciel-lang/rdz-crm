@@ -1233,8 +1233,8 @@ async def retry_failed_leads(hours: int = 24, user: dict = Depends(get_current_u
     return {"success": True, "results": results}
 
 @api_router.delete("/leads/{lead_id}")
-async def delete_lead(lead_id: str, user: dict = Depends(get_current_user)):
-    """Delete a single lead"""
+async def delete_lead(lead_id: str, user: dict = Depends(require_admin)):
+    """Delete a single lead - Admin only"""
     result = await db.leads.delete_one({"id": lead_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Lead non trouvé")
