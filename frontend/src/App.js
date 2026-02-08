@@ -561,6 +561,7 @@ const LeadsPage = () => {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ status: '', form_code: '' });
+  const [selectedLeads, setSelectedLeads] = useState([]);
 
   useEffect(() => {
     loadLeads();
@@ -583,6 +584,7 @@ const LeadsPage = () => {
       console.error(e);
     }
     setLoading(false);
+    setSelectedLeads([]);
   };
 
   const retryLead = async (leadId) => {
@@ -594,11 +596,51 @@ const LeadsPage = () => {
     }
   };
 
+  const deleteLead = async (leadId) => {
+    if (!window.confirm('Supprimer ce lead ?')) return;
+    try {
+      await authFetch(`${API}/api/leads/${leadId}`, { method: 'DELETE' });
+      loadLeads();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const deleteSelectedLeads = async () => {
+    if (selectedLeads.length === 0) return;
+    if (!window.confirm(`Supprimer ${selectedLeads.length} lead(s) sélectionné(s) ?`)) return;
+    try {
+      await authFetch(`${API}/api/leads`, { 
+        method: 'DELETE',
+        body: JSON.stringify(selectedLeads)
+      });
+      loadLeads();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const toggleSelectLead = (leadId) => {
+    setSelectedLeads(prev => 
+      prev.includes(leadId) 
+        ? prev.filter(id => id !== leadId)
+        : [...prev, leadId]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedLeads.length === leads.length) {
+      setSelectedLeads([]);
+    } else {
+      setSelectedLeads(leads.map(l => l.id));
+    }
+  };
+
   const exportCSV = () => {
-    const headers = ['Date', 'Nom', 'Téléphone', 'Email', 'Département', 'Formulaire', 'Statut'];
+    const headers = ['Date', 'Nom', 'Téléphone', 'Email', 'Département', 'Code Postal', 'Formulaire', 'Statut'];
     const rows = leads.map(l => [
       new Date(l.created_at).toLocaleString('fr-FR'),
-      l.nom, l.phone, l.email, l.departement, l.form_code || l.form_id, l.api_status
+      l.nom, l.phone, l.email, l.departement, l.code_postal || '', l.form_code || l.form_id, l.api_status
     ]);
     const csv = [headers, ...rows].map(r => r.join(';')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -613,10 +655,21 @@ const LeadsPage = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-800">Leads</h1>
-        <button onClick={exportCSV} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-          <Download className="w-4 h-4" />
-          Export CSV
-        </button>
+        <div className="flex items-center gap-2">
+          {selectedLeads.length > 0 && (
+            <button 
+              onClick={deleteSelectedLeads} 
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            >
+              <Trash2 className="w-4 h-4" />
+              Supprimer ({selectedLeads.length})
+            </button>
+          )}
+          <button onClick={exportCSV} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            <Download className="w-4 h-4" />
+            Export CSV
+          </button>
+        </div>
       </div>
 
       <div className="flex gap-4">
@@ -639,28 +692,63 @@ const LeadsPage = () => {
             <RefreshCw className="w-8 h-8 animate-spin text-blue-600 mx-auto" />
           </div>
         ) : (
-          <Table
-            columns={[
-              { key: 'created_at', label: 'Date', render: v => new Date(v).toLocaleString('fr-FR') },
-              { key: 'nom', label: 'Nom' },
-              { key: 'phone', label: 'Téléphone' },
-              { key: 'email', label: 'Email' },
-              { key: 'departement', label: 'Dept' },
-              { key: 'form_code', label: 'Form', render: (v, row) => v || row.form_id },
-              { key: 'lp_code', label: 'LP' },
-              { key: 'api_status', label: 'Statut', render: v => <StatusBadge status={v} /> },
-              { 
-                key: 'actions', 
-                label: '', 
-                render: (_, row) => row.api_status === 'failed' && (
-                  <button onClick={() => retryLead(row.id)} className="text-blue-600 hover:text-blue-800">
-                    <RefreshCw className="w-4 h-4" />
-                  </button>
-                )
-              }
-            ]}
-            data={leads}
-          />
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  <th className="text-left py-3 px-4">
+                    <input 
+                      type="checkbox" 
+                      checked={selectedLeads.length === leads.length && leads.length > 0}
+                      onChange={toggleSelectAll}
+                      className="rounded"
+                    />
+                  </th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Date</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Nom</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Téléphone</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Email</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">CP</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Form</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Statut</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {leads.map(lead => (
+                  <tr key={lead.id} className="border-b border-slate-100 hover:bg-slate-50">
+                    <td className="py-3 px-4">
+                      <input 
+                        type="checkbox"
+                        checked={selectedLeads.includes(lead.id)}
+                        onChange={() => toggleSelectLead(lead.id)}
+                        className="rounded"
+                      />
+                    </td>
+                    <td className="py-3 px-4 text-sm text-slate-700">{new Date(lead.created_at).toLocaleString('fr-FR')}</td>
+                    <td className="py-3 px-4 text-sm text-slate-700">{lead.nom}</td>
+                    <td className="py-3 px-4 text-sm text-slate-700">{lead.phone}</td>
+                    <td className="py-3 px-4 text-sm text-slate-700">{lead.email}</td>
+                    <td className="py-3 px-4 text-sm text-slate-700">{lead.code_postal || lead.departement}</td>
+                    <td className="py-3 px-4 text-sm text-slate-700">{lead.form_code || lead.form_id}</td>
+                    <td className="py-3 px-4"><StatusBadge status={lead.api_status} /></td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-1">
+                        {lead.api_status === 'failed' && (
+                          <button onClick={() => retryLead(lead.id)} className="p-1 text-blue-600 hover:text-blue-800" title="Réessayer">
+                            <RefreshCw className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button onClick={() => deleteLead(lead.id)} className="p-1 text-red-600 hover:text-red-800" title="Supprimer">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
