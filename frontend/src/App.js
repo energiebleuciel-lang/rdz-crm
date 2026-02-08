@@ -2654,14 +2654,12 @@ const GuidePage = () => {
 
   const sections = [
     { id: 'intro', label: 'Introduction', icon: BookOpen },
-    { id: 'crm-selector', label: 'Sélecteur CRM', icon: Building },
-    { id: 'accounts', label: 'Comptes', icon: Database },
-    { id: 'lps', label: 'Landing Pages', icon: Layers },
+    { id: 'architecture', label: 'Architecture', icon: Database },
+    { id: 'accounts', label: 'Comptes', icon: Building },
     { id: 'forms', label: 'Formulaires', icon: FileText },
-    { id: 'tracking', label: 'Tracking', icon: Target },
-    { id: 'leads', label: 'Gestion Leads', icon: Users },
-    { id: 'analytics', label: 'Analytics', icon: TrendingUp },
-    { id: 'generator', label: 'Générateur Scripts', icon: Code },
+    { id: 'lps', label: 'Landing Pages', icon: Layers },
+    { id: 'leads', label: 'Flux des Leads', icon: Send },
+    { id: 'generator', label: 'Générateur Briefs', icon: Code },
     { id: 'users', label: 'Utilisateurs', icon: Shield },
     { id: 'workflow', label: 'Workflow Complet', icon: Zap },
   ];
@@ -2674,7 +2672,7 @@ const GuidePage = () => {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Guide d'utilisation</h1>
-          <p className="text-slate-500">Tout savoir sur le fonctionnement du CRM</p>
+          <p className="text-slate-500">Comprendre le fonctionnement du CRM</p>
         </div>
       </div>
 
@@ -2712,86 +2710,68 @@ const GuidePage = () => {
                 Bienvenue dans le CRM
               </h2>
               <p className="text-slate-600">
-                Ce CRM vous permet de gérer vos leads provenant de différentes sources (Taboola, Outbrain, Facebook, Google, TikTok) 
-                et de les envoyer vers vos CRMs de destination (Maison du Lead, ZR7 Digital).
+                Ce CRM est une <strong>plateforme de centralisation et redistribution de leads</strong>. 
+                Il reçoit les leads de vos formulaires et les redistribue vers vos CRMs destination (ZR7 Digital ou Maison du Lead).
               </p>
               
               <div className="bg-blue-50 rounded-lg p-4">
-                <h4 className="font-semibold text-blue-800 mb-2">🎯 Fonctionnalités principales</h4>
-                <ul className="text-sm text-blue-700 space-y-1">
-                  <li>• <strong>Multi-CRM</strong> : Gérer MDL et ZR7 séparément</li>
-                  <li>• <strong>Comptes</strong> : Un compte par site/domaine (MDL, SPOOT, ZR7, AZ...)</li>
-                  <li>• <strong>Tracking complet</strong> : Pixels, CTA, conversions</li>
-                  <li>• <strong>Analytics</strong> : Statistiques et gagnants/perdants</li>
-                  <li>• <strong>Générateur de scripts</strong> : Code prêt à copier</li>
-                  <li>• <strong>Gestion utilisateurs</strong> : Rôles et comptes autorisés par personne</li>
-                </ul>
-              </div>
-
-              <div className="bg-slate-50 rounded-lg p-4">
-                <h4 className="font-semibold text-slate-800 mb-2">📊 Structure des données</h4>
-                <pre className="text-sm text-slate-600 bg-white p-3 rounded border border-slate-200">
-{`CRM (MDL ou ZR7)
-  └── Compte (MDL, SPOOT, ZR7, AZ, etc.)
-        ├── Landing Pages (LP)
-        │     └── Tracking CTA (clics)
-        └── Formulaires
-              └── Leads (données)`}
-                </pre>
+                <h4 className="font-semibold text-blue-800 mb-2">🎯 Objectif principal</h4>
+                <p className="text-sm text-blue-700">
+                  <strong>Centraliser toutes vos informations</strong> (logos, images, codes GTM, textes légaux, clés API) 
+                  au même endroit pour ne plus jamais avoir à les rechercher. Quand vous créez un formulaire, 
+                  tout est déjà prêt !
+                </p>
               </div>
 
               <div className="bg-green-50 rounded-lg p-4">
-                <h4 className="font-semibold text-green-800 mb-2">📦 Comptes par défaut</h4>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <strong className="text-green-800">Maison du Lead:</strong>
-                    <p className="text-green-700">MDL, SPOOT, OBJECTIF ACADEMIE, AUDIT GREEN</p>
-                  </div>
-                  <div>
-                    <strong className="text-green-800">ZR7 Digital:</strong>
-                    <p className="text-green-700">ZR7, AZ</p>
-                  </div>
-                </div>
+                <h4 className="font-semibold text-green-800 mb-2">📦 Fonctionnalités clés</h4>
+                <ul className="text-sm text-green-700 space-y-1">
+                  <li>• <strong>Stockage centralisé</strong> : Logos, images, GTM, légal au niveau du compte</li>
+                  <li>• <strong>Générateur de briefs</strong> : Compiler les infos pour créer vos LP/Forms</li>
+                  <li>• <strong>Redistribution leads</strong> : Envoi automatique vers ZR7 ou MDL</li>
+                  <li>• <strong>Job nocturne</strong> : Retry automatique des leads échoués à 3h du matin</li>
+                  <li>• <strong>Analytics</strong> : Suivi des performances par source</li>
+                </ul>
               </div>
             </div>
           )}
 
-          {/* CRM Selector */}
-          {activeSection === 'crm-selector' && (
+          {/* Architecture */}
+          {activeSection === 'architecture' && (
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
               <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <Building className="w-5 h-5 text-blue-600" />
-                Sélecteur CRM
+                <Database className="w-5 h-5 text-blue-600" />
+                Architecture du Système
               </h2>
               
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <h4 className="font-semibold text-yellow-800 mb-2">⚠️ Important</h4>
-                <p className="text-sm text-yellow-700">
-                  Le sélecteur CRM en haut à gauche de l'écran filtre TOUTES les données affichées.
-                </p>
+              <div className="bg-slate-50 rounded-lg p-4">
+                <h4 className="font-semibold text-slate-800 mb-2">📊 Structure des données</h4>
+                <pre className="text-sm text-slate-600 bg-white p-3 rounded border border-slate-200 overflow-x-auto">
+{`CRM (MDL ou ZR7)
+  └── Compte (Client, Site, Domaine)
+        ├── Logos (principal, secondaire, petit, favicon)
+        ├── Bibliothèque d'images (bannières, produits)
+        ├── Codes GTM (pixel, conversion, CTA)
+        ├── URLs de redirection nommées
+        ├── Textes légaux
+        ├── Landing Pages (avec code HTML)
+        └── Formulaires
+              ├── internal_api_key (pour recevoir les leads)
+              └── crm_api_key (pour envoyer vers ZR7/MDL)`}
+                </pre>
               </div>
 
-              <div className="space-y-3">
-                <div className="p-4 bg-slate-50 rounded-lg">
-                  <h4 className="font-medium text-slate-800">🔹 Tous les CRMs</h4>
-                  <p className="text-sm text-slate-600 mt-1">Affiche les données de MDL ET ZR7 combinées</p>
-                </div>
-                <div className="p-4 bg-blue-50 rounded-lg">
-                  <h4 className="font-medium text-blue-800">🔹 Maison du Lead (MDL)</h4>
-                  <p className="text-sm text-blue-700 mt-1">Affiche UNIQUEMENT les leads envoyés vers MDL</p>
-                </div>
-                <div className="p-4 bg-green-50 rounded-lg">
-                  <h4 className="font-medium text-green-800">🔹 ZR7 Digital</h4>
-                  <p className="text-sm text-green-700 mt-1">Affiche UNIQUEMENT les leads envoyés vers ZR7</p>
-                </div>
-              </div>
-
-              <div className="bg-slate-100 rounded-lg p-4">
-                <h4 className="font-semibold text-slate-800 mb-2">💡 Conseil</h4>
-                <p className="text-sm text-slate-600">
-                  Votre sélection est mémorisée. Quand vous revenez sur le dashboard, 
-                  le même CRM sera automatiquement sélectionné.
-                </p>
+              <div className="bg-orange-50 rounded-lg p-4">
+                <h4 className="font-semibold text-orange-800 mb-2">🔄 Flux des leads</h4>
+                <pre className="text-sm text-orange-700 bg-white p-3 rounded border border-orange-200 overflow-x-auto">
+{`[Formulaire Web]
+     ↓ (envoie vers /api/submit-lead avec internal_api_key)
+[CE CRM] → Stocke le lead dans votre dashboard
+     ↓ (envoi instantané si téléphone présent + config OK)
+[ZR7 ou MDL] → Via leur API avec crm_api_key
+     ↓ (tous les jours à 03h00)
+[Job nocturne] → Réessaie les leads échoués des 24h`}
+                </pre>
               </div>
             </div>
           )}
@@ -2800,99 +2780,50 @@ const GuidePage = () => {
           {activeSection === 'accounts' && (
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
               <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <Database className="w-5 h-5 text-blue-600" />
+                <Building className="w-5 h-5 text-blue-600" />
                 Comptes
               </h2>
               
               <p className="text-slate-600">
-                Un compte représente <strong>un site/domaine spécifique</strong>. 
-                Chaque compte a ses propres configurations (logos, GTM, légal).
+                Un <strong>Compte</strong> représente un client/site/domaine. C'est ici que vous centralisez 
+                toutes les informations réutilisables.
               </p>
 
               <div className="bg-green-50 rounded-lg p-4">
-                <h4 className="font-semibold text-green-800 mb-3">📋 Configuration d'un compte</h4>
+                <h4 className="font-semibold text-green-800 mb-3">📋 Ce qui est stocké au niveau Compte</h4>
                 <div className="grid md:grid-cols-2 gap-3 text-sm">
                   <div className="bg-white p-3 rounded border border-green-200">
-                    <strong className="text-green-800">Général</strong>
-                    <p className="text-green-700">CRM, Nom, Domaine, Types produits, Couleurs</p>
+                    <strong className="text-green-800">🖼️ Logos</strong>
+                    <p className="text-green-700">Principal, Secondaire, Petit, Favicon</p>
                   </div>
                   <div className="bg-white p-3 rounded border border-green-200">
-                    <strong className="text-green-800">Logos</strong>
-                    <p className="text-green-700">Principal, Secondaire, Petit logo, Favicon</p>
+                    <strong className="text-green-800">📷 Images</strong>
+                    <p className="text-green-700">Bibliothèque d'images (bannières, produits...)</p>
                   </div>
                   <div className="bg-white p-3 rounded border border-green-200">
-                    <strong className="text-green-800">Tracking GTM</strong>
-                    <p className="text-green-700">Pixel header, Code conversion, CTA click</p>
+                    <strong className="text-green-800">📊 Tracking GTM</strong>
+                    <p className="text-green-700">Pixel header, Code conversion, Code CTA</p>
                   </div>
                   <div className="bg-white p-3 rounded border border-green-200">
-                    <strong className="text-green-800">Légal</strong>
+                    <strong className="text-green-800">🔗 URLs Redirection</strong>
+                    <p className="text-green-700">Nommées (Google, Taboola...) ou par défaut</p>
+                  </div>
+                  <div className="bg-white p-3 rounded border border-green-200">
+                    <strong className="text-green-800">⚖️ Légal</strong>
                     <p className="text-green-700">Politique confidentialité, Mentions légales</p>
                   </div>
+                  <div className="bg-white p-3 rounded border border-green-200">
+                    <strong className="text-green-800">🎨 Style</strong>
+                    <p className="text-green-700">Couleurs, Layout, Style officiel</p>
+                  </div>
                 </div>
               </div>
-
-              <div className="bg-orange-50 rounded-lg p-4">
-                <h4 className="font-semibold text-orange-800 mb-2">🎯 Tracking GTM au niveau du compte</h4>
-                <ul className="text-sm text-orange-700 space-y-2">
-                  <li><strong>Pixel Header</strong> : Code Facebook/Google dans &lt;head&gt;</li>
-                  <li><strong>Code conversion</strong> : Script déclenché après validation téléphone (10 chiffres)</li>
-                  <li><strong>Code CTA</strong> : Script au clic sur les boutons CTA</li>
-                  <li><strong>URL redirection</strong> : Page merci par défaut</li>
-                </ul>
-              </div>
-            </div>
-          )}
-
-          {/* Landing Pages */}
-          {activeSection === 'lps' && (
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
-              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <Layers className="w-5 h-5 text-blue-600" />
-                Landing Pages (LP)
-              </h2>
-              
-              <p className="text-slate-600">
-                Une LP est la page sur laquelle arrivent vos visiteurs depuis les pubs (Taboola, Outbrain, etc.).
-              </p>
 
               <div className="bg-blue-50 rounded-lg p-4">
-                <h4 className="font-semibold text-blue-800 mb-3">📋 Créer une LP</h4>
-                <div className="space-y-2 text-sm text-blue-700">
-                  <p><strong>Compte</strong> : Sélectionner le compte associé (MDL, SPOOT, ZR7...)</p>
-                  <p><strong>Code LP</strong> : Identifiant unique (ex: LP-TAB-V1)</p>
-                  <p><strong>Type</strong> : Redirect (vers form externe) ou Intégré (form dans LP)</p>
-                  <p><strong>Source</strong> : Taboola, Outbrain, Google Ads, etc.</p>
-                  <p><strong>Sélecteur CTA</strong> : Classe CSS des boutons (ex: .cta-btn)</p>
-                </div>
-              </div>
-
-              <div className="bg-purple-50 rounded-lg p-4">
-                <h4 className="font-semibold text-purple-800 mb-2">🖱️ Tracking CTA (au niveau LP)</h4>
-                <p className="text-sm text-purple-700 mb-3">
-                  Le tracking CTA est généré au niveau de chaque LP pour compter les clics sur vos boutons.
-                </p>
-                <div className="bg-white p-3 rounded border border-purple-200">
-                  <p className="text-xs text-purple-600 mb-1">Pour obtenir le script :</p>
-                  <code className="text-xs text-purple-800">
-                    Générateur Scripts → Sélectionnez la LP → Copiez le code
-                  </code>
-                </div>
-              </div>
-
-              <div className="bg-slate-50 rounded-lg p-4">
-                <h4 className="font-semibold text-slate-800 mb-2">📊 Stats trackées par LP</h4>
-                <ul className="text-sm text-slate-600 space-y-1">
-                  <li>• <strong>Clics CTA</strong> : Nombre de clics sur les boutons</li>
-                  <li>• <strong>Forms démarrés</strong> : Visiteurs arrivés sur le formulaire</li>
-                  <li>• <strong>Leads</strong> : Formulaires soumis avec succès</li>
-                </ul>
-              </div>
-
-              <div className="bg-green-50 rounded-lg p-4">
-                <h4 className="font-semibold text-green-800 mb-2">📋 Dupliquer une LP</h4>
-                <p className="text-sm text-green-700">
-                  Cliquez sur l'icône de duplication pour créer une copie avec un nouveau code.
-                  Utile pour tester différentes versions (A/B testing).
+                <h4 className="font-semibold text-blue-800 mb-2">💡 Pourquoi centraliser ?</h4>
+                <p className="text-sm text-blue-700">
+                  Quand vous générez un brief pour créer un formulaire, vous sélectionnez simplement 
+                  les éléments du compte à inclure. Plus besoin de chercher partout !
                 </p>
               </div>
             </div>
@@ -2907,99 +2838,109 @@ const GuidePage = () => {
               </h2>
               
               <p className="text-slate-600">
-                Le formulaire capture les informations du prospect (nom, téléphone, email, etc.) 
-                et les envoie vers votre CRM.
+                Chaque formulaire a <strong>deux clés API</strong> essentielles pour le flux des leads.
               </p>
 
-              <div className="bg-green-50 rounded-lg p-4">
-                <h4 className="font-semibold text-green-800 mb-3">📋 Créer un formulaire</h4>
-                <div className="space-y-2 text-sm text-green-700">
-                  <p><strong>Compte</strong> : Sélectionner le compte associé</p>
-                  <p><strong>Code Form</strong> : Identifiant unique (ex: PV-TAB-001)</p>
-                  <p><strong>Type produit</strong> : Panneaux / Pompes / Isolation</p>
-                  <p><strong>Source</strong> : Taboola, Outbrain, etc.</p>
-                  <p><strong>Clé API CRM</strong> : Token d'authentification (fourni par le CRM)</p>
+              <div className="bg-orange-50 rounded-lg p-4">
+                <h4 className="font-semibold text-orange-800 mb-3">🔑 Les deux clés API</h4>
+                <div className="space-y-3">
+                  <div className="bg-white p-3 rounded border border-orange-200">
+                    <strong className="text-orange-800">1. Clé API Interne (internal_api_key)</strong>
+                    <p className="text-sm text-orange-700 mt-1">
+                      Générée automatiquement par ce CRM. <strong>Visible dans la liste des formulaires.</strong><br/>
+                      → À donner au développeur qui crée le formulaire HTML pour envoyer les leads ICI.
+                    </p>
+                  </div>
+                  <div className="bg-white p-3 rounded border border-orange-200">
+                    <strong className="text-orange-800">2. Clé API CRM (crm_api_key)</strong>
+                    <p className="text-sm text-orange-700 mt-1">
+                      Fournie par vous. C'est la clé de ZR7 ou MDL pour ce formulaire.<br/>
+                      → Permet à ce CRM de redistribuer les leads vers le CRM destination.
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              <div className="bg-orange-50 rounded-lg p-4">
-                <h4 className="font-semibold text-orange-800 mb-2">🎯 Tracking conversion</h4>
-                <div className="space-y-3 text-sm">
-                  <div className="bg-white p-3 rounded border border-orange-200">
-                    <strong className="text-orange-800">Redirection</strong>
-                    <p className="text-orange-700">Redirige vers une page /merci/ avec pixel (pas besoin de GTM)</p>
-                  </div>
-                  <div className="bg-white p-3 rounded border border-orange-200">
-                    <strong className="text-orange-800">GTM / Code JS</strong>
-                    <p className="text-orange-700">Script déclenché après validation du téléphone (10 chiffres)</p>
-                  </div>
-                  <div className="bg-white p-3 rounded border border-orange-200">
-                    <strong className="text-orange-800">Aucun</strong>
-                    <p className="text-orange-700">Pas de tracking conversion</p>
-                  </div>
-                </div>
+              <div className="bg-green-50 rounded-lg p-4">
+                <h4 className="font-semibold text-green-800 mb-2">📋 Champs du formulaire (API)</h4>
+                <p className="text-sm text-green-700 mb-2">
+                  <strong>Obligatoire :</strong> phone (téléphone)
+                </p>
+                <p className="text-sm text-green-700">
+                  <strong>Optionnels :</strong> nom, prenom, civilite, email, departement, code_postal, 
+                  superficie_logement, chauffage_actuel, type_logement, statut_occupant, facture_electricite
+                </p>
               </div>
 
               <div className="bg-yellow-50 rounded-lg p-4">
-                <h4 className="font-semibold text-yellow-800 mb-2">⚠️ Validation obligatoire</h4>
-                <ul className="text-sm text-yellow-700 space-y-1">
-                  <li>• <strong>Téléphone</strong> : 10 chiffres obligatoires</li>
-                  <li>• <strong>Nom</strong> : Minimum 2 caractères</li>
-                  <li>• <strong>Code postal</strong> : France métropolitaine (01-95)</li>
-                </ul>
+                <h4 className="font-semibold text-yellow-800 mb-2">⚠️ Important</h4>
+                <p className="text-sm text-yellow-700">
+                  Le formulaire HTML envoie les leads vers <code className="bg-white px-1 rounded">/api/submit-lead</code> 
+                  avec le <code className="bg-white px-1 rounded">form_code</code> du formulaire. 
+                  Ce CRM stocke le lead puis le redistribue automatiquement vers ZR7/MDL.
+                </p>
               </div>
             </div>
           )}
 
-          {/* Tracking */}
-          {activeSection === 'tracking' && (
+          {/* Landing Pages */}
+          {activeSection === 'lps' && (
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
               <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <Target className="w-5 h-5 text-blue-600" />
-                Types de Tracking
+                <Layers className="w-5 h-5 text-blue-600" />
+                Landing Pages (LP)
               </h2>
+              
+              <p className="text-slate-600">
+                Une LP est une <strong>référence</strong> stockée dans le CRM. Elle contient le code HTML 
+                et les métadonnées de la page.
+              </p>
 
-              <div className="space-y-4">
-                <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
-                  <h4 className="font-semibold text-blue-800 flex items-center gap-2">
-                    <MousePointer className="w-4 h-4" />
-                    1. Pixel Header (configuré au niveau COMPTE)
-                  </h4>
-                  <p className="text-sm text-blue-700 mt-2">
-                    Code Facebook Pixel, Google Ads, etc. dans le &lt;head&gt;. Configurez-le dans les paramètres du compte.
-                  </p>
-                </div>
+              <div className="bg-blue-50 rounded-lg p-4">
+                <h4 className="font-semibold text-blue-800 mb-3">📋 Ce qui est stocké</h4>
+                <ul className="text-sm text-blue-700 space-y-1">
+                  <li>• <strong>Code LP</strong> : Identifiant unique (LP-TAB-V1)</li>
+                  <li>• <strong>Nom</strong> : Description de la LP</li>
+                  <li>• <strong>URL</strong> : Lien vers la LP en ligne</li>
+                  <li>• <strong>Source</strong> : Taboola, Outbrain, Google, etc.</li>
+                  <li>• <strong>Type</strong> : Redirect ou Formulaire intégré</li>
+                  <li>• <strong>Code HTML</strong> : Le HTML complet de la LP</li>
+                </ul>
+              </div>
 
-                <div className="p-4 border border-purple-200 rounded-lg bg-purple-50">
-                  <h4 className="font-semibold text-purple-800 flex items-center gap-2">
-                    <MousePointer className="w-4 h-4" />
-                    2. Tracking CTA (généré au niveau LP)
-                  </h4>
-                  <p className="text-sm text-purple-700 mt-2">
-                    Script sur les boutons CTA pour compter les clics. Généré via le Générateur de Scripts.
-                  </p>
-                </div>
-
-                <div className="p-4 border border-green-200 rounded-lg bg-green-50">
-                  <h4 className="font-semibold text-green-800 flex items-center gap-2">
-                    <Send className="w-4 h-4" />
-                    3. Tracking Conversion (configuré au niveau COMPTE et FORM)
-                  </h4>
-                  <p className="text-sm text-green-700 mt-2">
-                    Se déclenche après validation du téléphone (10 chiffres). Le code est dans le compte, le type dans le form.
-                  </p>
-                </div>
+              <div className="bg-purple-50 rounded-lg p-4">
+                <h4 className="font-semibold text-purple-800 mb-2">🖱️ Tracking CTA</h4>
+                <p className="text-sm text-purple-700">
+                  Le sélecteur CTA (ex: .cta-btn) est défini au niveau de la LP et utilisé 
+                  dans le générateur de brief pour le tracking des clics.
+                </p>
               </div>
             </div>
           )}
 
-          {/* Leads */}
+          {/* Flux des Leads */}
           {activeSection === 'leads' && (
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
               <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <Users className="w-5 h-5 text-blue-600" />
-                Gestion des Leads
+                <Send className="w-5 h-5 text-blue-600" />
+                Flux des Leads
               </h2>
+
+              <div className="bg-green-50 rounded-lg p-4">
+                <h4 className="font-semibold text-green-800 mb-2">✅ Envoi instantané</h4>
+                <p className="text-sm text-green-700">
+                  Dès qu'un lead arrive avec un <strong>téléphone valide</strong> et une 
+                  <strong>crm_api_key configurée</strong>, il est envoyé immédiatement vers ZR7 ou MDL.
+                </p>
+              </div>
+
+              <div className="bg-blue-50 rounded-lg p-4">
+                <h4 className="font-semibold text-blue-800 mb-2">🌙 Job nocturne (03h00)</h4>
+                <p className="text-sm text-blue-700">
+                  Chaque nuit à 3h du matin, le système vérifie les leads des dernières 24h 
+                  qui ont échoué et tente de les renvoyer automatiquement.
+                </p>
+              </div>
 
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="p-4 bg-green-50 rounded-lg">
@@ -3007,104 +2948,68 @@ const GuidePage = () => {
                     <CheckCircle className="w-5 h-5 text-green-600" />
                     <strong className="text-green-800">Succès</strong>
                   </div>
-                  <p className="text-sm text-green-700">Lead envoyé et accepté par le CRM</p>
+                  <p className="text-sm text-green-700">Lead envoyé et accepté par ZR7/MDL</p>
                 </div>
                 <div className="p-4 bg-red-50 rounded-lg">
                   <div className="flex items-center gap-2 mb-2">
                     <XCircle className="w-5 h-5 text-red-600" />
                     <strong className="text-red-800">Échec</strong>
                   </div>
-                  <p className="text-sm text-red-700">Erreur lors de l'envoi (retry possible)</p>
+                  <p className="text-sm text-red-700">Erreur - sera réessayé automatiquement</p>
                 </div>
                 <div className="p-4 bg-orange-50 rounded-lg">
                   <div className="flex items-center gap-2 mb-2">
                     <AlertTriangle className="w-5 h-5 text-orange-600" />
                     <strong className="text-orange-800">Doublon</strong>
                   </div>
-                  <p className="text-sm text-orange-700">Le téléphone existe déjà dans le CRM</p>
+                  <p className="text-sm text-orange-700">Le téléphone existe déjà dans ZR7/MDL</p>
                 </div>
                 <div className="p-4 bg-slate-50 rounded-lg">
                   <div className="flex items-center gap-2 mb-2">
-                    <RefreshCw className="w-5 h-5 text-slate-600" />
-                    <strong className="text-slate-800">En attente</strong>
+                    <Lock className="w-5 h-5 text-slate-600" />
+                    <strong className="text-slate-800">No Config</strong>
                   </div>
-                  <p className="text-sm text-slate-600">Envoi en cours ou non encore traité</p>
+                  <p className="text-sm text-slate-600">Pas de clé API CRM configurée</p>
                 </div>
               </div>
-
-              <div className="bg-blue-50 rounded-lg p-4">
-                <h4 className="font-semibold text-blue-800 mb-2">📋 Actions disponibles</h4>
-                <ul className="text-sm text-blue-700 space-y-1">
-                  <li>• <strong>Retry</strong> : Réessayer l'envoi d'un lead en échec</li>
-                  <li>• <strong>Supprimer</strong> : Supprimer un lead (test) individuellement</li>
-                  <li>• <strong>Supprimer en masse</strong> : Cocher plusieurs leads et supprimer</li>
-                  <li>• <strong>Export CSV</strong> : Télécharger la liste des leads</li>
-                </ul>
-              </div>
             </div>
           )}
 
-          {/* Analytics */}
-          {activeSection === 'analytics' && (
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
-              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-blue-600" />
-                Analytics
-              </h2>
-
-              <div className="bg-blue-50 rounded-lg p-4">
-                <h4 className="font-semibold text-blue-800 mb-2">📊 Dashboard comparatif</h4>
-                <p className="text-sm text-blue-700">
-                  Comparez les performances par source de diffusion (Native, Google, Facebook, TikTok) et par CRM.
-                  Filtrez par période pour voir l'évolution.
-                </p>
-              </div>
-
-              <div className="bg-green-50 rounded-lg p-4">
-                <h4 className="font-semibold text-green-800 mb-2">🏆 Métriques clés</h4>
-                <ul className="text-sm text-green-700 space-y-1">
-                  <li>• <strong>Clics CTA</strong> : Visiteurs ayant cliqué sur un bouton</li>
-                  <li>• <strong>Forms démarrés</strong> : Visiteurs ayant ouvert le formulaire</li>
-                  <li>• <strong>Leads</strong> : Formulaires soumis avec succès</li>
-                  <li>• <strong>Taux conversion</strong> : % Forms démarrés → Leads</li>
-                </ul>
-              </div>
-            </div>
-          )}
-
-          {/* Generator */}
+          {/* Générateur de Briefs */}
           {activeSection === 'generator' && (
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
               <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                 <Code className="w-5 h-5 text-blue-600" />
-                Générateur de Scripts
+                Générateur de Briefs
               </h2>
 
+              <p className="text-slate-600">
+                Le générateur crée un <strong>document texte</strong> compilant toutes les informations 
+                nécessaires pour créer une LP ou un formulaire. C'est comme un "Google Docs" où tout est rassemblé.
+              </p>
+
               <div className="bg-purple-50 rounded-lg p-4">
-                <h4 className="font-semibold text-purple-800 mb-2">🔧 Scripts disponibles</h4>
-                <ul className="text-sm text-purple-700 space-y-2">
-                  <li>
-                    <strong>Script LP (Tracking CTA)</strong>
-                    <p className="text-purple-600">Code à insérer pour tracker les clics sur les boutons CTA</p>
-                  </li>
-                  <li>
-                    <strong>Script Form (Démarrage)</strong>
-                    <p className="text-purple-600">Code pour tracker quand un visiteur ouvre le formulaire</p>
-                  </li>
-                </ul>
+                <h4 className="font-semibold text-purple-800 mb-2">📝 Comment ça marche ?</h4>
+                <ol className="text-sm text-purple-700 space-y-2">
+                  <li><strong>1.</strong> Sélectionnez un formulaire ou une LP</li>
+                  <li><strong>2.</strong> Cochez les éléments à inclure (logos, images, GTM, légal...)</li>
+                  <li><strong>3.</strong> Saisissez les infos dynamiques (clé API CRM)</li>
+                  <li><strong>4.</strong> Générez le brief textuel</li>
+                  <li><strong>5.</strong> Copiez et transmettez au développeur</li>
+                </ol>
               </div>
 
-              <div className="bg-yellow-50 rounded-lg p-4">
-                <h4 className="font-semibold text-yellow-800 mb-2">⚠️ Important</h4>
-                <p className="text-sm text-yellow-700">
-                  Les codes GTM (Pixel, Conversion) sont configurés au niveau du <strong>Compte</strong>.
-                  Le Générateur ne génère que le code de tracking CTA et Form Start.
+              <div className="bg-orange-50 rounded-lg p-4">
+                <h4 className="font-semibold text-orange-800 mb-2">🔑 Clé API dans le brief</h4>
+                <p className="text-sm text-orange-700">
+                  Le brief inclut automatiquement la <strong>clé API interne</strong> (pour envoyer les leads 
+                  vers ce CRM) et la <strong>clé API CRM</strong> que vous saisissez (pour la redistribution).
                 </p>
               </div>
             </div>
           )}
 
-          {/* Users */}
+          {/* Utilisateurs */}
           {activeSection === 'users' && (
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
               <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
@@ -3113,46 +3018,36 @@ const GuidePage = () => {
               </h2>
 
               <div className="bg-blue-50 rounded-lg p-4">
-                <h4 className="font-semibold text-blue-800 mb-2">👥 Rôles disponibles</h4>
+                <h4 className="font-semibold text-blue-800 mb-2">👥 Rôles</h4>
                 <div className="space-y-2 text-sm">
                   <div className="bg-white p-3 rounded border border-blue-200">
-                    <strong className="text-purple-800">Admin</strong>
-                    <p className="text-blue-700">Accès complet : gestion utilisateurs, suppression, configuration</p>
+                    <strong className="text-red-700">Admin</strong>
+                    <p className="text-blue-700">Accès complet + <strong>peut supprimer</strong> (leads, formulaires, LP, comptes)</p>
                   </div>
                   <div className="bg-white p-3 rounded border border-blue-200">
                     <strong className="text-blue-800">Éditeur</strong>
-                    <p className="text-blue-700">Créer et modifier LP, Forms, Comptes. Pas de suppression ni gestion utilisateurs</p>
+                    <p className="text-blue-700">Créer et modifier. <strong>Pas de suppression</strong></p>
                   </div>
                   <div className="bg-white p-3 rounded border border-blue-200">
                     <strong className="text-slate-800">Lecteur</strong>
-                    <p className="text-blue-700">Consultation uniquement. Aucune modification possible</p>
+                    <p className="text-blue-700">Consultation uniquement</p>
                   </div>
                 </div>
+              </div>
+
+              <div className="bg-red-50 rounded-lg p-4">
+                <h4 className="font-semibold text-red-800 mb-2">🗑️ Suppressions</h4>
+                <p className="text-sm text-red-700">
+                  <strong>Seuls les Admins</strong> peuvent supprimer des leads, formulaires, LP ou comptes. 
+                  Les autres rôles ne voient pas les boutons de suppression.
+                </p>
               </div>
 
               <div className="bg-green-50 rounded-lg p-4">
                 <h4 className="font-semibold text-green-800 mb-2">🔐 Comptes autorisés</h4>
-                <p className="text-sm text-green-700 mb-3">
-                  Vous pouvez restreindre l'accès d'un utilisateur à certains comptes seulement.
-                </p>
-                <div className="space-y-2 text-sm">
-                  <div className="bg-white p-3 rounded border border-green-200">
-                    <strong className="text-green-800">Aucun compte sélectionné</strong>
-                    <p className="text-green-700">→ L'utilisateur a accès à TOUS les comptes</p>
-                  </div>
-                  <div className="bg-white p-3 rounded border border-green-200">
-                    <strong className="text-green-800">Comptes spécifiques sélectionnés</strong>
-                    <p className="text-green-700">→ L'utilisateur ne voit QUE les comptes cochés (ex: AUDIT GREEN, OBJECTIF ACADEMIE)</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-orange-50 rounded-lg p-4">
-                <h4 className="font-semibold text-orange-800 mb-2">📝 Exemple d'utilisation</h4>
-                <p className="text-sm text-orange-700">
-                  Un commercial externe ne travaille que sur le compte "AUDIT GREEN" → 
-                  Créez-lui un compte Lecteur avec uniquement "AUDIT GREEN" dans les comptes autorisés.
-                  Il ne verra que les LP, Forms et Leads de ce compte.
+                <p className="text-sm text-green-700">
+                  Vous pouvez restreindre un utilisateur à certains comptes seulement. 
+                  S'il n'a aucun compte sélectionné, il voit tout.
                 </p>
               </div>
             </div>
@@ -3171,47 +3066,47 @@ const GuidePage = () => {
                   <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold shrink-0">1</div>
                   <div>
                     <h4 className="font-semibold text-slate-800">Configurer le Compte</h4>
-                    <p className="text-sm text-slate-600">Ajouter les logos, les codes GTM (pixel header, conversion), les textes légaux</p>
+                    <p className="text-sm text-slate-600">Ajouter logos, images, codes GTM, URLs de redirection, textes légaux</p>
                   </div>
                 </div>
 
                 <div className="flex gap-4 items-start">
                   <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold shrink-0">2</div>
                   <div>
-                    <h4 className="font-semibold text-slate-800">Créer la Landing Page</h4>
-                    <p className="text-sm text-slate-600">Définir le code LP, la source (Taboola...), le type (redirect/intégré)</p>
+                    <h4 className="font-semibold text-slate-800">Créer le Formulaire</h4>
+                    <p className="text-sm text-slate-600">Définir le code, la source, la clé API CRM (ZR7/MDL). La clé interne est auto-générée.</p>
                   </div>
                 </div>
 
                 <div className="flex gap-4 items-start">
                   <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold shrink-0">3</div>
                   <div>
-                    <h4 className="font-semibold text-slate-800">Générer le script CTA</h4>
-                    <p className="text-sm text-slate-600">Aller dans Générateur Scripts → Copier le code de tracking CTA → Coller sur la LP</p>
+                    <h4 className="font-semibold text-slate-800">Générer le Brief</h4>
+                    <p className="text-sm text-slate-600">Sélectionner les éléments du compte à inclure, copier le brief pour le développeur</p>
                   </div>
                 </div>
 
                 <div className="flex gap-4 items-start">
                   <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold shrink-0">4</div>
                   <div>
-                    <h4 className="font-semibold text-slate-800">Créer le Formulaire</h4>
-                    <p className="text-sm text-slate-600">Définir le code Form, la clé API CRM, le type de tracking (redirect/GTM)</p>
+                    <h4 className="font-semibold text-slate-800">Copier la Clé API Interne</h4>
+                    <p className="text-sm text-slate-600">Dans la liste des formulaires, cliquer sur l'icône copier à côté de la clé</p>
                   </div>
                 </div>
 
                 <div className="flex gap-4 items-start">
                   <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold shrink-0">5</div>
                   <div>
-                    <h4 className="font-semibold text-slate-800">Lancer la campagne</h4>
-                    <p className="text-sm text-slate-600">Publier la LP et le formulaire avec les scripts de tracking intégrés</p>
+                    <h4 className="font-semibold text-slate-800">Développer le Formulaire HTML</h4>
+                    <p className="text-sm text-slate-600">Le développeur utilise le brief + la clé API interne pour créer le formulaire</p>
                   </div>
                 </div>
 
                 <div className="flex gap-4 items-start">
                   <div className="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold shrink-0">6</div>
                   <div>
-                    <h4 className="font-semibold text-slate-800">Suivre les performances</h4>
-                    <p className="text-sm text-slate-600">Dashboard → Comparatif → Analyser clics CTA, forms démarrés, leads, taux conversion</p>
+                    <h4 className="font-semibold text-slate-800">Leads en Production</h4>
+                    <p className="text-sm text-slate-600">Les leads arrivent ici → sont stockés → redistribués vers ZR7/MDL automatiquement</p>
                   </div>
                 </div>
               </div>
