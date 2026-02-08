@@ -134,6 +134,7 @@ const Sidebar = () => {
 
   const menuItems = [
     { path: '/dashboard', icon: Home, label: 'Tableau de bord' },
+    { path: '/compare', icon: BarChart3, label: 'Dashboard Comparatif' },
     { path: '/analytics', icon: TrendingUp, label: 'Analytics' },
     { path: '/leads', icon: Users, label: 'Leads' },
     { path: '/lps', icon: Layers, label: 'Landing Pages' },
@@ -147,6 +148,8 @@ const Sidebar = () => {
   const adminItems = [
     { path: '/users', icon: Shield, label: 'Utilisateurs' },
     { path: '/activity', icon: Activity, label: 'Journal activité' },
+    { path: '/diffusion', icon: Send, label: 'Sources Diffusion' },
+    { path: '/products', icon: Tag, label: 'Types Produits' },
     { path: '/settings', icon: Settings, label: 'Paramètres' },
   ];
 
