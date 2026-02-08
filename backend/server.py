@@ -1370,6 +1370,211 @@ async def delete_multiple_leads(request: BulkDeleteRequest, user: dict = Depends
     await log_activity(user["id"], user["email"], "delete", "leads", ",".join(request.lead_ids[:5]), f"{result.deleted_count} leads supprimés")
     return {"success": True, "deleted_count": result.deleted_count}
 
+# ==================== ARCHIVAGE & FACTURATION ====================
+
+@api_router.post("/leads/archive")
+async def archive_old_leads(months: int = 3, user: dict = Depends(require_admin)):
+    """
+    Archiver les leads de plus de X mois.
+    Les leads sont déplacés vers la collection 'leads_archived'.
+    """
+    cutoff_date = datetime.now(timezone.utc) - timedelta(days=months * 30)
+    
+    # Trouver les leads à archiver
+    old_leads = await db.leads.find({
+        "created_at": {"$lt": cutoff_date.isoformat()}
+    }).to_list(10000)
+    
+    if not old_leads:
+        return {"success": True, "archived_count": 0, "message": "Aucun lead à archiver"}
+    
+    # Ajouter la date d'archivage
+    for lead in old_leads:
+        lead["archived_at"] = datetime.now(timezone.utc).isoformat()
+        lead.pop("_id", None)
+    
+    # Insérer dans leads_archived
+    await db.leads_archived.insert_many(old_leads)
+    
+    # Supprimer de leads
+    lead_ids = [lead["id"] for lead in old_leads]
+    await db.leads.delete_many({"id": {"$in": lead_ids}})
+    
+    await log_activity(user["id"], user["email"], "archive", "leads", "", 
+                      f"{len(old_leads)} leads archivés (> {months} mois)")
+    
+    return {
+        "success": True, 
+        "archived_count": len(old_leads),
+        "cutoff_date": cutoff_date.isoformat()
+    }
+
+@api_router.get("/leads/archived")
+async def get_archived_leads(
+    limit: int = 100,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    user: dict = Depends(require_admin)
+):
+    """Récupérer les leads archivés"""
+    query = {}
+    if date_from:
+        query["created_at"] = {"$gte": date_from}
+    if date_to:
+        query.setdefault("created_at", {})["$lte"] = date_to
+    
+    leads = await db.leads_archived.find(query, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    total = await db.leads_archived.count_documents(query)
+    
+    return {"leads": leads, "count": len(leads), "total": total}
+
+@api_router.get("/billing/dashboard")
+async def get_billing_dashboard(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    user: dict = Depends(require_admin)
+):
+    """
+    Dashboard de facturation inter-CRM.
+    Montre les leads envoyés par chaque CRM, routés vers d'autres CRMs, et les montants.
+    """
+    # Période par défaut : mois en cours
+    now = datetime.now(timezone.utc)
+    if not date_from:
+        date_from = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
+    if not date_to:
+        date_to = now.isoformat()
+    
+    date_query = {"created_at": {"$gte": date_from, "$lte": date_to}}
+    
+    # Récupérer tous les CRMs avec leurs prix
+    crms = await db.crms.find({}, {"_id": 0}).to_list(10)
+    crm_map = {crm["id"]: crm for crm in crms}
+    
+    # Stats par CRM
+    crm_stats = {}
+    for crm in crms:
+        crm_stats[crm["id"]] = {
+            "crm_name": crm["name"],
+            "crm_slug": crm.get("slug", ""),
+            "lead_prices": crm.get("lead_prices", {}),
+            # Leads originaires de ce CRM (form_code appartient à ce CRM)
+            "leads_originated": {"PAC": 0, "PV": 0, "ITE": 0, "total": 0},
+            # Leads envoyés vers ce CRM (target_crm_id = ce CRM)
+            "leads_received": {"PAC": 0, "PV": 0, "ITE": 0, "total": 0},
+            # Leads routés depuis ce CRM vers un autre
+            "leads_rerouted_out": {"PAC": 0, "PV": 0, "ITE": 0, "total": 0},
+            # Leads routés vers ce CRM depuis un autre
+            "leads_rerouted_in": {"PAC": 0, "PV": 0, "ITE": 0, "total": 0},
+            # Montants
+            "amount_to_invoice": 0.0,  # Ce que ce CRM doit facturer aux autres
+            "amount_to_pay": 0.0,      # Ce que ce CRM doit payer aux autres
+        }
+    
+    # Récupérer tous les leads de la période avec succès
+    leads = await db.leads.find({
+        **date_query,
+        "api_status": {"$in": ["success", "duplicate"]},
+        "sent_to_crm": True
+    }, {"_id": 0}).to_list(100000)
+    
+    # Calculer les stats
+    for lead in leads:
+        origin_crm_id = lead.get("origin_crm_id", "")
+        target_crm_id = lead.get("target_crm_id", "")
+        product_type = lead.get("product_type", "PV")
+        routing_reason = lead.get("routing_reason", "direct_to_origin")
+        
+        # Normaliser le type de produit
+        if product_type not in ["PAC", "PV", "ITE"]:
+            product_type = "PV"
+        
+        # Leads originaires
+        if origin_crm_id and origin_crm_id in crm_stats:
+            crm_stats[origin_crm_id]["leads_originated"][product_type] += 1
+            crm_stats[origin_crm_id]["leads_originated"]["total"] += 1
+        
+        # Leads reçus (envoyés vers le CRM cible)
+        if target_crm_id and target_crm_id in crm_stats:
+            crm_stats[target_crm_id]["leads_received"][product_type] += 1
+            crm_stats[target_crm_id]["leads_received"]["total"] += 1
+        
+        # Routage inter-CRM
+        if "rerouted_to" in routing_reason and origin_crm_id != target_crm_id:
+            # Lead routé depuis origin vers target
+            if origin_crm_id in crm_stats:
+                crm_stats[origin_crm_id]["leads_rerouted_out"][product_type] += 1
+                crm_stats[origin_crm_id]["leads_rerouted_out"]["total"] += 1
+            
+            if target_crm_id in crm_stats:
+                crm_stats[target_crm_id]["leads_rerouted_in"][product_type] += 1
+                crm_stats[target_crm_id]["leads_rerouted_in"]["total"] += 1
+                
+                # Calcul du montant à facturer
+                target_prices = crm_stats[target_crm_id]["lead_prices"]
+                price = target_prices.get(product_type, 0)
+                
+                # Le CRM cible facture au CRM origine
+                crm_stats[target_crm_id]["amount_to_invoice"] += price
+                if origin_crm_id in crm_stats:
+                    crm_stats[origin_crm_id]["amount_to_pay"] += price
+    
+    # Calculer le solde net et le résumé de facturation
+    billing_summary = []
+    for crm_id, stats in crm_stats.items():
+        net_balance = stats["amount_to_invoice"] - stats["amount_to_pay"]
+        billing_summary.append({
+            "crm_id": crm_id,
+            "crm_name": stats["crm_name"],
+            "crm_slug": stats["crm_slug"],
+            "leads_originated": stats["leads_originated"],
+            "leads_received": stats["leads_received"],
+            "leads_rerouted_out": stats["leads_rerouted_out"],
+            "leads_rerouted_in": stats["leads_rerouted_in"],
+            "amount_to_invoice": round(stats["amount_to_invoice"], 2),
+            "amount_to_pay": round(stats["amount_to_pay"], 2),
+            "net_balance": round(net_balance, 2),
+            "lead_prices": stats["lead_prices"]
+        })
+    
+    # Détails des transferts inter-CRM
+    transfers = []
+    for crm_from in crms:
+        for crm_to in crms:
+            if crm_from["id"] != crm_to["id"]:
+                # Compter les leads routés de crm_from vers crm_to
+                transfer_leads = [l for l in leads 
+                                 if l.get("origin_crm_id") == crm_from["id"] 
+                                 and l.get("target_crm_id") == crm_to["id"]
+                                 and "rerouted" in l.get("routing_reason", "")]
+                
+                if transfer_leads:
+                    by_product = {"PAC": 0, "PV": 0, "ITE": 0}
+                    amount = 0
+                    for lead in transfer_leads:
+                        pt = lead.get("product_type", "PV")
+                        if pt in by_product:
+                            by_product[pt] += 1
+                        price = crm_to.get("lead_prices", {}).get(pt, 0)
+                        amount += price
+                    
+                    transfers.append({
+                        "from_crm": crm_from["name"],
+                        "from_crm_id": crm_from["id"],
+                        "to_crm": crm_to["name"],
+                        "to_crm_id": crm_to["id"],
+                        "count": len(transfer_leads),
+                        "by_product": by_product,
+                        "amount": round(amount, 2)
+                    })
+    
+    return {
+        "period": {"from": date_from, "to": date_to},
+        "total_leads": len(leads),
+        "crm_stats": billing_summary,
+        "transfers": transfers
+    }
+
 # ==================== ANALYTICS ====================
 
 @api_router.get("/analytics/stats")
