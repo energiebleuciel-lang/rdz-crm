@@ -968,26 +968,23 @@ async def send_lead_to_crm(lead_doc: dict, api_url: str, api_key: str) -> tuple:
 
 @api_router.post("/submit-lead")
 async def submit_lead(lead: LeadData):
-    """Submit a lead - validates, saves to DB and sends to CRM API instantly if phone is valid"""
-    timestamp = int(datetime.now(timezone.utc).timestamp())
+    """
+    Soumission de lead - Enregistre dans la DB et envoie vers ZR7/MDL si config présente
     
-    # Validate phone (10 digits, required)
-    phone_valid, phone_result = validate_phone_fr(lead.phone)
-    if not phone_valid:
-        raise HTTPException(status_code=400, detail=phone_result)
-    phone = phone_result
+    IMPORTANT: Pas de validation stricte côté serveur.
+    - Le téléphone est requis pour l'envoi vers CRM
+    - Tous les autres champs sont optionnels
+    - La validation du format téléphone est gérée côté formulaire
+    """
+    # Utiliser le timestamp fourni ou en générer un
+    timestamp = lead.register_date or int(datetime.now(timezone.utc).timestamp())
     
-    # Validate nom (required)
-    if not lead.nom or len(lead.nom.strip()) < 2:
-        raise HTTPException(status_code=400, detail="Le nom est obligatoire (minimum 2 caractères)")
+    # Le téléphone tel qu'il est fourni (pas de validation de format)
+    phone = lead.phone.strip() if lead.phone else ""
     
-    # Validate postal code (France metro only if provided)
-    code_postal = lead.code_postal or ""
-    if code_postal:
-        cp_valid, cp_result = validate_postal_code_fr(code_postal)
-        if not cp_valid:
-            raise HTTPException(status_code=400, detail=cp_result)
-        code_postal = cp_result
+    # Vérifier que le téléphone est présent (seule condition obligatoire)
+    if not phone:
+        raise HTTPException(status_code=400, detail="Le numéro de téléphone est requis")
     
     # Get form config - try both account_id and sub_account_id for compatibility
     form_config = await db.forms.find_one({"code": lead.form_code})
@@ -1005,23 +1002,31 @@ async def submit_lead(lead: LeadData):
         # Clé API spécifique à ce formulaire (fournie par l'utilisateur)
         api_key = form_config.get("crm_api_key") or form_config.get("api_key") or ""
     
-    # Déterminer si on peut envoyer vers le CRM
+    # Déterminer si on peut envoyer vers le CRM (téléphone présent + config)
     can_send_to_crm = bool(phone and api_url and api_key)
     
+    # Stocker TOUS les champs du lead (format doc API ZR7/MDL)
     lead_doc = {
         "id": str(uuid.uuid4()),
-        "form_id": lead.form_id,
+        "form_id": lead.form_id or "",
         "form_code": lead.form_code or "",
         "lp_code": lead.lp_code or "",
         "account_id": account_id or "",
+        # Champs principaux
         "phone": phone,
-        "nom": lead.nom.strip(),
+        "nom": (lead.nom or "").strip(),
+        "prenom": (lead.prenom or "").strip(),
+        "civilite": lead.civilite or "",
         "email": lead.email or "",
+        # Custom fields ZR7/MDL
         "departement": lead.departement or "",
-        "code_postal": code_postal,
+        "code_postal": lead.code_postal or "",
+        "superficie_logement": lead.superficie_logement or "",
+        "chauffage_actuel": lead.chauffage_actuel or "",
         "type_logement": lead.type_logement or "",
         "statut_occupant": lead.statut_occupant or "",
         "facture_electricite": lead.facture_electricite or "",
+        # Métadonnées
         "created_at": datetime.now(timezone.utc).isoformat(),
         "register_date": timestamp,
         "api_status": "pending" if can_send_to_crm else "no_config",
