@@ -200,33 +200,56 @@ const Sidebar = () => {
         )}
       </div>
 
-      <nav className="flex-1 p-4 space-y-1">
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        {/* Dashboards */}
         {menuItems.map(item => (
-          <Link
-            key={item.path}
-            to={item.path}
-            className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-              isActive(item.path) ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800'
-            }`}
-          >
+          <Link key={item.path} to={item.path} className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${isActive(item.path) ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800'}`}>
             <item.icon className="w-5 h-5" />
             {item.label}
           </Link>
         ))}
 
+        {/* Gestion */}
+        <div className="pt-4 pb-2">
+          <p className="text-xs text-slate-500 uppercase tracking-wider px-3">Gestion</p>
+        </div>
+        {gestionItems.map(item => (
+          <Link key={item.path} to={item.path} className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${isActive(item.path) ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800'}`}>
+            <item.icon className="w-5 h-5" />
+            {item.label}
+          </Link>
+        ))}
+
+        {/* Outils */}
+        <div className="pt-4 pb-2">
+          <p className="text-xs text-slate-500 uppercase tracking-wider px-3">Outils</p>
+        </div>
+        {outilsItems.map(item => (
+          <Link key={item.path} to={item.path} className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${isActive(item.path) ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800'}`}>
+            <item.icon className="w-5 h-5" />
+            {item.label}
+          </Link>
+        ))}
+
+        {/* Configuration */}
+        <div className="pt-4 pb-2">
+          <p className="text-xs text-slate-500 uppercase tracking-wider px-3">Configuration</p>
+        </div>
+        {configItems.map(item => (
+          <Link key={item.path} to={item.path} className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${isActive(item.path) ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800'}`}>
+            <item.icon className="w-5 h-5" />
+            {item.label}
+          </Link>
+        ))}
+
+        {/* Administration (admin only) */}
         {user?.role === 'admin' && (
           <>
             <div className="pt-4 pb-2">
               <p className="text-xs text-slate-500 uppercase tracking-wider px-3">Administration</p>
             </div>
             {adminItems.map(item => (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                  isActive(item.path) ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800'
-                }`}
-              >
+              <Link key={item.path} to={item.path} className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${isActive(item.path) ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800'}`}>
                 <item.icon className="w-5 h-5" />
                 {item.label}
               </Link>
