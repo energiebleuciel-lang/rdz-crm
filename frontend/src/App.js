@@ -4057,6 +4057,251 @@ const AssetsPage = () => {
   );
 };
 
+// ==================== BILLING PAGE ====================
+
+const BillingPage = () => {
+  const { authFetch } = useAuth();
+  const [billingData, setBillingData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [archiving, setArchiving] = useState(false);
+
+  useEffect(() => {
+    // Par défaut : mois en cours
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    setDateFrom(firstDay.toISOString().split('T')[0]);
+    setDateTo(now.toISOString().split('T')[0]);
+  }, []);
+
+  useEffect(() => {
+    if (dateFrom && dateTo) {
+      loadBillingData();
+    }
+  }, [dateFrom, dateTo]);
+
+  const loadBillingData = async () => {
+    setLoading(true);
+    try {
+      const res = await authFetch(`${API}/api/billing/dashboard?date_from=${dateFrom}T00:00:00&date_to=${dateTo}T23:59:59`);
+      if (res.ok) {
+        setBillingData(await res.json());
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    setLoading(false);
+  };
+
+  const archiveOldLeads = async () => {
+    if (!window.confirm('Archiver tous les leads de plus de 3 mois ? Cette action est irréversible.')) return;
+    setArchiving(true);
+    try {
+      const res = await authFetch(`${API}/api/leads/archive?months=3`, { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        alert(`${data.archived_count} leads archivés avec succès !`);
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Erreur lors de l\'archivage');
+    }
+    setArchiving(false);
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <RefreshCw className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Facturation Inter-CRM</h1>
+          <p className="text-sm text-slate-500">Suivi des leads routés entre CRMs et montants à facturer</p>
+        </div>
+        <button
+          onClick={archiveOldLeads}
+          disabled={archiving}
+          className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50"
+        >
+          <Database className="w-4 h-4" />
+          {archiving ? 'Archivage...' : 'Archiver (> 3 mois)'}
+        </button>
+      </div>
+
+      {/* Filtres de période */}
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+        <div className="flex items-center gap-4">
+          <div>
+            <label className="block text-xs text-slate-500 mb-1">Date début</label>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={e => setDateFrom(e.target.value)}
+              className="px-3 py-2 border border-slate-300 rounded-lg text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-500 mb-1">Date fin</label>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={e => setDateTo(e.target.value)}
+              className="px-3 py-2 border border-slate-300 rounded-lg text-sm"
+            />
+          </div>
+          <button
+            onClick={loadBillingData}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+          <div className="ml-auto text-right">
+            <p className="text-xs text-slate-500">Total leads période</p>
+            <p className="text-2xl font-bold text-slate-800">{billingData?.total_leads || 0}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Résumé par CRM */}
+      <div className="grid md:grid-cols-2 gap-4">
+        {billingData?.crm_stats?.map(crm => (
+          <div key={crm.crm_id} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className={`p-4 ${crm.crm_slug === 'mdl' ? 'bg-blue-600' : 'bg-green-600'} text-white`}>
+              <h3 className="font-bold text-lg">{crm.crm_name}</h3>
+              <div className="flex gap-4 mt-2 text-sm opacity-90">
+                <span>Originaires : {crm.leads_originated.total}</span>
+                <span>Reçus : {crm.leads_received.total}</span>
+              </div>
+            </div>
+            <div className="p-4 space-y-4">
+              {/* Stats par produit */}
+              <div>
+                <p className="text-xs text-slate-500 mb-2">Leads par produit (originaires)</p>
+                <div className="flex gap-2">
+                  <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs">
+                    ☀️ PV: {crm.leads_originated.PV}
+                  </span>
+                  <span className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs">
+                    🔥 PAC: {crm.leads_originated.PAC}
+                  </span>
+                  <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
+                    🏠 ITE: {crm.leads_originated.ITE}
+                  </span>
+                </div>
+              </div>
+
+              {/* Routage */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-orange-50 p-3 rounded-lg">
+                  <p className="text-xs text-orange-600 mb-1">Routés vers autres CRMs</p>
+                  <p className="text-xl font-bold text-orange-700">{crm.leads_rerouted_out.total}</p>
+                </div>
+                <div className="bg-purple-50 p-3 rounded-lg">
+                  <p className="text-xs text-purple-600 mb-1">Reçus d'autres CRMs</p>
+                  <p className="text-xl font-bold text-purple-700">{crm.leads_rerouted_in.total}</p>
+                </div>
+              </div>
+
+              {/* Prix configurés */}
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Prix par lead configurés</p>
+                <div className="flex gap-2 text-xs">
+                  {['PAC', 'PV', 'ITE'].map(pt => (
+                    <span key={pt} className="px-2 py-1 bg-slate-100 rounded">
+                      {pt}: {crm.lead_prices?.[pt] ? formatCurrency(crm.lead_prices[pt]) : 'Non défini'}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Facturation */}
+              <div className="border-t pt-3 grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <p className="text-xs text-slate-500">À facturer</p>
+                  <p className="font-bold text-green-600">{formatCurrency(crm.amount_to_invoice)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">À payer</p>
+                  <p className="font-bold text-red-600">{formatCurrency(crm.amount_to_pay)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Solde net</p>
+                  <p className={`font-bold ${crm.net_balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {formatCurrency(crm.net_balance)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Transferts détaillés */}
+      {billingData?.transfers?.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200">
+          <div className="p-4 border-b border-slate-200">
+            <h3 className="font-semibold text-slate-800">Détail des transferts inter-CRM</h3>
+            <p className="text-xs text-slate-500">Leads routés d'un CRM vers un autre (quand routage intelligent activé)</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50">
+                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">De</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Vers</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">☀️ PV</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">🔥 PAC</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">🏠 ITE</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">Total</th>
+                  <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">Montant</th>
+                </tr>
+              </thead>
+              <tbody>
+                {billingData.transfers.map((transfer, idx) => (
+                  <tr key={idx} className="border-b border-slate-100">
+                    <td className="py-3 px-4 text-sm font-medium text-slate-700">{transfer.from_crm}</td>
+                    <td className="py-3 px-4 text-sm text-slate-700">→ {transfer.to_crm}</td>
+                    <td className="py-3 px-4 text-sm text-center text-slate-600">{transfer.by_product.PV}</td>
+                    <td className="py-3 px-4 text-sm text-center text-slate-600">{transfer.by_product.PAC}</td>
+                    <td className="py-3 px-4 text-sm text-center text-slate-600">{transfer.by_product.ITE}</td>
+                    <td className="py-3 px-4 text-sm text-center font-medium text-slate-800">{transfer.count}</td>
+                    <td className="py-3 px-4 text-sm text-right font-bold text-green-600">{formatCurrency(transfer.amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Aide */}
+      <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+        <h4 className="font-medium text-blue-800 mb-2">Comment ça fonctionne ?</h4>
+        <ul className="text-sm text-blue-700 space-y-1">
+          <li>• <strong>Leads originaires</strong> : Leads soumis via les formulaires de ce CRM</li>
+          <li>• <strong>Leads reçus</strong> : Leads effectivement envoyés vers ce CRM (après routage)</li>
+          <li>• <strong>Routés vers autres</strong> : Leads de ce CRM envoyés vers un autre CRM (car pas de commande)</li>
+          <li>• <strong>Reçus d'autres</strong> : Leads d'un autre CRM redirigés vers celui-ci (car commande active)</li>
+          <li>• <strong>À facturer</strong> : Montant que ce CRM doit facturer aux autres pour les leads reçus en reroutage</li>
+          <li>• <strong>À payer</strong> : Montant que ce CRM doit payer aux autres pour les leads envoyés en reroutage</li>
+          <li>• Configurez les prix dans <strong>Paramètres → Configurer Commandes</strong></li>
+        </ul>
+      </div>
+    </div>
+  );
+};
+
 const SettingsPage = () => {
   const { authFetch } = useAuth();
   const [crms, setCrms] = useState([]);
