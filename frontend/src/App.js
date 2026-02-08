@@ -1216,6 +1216,7 @@ const LPsPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     const url = editingLP ? `${API}/api/lps/${editingLP.id}` : `${API}/api/lps`;
     const method = editingLP ? 'PUT' : 'POST';
     
@@ -1225,9 +1226,13 @@ const LPsPage = () => {
         setShowModal(false);
         setEditingLP(null);
         loadData();
+      } else {
+        const data = await res.json();
+        setError(data.detail || 'Erreur lors de la création');
       }
     } catch (e) {
       console.error(e);
+      setError('Erreur de connexion');
     }
   };
 
