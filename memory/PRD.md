@@ -11,15 +11,22 @@ Créer un CRM multi-tenant pour la gestion de leads solaires. Le système centra
 - **Base de données**: MongoDB
 - **Authentification**: JWT
 
-### Flux des Leads
+### Flux des Leads avec Routage Intelligent
 ```
 [Formulaire Web]
      ↓ (Lead soumis via /api/submit-lead avec form_code)
-[CE CRM] → Stocke le lead (tous les champs)
-     ↓ (Si téléphone présent + crm_api_key configurée → envoi instantané)
+[CE CRM] → Stocke le lead
+     ↓ (Routage intelligent OPTIONNEL)
+[Vérification des commandes]
+  → Si commandes configurées:
+    → CRM origine a commande pour ce département/produit? → Envoi vers origine
+    → Sinon, autre CRM a commande? → Reroutage vers autre CRM
+    → Aucun CRM n'a commande? → Fallback vers origine
+  → Si pas de commandes: → Envoi direct vers CRM origine
+     ↓
 [ZR7 ou MDL] → Via leur API avec crm_api_key
-     ↓ (Tous les jours à 03h00)
-[Job nocturne] → Réessaie les leads échoués des dernières 24h
+     ↓
+[Facturation Inter-CRM] → Si reroutage, montants calculés selon prix configurés
 ```
 
 ## APIs CRM Destination
@@ -38,49 +45,68 @@ Content-Type: application/json
 ### Body (JSON)
 ```json
 {
-  "form_code": "VOTRE-CODE-FORM",  // OBLIGATOIRE
-  "phone": "0612345678",           // OBLIGATOIRE
-  "nom": "Dupont",                 // optionnel
-  "prenom": "Jean",                // optionnel
-  "civilite": "M.",                // optionnel (M., Mme)
-  "email": "email@example.com",    // optionnel
-  "departement": "75",             // optionnel
-  "code_postal": "75001",          // optionnel
-  "superficie_logement": "120",    // optionnel
-  "chauffage_actuel": "Gaz",       // optionnel
-  "type_logement": "Maison",       // optionnel
-  "statut_occupant": "Propriétaire", // optionnel
-  "facture_electricite": "150"     // optionnel
-}
-```
-
-### Réponse
-```json
-{
-  "success": true,
-  "message": "Lead enregistré",
-  "status": "success" // ou "failed", "duplicate", "no_config"
+  "form_code": "VOTRE-CODE-FORM",
+  "phone": "0612345678",
+  "nom": "Dupont",
+  "prenom": "Jean",
+  "civilite": "M.",
+  "email": "email@example.com",
+  "departement": "75",
+  "code_postal": "75001",
+  "superficie_logement": "120",
+  "chauffage_actuel": "Gaz",
+  "type_logement": "Maison",
+  "statut_occupant": "Propriétaire",
+  "facture_electricite": "150"
 }
 ```
 
 ## Fonctionnalités Implémentées
 
-### Phase 8 - Finalisation (Complété - 08/02/2026)
-- [x] **Clé API interne visible** dans la liste des formulaires avec bouton copier
-- [x] **Brief Generator** : Notice API TOUJOURS incluse (sans checkbox)
-- [x] **Suppression réservée aux Admins** : Leads, formulaires, LP, comptes
-- [x] **Leads réservés aux Admins** : Onglet Leads déplacé dans Administration, route protégée
-- [x] **Guide d'utilisation** : Documentation API complète dans section Formulaires
-- [x] **Pas de validation stricte du téléphone** : Seule condition = téléphone présent
-- [x] **Tous les champs ZR7/MDL** : prenom, civilite, superficie_logement, chauffage_actuel
+### Phase 9 - Facturation Inter-CRM (Complété - 08/02/2026)
+- [x] **Dashboard de facturation** (`/billing`) : Statistiques par CRM, leads routés, montants à facturer
+- [x] **Configuration des prix par lead** : Prix PAC/PV/ITE en euros par CRM
+- [x] **Filtres par type de produit** : Boutons Tous/PV/PAC/ITE sur page Formulaires
+- [x] **Archivage automatique** : Endpoint `/api/leads/archive?months=3` + bouton dans UI
+- [x] **Routage intelligent** : Reroutage basé sur commandes (départements/produits) par CRM
+
+### Phase 8 - Finalisation (Complété)
+- [x] Clé API interne visible avec bouton copier
+- [x] Brief Generator avec Notice API auto-incluse
+- [x] Suppression réservée aux Admins
+- [x] Leads réservés aux Admins
+- [x] Guide d'utilisation complet
+- [x] Tous les champs ZR7/MDL supportés
+
+## Nouveaux Endpoints (Phase 9)
+
+### Facturation
+```
+GET /api/billing/dashboard?date_from=X&date_to=Y
+```
+Retourne:
+- `crm_stats[]` : Par CRM → leads_originated, leads_received, leads_rerouted_out/in, amount_to_invoice/pay, net_balance
+- `transfers[]` : Détail des transferts inter-CRM avec montants
+
+### Archivage
+```
+POST /api/leads/archive?months=3  (Admin only)
+GET /api/leads/archived?limit=100&date_from=X&date_to=Y  (Admin only)
+```
+
+### Configuration CRM avec Prix
+```
+PUT /api/crms/{crm_id}
+Body: { "commandes": {...}, "lead_prices": {"PAC": 25, "PV": 20, "ITE": 30} }
+```
 
 ## Rôles Utilisateurs
 
-| Rôle | Accès | Peut supprimer | Accès Leads |
-|------|-------|----------------|-------------|
-| Admin | Complet | ✅ Oui | ✅ Oui |
-| Éditeur | Créer/Modifier | ❌ Non | ❌ Non |
-| Lecteur | Consultation | ❌ Non | ❌ Non |
+| Rôle | Accès | Peut supprimer | Accès Leads | Accès Facturation |
+|------|-------|----------------|-------------|-------------------|
+| Admin | Complet | ✅ | ✅ | ✅ |
+| Éditeur | Créer/Modifier | ❌ | ❌ | ❌ |
+| Lecteur | Consultation | ❌ | ❌ | ❌ |
 
 ## Credentials de Test
 - **Email**: energiebleuciel@gmail.com
@@ -89,12 +115,40 @@ Content-Type: application/json
 ## Backlog
 
 ### P0 - Sécurité
-- [ ] **Backend filtrage par allowed_accounts** : Les endpoints ne filtrent pas encore les données selon les permissions utilisateur
+- [ ] **Backend filtrage par allowed_accounts** : Filtrer données selon permissions utilisateur
 
 ### P1 - Améliorations
 - [ ] Générateur de LP HTML avec style officiel
 - [ ] Générateur de Formulaires HTML avec GTM intégré
+- [ ] Graphiques visuels sur dashboard de facturation
 
 ### P2 - Technique
-- [ ] Refactoring Frontend (App.js > 4000 lignes)
+- [ ] Refactoring Frontend (App.js > 4500 lignes)
 - [ ] Refactoring Backend (server.py vers modules)
+
+## Schéma DB Mis à Jour
+
+### Collection `crms`
+```json
+{
+  "id": "uuid",
+  "name": "Maison du Lead",
+  "slug": "mdl",
+  "api_url": "https://...",
+  "commandes": {"PAC": ["75", "92"], "PV": ["13"], "ITE": []},
+  "lead_prices": {"PAC": 25.0, "PV": 20.0, "ITE": 30.0}
+}
+```
+
+### Collection `leads` (champs ajoutés)
+```json
+{
+  "origin_crm_id": "uuid",
+  "target_crm_id": "uuid",
+  "routing_reason": "direct_to_origin | rerouted_to_zr7 | no_order_fallback_origin",
+  "product_type": "PAC | PV | ITE"
+}
+```
+
+### Collection `leads_archived`
+Même structure que `leads` + `archived_at`
