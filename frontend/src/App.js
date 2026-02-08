@@ -1257,8 +1257,8 @@ const LPsPage = () => {
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     account_id: '', code: '', name: '', url: '', source_type: 'native',
-    source_name: '', cta_selector: '.cta-btn', screenshot_url: '', diffusion_url: '', notes: '', status: 'active',
-    lp_type: 'redirect', form_url: '', generation_notes: ''
+    source_name: '', notes: '', status: 'active',
+    lp_type: 'redirect', redirect_url_name: '', form_url: '', html_code: ''
   });
 
   useEffect(() => {
