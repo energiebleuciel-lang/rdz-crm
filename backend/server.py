@@ -1159,13 +1159,32 @@ async def submit_lead(lead: LeadData):
                     other_depts = other_commandes.get(product_type, [])
                     
                     if departement in other_depts:
+                        # Vérifier la limite de leads inter-CRM pour ce produit
+                        routing_limits = other_crm.get("routing_limits", {})
+                        limit = routing_limits.get(product_type, 0)
+                        
+                        if limit > 0:
+                            # Compter les leads déjà routés ce mois vers ce CRM pour ce produit
+                            now = datetime.now(timezone.utc)
+                            month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+                            rerouted_count = await db.leads.count_documents({
+                                "target_crm_id": other_crm.get("id"),
+                                "product_type": product_type,
+                                "routing_reason": {"$regex": "^rerouted_"},
+                                "created_at": {"$gte": month_start.isoformat()}
+                            })
+                            
+                            if rerouted_count >= limit:
+                                # Limite atteinte, ne pas rerouter vers ce CRM
+                                continue
+                        
                         target_crm = other_crm
                         routing_reason = f"rerouted_to_{other_crm.get('slug', 'other')}"
                         found_other = True
                         break
             
             if not found_other:
-                # Aucun CRM n'a la commande → fallback origine
+                # Aucun CRM n'a la commande ou limites atteintes → fallback origine
                 target_crm = origin_crm
                 routing_reason = "no_order_fallback_origin"
     
