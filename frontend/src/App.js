@@ -1199,6 +1199,10 @@ const LPsPage = () => {
             { key: 'code', label: 'Code', render: v => <span className="font-mono text-sm bg-slate-100 px-2 py-1 rounded">{v}</span> },
             { key: 'name', label: 'Nom' },
             { key: 'source_name', label: 'Source' },
+            { key: 'lp_type', label: 'Type', render: v => v === 'integrated' ? 
+              <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">Intégré</span> : 
+              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">Redirection</span>
+            },
             { key: 'stats', label: 'Clics CTA', render: v => v?.cta_clicks || 0 },
             { key: 'stats', label: 'Leads', render: v => v?.leads || 0 },
             { key: 'status', label: 'Statut', render: v => <StatusBadge status={v} /> },
@@ -1207,8 +1211,14 @@ const LPsPage = () => {
               label: '', 
               render: (_, row) => (
                 <div className="flex gap-1">
-                  <button onClick={() => { setEditingLP(row); setFormData(row); setShowModal(true); }} className="p-1 hover:bg-slate-100 rounded">
+                  <button onClick={() => { setEditingLP(row); setFormData(row); setShowModal(true); }} className="p-1 hover:bg-slate-100 rounded" title="Modifier">
                     <Edit className="w-4 h-4 text-slate-600" />
+                  </button>
+                  <button onClick={() => { setShowDuplicateModal(row); setDuplicateData({ new_code: row.code + '-COPY', new_name: row.name + ' (copie)' }); }} className="p-1 hover:bg-slate-100 rounded" title="Dupliquer">
+                    <Copy className="w-4 h-4 text-blue-600" />
+                  </button>
+                  <button onClick={() => deleteLP(row.id)} className="p-1 hover:bg-slate-100 rounded" title="Supprimer">
+                    <Trash2 className="w-4 h-4 text-red-600" />
                   </button>
                 </div>
               )
@@ -1218,56 +1228,124 @@ const LPsPage = () => {
         />
       </div>
 
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editingLP ? 'Modifier la LP' : 'Nouvelle Landing Page'}>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Sous-compte</label>
-              <select value={formData.sub_account_id} onChange={e => setFormData({ ...formData, sub_account_id: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" required>
-                <option value="">Sélectionner</option>
-                {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Code LP</label>
-              <input type="text" value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="LP-TAB-V1" required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Nom</label>
-              <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">URL de la LP</label>
-              <input type="url" value={formData.url} onChange={e => setFormData({ ...formData, url: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Type de source</label>
-              <select value={formData.source_type} onChange={e => setFormData({ ...formData, source_type: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg">
-                <option value="native">Native (Taboola, Outbrain)</option>
-                <option value="google">Google Ads</option>
-                <option value="facebook">Facebook Ads</option>
-                <option value="tiktok">TikTok Ads</option>
-                <option value="other">Autre</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Nom de la source</label>
-              <input type="text" value={formData.source_name} onChange={e => setFormData({ ...formData, source_name: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="Taboola, Outbrain, etc." />
-            </div>
-          </div>
-
+      {/* Modal Duplicate LP */}
+      <Modal isOpen={!!showDuplicateModal} onClose={() => setShowDuplicateModal(null)} title="Dupliquer la Landing Page">
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600">
+            Dupliquer <strong>{showDuplicateModal?.name}</strong> avec un nouveau code et nom.
+            La configuration sera identique.
+          </p>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Sélecteur CSS des CTA</label>
-            <input type="text" value={formData.cta_selector} onChange={e => setFormData({ ...formData, cta_selector: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder=".cta-btn" />
-            <p className="text-xs text-slate-500 mt-1">Sélecteur CSS pour identifier les boutons CTA sur la LP</p>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Nouveau code *</label>
+            <input type="text" value={duplicateData.new_code} onChange={e => setDuplicateData({ ...duplicateData, new_code: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" required />
           </div>
-
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
-            <textarea value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" rows={2} />
+            <label className="block text-sm font-medium text-slate-700 mb-1">Nouveau nom *</label>
+            <input type="text" value={duplicateData.new_name} onChange={e => setDuplicateData({ ...duplicateData, new_name: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" required />
           </div>
-
           <div className="flex justify-end gap-2 pt-4">
+            <button type="button" onClick={() => setShowDuplicateModal(null)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Annuler</button>
+            <button onClick={duplicateLP} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Dupliquer</button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editingLP ? 'Modifier la LP' : 'Nouvelle Landing Page'}>
+        <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+          {/* Section: Informations générales */}
+          <div className="bg-slate-50 p-4 rounded-lg space-y-4">
+            <h4 className="font-medium text-slate-800 flex items-center gap-2">
+              <Layers className="w-4 h-4" /> Informations générales
+            </h4>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Sous-compte *</label>
+                <select value={formData.sub_account_id} onChange={e => setFormData({ ...formData, sub_account_id: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" required>
+                  <option value="">Sélectionner</option>
+                  {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Code LP *</label>
+                <input type="text" value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="LP-TAB-V1" required />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nom *</label>
+                <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" required />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">URL de la LP</label>
+                <input type="url" value={formData.url || ''} onChange={e => setFormData({ ...formData, url: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+              </div>
+            </div>
+          </div>
+
+          {/* Section: Type de LP */}
+          <div className="bg-blue-50 p-4 rounded-lg space-y-4">
+            <h4 className="font-medium text-blue-800 flex items-center gap-2">
+              <Link2 className="w-4 h-4" /> Type de LP
+            </h4>
+            <div className="grid md:grid-cols-2 gap-4">
+              <label className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${formData.lp_type === 'redirect' ? 'border-blue-500 bg-blue-100' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
+                <input type="radio" name="lp_type" value="redirect" checked={formData.lp_type === 'redirect'} onChange={e => setFormData({ ...formData, lp_type: e.target.value })} className="sr-only" />
+                <div className="font-medium text-slate-800">LP → Formulaire externe</div>
+                <p className="text-xs text-slate-500 mt-1">La LP redirige vers un formulaire sur une autre page</p>
+              </label>
+              <label className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${formData.lp_type === 'integrated' ? 'border-purple-500 bg-purple-100' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
+                <input type="radio" name="lp_type" value="integrated" checked={formData.lp_type === 'integrated'} onChange={e => setFormData({ ...formData, lp_type: e.target.value })} className="sr-only" />
+                <div className="font-medium text-slate-800">Formulaire intégré</div>
+                <p className="text-xs text-slate-500 mt-1">Le formulaire est directement dans la LP</p>
+              </label>
+            </div>
+            
+            {formData.lp_type === 'redirect' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">URL du formulaire</label>
+                <input type="url" value={formData.form_url || ''} onChange={e => setFormData({ ...formData, form_url: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="https://..." />
+              </div>
+            )}
+          </div>
+
+          {/* Section: Source */}
+          <div className="bg-slate-50 p-4 rounded-lg space-y-4">
+            <h4 className="font-medium text-slate-800">Source de trafic</h4>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Type de source</label>
+                <select value={formData.source_type} onChange={e => setFormData({ ...formData, source_type: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg">
+                  <option value="native">Native (Taboola, Outbrain)</option>
+                  <option value="google">Google Ads</option>
+                  <option value="facebook">Facebook Ads</option>
+                  <option value="tiktok">TikTok Ads</option>
+                  <option value="other">Autre</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nom de la source</label>
+                <input type="text" value={formData.source_name || ''} onChange={e => setFormData({ ...formData, source_name: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="Taboola, Outbrain, etc." />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Sélecteur CSS des CTA</label>
+              <input type="text" value={formData.cta_selector || '.cta-btn'} onChange={e => setFormData({ ...formData, cta_selector: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder=".cta-btn" />
+              <p className="text-xs text-slate-500 mt-1">Sélecteur CSS pour identifier les boutons CTA sur la LP</p>
+            </div>
+          </div>
+
+          {/* Section: Notes & Instructions */}
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Notes internes</label>
+              <textarea value={formData.notes || ''} onChange={e => setFormData({ ...formData, notes: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" rows={2} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Commentaires pour génération scripts</label>
+              <textarea value={formData.generation_notes || ''} onChange={e => setFormData({ ...formData, generation_notes: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" rows={2} placeholder="Instructions supplémentaires pour le générateur de scripts..." />
+              <p className="text-xs text-slate-500 mt-1">Ces commentaires seront pris en compte lors de la génération des instructions</p>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-200 sticky bottom-0 bg-white py-4">
             <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Annuler</button>
             <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">{editingLP ? 'Modifier' : 'Créer'}</button>
           </div>
