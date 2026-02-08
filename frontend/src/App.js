@@ -1689,14 +1689,21 @@ const FormsPage = () => {
           columns={[
             { key: 'code', label: 'Code', render: v => <span className="font-mono text-sm bg-slate-100 px-2 py-1 rounded">{v}</span> },
             { key: 'name', label: 'Nom' },
+            { key: 'internal_api_key', label: 'Clé API (pour vos scripts)', render: (v, row) => v ? (
+              <div className="flex items-center gap-1">
+                <code className="text-xs bg-orange-50 text-orange-700 px-2 py-1 rounded font-mono truncate max-w-[180px]" title={v}>{v}</code>
+                <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(v); }} className="p-1 hover:bg-orange-100 rounded" title="Copier la clé">
+                  <Copy className="w-3 h-3 text-orange-600" />
+                </button>
+              </div>
+            ) : <span className="text-xs text-slate-400">Non générée</span> },
             { key: 'source_name', label: 'Source' },
             { key: 'tracking_type', label: 'Tracking', render: v => v === 'gtm' ? 
               <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded">GTM</span> : 
               v === 'none' ? <span className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded">Aucun</span> :
               <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">Redirect</span>
             },
-            { key: 'stats', label: 'Démarrés', render: v => v?.started || 0 },
-            { key: 'stats', label: 'Complétés', render: v => v?.completed || 0 },
+            { key: 'stats', label: 'Leads', render: v => v?.completed || 0 },
             { key: 'status', label: 'Statut', render: v => <StatusBadge status={v} /> },
             { 
               key: 'actions', 
