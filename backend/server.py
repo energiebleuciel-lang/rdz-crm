@@ -1426,6 +1426,9 @@ async def get_activity_logs(limit: int = 100, user: dict = Depends(require_admin
 
 class BriefSelectionLP(BaseModel):
     lp_id: str
+    # Infos dynamiques (saisies au moment de générer)
+    cta_selector: Optional[str] = ""  # .cta-btn
+    # Éléments à inclure du compte
     include_logo_main: bool = False
     include_logo_secondary: bool = False
     include_logo_small: bool = False
@@ -1436,19 +1439,23 @@ class BriefSelectionLP(BaseModel):
     include_privacy_policy: bool = False
     include_legal_mentions: bool = False
     include_colors: bool = False
-    include_redirect_url: Optional[str] = None  # Nom de l'URL de redirection à inclure
+    include_redirect_url: Optional[str] = None  # Nom de l'URL de redirection
     include_notes: bool = False
+    include_html_code: bool = False  # Inclure le code HTML de la LP
 
 class BriefSelectionForm(BaseModel):
     form_id: str
+    # Infos dynamiques (saisies au moment de générer)
+    api_key: Optional[str] = ""  # Clé API CRM
+    # Éléments à inclure du compte
     include_logo_main: bool = False
     include_logo_secondary: bool = False
     include_gtm_pixel: bool = False
     include_gtm_conversion: bool = False
     include_privacy_policy: bool = False
     include_redirect_url: Optional[str] = None
-    include_api_key: bool = False
     include_notes: bool = False
+    include_html_code: bool = False  # Inclure le code HTML du form
 
 @api_router.post("/generate-brief/lp")
 async def generate_lp_brief(selection: BriefSelectionLP, user: dict = Depends(get_current_user)):
