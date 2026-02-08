@@ -1485,7 +1485,9 @@ async def generate_form_script(form_id: str, user: dict = Depends(get_current_us
     if not form:
         raise HTTPException(status_code=404, detail="Formulaire non trouvé")
     
-    sub_account = await db.accounts.find_one({"id": form.get("sub_account_id")}, {"_id": 0})
+    # Get account (try both field names for compatibility)
+    account_id = form.get("account_id") or form.get("sub_account_id")
+    account = await db.accounts.find_one({"id": account_id}, {"_id": 0}) if account_id else None
     
     backend_url = os.environ.get("BACKEND_URL", "https://rdz-group-ltd.online")
     
@@ -1499,13 +1501,17 @@ fetch('{backend_url}/api/track/form-start', {{
 }});
 </script>"""
 
-    # Conversion tracking
-    if form.get("tracking_type") == "code":
-        conversion_info = f"Code de conversion (après envoi téléphone):\n{form.get('tracking_code', '(Non configuré)')}"
-    elif form.get("tracking_type") == "redirect":
-        conversion_info = f"Redirection vers: {form.get('redirect_url', '(Non configuré)')}"
+    # Conversion tracking - get from account if not overridden in form
+    tracking_type = form.get("tracking_type", "redirect")
+    redirect_url = form.get("redirect_url_override") or (account.get("redirect_url") if account else "") or "(Non configuré)"
+    conversion_code = (account.get("conversion_code") if account else "") or "(Non configuré)"
+    
+    if tracking_type == "gtm":
+        conversion_info = f"Code de conversion GTM (déclenché après validation téléphone 10 chiffres):\n{conversion_code}"
+    elif tracking_type == "redirect":
+        conversion_info = f"Redirection vers: {redirect_url}"
     else:
-        conversion_info = f"Code: {form.get('tracking_code', '(Non configuré)')}\nRedirection: {form.get('redirect_url', '(Non configuré)')}"
+        conversion_info = "Aucun tracking de conversion configuré"
     
     instructions = f"""
 📋 INSTRUCTIONS POUR {form['code']}
@@ -1517,13 +1523,16 @@ fetch('{backend_url}/api/track/form-start', {{
 - URL Backend: {backend_url}/api/submit-lead
 - Form Code: {form['code']}
 - Clé API CRM: {form.get('api_key', '(Non configuré)')}
+- Compte: {account.get('name', 'Non défini') if account else 'Non défini'}
 
 3️⃣ TRACKING CONVERSION
-Type: {form.get('tracking_type', 'redirect')}
+Type: {tracking_type}
 {conversion_info}
 
 4️⃣ LPs LIÉES
 {', '.join(form.get('lp_ids', [])) or '(Aucune LP liée)'}
+
+⚠️ Le tracking conversion (GTM) ne se déclenche qu'après validation du téléphone (10 chiffres).
 """
     
     return {"form_start_script": form_start_script, "instructions": instructions, "form": form}
