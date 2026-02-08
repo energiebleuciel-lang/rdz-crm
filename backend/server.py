@@ -1083,6 +1083,10 @@ async def send_lead_to_crm(lead_doc: dict, api_url: str, api_key: str) -> tuple:
         "email": lead_doc.get("email", ""),
     }
     
+    # Ajouter civilite si présent (champ standard selon doc API)
+    if lead_doc.get("civilite"):
+        lead_payload["civilite"] = lead_doc["civilite"]
+    
     # Ajouter custom_fields seulement s'il y en a
     if custom_fields:
         lead_payload["custom_fields"] = custom_fields
