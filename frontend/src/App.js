@@ -4108,14 +4108,24 @@ const BillingPage = () => {
           <h1 className="text-2xl font-bold text-slate-800">Facturation Inter-CRM</h1>
           <p className="text-sm text-slate-500">Suivi des leads routés entre CRMs et montants à facturer</p>
         </div>
-        <button
-          onClick={archiveOldLeads}
-          disabled={archiving}
-          className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50"
-        >
-          <Database className="w-4 h-4" />
-          {archiving ? 'Archivage...' : 'Archiver (> 3 mois)'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowInvoiceModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            data-testid="mark-invoiced-btn"
+          >
+            <CheckCircle className="w-4 h-4" />
+            Marquer ce mois comme facturé
+          </button>
+          <button
+            onClick={archiveOldLeads}
+            disabled={archiving}
+            className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50"
+          >
+            <Database className="w-4 h-4" />
+            {archiving ? 'Archivage...' : 'Archiver (> 3 mois)'}
+          </button>
+        </div>
       </div>
 
       {/* Filtres de période */}
