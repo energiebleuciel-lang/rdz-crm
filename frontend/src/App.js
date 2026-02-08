@@ -2468,6 +2468,274 @@ const GuidePage = () => {
   );
 };
 
+// ==================== ASSETS PAGE ====================
+const AssetsPage = () => {
+  const { authFetch } = useAuth();
+  const { selectedCRM } = useCRM();
+  const [assets, setAssets] = useState([]);
+  const [accounts, setAccounts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [editingAsset, setEditingAsset] = useState(null);
+  const [filter, setFilter] = useState('all'); // all, global, account
+  const [formData, setFormData] = useState({
+    label: '', url: '', asset_type: 'image', sub_account_id: '', crm_id: ''
+  });
+
+  useEffect(() => {
+    loadData();
+  }, [selectedCRM]);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const crmParam = selectedCRM ? `?crm_id=${selectedCRM}` : '';
+      const [assetsRes, accountsRes] = await Promise.all([
+        authFetch(`${API}/api/assets${crmParam}`),
+        authFetch(`${API}/api/sub-accounts${crmParam}`)
+      ]);
+      if (assetsRes.ok) setAssets((await assetsRes.json()).assets || []);
+      if (accountsRes.ok) setAccounts((await accountsRes.json()).sub_accounts || []);
+    } catch (e) {
+      console.error(e);
+    }
+    setLoading(false);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const url = editingAsset ? `${API}/api/assets/${editingAsset.id}` : `${API}/api/assets`;
+    const method = editingAsset ? 'PUT' : 'POST';
+    
+    // Clean up data - set null for global assets
+    const submitData = {
+      ...formData,
+      sub_account_id: formData.sub_account_id || null,
+      crm_id: formData.crm_id || selectedCRM || null
+    };
+    
+    try {
+      const res = await authFetch(url, { method, body: JSON.stringify(submitData) });
+      if (res.ok) {
+        setShowModal(false);
+        setEditingAsset(null);
+        setFormData({ label: '', url: '', asset_type: 'image', sub_account_id: '', crm_id: '' });
+        loadData();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const editAsset = (asset) => {
+    setEditingAsset(asset);
+    setFormData({
+      label: asset.label,
+      url: asset.url,
+      asset_type: asset.asset_type,
+      sub_account_id: asset.sub_account_id || '',
+      crm_id: asset.crm_id || ''
+    });
+    setShowModal(true);
+  };
+
+  const deleteAsset = async (id) => {
+    if (!window.confirm('Supprimer cet asset ?')) return;
+    try {
+      await authFetch(`${API}/api/assets/${id}`, { method: 'DELETE' });
+      loadData();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const copyUrl = (url) => {
+    navigator.clipboard.writeText(url);
+  };
+
+  const filteredAssets = assets.filter(a => {
+    if (filter === 'global') return !a.sub_account_id;
+    if (filter === 'account') return !!a.sub_account_id;
+    return true;
+  });
+
+  const assetTypes = {
+    image: { label: 'Image', color: 'bg-blue-100 text-blue-700' },
+    logo: { label: 'Logo', color: 'bg-purple-100 text-purple-700' },
+    favicon: { label: 'Favicon', color: 'bg-green-100 text-green-700' },
+    background: { label: 'Fond', color: 'bg-orange-100 text-orange-700' }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Bibliothèque d'Assets</h1>
+          <p className="text-sm text-slate-500">Stockez vos URLs d'images et logos pour les réutiliser facilement</p>
+        </div>
+        <button onClick={() => { setEditingAsset(null); setFormData({ label: '', url: '', asset_type: 'image', sub_account_id: '', crm_id: '' }); setShowModal(true); }} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+          <Plus className="w-4 h-4" />
+          Nouvel Asset
+        </button>
+      </div>
+
+      <div className="flex gap-2">
+        <button 
+          onClick={() => setFilter('all')}
+          className={`px-3 py-1.5 rounded-lg text-sm ${filter === 'all' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+        >
+          Tous
+        </button>
+        <button 
+          onClick={() => setFilter('global')}
+          className={`px-3 py-1.5 rounded-lg text-sm ${filter === 'global' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+        >
+          Globaux
+        </button>
+        <button 
+          onClick={() => setFilter('account')}
+          className={`px-3 py-1.5 rounded-lg text-sm ${filter === 'account' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+        >
+          Par sous-compte
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="bg-white rounded-xl p-8 shadow-sm border border-slate-200 text-center">
+          <RefreshCw className="w-8 h-8 animate-spin text-blue-600 mx-auto" />
+        </div>
+      ) : filteredAssets.length === 0 ? (
+        <div className="bg-white rounded-xl p-8 shadow-sm border border-slate-200 text-center">
+          <FolderOpen className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+          <p className="text-slate-500">Aucun asset trouvé</p>
+          <p className="text-sm text-slate-400 mt-1">Ajoutez des URLs d'images pour les réutiliser dans vos LP et formulaires</p>
+        </div>
+      ) : (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filteredAssets.map(asset => (
+            <div key={asset.id} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow">
+              {/* Preview */}
+              <div className="h-32 bg-slate-100 flex items-center justify-center overflow-hidden">
+                <img 
+                  src={asset.url} 
+                  alt={asset.label}
+                  className="max-h-full max-w-full object-contain"
+                  onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                />
+                <div className="hidden items-center justify-center text-slate-400 flex-col" style={{display: 'none'}}>
+                  <Image className="w-8 h-8" />
+                  <span className="text-xs mt-1">Erreur chargement</span>
+                </div>
+              </div>
+              
+              {/* Info */}
+              <div className="p-3">
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-slate-800 truncate" title={asset.label}>{asset.label}</h4>
+                    <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${assetTypes[asset.asset_type]?.color || 'bg-slate-100 text-slate-700'}`}>
+                      {assetTypes[asset.asset_type]?.label || asset.asset_type}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="text-xs text-slate-500 mb-2 flex items-center gap-1">
+                  {asset.sub_account_id ? (
+                    <>
+                      <Building className="w-3 h-3" />
+                      {accounts.find(a => a.id === asset.sub_account_id)?.name || 'Sous-compte'}
+                    </>
+                  ) : (
+                    <>
+                      <Globe className="w-3 h-3" />
+                      Global
+                    </>
+                  )}
+                </div>
+                
+                <div className="flex items-center gap-1 pt-2 border-t border-slate-100">
+                  <button 
+                    onClick={() => copyUrl(asset.url)} 
+                    className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs text-blue-600 hover:bg-blue-50 rounded"
+                    title="Copier l'URL"
+                  >
+                    <Copy className="w-3 h-3" />
+                    Copier URL
+                  </button>
+                  <button onClick={() => editAsset(asset)} className="p-1.5 hover:bg-slate-100 rounded" title="Modifier">
+                    <Edit className="w-4 h-4 text-slate-600" />
+                  </button>
+                  <button onClick={() => deleteAsset(asset.id)} className="p-1.5 hover:bg-slate-100 rounded" title="Supprimer">
+                    <Trash2 className="w-4 h-4 text-red-600" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editingAsset ? 'Modifier l\'asset' : 'Nouvel asset'}>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Label (nom pour vous) *</label>
+            <input 
+              type="text" 
+              value={formData.label} 
+              onChange={e => setFormData({ ...formData, label: e.target.value })} 
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg" 
+              placeholder="Ex: Logo principal bleu"
+              required 
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">URL de l'image *</label>
+            <input 
+              type="url" 
+              value={formData.url} 
+              onChange={e => setFormData({ ...formData, url: e.target.value })} 
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg" 
+              placeholder="https://..."
+              required 
+            />
+            {formData.url && (
+              <div className="mt-2 p-2 bg-slate-50 rounded-lg">
+                <p className="text-xs text-slate-500 mb-1">Aperçu:</p>
+                <img src={formData.url} alt="Preview" className="max-h-20 object-contain" onError={e => e.target.style.display='none'} />
+              </div>
+            )}
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Type</label>
+              <select value={formData.asset_type} onChange={e => setFormData({ ...formData, asset_type: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg">
+                <option value="image">Image</option>
+                <option value="logo">Logo</option>
+                <option value="favicon">Favicon</option>
+                <option value="background">Image de fond</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Associer à</label>
+              <select value={formData.sub_account_id} onChange={e => setFormData({ ...formData, sub_account_id: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg">
+                <option value="">Global (tous les comptes)</option>
+                {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-200">
+            <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Annuler</button>
+            <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">{editingAsset ? 'Modifier' : 'Créer'}</button>
+          </div>
+        </form>
+      </Modal>
+    </div>
+  );
+};
+
 const SettingsPage = () => {
   const { authFetch } = useAuth();
   const [crms, setCrms] = useState([]);
