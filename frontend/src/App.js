@@ -4026,6 +4026,11 @@ const AssetsPage = () => {
 const SettingsPage = () => {
   const { authFetch } = useAuth();
   const [crms, setCrms] = useState([]);
+  const [editingCRM, setEditingCRM] = useState(null);
+  const [commandesData, setCommandesData] = useState({ PAC: [], PV: [], ITE: [] });
+
+  // Liste des départements 01-95
+  const DEPARTMENTS = Array.from({ length: 95 }, (_, i) => String(i + 1).padStart(2, '0'));
 
   useEffect(() => {
     loadCRMs();
@@ -4049,6 +4054,45 @@ const SettingsPage = () => {
     }
   };
 
+  const openCommandesModal = (crm) => {
+    setEditingCRM(crm);
+    setCommandesData(crm.commandes || { PAC: [], PV: [], ITE: [] });
+  };
+
+  const toggleDept = (product, dept) => {
+    const current = commandesData[product] || [];
+    if (current.includes(dept)) {
+      setCommandesData({ ...commandesData, [product]: current.filter(d => d !== dept) });
+    } else {
+      setCommandesData({ ...commandesData, [product]: [...current, dept] });
+    }
+  };
+
+  const selectAllDepts = (product) => {
+    setCommandesData({ ...commandesData, [product]: [...DEPARTMENTS] });
+  };
+
+  const clearAllDepts = (product) => {
+    setCommandesData({ ...commandesData, [product]: [] });
+  };
+
+  const saveCommandes = async () => {
+    if (!editingCRM) return;
+    try {
+      const res = await authFetch(`${API}/api/crms/${editingCRM.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ commandes: commandesData })
+      });
+      if (res.ok) {
+        setEditingCRM(null);
+        loadCRMs();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-slate-800">Paramètres</h1>
@@ -4067,13 +4111,118 @@ const SettingsPage = () => {
           <div className="space-y-3">
             {crms.map(crm => (
               <div key={crm.id} className="p-4 bg-slate-50 rounded-lg">
-                <h4 className="font-medium text-slate-800">{crm.name}</h4>
-                <p className="text-sm text-slate-500">{crm.api_url}</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium text-slate-800">{crm.name}</h4>
+                    <p className="text-sm text-slate-500">{crm.api_url}</p>
+                  </div>
+                  <button 
+                    onClick={() => openCommandesModal(crm)}
+                    className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
+                  >
+                    Configurer Commandes
+                  </button>
+                </div>
+                {crm.commandes && Object.keys(crm.commandes).some(k => crm.commandes[k]?.length > 0) && (
+                  <div className="mt-3 pt-3 border-t border-slate-200">
+                    <p className="text-xs text-slate-500 mb-2">Commandes actives :</p>
+                    <div className="flex gap-4 text-xs">
+                      {['PAC', 'PV', 'ITE'].map(product => (
+                        <span key={product} className={`px-2 py-1 rounded ${
+                          (crm.commandes[product]?.length || 0) > 0 
+                            ? 'bg-green-100 text-green-700' 
+                            : 'bg-slate-100 text-slate-400'
+                        }`}>
+                          {product}: {crm.commandes[product]?.length || 0} dép.
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Modal Commandes */}
+      <Modal isOpen={!!editingCRM} onClose={() => setEditingCRM(null)} title={`Commandes - ${editingCRM?.name}`}>
+        <div className="space-y-6">
+          <p className="text-sm text-slate-600">
+            Sélectionnez les départements où ce CRM a des commandes pour chaque type de produit.
+            <strong className="block mt-1 text-orange-600">
+              ⚠️ Si aucun département n'est sélectionné, le routage intelligent est DÉSACTIVÉ pour ce produit.
+            </strong>
+          </p>
+
+          {['PAC', 'PV', 'ITE'].map(product => (
+            <div key={product} className="border border-slate-200 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-medium text-slate-800">
+                  {product === 'PAC' ? '🔥 Pompe à Chaleur (PAC)' : 
+                   product === 'PV' ? '☀️ Panneau Solaire (PV)' : 
+                   '🏠 Isolation Extérieure (ITE)'}
+                </h4>
+                <div className="flex gap-2">
+                  <button 
+                    type="button" 
+                    onClick={() => selectAllDepts(product)}
+                    className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                  >
+                    Tout
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => clearAllDepts(product)}
+                    className="text-xs px-2 py-1 bg-slate-500 text-white rounded hover:bg-slate-600"
+                  >
+                    Aucun
+                  </button>
+                </div>
+              </div>
+              <p className="text-xs text-slate-500 mb-2">
+                {(commandesData[product] || []).length} département(s) sélectionné(s)
+              </p>
+              <div className="grid grid-cols-10 gap-1 max-h-32 overflow-y-auto bg-slate-50 p-2 rounded">
+                {DEPARTMENTS.map(dept => (
+                  <label 
+                    key={dept} 
+                    className={`flex items-center justify-center p-1 rounded cursor-pointer text-xs ${
+                      (commandesData[product] || []).includes(dept) 
+                        ? 'bg-blue-500 text-white' 
+                        : 'bg-white hover:bg-slate-100'
+                    }`}
+                  >
+                    <input 
+                      type="checkbox" 
+                      checked={(commandesData[product] || []).includes(dept)}
+                      onChange={() => toggleDept(product, dept)}
+                      className="sr-only"
+                    />
+                    {dept}
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <button 
+              type="button" 
+              onClick={() => setEditingCRM(null)}
+              className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+            >
+              Annuler
+            </button>
+            <button 
+              onClick={saveCommandes}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Enregistrer
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
