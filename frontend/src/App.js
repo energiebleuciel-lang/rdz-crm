@@ -2769,124 +2769,94 @@ const GuidePage = () => {
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
               <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                 <BookOpen className="w-5 h-5 text-blue-600" />
-                Bienvenue dans le CRM
+                Bienvenue dans EnerSolar CRM
               </h2>
               <p className="text-slate-600">
-                Ce CRM est une <strong>plateforme de centralisation et redistribution de leads</strong>. 
-                Il reçoit les leads de vos formulaires et les redistribue vers vos CRMs destination (ZR7 Digital ou Maison du Lead).
+                Ce CRM centralise et redistribue vos leads solaires (PAC, PV, ITE) vers <strong>ZR7 Digital</strong> et <strong>Maison du Lead</strong>.
               </p>
               
-              <div className="bg-blue-50 rounded-lg p-4">
-                <h4 className="font-semibold text-blue-800 mb-2">🎯 Objectif principal</h4>
-                <p className="text-sm text-blue-700">
-                  <strong>Centraliser toutes vos informations</strong> (logos, images, codes GTM, textes légaux, clés API) 
-                  au même endroit pour ne plus jamais avoir à les rechercher. Quand vous créez un formulaire, 
-                  tout est déjà prêt !
-                </p>
-              </div>
-
-              <div className="bg-green-50 rounded-lg p-4">
-                <h4 className="font-semibold text-green-800 mb-2">📦 Fonctionnalités clés</h4>
-                <ul className="text-sm text-green-700 space-y-1">
-                  <li>• <strong>Stockage centralisé</strong> : Logos, images, GTM, légal au niveau du compte</li>
-                  <li>• <strong>Générateur de briefs</strong> : Compiler les infos pour créer vos LP/Forms</li>
-                  <li>• <strong>Redistribution leads</strong> : Envoi automatique vers ZR7 ou MDL</li>
-                  <li>• <strong>Job nocturne</strong> : Retry automatique des leads échoués à 3h du matin</li>
-                  <li>• <strong>Analytics</strong> : Suivi des performances par source</li>
-                </ul>
-              </div>
-            </div>
-          )}
-
-          {/* Architecture */}
-          {activeSection === 'architecture' && (
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
-              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <Database className="w-5 h-5 text-blue-600" />
-                Architecture du Système
-              </h2>
-              
-              <div className="bg-slate-50 rounded-lg p-4">
-                <h4 className="font-semibold text-slate-800 mb-2">📊 Structure des données</h4>
-                <pre className="text-sm text-slate-600 bg-white p-3 rounded border border-slate-200 overflow-x-auto">
-{`CRM (MDL ou ZR7)
-  └── Compte (Client, Site, Domaine)
-        ├── Logos (principal, secondaire, petit, favicon)
-        ├── Bibliothèque d'images (bannières, produits)
-        ├── Codes GTM (pixel, conversion, CTA)
-        ├── URLs de redirection nommées
-        ├── Textes légaux
-        ├── Landing Pages (avec code HTML)
-        └── Formulaires
-              ├── internal_api_key (pour recevoir les leads)
-              └── crm_api_key (pour envoyer vers ZR7/MDL)`}
-                </pre>
-              </div>
-
-              <div className="bg-orange-50 rounded-lg p-4">
-                <h4 className="font-semibold text-orange-800 mb-2">🔄 Flux des leads</h4>
-                <pre className="text-sm text-orange-700 bg-white p-3 rounded border border-orange-200 overflow-x-auto">
-{`[Formulaire Web]
-     ↓ (envoie vers /api/submit-lead avec internal_api_key)
-[CE CRM] → Stocke le lead dans votre dashboard
-     ↓ (envoi instantané si téléphone présent + config OK)
-[ZR7 ou MDL] → Via leur API avec crm_api_key
-     ↓ (tous les jours à 03h00)
-[Job nocturne] → Réessaie les leads échoués des 24h`}
-                </pre>
-              </div>
-            </div>
-          )}
-
-          {/* Comptes */}
-          {activeSection === 'accounts' && (
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
-              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <Building className="w-5 h-5 text-blue-600" />
-                Comptes
-              </h2>
-              
-              <p className="text-slate-600">
-                Un <strong>Compte</strong> représente un client/site/domaine. C'est ici que vous centralisez 
-                toutes les informations réutilisables.
-              </p>
-
-              <div className="bg-green-50 rounded-lg p-4">
-                <h4 className="font-semibold text-green-800 mb-3">📋 Ce qui est stocké au niveau Compte</h4>
-                <div className="grid md:grid-cols-2 gap-3 text-sm">
-                  <div className="bg-white p-3 rounded border border-green-200">
-                    <strong className="text-green-800">🖼️ Logos</strong>
-                    <p className="text-green-700">Principal, Secondaire, Petit, Favicon</p>
-                  </div>
-                  <div className="bg-white p-3 rounded border border-green-200">
-                    <strong className="text-green-800">📷 Images</strong>
-                    <p className="text-green-700">Bibliothèque d'images (bannières, produits...)</p>
-                  </div>
-                  <div className="bg-white p-3 rounded border border-green-200">
-                    <strong className="text-green-800">📊 Tracking GTM</strong>
-                    <p className="text-green-700">Pixel header, Code conversion, Code CTA</p>
-                  </div>
-                  <div className="bg-white p-3 rounded border border-green-200">
-                    <strong className="text-green-800">🔗 URLs Redirection</strong>
-                    <p className="text-green-700">Nommées (Google, Taboola...) ou par défaut</p>
-                  </div>
-                  <div className="bg-white p-3 rounded border border-green-200">
-                    <strong className="text-green-800">⚖️ Légal</strong>
-                    <p className="text-green-700">Politique confidentialité, Mentions légales</p>
-                  </div>
-                  <div className="bg-white p-3 rounded border border-green-200">
-                    <strong className="text-green-800">🎨 Style</strong>
-                    <p className="text-green-700">Couleurs, Layout, Style officiel</p>
-                  </div>
+              <div className="grid md:grid-cols-3 gap-4">
+                <div className="bg-blue-50 rounded-lg p-4 text-center">
+                  <FileText className="w-8 h-8 mx-auto text-blue-600 mb-2" />
+                  <h4 className="font-semibold text-blue-800">1. Formulaires</h4>
+                  <p className="text-xs text-blue-600">Chaque formulaire = 1 produit (PAC/PV/ITE)</p>
+                </div>
+                <div className="bg-green-50 rounded-lg p-4 text-center">
+                  <RefreshCw className="w-8 h-8 mx-auto text-green-600 mb-2" />
+                  <h4 className="font-semibold text-green-800">2. Routage</h4>
+                  <p className="text-xs text-green-600">Redistribution intelligente entre CRMs</p>
+                </div>
+                <div className="bg-orange-50 rounded-lg p-4 text-center">
+                  <TrendingUp className="w-8 h-8 mx-auto text-orange-600 mb-2" />
+                  <h4 className="font-semibold text-orange-800">3. Facturation</h4>
+                  <p className="text-xs text-orange-600">Suivi des échanges inter-CRM</p>
                 </div>
               </div>
 
-              <div className="bg-blue-50 rounded-lg p-4">
-                <h4 className="font-semibold text-blue-800 mb-2">💡 Pourquoi centraliser ?</h4>
-                <p className="text-sm text-blue-700">
-                  Quand vous générez un brief pour créer un formulaire, vous sélectionnez simplement 
-                  les éléments du compte à inclure. Plus besoin de chercher partout !
+              <div className="bg-yellow-50 rounded-lg p-4">
+                <h4 className="font-semibold text-yellow-800 mb-2">⚠️ Règle anti-doublon</h4>
+                <p className="text-sm text-yellow-700">
+                  Un <strong>doublon</strong> = même téléphone + même produit (PAC, PV ou ITE) dans la même journée.<br/>
+                  Un client peut s'inscrire PAC et PV le même jour → 2 leads valides.
                 </p>
+              </div>
+            </div>
+          )}
+
+          {/* Démarrage Rapide */}
+          {activeSection === 'quickstart' && (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <Zap className="w-5 h-5 text-yellow-600" />
+                Démarrage Rapide
+              </h2>
+
+              <div className="space-y-4">
+                <div className="flex gap-4 items-start p-4 bg-slate-50 rounded-lg">
+                  <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold shrink-0">1</div>
+                  <div>
+                    <h4 className="font-semibold text-slate-800">Créer un Compte</h4>
+                    <p className="text-sm text-slate-600">Allez dans <strong>Comptes</strong> → Nouveau compte. Associez-le à MDL ou ZR7.</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 items-start p-4 bg-slate-50 rounded-lg">
+                  <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold shrink-0">2</div>
+                  <div>
+                    <h4 className="font-semibold text-slate-800">Créer un Formulaire</h4>
+                    <p className="text-sm text-slate-600">
+                      Allez dans <strong>Formulaires</strong> → Nouveau. Choisissez le produit (PAC/PV/ITE) et entrez la <code className="bg-slate-200 px-1 rounded">crm_api_key</code> du CRM destination.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 items-start p-4 bg-slate-50 rounded-lg">
+                  <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold shrink-0">3</div>
+                  <div>
+                    <h4 className="font-semibold text-slate-800">Copier la Clé API Interne</h4>
+                    <p className="text-sm text-slate-600">
+                      Dans la liste des formulaires, copiez la <code className="bg-orange-100 px-1 rounded">internal_api_key</code> (icône copier).
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 items-start p-4 bg-slate-50 rounded-lg">
+                  <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold shrink-0">4</div>
+                  <div>
+                    <h4 className="font-semibold text-slate-800">Intégrer dans votre LP</h4>
+                    <p className="text-sm text-slate-600">
+                      Utilisez le <strong>Générateur de Scripts</strong> ou envoyez les leads via l'API.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 items-start p-4 bg-green-50 rounded-lg">
+                  <div className="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold shrink-0">✓</div>
+                  <div>
+                    <h4 className="font-semibold text-green-800">C'est parti !</h4>
+                    <p className="text-sm text-green-600">Les leads arrivent → sont stockés → redistribués vers ZR7/MDL automatiquement.</p>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -2898,334 +2868,263 @@ const GuidePage = () => {
                 <FileText className="w-5 h-5 text-blue-600" />
                 Formulaires
               </h2>
-              
-              <p className="text-slate-600">
-                Chaque formulaire a <strong>deux clés API</strong> essentielles pour le flux des leads.
-              </p>
-
-              <div className="bg-orange-50 rounded-lg p-4">
-                <h4 className="font-semibold text-orange-800 mb-3">🔑 Les deux clés API</h4>
-                <div className="space-y-3">
-                  <div className="bg-white p-3 rounded border border-orange-200">
-                    <strong className="text-orange-800">1. Clé API Interne (internal_api_key)</strong>
-                    <p className="text-sm text-orange-700 mt-1">
-                      Générée automatiquement par ce CRM. <strong>Visible dans la liste des formulaires.</strong><br/>
-                      → À donner au développeur qui crée le formulaire HTML pour envoyer les leads ICI.
-                    </p>
-                  </div>
-                  <div className="bg-white p-3 rounded border border-orange-200">
-                    <strong className="text-orange-800">2. Clé API CRM (crm_api_key)</strong>
-                    <p className="text-sm text-orange-700 mt-1">
-                      Fournie par vous. C'est la clé de ZR7 ou MDL pour ce formulaire.<br/>
-                      → Permet à ce CRM de redistribuer les leads vers le CRM destination.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Documentation API */}
-              <div className="bg-slate-900 rounded-lg p-4 text-white">
-                <h4 className="font-semibold text-green-400 mb-3">📡 DOCUMENTATION API - Envoi des Leads</h4>
-                <div className="space-y-3 text-sm font-mono">
-                  <div>
-                    <span className="text-blue-400">Endpoint :</span>
-                    <code className="ml-2 text-yellow-300">POST /api/submit-lead</code>
-                  </div>
-                  <div>
-                    <span className="text-blue-400">Header :</span>
-                    <code className="ml-2 text-gray-300">Content-Type: application/json</code>
-                  </div>
-                  <div className="pt-2">
-                    <span className="text-blue-400">Body (JSON) :</span>
-                    <pre className="mt-2 text-xs bg-slate-800 p-3 rounded overflow-x-auto">
-{`{
-  "form_code": "VOTRE-CODE-FORM",  // OBLIGATOIRE
-  "phone": "0612345678",           // OBLIGATOIRE
-  "nom": "Dupont",                 // optionnel
-  "prenom": "Jean",                // optionnel
-  "civilite": "M.",                // optionnel (M., Mme)
-  "email": "email@example.com",    // optionnel
-  "departement": "75",             // optionnel
-  "code_postal": "75001",          // optionnel
-  "superficie_logement": "120",    // optionnel
-  "chauffage_actuel": "Gaz",       // optionnel
-  "type_logement": "Maison",       // optionnel
-  "statut_occupant": "Propriétaire", // optionnel
-  "facture_electricite": "150"     // optionnel
-}`}
-                    </pre>
-                  </div>
-                  <div className="pt-2">
-                    <span className="text-blue-400">Exemple JavaScript :</span>
-                    <pre className="mt-2 text-xs bg-slate-800 p-3 rounded overflow-x-auto">
-{`fetch('/api/submit-lead', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    form_code: 'MON-FORM-001',
-    phone: document.getElementById('phone').value,
-    nom: document.getElementById('nom').value,
-    email: document.getElementById('email').value
-  })
-})
-.then(res => res.json())
-.then(data => {
-  if (data.success) {
-    // Redirection page merci
-    window.location.href = '/merci';
-  }
-});`}
-                    </pre>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-green-50 rounded-lg p-4">
-                <h4 className="font-semibold text-green-800 mb-2">✅ Réponse API</h4>
-                <pre className="text-sm text-green-700 bg-white p-2 rounded">
-{`{
-  "success": true,
-  "message": "Lead enregistré",
-  "status": "success" // ou "failed", "duplicate", "no_config"
-}`}
-                </pre>
-              </div>
-
-              <div className="bg-yellow-50 rounded-lg p-4">
-                <h4 className="font-semibold text-yellow-800 mb-2">⚠️ Important</h4>
-                <p className="text-sm text-yellow-700">
-                  Seul le <strong>téléphone</strong> est obligatoire. Le lead est envoyé automatiquement 
-                  vers ZR7/MDL si la <code className="bg-white px-1 rounded">crm_api_key</code> est configurée sur le formulaire.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Landing Pages */}
-          {activeSection === 'lps' && (
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
-              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <Layers className="w-5 h-5 text-blue-600" />
-                Landing Pages (LP)
-              </h2>
-              
-              <p className="text-slate-600">
-                Une LP est une <strong>référence</strong> stockée dans le CRM. Elle contient le code HTML 
-                et les métadonnées de la page.
-              </p>
 
               <div className="bg-blue-50 rounded-lg p-4">
-                <h4 className="font-semibold text-blue-800 mb-3">📋 Ce qui est stocké</h4>
-                <ul className="text-sm text-blue-700 space-y-1">
-                  <li>• <strong>Code LP</strong> : Identifiant unique (LP-TAB-V1)</li>
-                  <li>• <strong>Nom</strong> : Description de la LP</li>
-                  <li>• <strong>URL</strong> : Lien vers la LP en ligne</li>
-                  <li>• <strong>Source</strong> : Taboola, Outbrain, Google, etc.</li>
-                  <li>• <strong>Type</strong> : Redirect ou Formulaire intégré</li>
-                  <li>• <strong>Code HTML</strong> : Le HTML complet de la LP</li>
-                </ul>
-              </div>
-
-              <div className="bg-purple-50 rounded-lg p-4">
-                <h4 className="font-semibold text-purple-800 mb-2">🖱️ Tracking CTA</h4>
-                <p className="text-sm text-purple-700">
-                  Le sélecteur CTA (ex: .cta-btn) est défini au niveau de la LP et utilisé 
-                  dans le générateur de brief pour le tracking des clics.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Flux des Leads */}
-          {activeSection === 'leads' && (
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
-              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <Send className="w-5 h-5 text-blue-600" />
-                Flux des Leads
-              </h2>
-
-              <div className="bg-green-50 rounded-lg p-4">
-                <h4 className="font-semibold text-green-800 mb-2">✅ Envoi instantané</h4>
-                <p className="text-sm text-green-700">
-                  Dès qu'un lead arrive avec un <strong>téléphone valide</strong> et une 
-                  <strong>crm_api_key configurée</strong>, il est envoyé immédiatement vers ZR7 ou MDL.
-                </p>
-              </div>
-
-              <div className="bg-blue-50 rounded-lg p-4">
-                <h4 className="font-semibold text-blue-800 mb-2">🌙 Job nocturne (03h00)</h4>
+                <h4 className="font-semibold text-blue-800 mb-2">📋 1 Formulaire = 1 Produit</h4>
                 <p className="text-sm text-blue-700">
-                  Chaque nuit à 3h du matin, le système vérifie les leads des dernières 24h 
-                  qui ont échoué et tente de les renvoyer automatiquement.
+                  Chaque formulaire est lié à un type de produit : <strong>PAC</strong> (pompes à chaleur), <strong>PV</strong> (panneaux solaires) ou <strong>ITE</strong> (isolation).
                 </p>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="p-4 bg-green-50 rounded-lg">
-                  <div className="flex items-center gap-2 mb-2">
-                    <CheckCircle className="w-5 h-5 text-green-600" />
-                    <strong className="text-green-800">Succès</strong>
+              <div className="space-y-3">
+                <h4 className="font-semibold text-slate-800">Champs importants :</h4>
+                <div className="grid md:grid-cols-2 gap-3">
+                  <div className="bg-orange-50 p-3 rounded-lg">
+                    <p className="font-medium text-orange-800">crm_api_key</p>
+                    <p className="text-xs text-orange-600">Clé API du CRM destination (ZR7/MDL) pour envoyer les leads</p>
                   </div>
-                  <p className="text-sm text-green-700">Lead envoyé et accepté par ZR7/MDL</p>
-                </div>
-                <div className="p-4 bg-red-50 rounded-lg">
-                  <div className="flex items-center gap-2 mb-2">
-                    <XCircle className="w-5 h-5 text-red-600" />
-                    <strong className="text-red-800">Échec</strong>
-                  </div>
-                  <p className="text-sm text-red-700">Erreur - sera réessayé automatiquement</p>
-                </div>
-                <div className="p-4 bg-orange-50 rounded-lg">
-                  <div className="flex items-center gap-2 mb-2">
-                    <AlertTriangle className="w-5 h-5 text-orange-600" />
-                    <strong className="text-orange-800">Doublon</strong>
-                  </div>
-                  <p className="text-sm text-orange-700">Le téléphone existe déjà dans ZR7/MDL</p>
-                </div>
-                <div className="p-4 bg-slate-50 rounded-lg">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Lock className="w-5 h-5 text-slate-600" />
-                    <strong className="text-slate-800">No Config</strong>
-                  </div>
-                  <p className="text-sm text-slate-600">Pas de clé API CRM configurée</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Générateur de Briefs */}
-          {activeSection === 'generator' && (
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
-              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <Code className="w-5 h-5 text-blue-600" />
-                Générateur de Briefs
-              </h2>
-
-              <p className="text-slate-600">
-                Le générateur crée un <strong>document texte</strong> compilant toutes les informations 
-                nécessaires pour créer une LP ou un formulaire. C'est comme un "Google Docs" où tout est rassemblé.
-              </p>
-
-              <div className="bg-purple-50 rounded-lg p-4">
-                <h4 className="font-semibold text-purple-800 mb-2">📝 Comment ça marche ?</h4>
-                <ol className="text-sm text-purple-700 space-y-2">
-                  <li><strong>1.</strong> Sélectionnez un formulaire ou une LP</li>
-                  <li><strong>2.</strong> Cochez les éléments à inclure (logos, images, GTM, légal...)</li>
-                  <li><strong>3.</strong> Saisissez les infos dynamiques (clé API CRM)</li>
-                  <li><strong>4.</strong> Générez le brief textuel</li>
-                  <li><strong>5.</strong> Copiez et transmettez au développeur</li>
-                </ol>
-              </div>
-
-              <div className="bg-orange-50 rounded-lg p-4">
-                <h4 className="font-semibold text-orange-800 mb-2">🔑 Clé API dans le brief</h4>
-                <p className="text-sm text-orange-700">
-                  Le brief inclut automatiquement la <strong>clé API interne</strong> (pour envoyer les leads 
-                  vers ce CRM) et la <strong>clé API CRM</strong> que vous saisissez (pour la redistribution).
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Utilisateurs */}
-          {activeSection === 'users' && (
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
-              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <Shield className="w-5 h-5 text-blue-600" />
-                Gestion des Utilisateurs
-              </h2>
-
-              <div className="bg-blue-50 rounded-lg p-4">
-                <h4 className="font-semibold text-blue-800 mb-2">👥 Rôles</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="bg-white p-3 rounded border border-blue-200">
-                    <strong className="text-red-700">Admin</strong>
-                    <p className="text-blue-700">Accès complet + <strong>peut supprimer</strong> (leads, formulaires, LP, comptes)</p>
-                  </div>
-                  <div className="bg-white p-3 rounded border border-blue-200">
-                    <strong className="text-blue-800">Éditeur</strong>
-                    <p className="text-blue-700">Créer et modifier. <strong>Pas de suppression</strong></p>
-                  </div>
-                  <div className="bg-white p-3 rounded border border-blue-200">
-                    <strong className="text-slate-800">Lecteur</strong>
-                    <p className="text-blue-700">Consultation uniquement</p>
+                  <div className="bg-green-50 p-3 rounded-lg">
+                    <p className="font-medium text-green-800">internal_api_key</p>
+                    <p className="text-xs text-green-600">Clé générée automatiquement pour recevoir les leads sur ce formulaire</p>
                   </div>
                 </div>
               </div>
 
               <div className="bg-red-50 rounded-lg p-4">
-                <h4 className="font-semibold text-red-800 mb-2">🗑️ Suppressions</h4>
+                <h4 className="font-semibold text-red-800 mb-2">🚫 Exclusion du Routage Inter-CRM</h4>
                 <p className="text-sm text-red-700">
-                  <strong>Seuls les Admins</strong> peuvent supprimer des leads, formulaires, LP ou comptes. 
-                  Les autres rôles ne voient pas les boutons de suppression.
-                </p>
-              </div>
-
-              <div className="bg-green-50 rounded-lg p-4">
-                <h4 className="font-semibold text-green-800 mb-2">🔐 Comptes autorisés</h4>
-                <p className="text-sm text-green-700">
-                  Vous pouvez restreindre un utilisateur à certains comptes seulement. 
-                  S'il n'a aucun compte sélectionné, il voit tout.
+                  Cochez cette option pour les formulaires de <strong>redirection</strong>. Un lead exclu ne sera JAMAIS rerouté vers l'autre CRM.<br/>
+                  <strong>Pourquoi ?</strong> Si un client s'inscrit PAC sur un CRM et PV via redirection sur l'autre, vous évitez de livrer 2 fois le même client.
                 </p>
               </div>
             </div>
           )}
 
-          {/* Workflow */}
-          {activeSection === 'workflow' && (
+          {/* Routage Inter-CRM */}
+          {activeSection === 'routing' && (
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
               <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <Zap className="w-5 h-5 text-blue-600" />
-                Workflow Complet
+                <RefreshCw className="w-5 h-5 text-blue-600" />
+                Routage Intelligent Inter-CRM
+              </h2>
+
+              <div className="bg-slate-50 rounded-lg p-4">
+                <h4 className="font-semibold text-slate-800 mb-2">🔄 Comment ça marche ?</h4>
+                <pre className="text-sm text-slate-600 bg-white p-3 rounded border overflow-x-auto">
+{`[Lead arrive sur formulaire MDL, dept 75, produit PAC]
+     ↓
+[Vérification] MDL a-t-il une commande PAC pour le 75 ?
+     → OUI : Envoi vers MDL ✓
+     → NON : ZR7 a-t-il une commande PAC pour le 75 ?
+           → OUI : Reroutage vers ZR7 ✓
+           → NON : Fallback vers MDL (origine) ✓`}
+                </pre>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="bg-green-50 rounded-lg p-4">
+                  <h4 className="font-semibold text-green-800 mb-2">✓ Routage actif si...</h4>
+                  <ul className="text-sm text-green-700 space-y-1">
+                    <li>• Des commandes sont configurées (Paramètres)</li>
+                    <li>• Le département est renseigné</li>
+                    <li>• Le formulaire n'est PAS exclu du routage</li>
+                  </ul>
+                </div>
+                <div className="bg-red-50 rounded-lg p-4">
+                  <h4 className="font-semibold text-red-800 mb-2">✗ Routage désactivé si...</h4>
+                  <ul className="text-sm text-red-700 space-y-1">
+                    <li>• Aucune commande configurée</li>
+                    <li>• Formulaire marqué "Exclure du routage"</li>
+                    <li>• Département manquant</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 rounded-lg p-4">
+                <h4 className="font-semibold text-blue-800 mb-2">⚙️ Configurer les commandes</h4>
+                <p className="text-sm text-blue-700">
+                  Allez dans <strong>Paramètres</strong> → Cliquez sur <strong>Configurer Commandes</strong> pour un CRM.<br/>
+                  Sélectionnez les départements (01-95) pour chaque produit (PAC, PV, ITE) et définissez les prix par lead.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Facturation */}
+          {activeSection === 'billing' && (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-green-600" />
+                Facturation Inter-CRM
+              </h2>
+
+              <p className="text-slate-600">
+                La page <strong>Facturation Inter-CRM</strong> vous montre combien de leads ont été échangés entre MDL et ZR7, et les montants associés.
+              </p>
+
+              <div className="space-y-3">
+                <h4 className="font-semibold text-slate-800">Termes clés :</h4>
+                <div className="space-y-2">
+                  <div className="bg-slate-50 p-3 rounded-lg flex items-start gap-3">
+                    <span className="text-lg">📤</span>
+                    <div>
+                      <p className="font-medium text-slate-800">Leads originaires</p>
+                      <p className="text-xs text-slate-600">Leads soumis via les formulaires de ce CRM</p>
+                    </div>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-lg flex items-start gap-3">
+                    <span className="text-lg">📥</span>
+                    <div>
+                      <p className="font-medium text-slate-800">Leads reçus</p>
+                      <p className="text-xs text-slate-600">Leads effectivement envoyés vers ce CRM (après routage)</p>
+                    </div>
+                  </div>
+                  <div className="bg-orange-50 p-3 rounded-lg flex items-start gap-3">
+                    <span className="text-lg">↗️</span>
+                    <div>
+                      <p className="font-medium text-orange-800">Routés vers autres</p>
+                      <p className="text-xs text-orange-600">Leads de ce CRM envoyés vers l'autre CRM (car pas de commande)</p>
+                    </div>
+                  </div>
+                  <div className="bg-purple-50 p-3 rounded-lg flex items-start gap-3">
+                    <span className="text-lg">↙️</span>
+                    <div>
+                      <p className="font-medium text-purple-800">Reçus d'autres</p>
+                      <p className="text-xs text-purple-600">Leads de l'autre CRM redirigés vers celui-ci (car commande active)</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-green-50 rounded-lg p-4">
+                <h4 className="font-semibold text-green-800 mb-2">💰 Montants</h4>
+                <ul className="text-sm text-green-700 space-y-1">
+                  <li>• <strong>À facturer</strong> : Ce que ce CRM doit facturer aux autres</li>
+                  <li>• <strong>À payer</strong> : Ce que ce CRM doit payer aux autres</li>
+                  <li>• <strong>Solde net</strong> : Différence (positif = à recevoir)</li>
+                </ul>
+              </div>
+
+              <div className="bg-blue-50 rounded-lg p-4">
+                <h4 className="font-semibold text-blue-800 mb-2">✅ Marquer comme facturé</h4>
+                <p className="text-sm text-blue-700">
+                  En fin de mois, cliquez sur <strong>"Marquer ce mois comme facturé"</strong> pour enregistrer la facturation dans l'historique.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* API */}
+          {activeSection === 'api' && (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <Code className="w-5 h-5 text-blue-600" />
+                API & Intégration
+              </h2>
+
+              <div className="bg-orange-50 rounded-lg p-4">
+                <h4 className="font-semibold text-orange-800 mb-2">📡 Endpoint pour envoyer un lead</h4>
+                <pre className="text-sm bg-white p-3 rounded border overflow-x-auto">
+{`POST /api/submit-lead
+Content-Type: application/json
+
+{
+  "form_code": "VOTRE-CODE-FORM",
+  "phone": "0612345678",
+  "nom": "Dupont",
+  "prenom": "Jean",
+  "email": "email@example.com",
+  "departement": "75",
+  "code_postal": "75001",
+  "civilite": "M.",
+  "superficie_logement": "120",
+  "chauffage_actuel": "Gaz",
+  "type_logement": "Maison",
+  "statut_occupant": "Propriétaire",
+  "facture_electricite": "150"
+}`}
+                </pre>
+              </div>
+
+              <div className="bg-blue-50 rounded-lg p-4">
+                <h4 className="font-semibold text-blue-800 mb-2">🔑 Champs obligatoires</h4>
+                <ul className="text-sm text-blue-700 space-y-1">
+                  <li>• <code className="bg-white px-1 rounded">form_code</code> : Code unique du formulaire</li>
+                  <li>• <code className="bg-white px-1 rounded">phone</code> : Numéro de téléphone (10 chiffres, commence par 0)</li>
+                  <li>• <code className="bg-white px-1 rounded">nom</code> : Nom de famille (min 2 caractères)</li>
+                  <li>• <code className="bg-white px-1 rounded">departement</code> : 01-95 uniquement (pas Corse)</li>
+                </ul>
+              </div>
+
+              <div className="bg-slate-50 rounded-lg p-4">
+                <h4 className="font-semibold text-slate-800 mb-2">📋 Exemple JavaScript</h4>
+                <pre className="text-xs bg-white p-3 rounded border overflow-x-auto">
+{`fetch('https://votre-domaine.com/api/submit-lead', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    form_code: 'PV-TAB-001',
+    phone: document.getElementById('phone').value,
+    nom: document.getElementById('nom').value,
+    prenom: document.getElementById('prenom').value,
+    email: document.getElementById('email').value,
+    departement: document.getElementById('dept').value.substring(0, 2),
+    code_postal: document.getElementById('dept').value
+  })
+})
+.then(r => r.json())
+.then(data => console.log(data));`}
+                </pre>
+              </div>
+            </div>
+          )}
+
+          {/* FAQ */}
+          {activeSection === 'faq' && (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <HelpCircle className="w-5 h-5 text-blue-600" />
+                Questions Fréquentes
               </h2>
 
               <div className="space-y-4">
-                <div className="flex gap-4 items-start">
-                  <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold shrink-0">1</div>
-                  <div>
-                    <h4 className="font-semibold text-slate-800">Configurer le Compte</h4>
-                    <p className="text-sm text-slate-600">Ajouter logos, images, codes GTM, URLs de redirection, textes légaux</p>
-                  </div>
+                <div className="border-b pb-4">
+                  <h4 className="font-semibold text-slate-800 mb-2">❓ Comment éviter les doublons cross-CRM ?</h4>
+                  <p className="text-sm text-slate-600">
+                    Cochez <strong>"Exclure du routage inter-CRM"</strong> sur les formulaires de redirection. 
+                    Ainsi, si un client s'inscrit PAC sur MDL et PV via redirection sur ZR7, il ne sera pas rerouté.
+                  </p>
                 </div>
 
-                <div className="flex gap-4 items-start">
-                  <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold shrink-0">2</div>
-                  <div>
-                    <h4 className="font-semibold text-slate-800">Créer le Formulaire</h4>
-                    <p className="text-sm text-slate-600">Définir le code, la source, la clé API CRM (ZR7/MDL). La clé interne est auto-générée.</p>
-                  </div>
+                <div className="border-b pb-4">
+                  <h4 className="font-semibold text-slate-800 mb-2">❓ Un lead peut-il s'inscrire PAC et PV le même jour ?</h4>
+                  <p className="text-sm text-slate-600">
+                    <strong>Oui !</strong> Le système détecte les doublons par téléphone + produit. 
+                    Un client peut donc soumettre PAC et PV le même jour = 2 leads valides.
+                  </p>
                 </div>
 
-                <div className="flex gap-4 items-start">
-                  <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold shrink-0">3</div>
-                  <div>
-                    <h4 className="font-semibold text-slate-800">Générer le Brief</h4>
-                    <p className="text-sm text-slate-600">Sélectionner les éléments du compte à inclure, copier le brief pour le développeur</p>
-                  </div>
+                <div className="border-b pb-4">
+                  <h4 className="font-semibold text-slate-800 mb-2">❓ Comment configurer le routage intelligent ?</h4>
+                  <p className="text-sm text-slate-600">
+                    Allez dans <strong>Paramètres</strong> → Cliquez sur <strong>Configurer Commandes</strong> pour un CRM → 
+                    Sélectionnez les départements par produit → Définissez les prix par lead.
+                  </p>
                 </div>
 
-                <div className="flex gap-4 items-start">
-                  <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold shrink-0">4</div>
-                  <div>
-                    <h4 className="font-semibold text-slate-800">Copier la Clé API Interne</h4>
-                    <p className="text-sm text-slate-600">Dans la liste des formulaires, cliquer sur l'icône copier à côté de la clé</p>
-                  </div>
+                <div className="border-b pb-4">
+                  <h4 className="font-semibold text-slate-800 mb-2">❓ Les leads échoués sont-ils réessayés ?</h4>
+                  <p className="text-sm text-slate-600">
+                    <strong>Oui !</strong> Un job automatique s'exécute chaque nuit à 3h pour réessayer les leads échoués des dernières 24h.
+                  </p>
                 </div>
 
-                <div className="flex gap-4 items-start">
-                  <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold shrink-0">5</div>
-                  <div>
-                    <h4 className="font-semibold text-slate-800">Développer le Formulaire HTML</h4>
-                    <p className="text-sm text-slate-600">Le développeur utilise le brief + la clé API interne pour créer le formulaire</p>
-                  </div>
-                </div>
-
-                <div className="flex gap-4 items-start">
-                  <div className="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold shrink-0">6</div>
-                  <div>
-                    <h4 className="font-semibold text-slate-800">Leads en Production</h4>
-                    <p className="text-sm text-slate-600">Les leads arrivent ici → sont stockés → redistribués vers ZR7/MDL automatiquement</p>
-                  </div>
+                <div className="pb-4">
+                  <h4 className="font-semibold text-slate-800 mb-2">❓ Comment archiver les anciens leads ?</h4>
+                  <p className="text-sm text-slate-600">
+                    Dans la page <strong>Facturation Inter-CRM</strong>, cliquez sur <strong>"Archiver (&gt; 3 mois)"</strong>. 
+                    Les leads de plus de 3 mois seront déplacés vers l'archive.
+                  </p>
                 </div>
               </div>
             </div>
