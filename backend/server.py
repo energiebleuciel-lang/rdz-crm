@@ -406,11 +406,11 @@ async def init_crms(user: dict = Depends(require_admin)):
         {"id": str(uuid.uuid4()), "crm_id": mdl_id, "name": "SPOOT", "domain": "", "product_types": ["solaire", "pac"], "created_at": datetime.now(timezone.utc).isoformat()},
         {"id": str(uuid.uuid4()), "crm_id": mdl_id, "name": "OBJECTIF ACADEMIE", "domain": "", "product_types": ["solaire"], "created_at": datetime.now(timezone.utc).isoformat()},
         {"id": str(uuid.uuid4()), "crm_id": mdl_id, "name": "AUDIT GREEN", "domain": "", "product_types": ["solaire", "pac", "isolation"], "created_at": datetime.now(timezone.utc).isoformat()},
-        # ZR7 sub-accounts
+        # ZR7 accounts
         {"id": str(uuid.uuid4()), "crm_id": zr7_id, "name": "ZR7", "domain": "", "product_types": ["solaire", "pac", "isolation"], "created_at": datetime.now(timezone.utc).isoformat()},
         {"id": str(uuid.uuid4()), "crm_id": zr7_id, "name": "AZ", "domain": "", "product_types": ["solaire", "pac"], "created_at": datetime.now(timezone.utc).isoformat()},
     ]
-    await db.sub_accounts.insert_many(sub_accounts)
+    await db.accounts.insert_many(accounts)
     
     # Create diffusion sources
     diffusion_sources = [
