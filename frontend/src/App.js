@@ -4086,6 +4086,9 @@ const BillingPage = () => {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [archiving, setArchiving] = useState(false);
+  const [billingHistory, setBillingHistory] = useState([]);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [invoiceData, setInvoiceData] = useState({ from_crm_id: '', to_crm_id: '', amount: 0, lead_count: 0, notes: '' });
 
   useEffect(() => {
     // Par défaut : mois en cours
