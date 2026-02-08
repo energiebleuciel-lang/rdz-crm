@@ -1455,7 +1455,7 @@ const LPsPage = () => {
 
           {/* Section: Source */}
           <div className="bg-slate-50 p-4 rounded-lg space-y-4">
-            <h4 className="font-medium text-slate-800">Source de trafic</h4>
+            <h4 className="font-medium text-slate-800">Source de diffusion</h4>
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Type de source</label>
@@ -1472,23 +1472,28 @@ const LPsPage = () => {
                 <input type="text" value={formData.source_name || ''} onChange={e => setFormData({ ...formData, source_name: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="Taboola, Outbrain, etc." />
               </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Sélecteur CSS des CTA</label>
-              <input type="text" value={formData.cta_selector || '.cta-btn'} onChange={e => setFormData({ ...formData, cta_selector: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder=".cta-btn" />
-              <p className="text-xs text-slate-500 mt-1">Sélecteur CSS pour identifier les boutons CTA sur la LP</p>
-            </div>
           </div>
 
-          {/* Section: Notes & Instructions */}
+          {/* Section: Code HTML */}
+          <div className="bg-purple-50 p-4 rounded-lg space-y-4">
+            <h4 className="font-medium text-purple-800 flex items-center gap-2">
+              <Code className="w-4 h-4" /> Code HTML de la LP
+            </h4>
+            <textarea 
+              value={formData.html_code || ''} 
+              onChange={e => setFormData({ ...formData, html_code: e.target.value })} 
+              className="w-full px-3 py-2 border border-purple-300 rounded-lg font-mono text-xs bg-white" 
+              rows={8} 
+              placeholder="Coller ici le code HTML complet de la LP..."
+            />
+            <p className="text-xs text-purple-600">Stockez le code HTML de votre LP pour référence</p>
+          </div>
+
+          {/* Section: Notes */}
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Notes internes</label>
-              <textarea value={formData.notes || ''} onChange={e => setFormData({ ...formData, notes: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" rows={2} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Commentaires pour génération scripts</label>
-              <textarea value={formData.generation_notes || ''} onChange={e => setFormData({ ...formData, generation_notes: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" rows={2} placeholder="Instructions supplémentaires pour le générateur de scripts..." />
-              <p className="text-xs text-slate-500 mt-1">Ces commentaires seront pris en compte lors de la génération des instructions</p>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+              <textarea value={formData.notes || ''} onChange={e => setFormData({ ...formData, notes: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" rows={2} placeholder="Notes personnelles sur cette LP..." />
             </div>
           </div>
 
