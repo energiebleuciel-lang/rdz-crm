@@ -4682,6 +4682,31 @@ const SettingsPage = () => {
             </div>
           </div>
 
+          {/* Limites de leads inter-CRM */}
+          <div className="border-t pt-4">
+            <h4 className="font-medium text-slate-800 mb-3">📊 Limites de leads inter-CRM (par mois)</h4>
+            <p className="text-xs text-slate-500 mb-3">
+              Nombre maximum de leads que ce CRM peut <strong>recevoir</strong> des autres CRMs par mois. 0 = illimité.
+            </p>
+            <div className="grid grid-cols-3 gap-4">
+              {['PAC', 'PV', 'ITE'].map(product => (
+                <div key={product}>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    {product === 'PAC' ? '🔥 PAC' : product === 'PV' ? '☀️ PV' : '🏠 ITE'}
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={routingLimits[product] || 0}
+                    onChange={e => setRoutingLimits({ ...routingLimits, [product]: parseInt(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                    placeholder="0 = illimité"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="flex justify-end gap-2 pt-4 border-t">
             <button 
               type="button" 
