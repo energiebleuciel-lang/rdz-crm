@@ -4307,6 +4307,7 @@ const SettingsPage = () => {
   const [crms, setCrms] = useState([]);
   const [editingCRM, setEditingCRM] = useState(null);
   const [commandesData, setCommandesData] = useState({ PAC: [], PV: [], ITE: [] });
+  const [leadPrices, setLeadPrices] = useState({ PAC: 0, PV: 0, ITE: 0 });
 
   // Liste des départements 01-95
   const DEPARTMENTS = Array.from({ length: 95 }, (_, i) => String(i + 1).padStart(2, '0'));
@@ -4336,6 +4337,7 @@ const SettingsPage = () => {
   const openCommandesModal = (crm) => {
     setEditingCRM(crm);
     setCommandesData(crm.commandes || { PAC: [], PV: [], ITE: [] });
+    setLeadPrices(crm.lead_prices || { PAC: 0, PV: 0, ITE: 0 });
   };
 
   const toggleDept = (product, dept) => {
