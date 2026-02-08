@@ -3083,7 +3083,7 @@ Content-Type: application/json
               <div className="bg-slate-50 rounded-lg p-4">
                 <h4 className="font-semibold text-slate-800 mb-2">📋 Exemple JavaScript</h4>
                 <pre className="text-xs bg-white p-3 rounded border overflow-x-auto">
-{`fetch('https://votre-domaine.com/api/submit-lead', {
+{`fetch('https://rdz-group-ltd.online/api/submit-lead', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
