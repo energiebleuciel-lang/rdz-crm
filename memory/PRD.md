@@ -14,8 +14,8 @@ Créer un CRM multi-tenant pour la gestion de leads solaires permettant de gén�
 ### Structure des Données
 ```
 CRM (MDL ou ZR7)
-  └── Sous-compte (plusieurs par CRM)
-        ├── Types de produits (plusieurs par sous-compte)
+  └── Compte (plusieurs par CRM)
+        ├── Types de produits (plusieurs par compte)
         │     ├── Panneaux solaires (10 000€ aides)
         │     ├── Pompe à chaleur (10 000€ aides)
         │     └── Isolation extérieure (13 000€ aides)
@@ -24,16 +24,19 @@ CRM (MDL ou ZR7)
               └── Taux conversion (démarrés → finis)
 ```
 
-## Sous-comptes Configurés
-- **MDL**: MDL, BRANDSPOT, OBJECTIF ACADEMIE, AUDIT GREEN
-- **ZR7**: ZR7, AZ
+## Comptes Configurés
+- **MDL (Maison du Lead)**: MDL, SPOOT, OBJECTIF ACADEMIE, AUDIT GREEN
+- **ZR7 (ZR7 Digital)**: ZR7, AZ
+
+## APIs CRM Externes
+- **Maison du Lead**: `https://maison-du-lead.com/lead/api/create_lead/`
+- **ZR7 Digital**: `https://app.zr7-digital.fr/lead/api/create_lead/`
 
 ## Sources de Diffusion Configurées
 - **Native**: Taboola, Outbrain, MGID, Mediago, Yahoo Gemini
 - **Google**: Google Ads, YouTube Ads
 - **Facebook/Meta**: Facebook Ads, Instagram Ads
 - **TikTok**: TikTok Ads
-- Possibilité d'en ajouter au fur et à mesure
 
 ## Fonctionnalités Implémentées
 
@@ -54,22 +57,17 @@ CRM (MDL ou ZR7)
 - [x] Duplication LP et Forms (seule clé API change pour forms)
 - [x] Validation leads: téléphone 10 chiffres, nom obligatoire, CP France métro
 
-### Phase 4 - Dashboard Comparatif & Config (Complété - 08/02/2026)
-- [x] **Dashboard Comparatif Global** (`/compare`)
-  - Filtres: CRM / Type de diffusion / Période
-  - Métriques: Clics CTA, Forms démarrés, Leads, Taux conversion
-  - Comparaison par source de diffusion (Native/Google/Facebook/TikTok)
-  - Comparaison par CRM (MDL vs ZR7)
+### Phase 4 - Dashboard Comparatif & Config (Complété)
+- [x] Dashboard Comparatif Global (`/compare`)
+- [x] Gestion Sources de Diffusion (`/diffusion`)
+- [x] Gestion Types de Produits (`/products`)
 
-- [x] **Gestion Sources de Diffusion** (`/diffusion`)
-  - CRUD des plateformes de diffusion
-  - Catégorisation (Native, Google, Facebook, TikTok, Autre)
-  - Ajout de nouvelles sources à la demande
-
-- [x] **Gestion Types de Produits** (`/products`)
-  - Configuration des produits avec montants d'aides
-  - Liste des aides disponibles (MaPrimeRenov, CEE, TVA réduite, Autoconsommation)
-  - Instructions automatiques pour génération de scripts
+### Phase 5 - Refactoring Structural (Complété - 08/02/2026)
+- [x] Renommage "sous-compte" → "compte" dans toute l'application
+- [x] Migration collection DB `sub_accounts` → `accounts`
+- [x] Correction bug suppression leads (nouveau endpoint POST /api/leads/bulk-delete)
+- [x] Création des 6 comptes par défaut (MDL, ZR7, SPOOT, AZ, OBJECTIF ACADEMIE, AUDIT GREEN)
+- [x] Routes API rétrocompatibles (/api/sub-accounts fonctionne toujours)
 
 ### Pages Disponibles
 1. **Tableau de bord** - Stats et derniers leads
@@ -78,7 +76,7 @@ CRM (MDL ou ZR7)
 4. **Leads** - Liste avec suppression, export CSV
 5. **Landing Pages** - CRUD, types redirect/intégré, duplication
 6. **Formulaires** - CRUD, tracking redirect/GTM, duplication
-7. **Sous-comptes** - Configuration par site/projet
+7. **Comptes** - Configuration par site/projet avec GTM et logos
 8. **Bibliothèque Assets** - URLs images/logos avec labels
 9. **Générateur Scripts** - Code tracking pour LPs et Forms
 10. **Guide d'utilisation** - Documentation intégrée
@@ -93,36 +91,39 @@ CRM (MDL ou ZR7)
 - **Password**: 92Ruemarxdormoy
 
 ## API Endpoints Principaux
+- `GET /api/accounts` - Liste des comptes (remplace /api/sub-accounts)
+- `POST /api/accounts` - Créer un compte
+- `PUT /api/accounts/{id}` - Modifier un compte
+- `DELETE /api/accounts/{id}` - Supprimer un compte
+- `DELETE /api/leads/{id}` - Supprimer un lead
+- `POST /api/leads/bulk-delete` - Supprimer plusieurs leads (body: {lead_ids: [...]})
 - `GET /api/analytics/compare` - Dashboard comparatif avec filtres
-- `GET/POST /api/diffusion-sources` - Gestion sources diffusion
-- `GET/POST/PUT/DELETE /api/product-types` - Gestion types produits
 - `POST /api/lps/{id}/duplicate` - Dupliquer LP
-- `POST /api/forms/{id}/duplicate` - Dupliquer Form (nouvelle clé API)
-- `DELETE /api/leads/{id}` - Supprimer lead
-- `POST /api/submit-lead` - Soumission lead (validation: phone 10, nom, CP France)
-
-## Instructions par Produit (pour génération)
-- **Panneaux solaires**: 10 000€ d'aides, MaPrimeRenov, CEE, Autoconsommation, TVA réduite
-- **Pompe à chaleur**: 10 000€ d'aides, MaPrimeRenov, CEE, TVA réduite
-- **Isolation Extérieure**: 13 000€ d'aides, MaPrimeRenov, CEE, TVA réduite
+- `POST /api/forms/{id}/duplicate` - Dupliquer Form
 
 ## Backlog (P1/P2)
 
-### P1 - Prochaines étapes
+### P0 - Prochaines étapes PRIORITAIRES
 - [ ] **Générateur de LP HTML** - Style officiel, code couleur, 1 ou 2 logos
 - [ ] **Générateur de Formulaires HTML** - Avec tracking GTM intégré
-- [ ] **Options de personnalisation** - Badges confiance, certifications
-- [ ] Sélection d'assets depuis la bibliothèque lors de création
+- [ ] **Mise à jour Guide d'utilisation** - Obsolète après refactoring
 
-### P2 - Améliorations
+### P1 - Améliorations
+- [ ] Options de personnalisation LP/Forms - Badges confiance, certifications
+- [ ] Sélection d'assets depuis la bibliothèque lors de création
+- [ ] Analytics formulaire démarré vs. complété
+
+### P2 - Technique
 - [ ] Refactoring Frontend (App.js > 3500 lignes)
+- [ ] Refactoring Backend (server.py vers modules)
 - [ ] Redéploiement sur Hostinger VPS
 - [ ] Graphiques visuels dans Dashboard Comparatif
 
 ## Tests Effectués
 - `/app/test_reports/iteration_1.json` - Tests filtrage CRM (26/26 PASS)
 - `/app/test_reports/iteration_2.json` - Tests nouvelles fonctionnalités (32/32 PASS)
+- `/app/test_reports/iteration_3.json` - Tests refactoring compte/leads (14/14 PASS, 100%)
 
 ## Intégrations Externes
-- **Maison du Lead API**: https://maison-du-lead.com/lead/api/create_lead/
-- **ZR7 Digital API**: https://app.zr7-digital.fr/lead/api/create_lead/
+- **Maison du Lead API**: POST avec Authorization header (token), JSON body
+- **ZR7 Digital API**: POST avec Authorization header (token), JSON body
