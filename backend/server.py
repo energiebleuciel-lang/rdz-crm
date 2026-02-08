@@ -597,7 +597,7 @@ async def update_sub_account_compat(account_id: str, account: SubAccountCreate, 
 
 @api_router.delete("/accounts/{account_id}")
 async def delete_account(account_id: str, user: dict = Depends(require_admin)):
-    result = await db.sub_accounts.delete_one({"id": account_id})
+    result = await db.accounts.delete_one({"id": account_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Compte non trouvé")
     await log_activity(user["id"], user["email"], "delete", "account", account_id, "Compte supprimé")
@@ -605,7 +605,7 @@ async def delete_account(account_id: str, user: dict = Depends(require_admin)):
 
 @api_router.delete("/sub-accounts/{account_id}")
 async def delete_sub_account_compat(account_id: str, user: dict = Depends(require_admin)):
-    result = await db.sub_accounts.delete_one({"id": account_id})
+    result = await db.accounts.delete_one({"id": account_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Sous-compte non trouvé")
     await log_activity(user["id"], user["email"], "delete", "sub_account", account_id, "Sous-compte supprimé")
