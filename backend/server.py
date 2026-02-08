@@ -527,8 +527,6 @@ async def delete_product_type(type_id: str, user: dict = Depends(require_admin))
         raise HTTPException(status_code=404, detail="Type de produit non trouvé")
     return {"success": True}
 
-# ==================== SUB-ACCOUNT ENDPOINTS ====================
-
 # ==================== ACCOUNT ENDPOINTS (renamed from sub-accounts) ====================
 
 @api_router.get("/accounts")
