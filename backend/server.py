@@ -33,6 +33,7 @@ class UserCreate(BaseModel):
     password: str
     nom: str
     role: str = "viewer"  # admin, editor, viewer
+    allowed_accounts: List[str] = []  # Liste des IDs de comptes autorisés (vide = tous)
 
 class UserLogin(BaseModel):
     email: str
@@ -43,6 +44,11 @@ class UserResponse(BaseModel):
     email: str
     nom: str
     role: str
+    allowed_accounts: List[str] = []
+
+class UserUpdate(BaseModel):
+    role: Optional[str] = None
+    allowed_accounts: Optional[List[str]] = None
 
 class CRMCreate(BaseModel):
     name: str  # "Maison du Lead", "ZR7"
