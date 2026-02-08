@@ -650,9 +650,9 @@ const LeadsPage = () => {
     if (selectedLeads.length === 0) return;
     if (!window.confirm(`Supprimer ${selectedLeads.length} lead(s) sélectionné(s) ?`)) return;
     try {
-      await authFetch(`${API}/api/leads`, { 
-        method: 'DELETE',
-        body: JSON.stringify(selectedLeads)
+      await authFetch(`${API}/api/leads/bulk-delete`, { 
+        method: 'POST',
+        body: JSON.stringify({ lead_ids: selectedLeads })
       });
       loadLeads();
     } catch (e) {
