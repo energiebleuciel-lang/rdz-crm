@@ -1033,11 +1033,17 @@ async def send_lead_to_crm(lead_doc: dict, api_url: str, api_key: str) -> tuple:
 @api_router.post("/submit-lead")
 async def submit_lead(lead: LeadData):
     """
-    Soumission de lead avec ROUTAGE INTELLIGENT :
-    1. Vérifier si le CRM d'origine a une commande pour ce produit/département
-    2. Si NON, vérifier si l'autre CRM a une commande
-    3. Si AUCUN n'a de commande, envoyer au CRM d'origine (fallback)
-    4. Protection anti-doublon : pas d'envoi 2 fois le même jour
+    Soumission de lead avec ROUTAGE INTELLIGENT (OPTIONNEL) :
+    
+    SI les commandes sont configurées sur les CRMs :
+      1. Vérifier si le CRM d'origine a une commande pour ce produit/département
+      2. Si NON, vérifier si l'autre CRM a une commande
+      3. Si AUCUN n'a de commande, envoyer au CRM d'origine (fallback)
+    
+    SI les commandes NE SONT PAS configurées :
+      → Envoi normal vers le CRM d'origine du formulaire
+    
+    Protection anti-doublon : pas d'envoi 2 fois le même jour
     """
     timestamp = lead.register_date or int(datetime.now(timezone.utc).timestamp())
     phone = lead.phone.strip() if lead.phone else ""
@@ -1056,14 +1062,12 @@ async def submit_lead(lead: LeadData):
     
     # Type de produit du formulaire (PAC, PV, ITE)
     product_type = form_config.get("product_type", "PV").upper()
-    # Mapper les anciens noms
     product_map = {"PANNEAUX": "PV", "POMPES": "PAC", "ISOLATION": "ITE", "SOLAIRE": "PV"}
     product_type = product_map.get(product_type, product_type)
     
     departement = lead.departement or ""
     
     # === PROTECTION ANTI-DOUBLON ===
-    # Vérifier si ce téléphone a déjà été envoyé aujourd'hui
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     existing_today = await db.leads.find_one({
         "phone": phone,
@@ -1072,7 +1076,6 @@ async def submit_lead(lead: LeadData):
     })
     
     if existing_today:
-        # Lead déjà envoyé aujourd'hui - on le stocke mais on n'envoie pas
         lead_doc = {
             "id": str(uuid.uuid4()),
             "form_id": lead.form_id or "",
@@ -1102,24 +1105,27 @@ async def submit_lead(lead: LeadData):
         await db.leads.insert_one(lead_doc)
         return {"success": True, "message": "Lead enregistré (doublon du jour)", "status": "duplicate_today"}
     
-    # === ROUTAGE INTELLIGENT ===
-    # Récupérer tous les CRMs pour le routage
-    all_crms = await db.crms.find({}, {"_id": 0}).to_list(10)
+    # === ROUTAGE ===
+    target_crm = origin_crm
+    routing_reason = "direct_to_origin"
     
-    target_crm = None
-    routing_reason = ""
+    # Vérifier si les commandes sont configurées sur le CRM d'origine
+    origin_commandes = origin_crm.get("commandes", {}) if origin_crm else {}
+    commandes_actives = bool(origin_commandes and any(origin_commandes.values()))
     
-    # 1. Vérifier si le CRM d'origine a une commande pour ce produit/département
-    if origin_crm:
-        origin_commandes = origin_crm.get("commandes", {})
+    if commandes_actives and departement:
+        # Les commandes sont configurées → routage intelligent
         origin_depts = origin_commandes.get(product_type, [])
         
-        if departement in origin_depts or not origin_depts:
-            # CRM d'origine a la commande OU pas de config (fallback)
+        if departement in origin_depts:
+            # CRM d'origine a la commande
             target_crm = origin_crm
-            routing_reason = "origin_has_order" if departement in origin_depts else "origin_fallback"
+            routing_reason = "origin_has_order"
         else:
-            # 2. CRM d'origine n'a PAS la commande - chercher un autre CRM
+            # Chercher un autre CRM qui a la commande
+            all_crms = await db.crms.find({}, {"_id": 0}).to_list(10)
+            found_other = False
+            
             for other_crm in all_crms:
                 if other_crm.get("id") != origin_crm.get("id"):
                     other_commandes = other_crm.get("commandes", {})
@@ -1128,10 +1134,11 @@ async def submit_lead(lead: LeadData):
                     if departement in other_depts:
                         target_crm = other_crm
                         routing_reason = f"rerouted_to_{other_crm.get('slug', 'other')}"
+                        found_other = True
                         break
             
-            # 3. Aucun CRM n'a la commande - fallback vers l'origine
-            if not target_crm:
+            if not found_other:
+                # Aucun CRM n'a la commande → fallback origine
                 target_crm = origin_crm
                 routing_reason = "no_order_fallback_origin"
     
@@ -1176,7 +1183,6 @@ async def submit_lead(lead: LeadData):
     
     api_status = "no_config"
     
-    # Envoi instantané
     if can_send:
         api_status, api_response = await send_lead_to_crm(lead_doc, api_url, api_key)
         
