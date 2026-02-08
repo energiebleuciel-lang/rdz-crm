@@ -14,6 +14,27 @@ const AuthContext = createContext(null);
 
 const useAuth = () => useContext(AuthContext);
 
+// ==================== CRM CONTEXT ====================
+const CRMContext = createContext(null);
+
+const useCRM = () => useContext(CRMContext);
+
+const CRMProvider = ({ children }) => {
+  const [selectedCRM, setSelectedCRM] = useState(localStorage.getItem('selectedCRM') || '');
+  const [crms, setCrms] = useState([]);
+
+  const selectCRM = (crmId) => {
+    setSelectedCRM(crmId);
+    localStorage.setItem('selectedCRM', crmId);
+  };
+
+  return (
+    <CRMContext.Provider value={{ selectedCRM, selectCRM, crms, setCrms }}>
+      {children}
+    </CRMContext.Provider>
+  );
+};
+
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
