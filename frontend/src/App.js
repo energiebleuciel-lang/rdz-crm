@@ -6,7 +6,7 @@ import {
   Activity, ChevronRight, ChevronDown, Edit, Trash2, ExternalLink, Code,
   Building, Globe, Image, Shield, Bell, Filter, Calendar, Award, AlertTriangle,
   HelpCircle, BookOpen, Zap, Target, MousePointer, Send, Database, Lock,
-  FolderOpen, Tag, Link2, Clipboard
+  FolderOpen, Tag, Link2, Clipboard, Key
 } from 'lucide-react';
 
 const API = process.env.REACT_APP_BACKEND_URL || '';
