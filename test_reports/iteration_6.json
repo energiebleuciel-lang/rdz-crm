@@ -1,0 +1,112 @@
+{
+  "summary": "Completed comprehensive testing of new billing and routing features. All 16 backend API tests passed (100%). Frontend UI testing verified all new features including the billing page with 'Marquer ce mois comme facturé' button and modal, billing history display, forms page with exclude_from_routing checkbox and product filters, and the refactored Guide page with 7 sections.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_new_billing_routing_features.py",
+    "/app/test_reports/pytest/pytest_new_billing_routing.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "POST /api/billing/mark-invoiced correctly creates/updates billing records with year, month, from_crm_id, to_crm_id, amount, lead_count, notes",
+    "GET /api/billing/history returns billing history with CRM names enriched (from_crm_name, to_crm_name)",
+    "DELETE /api/billing/history/{id} correctly deletes billing records",
+    "Forms with exclude_from_routing=true are excluded from inter-CRM routing logic",
+    "Anti-duplicate logic: same phone + same product (PAC/PV/ITE) per day = duplicate_today status",
+    "Guide page has 7 sections: Introduction, Démarrage Rapide, Formulaires, Routage Inter-CRM, Facturation, API & Intégration, FAQ",
+    "Billing page now has 'Marquer ce mois comme facturé' button with modal for creating billing records",
+    "Billing history table shows period, from CRM, to CRM, leads count, amount, notes, and delete action"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_new_billing_routing_features.py",
+    "/app/frontend/src/App.js"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "email": "energiebleuciel@gmail.com",
+    "password": "92Ruemarxdormoy"
+  },
+  "seed_data_creation": "Created test billing record: MDL → ZR7, 10 leads, 250€, notes: TEST_billing_record",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All new features tested and working: 1) Billing page (/billing) now has 'Marquer ce mois comme facturé' button that opens a modal to create billing records, 2) Billing history section displays created records with delete functionality, 3) Forms page has 'Exclure du routage inter-CRM' checkbox in create/edit modal, 4) Forms table shows 'Routage' column with '✓ Actif' or '🚫 Exclu' status, 5) Forms page has product filter buttons (Tous/PV/PAC/ITE), 6) Guide page has 7 sections with comprehensive documentation, 7) Anti-duplicate logic works: same phone + same product per day = duplicate",
+  "features_tested": [
+    {
+      "feature": "POST /api/billing/mark-invoiced",
+      "status": "PASS",
+      "details": "Creates billing record with year, month, from_crm_id, to_crm_id, amount, lead_count, notes"
+    },
+    {
+      "feature": "GET /api/billing/history",
+      "status": "PASS",
+      "details": "Returns billing history with enriched CRM names"
+    },
+    {
+      "feature": "DELETE /api/billing/history/{id}",
+      "status": "PASS",
+      "details": "Deletes billing record, returns 404 for non-existent"
+    },
+    {
+      "feature": "Forms exclude_from_routing field",
+      "status": "PASS",
+      "details": "Create/update/list forms with exclude_from_routing boolean"
+    },
+    {
+      "feature": "Forms product_type filter",
+      "status": "PASS",
+      "details": "GET /api/forms?product_type=panneaux|pompes|isolation filters correctly"
+    },
+    {
+      "feature": "Anti-duplicate logic",
+      "status": "PASS",
+      "details": "Same phone + same product per day = duplicate_today status"
+    },
+    {
+      "feature": "Frontend: Billing page button",
+      "status": "PASS",
+      "details": "'Marquer ce mois comme facturé' button visible and functional"
+    },
+    {
+      "feature": "Frontend: Invoice modal",
+      "status": "PASS",
+      "details": "Modal with CRM payeur, CRM receveur, leads, amount, notes fields"
+    },
+    {
+      "feature": "Frontend: Billing history table",
+      "status": "PASS",
+      "details": "Shows period, from/to CRM, leads, amount, notes, delete action"
+    },
+    {
+      "feature": "Frontend: Forms exclude_from_routing checkbox",
+      "status": "PASS",
+      "details": "Checkbox in form modal with explanation text"
+    },
+    {
+      "feature": "Frontend: Forms Routage column",
+      "status": "PASS",
+      "details": "Shows '✓ Actif' or '🚫 Exclu' status badges"
+    },
+    {
+      "feature": "Frontend: Forms product filter buttons",
+      "status": "PASS",
+      "details": "Tous/PV/PAC/ITE filter buttons work correctly"
+    },
+    {
+      "feature": "Frontend: Guide page 7 sections",
+      "status": "PASS",
+      "details": "Introduction, Démarrage Rapide, Formulaires, Routage, Facturation, API, FAQ"
+    }
+  ],
+  "external_apis_note": "ZR7 and MDL are REAL external CRM APIs - not mocked. Lead routing and billing calculations depend on configured commandes and lead_prices.",
+  "fix_applied": "Added missing UI elements to BillingPage: 'Marquer ce mois comme facturé' button, invoice modal with form fields, and billing history table with delete functionality"
+}
