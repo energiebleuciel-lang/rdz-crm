@@ -1009,6 +1009,7 @@ const SubAccountsPage = () => {
 
 const LPsPage = () => {
   const { authFetch } = useAuth();
+  const { selectedCRM } = useCRM();
   const [lps, setLps] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1021,14 +1022,15 @@ const LPsPage = () => {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [selectedCRM]);
 
   const loadData = async () => {
     setLoading(true);
     try {
+      const crmParam = selectedCRM ? `?crm_id=${selectedCRM}` : '';
       const [lpsRes, accountsRes] = await Promise.all([
-        authFetch(`${API}/api/lps`),
-        authFetch(`${API}/api/sub-accounts`)
+        authFetch(`${API}/api/lps${crmParam}`),
+        authFetch(`${API}/api/sub-accounts${crmParam}`)
       ]);
       if (lpsRes.ok) setLps((await lpsRes.json()).lps || []);
       if (accountsRes.ok) setAccounts((await accountsRes.json()).sub_accounts || []);
@@ -1151,6 +1153,7 @@ const LPsPage = () => {
 
 const FormsPage = () => {
   const { authFetch } = useAuth();
+  const { selectedCRM } = useCRM();
   const [forms, setForms] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [lps, setLps] = useState([]);
@@ -1165,15 +1168,16 @@ const FormsPage = () => {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [selectedCRM]);
 
   const loadData = async () => {
     setLoading(true);
     try {
+      const crmParam = selectedCRM ? `?crm_id=${selectedCRM}` : '';
       const [formsRes, accountsRes, lpsRes] = await Promise.all([
-        authFetch(`${API}/api/forms`),
-        authFetch(`${API}/api/sub-accounts`),
-        authFetch(`${API}/api/lps`)
+        authFetch(`${API}/api/forms${crmParam}`),
+        authFetch(`${API}/api/sub-accounts${crmParam}`),
+        authFetch(`${API}/api/lps${crmParam}`)
       ]);
       if (formsRes.ok) setForms((await formsRes.json()).forms || []);
       if (accountsRes.ok) setAccounts((await accountsRes.json()).sub_accounts || []);
