@@ -529,21 +529,37 @@ async def delete_product_type(type_id: str, user: dict = Depends(require_admin))
 
 # ==================== SUB-ACCOUNT ENDPOINTS ====================
 
-@api_router.get("/sub-accounts")
-async def get_sub_accounts(crm_id: Optional[str] = None, user: dict = Depends(get_current_user)):
+# ==================== ACCOUNT ENDPOINTS (renamed from sub-accounts) ====================
+
+@api_router.get("/accounts")
+async def get_accounts(crm_id: Optional[str] = None, user: dict = Depends(get_current_user)):
     query = {"crm_id": crm_id} if crm_id else {}
     accounts = await db.sub_accounts.find(query, {"_id": 0}).to_list(100)
-    return {"sub_accounts": accounts}
+    return {"accounts": accounts}
+
+# Keep old route for backwards compatibility
+@api_router.get("/sub-accounts")
+async def get_sub_accounts_compat(crm_id: Optional[str] = None, user: dict = Depends(get_current_user)):
+    query = {"crm_id": crm_id} if crm_id else {}
+    accounts = await db.sub_accounts.find(query, {"_id": 0}).to_list(100)
+    return {"sub_accounts": accounts, "accounts": accounts}
+
+@api_router.get("/accounts/{account_id}")
+async def get_account(account_id: str, user: dict = Depends(get_current_user)):
+    account = await db.sub_accounts.find_one({"id": account_id}, {"_id": 0})
+    if not account:
+        raise HTTPException(status_code=404, detail="Compte non trouvé")
+    return {"account": account}
 
 @api_router.get("/sub-accounts/{account_id}")
-async def get_sub_account(account_id: str, user: dict = Depends(get_current_user)):
+async def get_sub_account_compat(account_id: str, user: dict = Depends(get_current_user)):
     account = await db.sub_accounts.find_one({"id": account_id}, {"_id": 0})
     if not account:
         raise HTTPException(status_code=404, detail="Sous-compte non trouvé")
     return account
 
-@api_router.post("/sub-accounts")
-async def create_sub_account(account: SubAccountCreate, user: dict = Depends(get_current_user)):
+@api_router.post("/accounts")
+async def create_account(account: AccountCreate, user: dict = Depends(get_current_user)):
     account_doc = {
         "id": str(uuid.uuid4()),
         **account.model_dump(),
@@ -551,11 +567,27 @@ async def create_sub_account(account: SubAccountCreate, user: dict = Depends(get
         "created_by": user["id"]
     }
     await db.sub_accounts.insert_one(account_doc)
-    await log_activity(user["id"], user["email"], "create", "sub_account", account_doc["id"], f"Sous-compte créé: {account.name}")
-    return {"success": True, "sub_account": {k: v for k, v in account_doc.items() if k != "_id"}}
+    await log_activity(user["id"], user["email"], "create", "account", account_doc["id"], f"Compte créé: {account.name}")
+    return {"success": True, "account": {k: v for k, v in account_doc.items() if k != "_id"}}
+
+# Keep old route for backwards compatibility
+@api_router.post("/sub-accounts")
+async def create_sub_account_compat(account: AccountCreate, user: dict = Depends(get_current_user)):
+    return await create_account(account, user)
+
+@api_router.put("/accounts/{account_id}")
+async def update_account(account_id: str, account: AccountCreate, user: dict = Depends(get_current_user)):
+    result = await db.sub_accounts.update_one(
+        {"id": account_id},
+        {"$set": {**account.model_dump(), "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Compte non trouvé")
+    await log_activity(user["id"], user["email"], "update", "account", account_id, f"Compte modifié: {account.name}")
+    return {"success": True}
 
 @api_router.put("/sub-accounts/{account_id}")
-async def update_sub_account(account_id: str, account: SubAccountCreate, user: dict = Depends(get_current_user)):
+async def update_sub_account_compat(account_id: str, account: SubAccountCreate, user: dict = Depends(get_current_user)):
     result = await db.sub_accounts.update_one(
         {"id": account_id},
         {"$set": {**account.model_dump(), "updated_at": datetime.now(timezone.utc).isoformat()}}
@@ -565,8 +597,16 @@ async def update_sub_account(account_id: str, account: SubAccountCreate, user: d
     await log_activity(user["id"], user["email"], "update", "sub_account", account_id, f"Sous-compte modifié: {account.name}")
     return {"success": True}
 
+@api_router.delete("/accounts/{account_id}")
+async def delete_account(account_id: str, user: dict = Depends(require_admin)):
+    result = await db.sub_accounts.delete_one({"id": account_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Compte non trouvé")
+    await log_activity(user["id"], user["email"], "delete", "account", account_id, "Compte supprimé")
+    return {"success": True}
+
 @api_router.delete("/sub-accounts/{account_id}")
-async def delete_sub_account(account_id: str, user: dict = Depends(require_admin)):
+async def delete_sub_account_compat(account_id: str, user: dict = Depends(require_admin)):
     result = await db.sub_accounts.delete_one({"id": account_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Sous-compte non trouvé")
