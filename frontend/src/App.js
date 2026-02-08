@@ -1724,6 +1724,40 @@ const FormsPage = () => {
             </div>
           </div>
 
+          {/* Section: Intégration CRM */}
+          <div className="bg-orange-50 p-4 rounded-lg space-y-4">
+            <h4 className="font-medium text-orange-800 flex items-center gap-2">
+              <Key className="w-4 h-4" /> Intégration CRM (ZR7 / MDL)
+            </h4>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Clé API CRM destination</label>
+              <input 
+                type="text" 
+                value={formData.crm_api_key || ''} 
+                onChange={e => setFormData({ ...formData, crm_api_key: e.target.value })} 
+                className="w-full px-3 py-2 border border-orange-300 rounded-lg font-mono text-sm" 
+                placeholder="Ex: c2c4149e-a3ff-4290-a140-c1e90be8441a"
+              />
+              <p className="text-xs text-orange-600 mt-1">
+                La clé API fournie par ZR7 ou MDL pour envoyer les leads vers leur CRM
+              </p>
+            </div>
+            {editingForm?.internal_api_key && (
+              <div className="bg-white p-3 rounded border border-orange-200">
+                <label className="block text-xs font-medium text-slate-500 mb-1">Clé API interne (pour recevoir les leads)</label>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-xs bg-slate-100 px-2 py-1 rounded font-mono text-slate-600">{editingForm.internal_api_key}</code>
+                  <button 
+                    type="button" 
+                    onClick={() => navigator.clipboard.writeText(editingForm.internal_api_key)} 
+                    className="text-xs text-blue-600 hover:text-blue-700"
+                  >
+                    Copier
+                  </button>
+                </div>
+              </div>
+            )}
+
           {/* Section: Source */}
           <div className="bg-slate-50 p-4 rounded-lg space-y-4">
             <h4 className="font-medium text-slate-800">Source de diffusion</h4>
