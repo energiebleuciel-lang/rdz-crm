@@ -113,6 +113,10 @@ class FormTemplateConfig(BaseModel):
     form_style: str = "modern"  # modern, classic, minimal
 
 # Account model (renamed from SubAccount)
+class NamedRedirectURL(BaseModel):
+    name: str  # "Google", "Taboola", "Facebook"
+    url: str
+
 class AccountCreate(BaseModel):
     crm_id: str
     name: str
@@ -135,8 +139,9 @@ class AccountCreate(BaseModel):
     gtm_pixel_header: Optional[str] = ""  # Code dans <head> (Facebook Pixel, etc.)
     gtm_conversion_code: Optional[str] = ""  # Code de conversion (déclenché après validation tel)
     gtm_cta_code: Optional[str] = ""  # Code CTA click
-    # Redirect URL par défaut
-    default_redirect_url: Optional[str] = ""
+    # URLs de redirection nommées (plusieurs possibles)
+    named_redirect_urls: List[NamedRedirectURL] = []  # [{"name": "Google", "url": "..."}, ...]
+    default_redirect_url: Optional[str] = ""  # URL par défaut si aucune nommée
     # Notes
     notes: Optional[str] = ""
     # Form template configuration
