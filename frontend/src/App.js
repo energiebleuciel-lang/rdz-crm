@@ -1571,12 +1571,12 @@ const FormsPage = () => {
   };
 
   const duplicateForm = async () => {
-    if (!showDuplicateModal || !duplicateData.new_code || !duplicateData.new_name || !duplicateData.new_api_key) return;
+    if (!showDuplicateModal || !duplicateData.new_code || !duplicateData.new_name || !duplicateData.new_crm_api_key) return;
     try {
-      const res = await authFetch(`${API}/api/forms/${showDuplicateModal.id}/duplicate?new_code=${encodeURIComponent(duplicateData.new_code)}&new_name=${encodeURIComponent(duplicateData.new_name)}&new_api_key=${encodeURIComponent(duplicateData.new_api_key)}`, { method: 'POST' });
+      const res = await authFetch(`${API}/api/forms/${showDuplicateModal.id}/duplicate?new_code=${encodeURIComponent(duplicateData.new_code)}&new_name=${encodeURIComponent(duplicateData.new_name)}&new_crm_api_key=${encodeURIComponent(duplicateData.new_crm_api_key)}`, { method: 'POST' });
       if (res.ok) {
         setShowDuplicateModal(null);
-        setDuplicateData({ new_code: '', new_name: '', new_api_key: '' });
+        setDuplicateData({ new_code: '', new_name: '', new_crm_api_key: '' });
         loadData();
       }
     } catch (e) {
