@@ -151,22 +151,21 @@ class AccountCreate(BaseModel):
 SubAccountCreate = AccountCreate
 
 class LPCreate(BaseModel):
-    account_id: str  # Renamed from sub_account_id
-    code: str  # LP-TAB-V1
+    account_id: str
+    code: str  # Code unique de référence (LP-TAB-V1)
     name: str
-    url: Optional[str] = ""
+    url: Optional[str] = ""  # URL de la LP
     source_type: str = "native"  # native, google, facebook, tiktok
-    source_name: Optional[str] = ""  # Taboola, Outbrain, Google Ads
-    cta_selector: str = ".cta-btn"
-    screenshot_url: Optional[str] = ""
-    diffusion_url: Optional[str] = ""
+    source_name: Optional[str] = ""  # Taboola, Outbrain, etc.
+    # Type de LP
+    lp_type: str = "redirect"  # redirect (vers form externe) ou integrated (form dans LP)
+    redirect_url_name: Optional[str] = ""  # Nom de l'URL de redirection (depuis le compte)
+    form_url: Optional[str] = ""  # URL du formulaire (si redirect) ou intégré
+    # Stockage du code HTML
+    html_code: Optional[str] = ""  # Code HTML complet de la LP
+    # Notes
     notes: Optional[str] = ""
-    status: str = "active"  # active, paused, archived
-    # LP type configuration
-    lp_type: str = "redirect"  # redirect (LP redirects to form URL), integrated (form embedded in LP)
-    form_url: Optional[str] = ""  # URL of external form (for redirect type)
-    # Generation notes/comments
-    generation_notes: Optional[str] = ""
+    status: str = "active"
 
 class FormCreate(BaseModel):
     account_id: str  # Renamed from sub_account_id
