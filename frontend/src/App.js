@@ -1864,6 +1864,26 @@ const FormsPage = () => {
                 La clé API fournie par ZR7 ou MDL pour envoyer les leads vers leur CRM
               </p>
             </div>
+
+            {/* Exclusion du routage inter-CRM */}
+            <div className="bg-red-50 p-3 rounded border border-red-200">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={formData.exclude_from_routing || false}
+                  onChange={e => setFormData({ ...formData, exclude_from_routing: e.target.checked })}
+                  className="w-5 h-5 rounded border-red-300 text-red-600 focus:ring-red-500"
+                />
+                <div>
+                  <span className="font-medium text-red-800">Exclure du routage inter-CRM</span>
+                  <p className="text-xs text-red-600 mt-0.5">
+                    Si coché, les leads de ce formulaire ne seront JAMAIS reroutés vers l'autre CRM.
+                    Utile pour les formulaires de redirection (évite doublons cross-CRM).
+                  </p>
+                </div>
+              </label>
+            </div>
+
             {editingForm?.internal_api_key && (
               <div className="bg-white p-3 rounded border border-orange-200">
                 <label className="block text-xs font-medium text-slate-500 mb-1">Clé API interne (pour recevoir les leads)</label>
