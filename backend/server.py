@@ -55,6 +55,15 @@ class CRMCreate(BaseModel):
     slug: str  # "mdl", "zr7"
     api_url: str
     description: Optional[str] = ""
+    # Commandes par produit : départements où ce CRM a des commandes
+    # Format: {"PAC": ["75", "92", "93"], "PV": ["13", "31"], "ITE": ["59", "62"]}
+    commandes: Optional[Dict[str, List[str]]] = {}
+
+class CRMUpdate(BaseModel):
+    name: Optional[str] = None
+    api_url: Optional[str] = None
+    description: Optional[str] = None
+    commandes: Optional[Dict[str, List[str]]] = None
 
 # Diffusion source types (Native, Google Ads, etc.)
 class DiffusionSourceCreate(BaseModel):
