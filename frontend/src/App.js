@@ -1839,9 +1839,16 @@ const ScriptGeneratorPage = () => {
     if (!selectedLP) return;
     try {
       const res = await authFetch(`${API}/api/generate-script/lp/${selectedLP}`);
-      if (res.ok) setGeneratedScript(await res.json());
+      if (res.ok) {
+        setGeneratedScript(await res.json());
+      } else {
+        console.error('Error generating LP script:', res.status);
+        const data = await res.json().catch(() => ({}));
+        alert(data.detail || 'Erreur lors de la génération du script');
+      }
     } catch (e) {
       console.error(e);
+      alert('Erreur de connexion');
     }
   };
 
@@ -1849,9 +1856,16 @@ const ScriptGeneratorPage = () => {
     if (!selectedForm) return;
     try {
       const res = await authFetch(`${API}/api/generate-script/form/${selectedForm}`);
-      if (res.ok) setGeneratedScript(await res.json());
+      if (res.ok) {
+        setGeneratedScript(await res.json());
+      } else {
+        console.error('Error generating Form script:', res.status);
+        const data = await res.json().catch(() => ({}));
+        alert(data.detail || 'Erreur lors de la génération du script');
+      }
     } catch (e) {
       console.error(e);
+      alert('Erreur de connexion');
     }
   };
 
