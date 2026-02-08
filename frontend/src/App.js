@@ -1851,7 +1851,7 @@ const FormsPage = () => {
                 <strong>⚠️ Validations automatiques dans le script :</strong><br/>
                 • Téléphone obligatoire<br/>
                 • Nom obligatoire (min 2 caractères)<br/>
-                • Département France métropolitaine uniquement (01-95, 2A, 2B)
+                • Département France métropolitaine uniquement (01-95)
               </p>
             </div>
           </div>
