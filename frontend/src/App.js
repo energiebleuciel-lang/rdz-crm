@@ -1930,50 +1930,138 @@ const ScriptGeneratorPage = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const CheckboxOption = ({ label, checked, onChange }) => (
+    <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
+      <input type="checkbox" checked={checked} onChange={onChange} className="rounded border-slate-300 text-blue-600" />
+      <span className="text-sm text-slate-700">{label}</span>
+    </label>
+  );
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-slate-800">Générateur de Scripts</h1>
+      <div>
+        <h1 className="text-2xl font-bold text-slate-800">Générateur de Briefs</h1>
+        <p className="text-sm text-slate-500 mt-1">Sélectionnez les éléments à inclure dans le brief pour Emergent</p>
+      </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* LP Brief Generator */}
         <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
           <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
             <Layers className="w-5 h-5 text-blue-600" />
-            Script LP (Tracking CTA)
+            Brief LP
           </h3>
+          
           <div className="space-y-4">
-            <select value={selectedLP} onChange={e => setSelectedLP(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg">
+            <select value={selectedLP} onChange={e => { setSelectedLP(e.target.value); setGeneratedBrief(null); }} className="w-full px-3 py-2 border border-slate-300 rounded-lg">
               <option value="">Sélectionner une LP</option>
               {lps.map(lp => <option key={lp.id} value={lp.id}>{lp.code} - {lp.name}</option>)}
             </select>
-            <button onClick={generateLPScript} className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-              Générer le script
+
+            {selectedLP && (
+              <div className="space-y-3 p-3 bg-slate-50 rounded-lg">
+                <p className="text-xs font-medium text-slate-600 uppercase">Éléments à inclure :</p>
+                
+                <div className="grid grid-cols-2 gap-1">
+                  <CheckboxOption label="Logo principal" checked={lpOptions.include_logo_main} onChange={e => setLpOptions({...lpOptions, include_logo_main: e.target.checked})} />
+                  <CheckboxOption label="Logo secondaire" checked={lpOptions.include_logo_secondary} onChange={e => setLpOptions({...lpOptions, include_logo_secondary: e.target.checked})} />
+                  <CheckboxOption label="Petit logo" checked={lpOptions.include_logo_small} onChange={e => setLpOptions({...lpOptions, include_logo_small: e.target.checked})} />
+                  <CheckboxOption label="Favicon" checked={lpOptions.include_favicon} onChange={e => setLpOptions({...lpOptions, include_favicon: e.target.checked})} />
+                  <CheckboxOption label="Pixel GTM (header)" checked={lpOptions.include_gtm_pixel} onChange={e => setLpOptions({...lpOptions, include_gtm_pixel: e.target.checked})} />
+                  <CheckboxOption label="Code conversion GTM" checked={lpOptions.include_gtm_conversion} onChange={e => setLpOptions({...lpOptions, include_gtm_conversion: e.target.checked})} />
+                  <CheckboxOption label="Code CTA GTM" checked={lpOptions.include_gtm_cta} onChange={e => setLpOptions({...lpOptions, include_gtm_cta: e.target.checked})} />
+                  <CheckboxOption label="Politique confidentialité" checked={lpOptions.include_privacy_policy} onChange={e => setLpOptions({...lpOptions, include_privacy_policy: e.target.checked})} />
+                  <CheckboxOption label="Mentions légales" checked={lpOptions.include_legal_mentions} onChange={e => setLpOptions({...lpOptions, include_legal_mentions: e.target.checked})} />
+                  <CheckboxOption label="Couleurs" checked={lpOptions.include_colors} onChange={e => setLpOptions({...lpOptions, include_colors: e.target.checked})} />
+                  <CheckboxOption label="Notes" checked={lpOptions.include_notes} onChange={e => setLpOptions({...lpOptions, include_notes: e.target.checked})} />
+                </div>
+
+                {/* Redirect URL selector */}
+                <div className="pt-2 border-t border-slate-200">
+                  <label className="block text-xs font-medium text-slate-600 mb-1">URL de redirection :</label>
+                  <select 
+                    value={lpOptions.include_redirect_url} 
+                    onChange={e => setLpOptions({...lpOptions, include_redirect_url: e.target.value})}
+                    className="w-full px-2 py-1 text-sm border border-slate-300 rounded"
+                  >
+                    <option value="">Aucune</option>
+                    <option value="default">URL par défaut</option>
+                    {getRedirectUrlsForLP().map((u, i) => (
+                      <option key={i} value={u.name}>{u.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+
+            <button onClick={generateLPBrief} disabled={!selectedLP} className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed">
+              Générer le brief LP
             </button>
           </div>
         </div>
 
+        {/* Form Brief Generator */}
         <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
           <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
             <FileText className="w-5 h-5 text-green-600" />
-            Script Formulaire
+            Brief Formulaire
           </h3>
+          
           <div className="space-y-4">
-            <select value={selectedForm} onChange={e => setSelectedForm(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg">
+            <select value={selectedForm} onChange={e => { setSelectedForm(e.target.value); setGeneratedBrief(null); }} className="w-full px-3 py-2 border border-slate-300 rounded-lg">
               <option value="">Sélectionner un formulaire</option>
               {forms.map(f => <option key={f.id} value={f.id}>{f.code} - {f.name}</option>)}
             </select>
-            <button onClick={generateFormScript} className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-              Générer le script
+
+            {selectedForm && (
+              <div className="space-y-3 p-3 bg-slate-50 rounded-lg">
+                <p className="text-xs font-medium text-slate-600 uppercase">Éléments à inclure :</p>
+                
+                <div className="grid grid-cols-2 gap-1">
+                  <CheckboxOption label="Logo principal" checked={formOptions.include_logo_main} onChange={e => setFormOptions({...formOptions, include_logo_main: e.target.checked})} />
+                  <CheckboxOption label="Logo secondaire" checked={formOptions.include_logo_secondary} onChange={e => setFormOptions({...formOptions, include_logo_secondary: e.target.checked})} />
+                  <CheckboxOption label="Pixel GTM (header)" checked={formOptions.include_gtm_pixel} onChange={e => setFormOptions({...formOptions, include_gtm_pixel: e.target.checked})} />
+                  <CheckboxOption label="Code conversion GTM" checked={formOptions.include_gtm_conversion} onChange={e => setFormOptions({...formOptions, include_gtm_conversion: e.target.checked})} />
+                  <CheckboxOption label="Politique confidentialité" checked={formOptions.include_privacy_policy} onChange={e => setFormOptions({...formOptions, include_privacy_policy: e.target.checked})} />
+                  <CheckboxOption label="Clé API CRM" checked={formOptions.include_api_key} onChange={e => setFormOptions({...formOptions, include_api_key: e.target.checked})} />
+                  <CheckboxOption label="Notes" checked={formOptions.include_notes} onChange={e => setFormOptions({...formOptions, include_notes: e.target.checked})} />
+                </div>
+
+                {/* Redirect URL selector */}
+                <div className="pt-2 border-t border-slate-200">
+                  <label className="block text-xs font-medium text-slate-600 mb-1">URL de redirection :</label>
+                  <select 
+                    value={formOptions.include_redirect_url} 
+                    onChange={e => setFormOptions({...formOptions, include_redirect_url: e.target.value})}
+                    className="w-full px-2 py-1 text-sm border border-slate-300 rounded"
+                  >
+                    <option value="">Aucune</option>
+                    <option value="default">URL par défaut</option>
+                    {getRedirectUrlsForForm().map((u, i) => (
+                      <option key={i} value={u.name}>{u.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="pt-2 border-t border-slate-200 text-xs text-slate-500">
+                  <strong>Champs toujours inclus :</strong> Téléphone (10 chiffres), Nom, Département
+                </div>
+              </div>
+            )}
+
+            <button onClick={generateFormBrief} disabled={!selectedForm} className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-slate-300 disabled:cursor-not-allowed">
+              Générer le brief Formulaire
             </button>
           </div>
         </div>
       </div>
 
-      {generatedScript && (
+      {generatedBrief && (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200">
           <div className="p-4 border-b border-slate-200 flex items-center justify-between">
             <h3 className="font-semibold text-slate-800">Brief généré</h3>
             <button 
-              onClick={() => copyToClipboard(generatedScript.brief)}
+              onClick={() => copyToClipboard(generatedBrief.brief)}
               className="flex items-center gap-2 px-3 py-1 bg-blue-600 text-white hover:bg-blue-700 rounded-lg text-sm"
             >
               {copied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
