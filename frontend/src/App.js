@@ -2683,6 +2683,577 @@ const GuidePage = () => {
   );
 };
 
+// ==================== DASHBOARD COMPARATIF ====================
+const CompareDashboard = () => {
+  const { authFetch } = useAuth();
+  const [stats, setStats] = useState(null);
+  const [crms, setCrms] = useState([]);
+  const [diffusionSources, setDiffusionSources] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filters, setFilters] = useState({
+    crm_ids: 'all',
+    diffusion_category: 'all',
+    period: 'week'
+  });
+
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  useEffect(() => {
+    loadStats();
+  }, [filters]);
+
+  const loadInitialData = async () => {
+    try {
+      const [crmsRes, sourcesRes] = await Promise.all([
+        authFetch(`${API}/api/crms`),
+        authFetch(`${API}/api/diffusion-sources`)
+      ]);
+      if (crmsRes.ok) setCrms((await crmsRes.json()).crms || []);
+      if (sourcesRes.ok) setDiffusionSources((await sourcesRes.json()).sources || []);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const loadStats = async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (filters.crm_ids) params.set('crm_ids', filters.crm_ids);
+      if (filters.diffusion_category) params.set('diffusion_category', filters.diffusion_category);
+      params.set('period', filters.period);
+      
+      const res = await authFetch(`${API}/api/analytics/compare?${params.toString()}`);
+      if (res.ok) setStats(await res.json());
+    } catch (e) {
+      console.error(e);
+    }
+    setLoading(false);
+  };
+
+  const diffusionCategories = [
+    { value: 'all', label: 'Toutes les sources' },
+    { value: 'native', label: 'Native (Taboola, Outbrain, MGID...)' },
+    { value: 'google', label: 'Google Ads' },
+    { value: 'facebook', label: 'Facebook/Meta Ads' },
+    { value: 'tiktok', label: 'TikTok Ads' },
+  ];
+
+  const sourceTypeLabels = {
+    native: 'Native',
+    google: 'Google',
+    facebook: 'Facebook',
+    tiktok: 'TikTok',
+    other: 'Autre'
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Dashboard Comparatif</h1>
+          <p className="text-sm text-slate-500">Comparez les performances par source de diffusion et CRM en temps réel</p>
+        </div>
+      </div>
+
+      {/* Filtres */}
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+        <div className="flex flex-wrap gap-4">
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-sm font-medium text-slate-700 mb-1">CRM</label>
+            <select 
+              value={filters.crm_ids} 
+              onChange={e => setFilters({ ...filters, crm_ids: e.target.value })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+            >
+              <option value="all">Tous les CRMs</option>
+              {crms.map(crm => <option key={crm.id} value={crm.id}>{crm.name}</option>)}
+            </select>
+          </div>
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-sm font-medium text-slate-700 mb-1">Type de diffusion</label>
+            <select 
+              value={filters.diffusion_category} 
+              onChange={e => setFilters({ ...filters, diffusion_category: e.target.value })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+            >
+              {diffusionCategories.map(cat => <option key={cat.value} value={cat.value}>{cat.label}</option>)}
+            </select>
+          </div>
+          <div className="flex-1 min-w-[150px]">
+            <label className="block text-sm font-medium text-slate-700 mb-1">Période</label>
+            <select 
+              value={filters.period} 
+              onChange={e => setFilters({ ...filters, period: e.target.value })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+            >
+              <option value="today">Aujourd'hui</option>
+              <option value="week">7 derniers jours</option>
+              <option value="month">30 derniers jours</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="bg-white rounded-xl p-8 shadow-sm border border-slate-200 text-center">
+          <RefreshCw className="w-8 h-8 animate-spin text-blue-600 mx-auto" />
+        </div>
+      ) : stats ? (
+        <>
+          {/* Stats Totaux */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+              <p className="text-xs text-slate-500 uppercase tracking-wide">Clics CTA</p>
+              <p className="text-2xl font-bold text-slate-800">{stats.totals?.cta_clicks || 0}</p>
+            </div>
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+              <p className="text-xs text-slate-500 uppercase tracking-wide">Forms Démarrés</p>
+              <p className="text-2xl font-bold text-blue-600">{stats.totals?.forms_started || 0}</p>
+            </div>
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+              <p className="text-xs text-slate-500 uppercase tracking-wide">Leads Total</p>
+              <p className="text-2xl font-bold text-green-600">{stats.totals?.leads_total || 0}</p>
+            </div>
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+              <p className="text-xs text-slate-500 uppercase tracking-wide">Leads Succès</p>
+              <p className="text-2xl font-bold text-emerald-600">{stats.totals?.leads_success || 0}</p>
+            </div>
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+              <p className="text-xs text-slate-500 uppercase tracking-wide">Taux Conversion</p>
+              <p className="text-2xl font-bold text-purple-600">{stats.totals?.conversion_rate || 0}%</p>
+              <p className="text-xs text-slate-400">démarrés → finis</p>
+            </div>
+          </div>
+
+          {/* Comparaison par Source */}
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200">
+            <div className="p-4 border-b border-slate-200">
+              <h3 className="font-semibold text-slate-800">Performance par type de diffusion</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-slate-50">
+                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Source</th>
+                    <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">Formulaires</th>
+                    <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">Démarrés</th>
+                    <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">Leads</th>
+                    <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">Succès</th>
+                    <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">Taux Conv.</th>
+                    <th className="text-center py-3 px-4 text-sm font-medium text-slate-500">Taux Succès</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(stats.by_source || {}).map(([key, data]) => (
+                    <tr key={key} className="border-b border-slate-100 hover:bg-slate-50">
+                      <td className="py-3 px-4">
+                        <span className="inline-flex items-center gap-2">
+                          <span className={`w-2 h-2 rounded-full ${
+                            key === 'native' ? 'bg-orange-500' :
+                            key === 'google' ? 'bg-red-500' :
+                            key === 'facebook' ? 'bg-blue-500' :
+                            key === 'tiktok' ? 'bg-black' : 'bg-slate-400'
+                          }`} />
+                          <span className="font-medium">{sourceTypeLabels[key] || key}</span>
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-center text-sm">{data.forms_count}</td>
+                      <td className="py-3 px-4 text-center text-sm">{data.forms_started}</td>
+                      <td className="py-3 px-4 text-center font-medium text-green-600">{data.leads_total}</td>
+                      <td className="py-3 px-4 text-center text-sm text-emerald-600">{data.leads_success}</td>
+                      <td className="py-3 px-4 text-center">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          data.conversion_rate >= 50 ? 'bg-green-100 text-green-700' :
+                          data.conversion_rate >= 25 ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-red-100 text-red-700'
+                        }`}>
+                          {data.conversion_rate}%
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-center text-sm">{data.success_rate}%</td>
+                    </tr>
+                  ))}
+                  {Object.keys(stats.by_source || {}).length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-slate-500">Aucune donnée pour cette période</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Comparaison par CRM */}
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200">
+            <div className="p-4 border-b border-slate-200">
+              <h3 className="font-semibold text-slate-800">Performance par CRM</h3>
+            </div>
+            <div className="grid md:grid-cols-2 gap-4 p-4">
+              {Object.entries(stats.by_crm || {}).map(([key, data]) => (
+                <div key={key} className={`p-4 rounded-lg border-2 ${
+                  key === 'mdl' ? 'border-blue-200 bg-blue-50' : 'border-green-200 bg-green-50'
+                }`}>
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-semibold text-lg">{data.name}</h4>
+                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                      key === 'mdl' ? 'bg-blue-600 text-white' : 'bg-green-600 text-white'
+                    }`}>{data.leads_total} leads</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-sm">
+                    <div>
+                      <p className="text-slate-500">Formulaires</p>
+                      <p className="font-bold">{data.forms_count}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">Démarrés</p>
+                      <p className="font-bold">{data.forms_started}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">Taux Conv.</p>
+                      <p className="font-bold text-purple-600">{data.conversion_rate}%</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {Object.keys(stats.by_crm || {}).length === 0 && (
+                <div className="col-span-2 py-8 text-center text-slate-500">Aucune donnée pour cette période</div>
+              )}
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="bg-white rounded-xl p-8 shadow-sm border border-slate-200 text-center">
+          <p className="text-slate-500">Impossible de charger les données</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ==================== DIFFUSION SOURCES PAGE ====================
+const DiffusionSourcesPage = () => {
+  const { authFetch } = useAuth();
+  const [sources, setSources] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [formData, setFormData] = useState({ name: '', category: 'native', is_active: true });
+
+  useEffect(() => {
+    loadSources();
+  }, []);
+
+  const loadSources = async () => {
+    setLoading(true);
+    try {
+      const res = await authFetch(`${API}/api/diffusion-sources`);
+      if (res.ok) setSources((await res.json()).sources || []);
+    } catch (e) {
+      console.error(e);
+    }
+    setLoading(false);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await authFetch(`${API}/api/diffusion-sources`, { method: 'POST', body: JSON.stringify(formData) });
+      if (res.ok) {
+        setShowModal(false);
+        setFormData({ name: '', category: 'native', is_active: true });
+        loadSources();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const deleteSource = async (id) => {
+    if (!window.confirm('Supprimer cette source ?')) return;
+    try {
+      await authFetch(`${API}/api/diffusion-sources/${id}`, { method: 'DELETE' });
+      loadSources();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const categories = {
+    native: { label: 'Native', color: 'bg-orange-100 text-orange-700' },
+    google: { label: 'Google', color: 'bg-red-100 text-red-700' },
+    facebook: { label: 'Facebook/Meta', color: 'bg-blue-100 text-blue-700' },
+    tiktok: { label: 'TikTok', color: 'bg-black text-white' },
+    other: { label: 'Autre', color: 'bg-slate-100 text-slate-700' }
+  };
+
+  const groupedSources = sources.reduce((acc, source) => {
+    const cat = source.category || 'other';
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(source);
+    return acc;
+  }, {});
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Sources de Diffusion</h1>
+          <p className="text-sm text-slate-500">Gérez les plateformes de diffusion (Taboola, Google Ads, etc.)</p>
+        </div>
+        <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+          <Plus className="w-4 h-4" />
+          Nouvelle source
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="bg-white rounded-xl p-8 shadow-sm border border-slate-200 text-center">
+          <RefreshCw className="w-8 h-8 animate-spin text-blue-600 mx-auto" />
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {Object.entries(categories).map(([catKey, catInfo]) => {
+            const catSources = groupedSources[catKey] || [];
+            if (catSources.length === 0) return null;
+            return (
+              <div key={catKey} className="bg-white rounded-xl shadow-sm border border-slate-200">
+                <div className="p-4 border-b border-slate-200 flex items-center gap-2">
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${catInfo.color}`}>{catInfo.label}</span>
+                  <span className="text-sm text-slate-500">({catSources.length} sources)</span>
+                </div>
+                <div className="p-4 flex flex-wrap gap-2">
+                  {catSources.map(source => (
+                    <div key={source.id} className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg">
+                      <span className="font-medium">{source.name}</span>
+                      <button onClick={() => deleteSource(source.id)} className="p-1 hover:bg-slate-200 rounded">
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Nouvelle source de diffusion">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Nom de la source</label>
+            <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="Ex: Mediago, Yahoo Gemini..." required />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Catégorie</label>
+            <select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg">
+              <option value="native">Native (Taboola, Outbrain...)</option>
+              <option value="google">Google (Ads, YouTube...)</option>
+              <option value="facebook">Facebook/Meta</option>
+              <option value="tiktok">TikTok</option>
+              <option value="other">Autre</option>
+            </select>
+          </div>
+          <div className="flex justify-end gap-2 pt-4">
+            <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Annuler</button>
+            <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Créer</button>
+          </div>
+        </form>
+      </Modal>
+    </div>
+  );
+};
+
+// ==================== PRODUCT TYPES PAGE ====================
+const ProductTypesPage = () => {
+  const { authFetch } = useAuth();
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [formData, setFormData] = useState({
+    name: '', slug: '', aide_montant: '', aides_liste: [], description: '', is_active: true
+  });
+  const [newAide, setNewAide] = useState('');
+
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
+  const loadProducts = async () => {
+    setLoading(true);
+    try {
+      const res = await authFetch(`${API}/api/product-types`);
+      if (res.ok) setProducts((await res.json()).product_types || []);
+    } catch (e) {
+      console.error(e);
+    }
+    setLoading(false);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const url = editingProduct ? `${API}/api/product-types/${editingProduct.id}` : `${API}/api/product-types`;
+    const method = editingProduct ? 'PUT' : 'POST';
+    
+    try {
+      const res = await authFetch(url, { method, body: JSON.stringify(formData) });
+      if (res.ok) {
+        setShowModal(false);
+        setEditingProduct(null);
+        setFormData({ name: '', slug: '', aide_montant: '', aides_liste: [], description: '', is_active: true });
+        loadProducts();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const addAide = () => {
+    if (newAide.trim() && !formData.aides_liste.includes(newAide.trim())) {
+      setFormData({ ...formData, aides_liste: [...formData.aides_liste, newAide.trim()] });
+      setNewAide('');
+    }
+  };
+
+  const removeAide = (aide) => {
+    setFormData({ ...formData, aides_liste: formData.aides_liste.filter(a => a !== aide) });
+  };
+
+  const editProduct = (product) => {
+    setEditingProduct(product);
+    setFormData({
+      name: product.name,
+      slug: product.slug,
+      aide_montant: product.aide_montant,
+      aides_liste: product.aides_liste || [],
+      description: product.description || '',
+      is_active: product.is_active !== false
+    });
+    setShowModal(true);
+  };
+
+  const deleteProduct = async (id) => {
+    if (!window.confirm('Supprimer ce type de produit ?')) return;
+    try {
+      await authFetch(`${API}/api/product-types/${id}`, { method: 'DELETE' });
+      loadProducts();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Types de Produits</h1>
+          <p className="text-sm text-slate-500">Gérez les produits et leurs instructions (aides, montants)</p>
+        </div>
+        <button onClick={() => { setEditingProduct(null); setFormData({ name: '', slug: '', aide_montant: '', aides_liste: [], description: '', is_active: true }); setShowModal(true); }} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+          <Plus className="w-4 h-4" />
+          Nouveau produit
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="bg-white rounded-xl p-8 shadow-sm border border-slate-200 text-center">
+          <RefreshCw className="w-8 h-8 animate-spin text-blue-600 mx-auto" />
+        </div>
+      ) : (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {products.map(product => (
+            <div key={product.id} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="p-4 bg-gradient-to-r from-blue-50 to-green-50">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="font-bold text-lg text-slate-800">{product.name}</h3>
+                    <span className="text-xs bg-slate-200 px-2 py-0.5 rounded">{product.slug}</span>
+                  </div>
+                  <div className="flex gap-1">
+                    <button onClick={() => editProduct(product)} className="p-1.5 hover:bg-white/50 rounded" title="Modifier">
+                      <Edit className="w-4 h-4 text-slate-600" />
+                    </button>
+                    <button onClick={() => deleteProduct(product.id)} className="p-1.5 hover:bg-white/50 rounded" title="Supprimer">
+                      <Trash2 className="w-4 h-4 text-red-600" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="p-4">
+                <div className="mb-3">
+                  <p className="text-sm text-slate-500">Montant des aides</p>
+                  <p className="text-2xl font-bold text-green-600">{product.aide_montant}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500 mb-2">Aides disponibles</p>
+                  <div className="flex flex-wrap gap-1">
+                    {(product.aides_liste || []).map(aide => (
+                      <span key={aide} className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">{aide}</span>
+                    ))}
+                  </div>
+                </div>
+                {product.description && (
+                  <p className="mt-3 text-sm text-slate-500 border-t border-slate-100 pt-3">{product.description}</p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editingProduct ? 'Modifier le produit' : 'Nouveau type de produit'}>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Nom du produit</label>
+              <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="Panneaux solaires" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Slug (code)</label>
+              <input type="text" value={formData.slug} onChange={e => setFormData({ ...formData, slug: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="solaire" required />
+            </div>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Montant des aides</label>
+            <input type="text" value={formData.aide_montant} onChange={e => setFormData({ ...formData, aide_montant: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="10 000€" required />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Aides disponibles</label>
+            <div className="flex gap-2 mb-2">
+              <input type="text" value={newAide} onChange={e => setNewAide(e.target.value)} onKeyPress={e => e.key === 'Enter' && (e.preventDefault(), addAide())} className="flex-1 px-3 py-2 border border-slate-300 rounded-lg" placeholder="MaPrimeRenov, CEE..." />
+              <button type="button" onClick={addAide} className="px-3 py-2 bg-slate-200 rounded-lg hover:bg-slate-300">
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {formData.aides_liste.map(aide => (
+                <span key={aide} className="flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 text-sm rounded-full">
+                  {aide}
+                  <button type="button" onClick={() => removeAide(aide)} className="hover:text-red-600">×</button>
+                </span>
+              ))}
+            </div>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+            <textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" rows={2} />
+          </div>
+          
+          <div className="flex justify-end gap-2 pt-4">
+            <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Annuler</button>
+            <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">{editingProduct ? 'Modifier' : 'Créer'}</button>
+          </div>
+        </form>
+      </Modal>
+    </div>
+  );
+};
+
 // ==================== ASSETS PAGE ====================
 const AssetsPage = () => {
   const { authFetch } = useAuth();
