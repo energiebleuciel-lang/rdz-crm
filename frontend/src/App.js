@@ -1258,7 +1258,7 @@ const LPsPage = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-800">Landing Pages</h1>
-        <button onClick={() => { setEditingLP(null); setFormData({ sub_account_id: '', code: '', name: '', url: '', source_type: 'native', source_name: '', cta_selector: '.cta-btn', status: 'active' }); setShowModal(true); }} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+        <button onClick={() => { setEditingLP(null); setFormData({ account_id: '', code: '', name: '', url: '', source_type: 'native', source_name: '', cta_selector: '.cta-btn', status: 'active', lp_type: 'redirect', form_url: '', generation_notes: '' }); setShowModal(true); }} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
           <Plus className="w-4 h-4" />
           Nouvelle LP
         </button>
