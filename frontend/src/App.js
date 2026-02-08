@@ -2033,9 +2033,9 @@ const AnalyticsPage = () => {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard icon={Users} label="Clics CTA" value={stats?.cta_clicks || 0} color="purple" />
         <StatCard icon={FileText} label="Forms démarrés" value={stats?.forms_started || 0} color="blue" />
         <StatCard icon={CheckCircle} label="Leads" value={stats?.leads_total || 0} color="green" />
+        <StatCard icon={Send} label="Envoyés CRM" value={stats?.leads_sent || 0} color="purple" />
         <StatCard icon={Award} label="Taux conversion" value={`${stats?.form_to_lead_rate || 0}%`} color="orange" />
       </div>
 
