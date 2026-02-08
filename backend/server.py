@@ -532,19 +532,19 @@ async def delete_product_type(type_id: str, user: dict = Depends(require_admin))
 @api_router.get("/accounts")
 async def get_accounts(crm_id: Optional[str] = None, user: dict = Depends(get_current_user)):
     query = {"crm_id": crm_id} if crm_id else {}
-    accounts = await db.sub_accounts.find(query, {"_id": 0}).to_list(100)
+    accounts = await db.accounts.find(query, {"_id": 0}).to_list(100)
     return {"accounts": accounts}
 
 # Keep old route for backwards compatibility
 @api_router.get("/sub-accounts")
 async def get_sub_accounts_compat(crm_id: Optional[str] = None, user: dict = Depends(get_current_user)):
     query = {"crm_id": crm_id} if crm_id else {}
-    accounts = await db.sub_accounts.find(query, {"_id": 0}).to_list(100)
+    accounts = await db.accounts.find(query, {"_id": 0}).to_list(100)
     return {"sub_accounts": accounts, "accounts": accounts}
 
 @api_router.get("/accounts/{account_id}")
 async def get_account(account_id: str, user: dict = Depends(get_current_user)):
-    account = await db.sub_accounts.find_one({"id": account_id}, {"_id": 0})
+    account = await db.accounts.find_one({"id": account_id}, {"_id": 0})
     if not account:
         raise HTTPException(status_code=404, detail="Compte non trouvé")
     return {"account": account}
