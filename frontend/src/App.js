@@ -1916,18 +1916,18 @@ const ScriptGeneratorPage = () => {
       {generatedScript && (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200">
           <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-            <h3 className="font-semibold text-slate-800">Script généré</h3>
+            <h3 className="font-semibold text-slate-800">Brief généré</h3>
             <button 
-              onClick={() => copyToClipboard(generatedScript.instructions || generatedScript.script)}
-              className="flex items-center gap-2 px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm"
+              onClick={() => copyToClipboard(generatedScript.brief)}
+              className="flex items-center gap-2 px-3 py-1 bg-blue-600 text-white hover:bg-blue-700 rounded-lg text-sm"
             >
-              {copied ? <CheckCircle className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
-              {copied ? 'Copié !' : 'Copier'}
+              {copied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {copied ? 'Copié !' : 'Copier le brief'}
             </button>
           </div>
           <div className="p-4">
-            <pre className="bg-slate-900 text-green-400 p-4 rounded-lg overflow-x-auto text-sm whitespace-pre-wrap">
-              {generatedScript.instructions || generatedScript.script}
+            <pre className="bg-slate-50 text-slate-800 p-4 rounded-lg overflow-x-auto text-sm whitespace-pre-wrap font-mono border border-slate-200">
+              {generatedScript.brief}
             </pre>
           </div>
         </div>
