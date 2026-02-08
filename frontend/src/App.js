@@ -1626,7 +1626,7 @@ const FormsPage = () => {
                   <button onClick={() => { setEditingForm(row); setFormData(row); setShowModal(true); }} className="p-1 hover:bg-slate-100 rounded" title="Modifier">
                     <Edit className="w-4 h-4 text-slate-600" />
                   </button>
-                  <button onClick={() => { setShowDuplicateModal(row); setDuplicateData({ new_code: row.code + '-COPY', new_name: row.name + ' (copie)', new_api_key: '' }); }} className="p-1 hover:bg-slate-100 rounded" title="Dupliquer">
+                  <button onClick={() => { setShowDuplicateModal(row); setDuplicateData({ new_code: row.code + '-COPY', new_name: row.name + ' (copie)', new_crm_api_key: '' }); }} className="p-1 hover:bg-slate-100 rounded" title="Dupliquer">
                     <Copy className="w-4 h-4 text-blue-600" />
                   </button>
                   <button onClick={() => deleteForm(row.id)} className="p-1 hover:bg-slate-100 rounded" title="Supprimer">
