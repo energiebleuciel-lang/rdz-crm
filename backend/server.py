@@ -1593,6 +1593,7 @@ class BriefSelectionLP(BaseModel):
     include_logo_secondary: bool = False
     include_logo_small: bool = False
     include_favicon: bool = False
+    include_images: List[str] = []  # Liste des noms d'images à inclure
     include_gtm_pixel: bool = False
     include_gtm_conversion: bool = False
     include_gtm_cta: bool = False
