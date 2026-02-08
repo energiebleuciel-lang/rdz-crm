@@ -516,6 +516,30 @@ async def delete_lp(lp_id: str, user: dict = Depends(require_admin)):
     await log_activity(user["id"], user["email"], "delete", "lp", lp_id, "LP supprimée")
     return {"success": True}
 
+@api_router.post("/lps/{lp_id}/duplicate")
+async def duplicate_lp(lp_id: str, new_code: str, new_name: str, user: dict = Depends(get_current_user)):
+    """Duplicate a LP with a new code and name"""
+    lp = await db.lps.find_one({"id": lp_id}, {"_id": 0})
+    if not lp:
+        raise HTTPException(status_code=404, detail="LP non trouvée")
+    
+    # Create new LP with same config but new code/name
+    new_lp = {
+        **lp,
+        "id": str(uuid.uuid4()),
+        "code": new_code,
+        "name": new_name,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": user["id"],
+        "status": "active"
+    }
+    # Remove updated_at if exists
+    new_lp.pop("updated_at", None)
+    
+    await db.lps.insert_one(new_lp)
+    await log_activity(user["id"], user["email"], "duplicate", "lp", new_lp["id"], f"LP dupliquée: {lp['code']} -> {new_code}")
+    return {"success": True, "lp": {k: v for k, v in new_lp.items() if k != "_id"}}
+
 # ==================== FORM ENDPOINTS ====================
 
 @api_router.get("/forms")
