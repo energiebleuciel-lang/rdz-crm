@@ -1718,20 +1718,23 @@ const FormsPage = () => {
           columns={[
             { key: 'code', label: 'Code', render: v => <span className="font-mono text-sm bg-slate-100 px-2 py-1 rounded">{v}</span> },
             { key: 'name', label: 'Nom' },
-            { key: 'internal_api_key', label: 'Clé API (pour vos scripts)', render: (v, row) => v ? (
-              <div className="flex items-center gap-1">
-                <code className="text-xs bg-orange-50 text-orange-700 px-2 py-1 rounded font-mono truncate max-w-[180px]" title={v}>{v}</code>
-                <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(v); }} className="p-1 hover:bg-orange-100 rounded" title="Copier la clé">
-                  <Copy className="w-3 h-3 text-orange-600" />
-                </button>
-              </div>
-            ) : <span className="text-xs text-slate-400">Non générée</span> },
+            { key: 'product_type', label: 'Produit', render: v => {
+              const productLabels = { 'panneaux': 'PV', 'pompes': 'PAC', 'isolation': 'ITE', 'PV': 'PV', 'PAC': 'PAC', 'ITE': 'ITE' };
+              const productColors = { 'panneaux': 'bg-yellow-100 text-yellow-700', 'pompes': 'bg-blue-100 text-blue-700', 'isolation': 'bg-green-100 text-green-700', 'PV': 'bg-yellow-100 text-yellow-700', 'PAC': 'bg-blue-100 text-blue-700', 'ITE': 'bg-green-100 text-green-700' };
+              return <span className={`text-xs font-bold px-2 py-1 rounded ${productColors[v] || 'bg-slate-100 text-slate-700'}`}>{productLabels[v] || v}</span>;
+            }},
             { key: 'source_name', label: 'Source' },
+            { key: 'stats', label: 'Démarrés', render: v => <span className="text-blue-600 font-medium">{v?.started || 0}</span> },
+            { key: 'stats', label: 'Complétés', render: v => <span className="text-green-600 font-medium">{v?.completed || 0}</span> },
+            { key: 'stats', label: '% Transfo', render: v => {
+              const rate = v?.conversion_rate || 0;
+              const color = rate >= 50 ? 'bg-green-100 text-green-700' : rate >= 25 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700';
+              return <span className={`text-xs font-bold px-2 py-0.5 rounded ${color}`}>{rate}%</span>;
+            }},
             { key: 'exclude_from_routing', label: 'Routage', render: (v, row) => 
               v ? <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded" title="Ce formulaire est exclu du routage inter-CRM">🚫 Exclu</span> : 
               <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded" title="Ce formulaire peut être rerouté vers l'autre CRM">✓ Actif</span>
             },
-            { key: 'stats', label: 'Leads', render: v => v?.completed || 0 },
             { key: 'status', label: 'Statut', render: v => <StatusBadge status={v} /> },
             { 
               key: 'actions', 
