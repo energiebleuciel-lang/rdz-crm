@@ -575,7 +575,7 @@ async def create_sub_account_compat(account: AccountCreate, user: dict = Depends
 
 @api_router.put("/accounts/{account_id}")
 async def update_account(account_id: str, account: AccountCreate, user: dict = Depends(get_current_user)):
-    result = await db.sub_accounts.update_one(
+    result = await db.accounts.update_one(
         {"id": account_id},
         {"$set": {**account.model_dump(), "updated_at": datetime.now(timezone.utc).isoformat()}}
     )
@@ -586,7 +586,7 @@ async def update_account(account_id: str, account: AccountCreate, user: dict = D
 
 @api_router.put("/sub-accounts/{account_id}")
 async def update_sub_account_compat(account_id: str, account: SubAccountCreate, user: dict = Depends(get_current_user)):
-    result = await db.sub_accounts.update_one(
+    result = await db.accounts.update_one(
         {"id": account_id},
         {"$set": {**account.model_dump(), "updated_at": datetime.now(timezone.utc).isoformat()}}
     )
