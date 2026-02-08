@@ -1322,9 +1322,15 @@ async def get_leads(
 ):
     query = {}
     
+    # Appliquer le filtre par comptes autorisés (sécurité multi-tenant)
+    allowed_account_ids = user.get("allowed_accounts", []) if user.get("role") != "admin" and user.get("allowed_accounts") else None
+    
     # Filter by CRM - get all form codes belonging to this CRM's sub-accounts
     if crm_id:
-        sub_accounts = await db.accounts.find({"crm_id": crm_id}, {"id": 1}).to_list(100)
+        crm_query = {"crm_id": crm_id}
+        if allowed_account_ids:
+            crm_query["id"] = {"$in": allowed_account_ids}
+        sub_accounts = await db.accounts.find(crm_query, {"id": 1}).to_list(100)
         sub_account_ids = [sa["id"] for sa in sub_accounts]
         if sub_account_ids:
             forms = await db.forms.find({"sub_account_id": {"$in": sub_account_ids}}, {"code": 1}).to_list(100)
@@ -1333,6 +1339,14 @@ async def get_leads(
                 query["form_code"] = {"$in": form_codes}
             else:
                 return {"leads": [], "count": 0}
+        else:
+            return {"leads": [], "count": 0}
+    elif allowed_account_ids:
+        # Pas de filtre CRM mais l'utilisateur a des restrictions
+        forms = await db.forms.find({"sub_account_id": {"$in": allowed_account_ids}}, {"code": 1}).to_list(100)
+        form_codes = [f["code"] for f in forms if f.get("code")]
+        if form_codes:
+            query["form_code"] = {"$in": form_codes}
         else:
             return {"leads": [], "count": 0}
     
