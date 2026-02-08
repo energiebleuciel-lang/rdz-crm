@@ -855,6 +855,25 @@ async def retry_lead(lead_id: str, user: dict = Depends(get_current_user)):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+@api_router.delete("/leads/{lead_id}")
+async def delete_lead(lead_id: str, user: dict = Depends(get_current_user)):
+    """Delete a single lead"""
+    result = await db.leads.delete_one({"id": lead_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Lead non trouvé")
+    await log_activity(user["id"], user["email"], "delete", "lead", lead_id, "Lead supprimé")
+    return {"success": True}
+
+@api_router.delete("/leads")
+async def delete_multiple_leads(lead_ids: List[str], user: dict = Depends(get_current_user)):
+    """Delete multiple leads"""
+    if not lead_ids:
+        raise HTTPException(status_code=400, detail="Aucun lead à supprimer")
+    
+    result = await db.leads.delete_many({"id": {"$in": lead_ids}})
+    await log_activity(user["id"], user["email"], "delete", "leads", ",".join(lead_ids[:5]), f"{result.deleted_count} leads supprimés")
+    return {"success": True, "deleted_count": result.deleted_count}
+
 # ==================== ANALYTICS ====================
 
 @api_router.get("/analytics/stats")
