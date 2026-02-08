@@ -168,19 +168,14 @@ class FormCreate(BaseModel):
     lp_ids: List[str] = []  # List of LP IDs linked to this form
     code: str  # PV-TAB-001
     name: str
-    product_type: str  # panneaux, pompes, isolation
-    source_type: str
-    source_name: str
-    api_key: str  # API key for the CRM
+    product_type: str = "panneaux"  # panneaux, pompes, isolation
+    source_type: str = "native"
+    source_name: Optional[str] = ""
+    api_key: Optional[str] = ""  # API key for the CRM
     # Tracking type - juste le choix, le code est dans le compte
-    tracking_type: str = "gtm"  # gtm, redirect, none
+    tracking_type: str = "redirect"  # gtm, redirect, none
     # Override redirect URL (sinon utilise celle du compte)
     redirect_url_override: Optional[str] = ""
-    screenshot_url: Optional[str] = ""
-    notes: Optional[str] = ""
-    status: str = "active"
-    # Generation notes
-    generation_notes: Optional[str] = ""
     screenshot_url: Optional[str] = ""
     notes: Optional[str] = ""
     status: str = "active"
