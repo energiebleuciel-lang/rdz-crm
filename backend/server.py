@@ -807,9 +807,13 @@ async def get_form(form_id: str, user: dict = Depends(get_current_user)):
 
 @api_router.post("/forms")
 async def create_form(form: FormCreate, user: dict = Depends(get_current_user)):
+    # Générer une clé API interne unique pour ce CRM
+    internal_api_key = str(uuid.uuid4())
+    
     form_doc = {
         "id": str(uuid.uuid4()),
         **form.model_dump(),
+        "internal_api_key": internal_api_key,  # Clé pour recevoir les leads sur CE CRM
         "created_at": datetime.now(timezone.utc).isoformat(),
         "created_by": user["id"]
     }
@@ -819,6 +823,7 @@ async def create_form(form: FormCreate, user: dict = Depends(get_current_user)):
 
 @api_router.put("/forms/{form_id}")
 async def update_form(form_id: str, form: FormCreate, user: dict = Depends(get_current_user)):
+    # Ne pas écraser internal_api_key lors de la mise à jour
     result = await db.forms.update_one(
         {"id": form_id},
         {"$set": {**form.model_dump(), "updated_at": datetime.now(timezone.utc).isoformat()}}
@@ -837,24 +842,29 @@ async def delete_form(form_id: str, user: dict = Depends(require_admin)):
     return {"success": True}
 
 @api_router.post("/forms/{form_id}/duplicate")
-async def duplicate_form(form_id: str, new_code: str, new_name: str, new_api_key: str, user: dict = Depends(get_current_user)):
-    """Duplicate a Form with a new code, name, and API key"""
+async def duplicate_form(form_id: str, new_code: str, new_name: str, new_crm_api_key: str, user: dict = Depends(get_current_user)):
+    """Duplicate a Form with a new code, name, and CRM API key"""
     form = await db.forms.find_one({"id": form_id}, {"_id": 0})
     if not form:
         raise HTTPException(status_code=404, detail="Formulaire non trouvé")
     
-    # Create new form with same config but new code/name/api_key
+    # Générer une nouvelle clé API interne pour le formulaire dupliqué
+    new_internal_api_key = str(uuid.uuid4())
+    
+    # Create new form with same config but new code/name/api_keys
     new_form = {
         **form,
         "id": str(uuid.uuid4()),
         "code": new_code,
         "name": new_name,
-        "api_key": new_api_key,
+        "crm_api_key": new_crm_api_key,  # Nouvelle clé API ZR7/MDL
+        "internal_api_key": new_internal_api_key,  # Nouvelle clé interne
         "created_at": datetime.now(timezone.utc).isoformat(),
         "created_by": user["id"],
         "status": "active"
     }
-    # Remove updated_at if exists
+    # Remove old api_key field and updated_at if exists
+    new_form.pop("api_key", None)
     new_form.pop("updated_at", None)
     
     await db.forms.insert_one(new_form)
