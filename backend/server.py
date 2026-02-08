@@ -1210,6 +1210,8 @@ async def submit_lead(lead: LeadData):
     """
     Soumission de lead avec ROUTAGE INTELLIGENT (OPTIONNEL) :
     
+    SÉCURITÉ : La clé API (api_key) est OBLIGATOIRE pour authentifier la requête.
+    
     SI les commandes sont configurées sur les CRMs :
       1. Vérifier si le CRM d'origine a une commande pour ce produit/département
       2. Si NON, vérifier si l'autre CRM a une commande
@@ -1226,10 +1228,27 @@ async def submit_lead(lead: LeadData):
     if not phone:
         raise HTTPException(status_code=400, detail="Le numéro de téléphone est requis")
     
-    # Get form config
-    form_config = await db.forms.find_one({"code": lead.form_code})
+    # ============ SÉCURITÉ : VÉRIFICATION CLÉ API ============
+    api_key = lead.api_key.strip() if lead.api_key else ""
+    form_code = lead.form_code.strip() if lead.form_code else ""
+    
+    if not api_key:
+        raise HTTPException(status_code=401, detail="Clé API manquante. Ajoutez 'api_key' dans votre requête.")
+    
+    # Chercher le formulaire par clé API
+    form_config = await db.forms.find_one({"internal_api_key": api_key})
+    
     if not form_config:
-        raise HTTPException(status_code=404, detail="Formulaire non trouvé")
+        raise HTTPException(status_code=401, detail="Clé API invalide ou formulaire non trouvé.")
+    
+    # Si form_code fourni, vérifier qu'il correspond
+    if form_code and form_config.get("code") != form_code:
+        raise HTTPException(status_code=401, detail="Le form_code ne correspond pas à la clé API.")
+    
+    # Vérifier que le formulaire n'est pas archivé
+    if form_config.get("status") == "archived":
+        raise HTTPException(status_code=403, detail="Ce formulaire est archivé et n'accepte plus de leads.")
+    # =========================================================
     
     account_id = form_config.get("account_id") or form_config.get("sub_account_id")
     account = await db.accounts.find_one({"id": account_id}) if account_id else None
