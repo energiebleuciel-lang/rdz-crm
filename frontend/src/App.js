@@ -1733,10 +1733,9 @@ const FormsPage = () => {
               </div>
             ) : <span className="text-xs text-slate-400">Non générée</span> },
             { key: 'source_name', label: 'Source' },
-            { key: 'tracking_type', label: 'Tracking', render: v => v === 'gtm' ? 
-              <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded">GTM</span> : 
-              v === 'none' ? <span className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded">Aucun</span> :
-              <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">Redirect</span>
+            { key: 'exclude_from_routing', label: 'Routage', render: (v, row) => 
+              v ? <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded" title="Ce formulaire est exclu du routage inter-CRM">🚫 Exclu</span> : 
+              <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded" title="Ce formulaire peut être rerouté vers l'autre CRM">✓ Actif</span>
             },
             { key: 'stats', label: 'Leads', render: v => v?.completed || 0 },
             { key: 'status', label: 'Statut', render: v => <StatusBadge status={v} /> },
