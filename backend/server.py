@@ -399,11 +399,11 @@ async def init_crms(user: dict = Depends(require_admin)):
     ]
     await db.crms.insert_many(crms)
     
-    # Create Sub-accounts
-    sub_accounts = [
-        # MDL sub-accounts
+    # Create Accounts (comptes)
+    accounts = [
+        # MDL accounts
         {"id": str(uuid.uuid4()), "crm_id": mdl_id, "name": "MDL", "domain": "", "product_types": ["solaire", "pac", "isolation"], "created_at": datetime.now(timezone.utc).isoformat()},
-        {"id": str(uuid.uuid4()), "crm_id": mdl_id, "name": "BRANDSPOT", "domain": "", "product_types": ["solaire", "pac"], "created_at": datetime.now(timezone.utc).isoformat()},
+        {"id": str(uuid.uuid4()), "crm_id": mdl_id, "name": "SPOOT", "domain": "", "product_types": ["solaire", "pac"], "created_at": datetime.now(timezone.utc).isoformat()},
         {"id": str(uuid.uuid4()), "crm_id": mdl_id, "name": "OBJECTIF ACADEMIE", "domain": "", "product_types": ["solaire"], "created_at": datetime.now(timezone.utc).isoformat()},
         {"id": str(uuid.uuid4()), "crm_id": mdl_id, "name": "AUDIT GREEN", "domain": "", "product_types": ["solaire", "pac", "isolation"], "created_at": datetime.now(timezone.utc).isoformat()},
         # ZR7 sub-accounts
@@ -466,7 +466,7 @@ async def init_crms(user: dict = Depends(require_admin)):
     ]
     await db.product_types.insert_many(product_types)
     
-    return {"success": True, "message": "CRMs, sous-comptes, sources de diffusion et types de produits initialisés"}
+    return {"success": True, "message": "CRMs, comptes, sources de diffusion et types de produits initialisés"}
 
 # ==================== DIFFUSION SOURCES ENDPOINTS ====================
 
