@@ -1598,6 +1598,9 @@ const FormsPage = () => {
 
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editingForm ? 'Modifier le formulaire' : 'Nouveau formulaire'}>
         <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+          {error && (
+            <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm">{error}</div>
+          )}
           {/* Section: Informations générales */}
           <div className="bg-slate-50 p-4 rounded-lg space-y-4">
             <h4 className="font-medium text-slate-800 flex items-center gap-2">
