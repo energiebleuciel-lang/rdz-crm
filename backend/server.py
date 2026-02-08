@@ -204,6 +204,8 @@ class FormCreate(BaseModel):
     html_code: Optional[str] = ""  # Code HTML complet du formulaire
     # Clés API pour l'intégration des leads
     crm_api_key: Optional[str] = ""  # Clé API du CRM destination (ZR7/MDL) - fournie par vous
+    # Exclusion du routage inter-CRM (pour éviter doublons cross-CRM)
+    exclude_from_routing: bool = False  # Si True, pas de reroutage vers autre CRM
     # Notes
     notes: Optional[str] = ""
     status: str = "active"
