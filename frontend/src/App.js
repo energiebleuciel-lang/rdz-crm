@@ -1363,6 +1363,9 @@ const UsersPage = () => {
   const { authFetch, user: currentUser } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [newUser, setNewUser] = useState({ email: '', password: '', nom: '', role: 'viewer' });
+  const [error, setError] = useState('');
 
   useEffect(() => {
     loadUsers();
@@ -1376,6 +1379,27 @@ const UsersPage = () => {
       console.error(e);
     }
     setLoading(false);
+  };
+
+  const createUser = async (e) => {
+    e.preventDefault();
+    setError('');
+    try {
+      const res = await authFetch(`${API}/api/auth/register`, {
+        method: 'POST',
+        body: JSON.stringify(newUser)
+      });
+      if (res.ok) {
+        setShowModal(false);
+        setNewUser({ email: '', password: '', nom: '', role: 'viewer' });
+        loadUsers();
+      } else {
+        const data = await res.json();
+        setError(data.detail || 'Erreur lors de la création');
+      }
+    } catch (e) {
+      setError('Erreur de connexion');
+    }
   };
 
   const updateRole = async (userId, role) => {
@@ -1399,7 +1423,16 @@ const UsersPage = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-slate-800">Utilisateurs</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-slate-800">Utilisateurs</h1>
+        <button 
+          onClick={() => setShowModal(true)} 
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+        >
+          <Plus className="w-4 h-4" />
+          Nouvel utilisateur
+        </button>
+      </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200">
         <Table
@@ -1418,6 +1451,88 @@ const UsersPage = () => {
                 <option value="viewer">Lecteur</option>
               </select>
             )},
+            { key: 'created_at', label: 'Créé le', render: v => new Date(v).toLocaleDateString('fr-FR') },
+            { key: 'actions', label: '', render: (_, row) => row.id !== currentUser?.id && (
+              <button onClick={() => deleteUser(row.id)} className="p-1 hover:bg-slate-100 rounded text-red-600">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          ]}
+          data={users}
+        />
+      </div>
+
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Nouvel utilisateur">
+        <form onSubmit={createUser} className="space-y-4">
+          {error && (
+            <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm">{error}</div>
+          )}
+          
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Nom</label>
+            <input
+              type="text"
+              value={newUser.nom}
+              onChange={e => setNewUser({ ...newUser, nom: e.target.value })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+              required
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+            <input
+              type="email"
+              value={newUser.email}
+              onChange={e => setNewUser({ ...newUser, email: e.target.value })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+              required
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Mot de passe</label>
+            <input
+              type="password"
+              value={newUser.password}
+              onChange={e => setNewUser({ ...newUser, password: e.target.value })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+              required
+              minLength={6}
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Rôle</label>
+            <select
+              value={newUser.role}
+              onChange={e => setNewUser({ ...newUser, role: e.target.value })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+            >
+              <option value="viewer">Lecteur (voir seulement)</option>
+              <option value="editor">Éditeur (créer, modifier)</option>
+              <option value="admin">Admin (tout accès)</option>
+            </select>
+            <p className="text-xs text-slate-500 mt-1">
+              {newUser.role === 'viewer' && 'Peut uniquement consulter les données'}
+              {newUser.role === 'editor' && 'Peut créer et modifier LP, Forms, Sous-comptes'}
+              {newUser.role === 'admin' && 'Accès complet incluant gestion utilisateurs et suppression'}
+            </p>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4">
+            <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">
+              Annuler
+            </button>
+            <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+              Créer l'utilisateur
+            </button>
+          </div>
+        </form>
+      </Modal>
+    </div>
+  );
+};
             { key: 'created_at', label: 'Créé le', render: v => new Date(v).toLocaleDateString('fr-FR') },
             { key: 'actions', label: '', render: (_, row) => row.id !== currentUser?.id && (
               <button onClick={() => deleteUser(row.id)} className="p-1 hover:bg-slate-100 rounded text-red-600">
