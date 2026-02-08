@@ -1470,9 +1470,18 @@ async def generate_lp_brief(selection: BriefSelectionLP, user: dict = Depends(ge
     # Build brief based on selection
     lines = [f"=== BRIEF LP : {lp.get('code', '')} ===", ""]
     lines.append(f"Nom : {lp.get('name', '')}")
+    lines.append(f"URL : {lp.get('url', '')}")
     lines.append(f"Compte : {account.get('name', '') if account else 'Non défini'}")
-    lines.append(f"Domaine : {account.get('domain', '') if account else ''}")
+    lines.append(f"Source : {lp.get('source_name', '')} ({lp.get('source_type', '')})")
+    lines.append(f"Type : {'Formulaire intégré' if lp.get('lp_type') == 'integrated' else 'Redirection'}")
+    if lp.get('form_url'):
+        lines.append(f"URL Formulaire : {lp.get('form_url')}")
     lines.append("")
+    
+    # Infos dynamiques saisies au moment de générer
+    if selection.cta_selector:
+        lines.append(f"Sélecteur CTA : {selection.cta_selector}")
+        lines.append("")
     
     if selection.include_logo_main and account:
         lines.append(f"Logo principal : {account.get('logo_main_url', 'Non défini')}")
@@ -1526,7 +1535,12 @@ async def generate_lp_brief(selection: BriefSelectionLP, user: dict = Depends(ge
     if selection.include_notes:
         lines.append("")
         lines.append("--- NOTES ---")
-        lines.append(lp.get('generation_notes', '') or account.get('notes', '') if account else '')
+        lines.append(lp.get('notes', '') or (account.get('notes', '') if account else ''))
+    
+    if selection.include_html_code and lp.get('html_code'):
+        lines.append("")
+        lines.append("--- CODE HTML DE LA LP ---")
+        lines.append(lp.get('html_code', ''))
     
     return {"brief": "\n".join(lines), "lp": lp, "account": account}
 
