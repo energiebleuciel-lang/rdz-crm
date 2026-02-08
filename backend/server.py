@@ -947,10 +947,36 @@ async def create_form(form: FormCreate, user: dict = Depends(get_current_user)):
 
 @api_router.put("/forms/{form_id}")
 async def update_form(form_id: str, form: FormCreate, user: dict = Depends(get_current_user)):
-    # Ne pas écraser internal_api_key lors de la mise à jour
+    """
+    Mettre à jour un formulaire.
+    PROTECTION: La clé API CRM (crm_api_key) ne peut PAS être modifiée après création.
+    Seul le code, nom, et paramètres non-critiques peuvent être changés.
+    """
+    # Récupérer le formulaire existant pour préserver les champs protégés
+    existing_form = await db.forms.find_one({"id": form_id}, {"_id": 0})
+    if not existing_form:
+        raise HTTPException(status_code=404, detail="Formulaire non trouvé")
+    
+    # Préparer les données de mise à jour
+    update_data = form.model_dump()
+    
+    # PROTECTION: Préserver la clé API CRM d'origine (ne peut pas être modifiée)
+    if existing_form.get("crm_api_key"):
+        update_data["crm_api_key"] = existing_form["crm_api_key"]
+    
+    # Préserver internal_api_key
+    if existing_form.get("internal_api_key"):
+        update_data["internal_api_key"] = existing_form["internal_api_key"]
+    
+    # Préserver le product_type d'origine (critique pour le routage)
+    if existing_form.get("product_type"):
+        update_data["product_type"] = existing_form["product_type"]
+    
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
     result = await db.forms.update_one(
         {"id": form_id},
-        {"$set": {**form.model_dump(), "updated_at": datetime.now(timezone.utc).isoformat()}}
+        {"$set": update_data}
     )
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Formulaire non trouvé")
@@ -959,10 +985,59 @@ async def update_form(form_id: str, form: FormCreate, user: dict = Depends(get_c
 
 @api_router.delete("/forms/{form_id}")
 async def delete_form(form_id: str, user: dict = Depends(require_admin)):
-    result = await db.forms.delete_one({"id": form_id})
-    if result.deleted_count == 0:
+    """
+    ARCHIVE un formulaire au lieu de le supprimer définitivement.
+    - Les leads associés restent dans la base avec leur product_type
+    - Le formulaire est marqué comme 'archived' mais reste consultable
+    - Seul l'admin peut archiver/supprimer
+    """
+    # Vérifier que le formulaire existe
+    form = await db.forms.find_one({"id": form_id}, {"_id": 0})
+    if not form:
         raise HTTPException(status_code=404, detail="Formulaire non trouvé")
-    await log_activity(user["id"], user["email"], "delete", "form", form_id, "Formulaire supprimé")
+    
+    # ARCHIVER au lieu de supprimer
+    await db.forms.update_one(
+        {"id": form_id},
+        {"$set": {
+            "status": "archived",
+            "archived_at": datetime.now(timezone.utc).isoformat(),
+            "archived_by": user["id"]
+        }}
+    )
+    
+    # Compter les leads associés (ils restent dans la base)
+    leads_count = await db.leads.count_documents({"form_code": form.get("code")})
+    
+    await log_activity(user["id"], user["email"], "archive", "form", form_id, 
+                      f"Formulaire archivé: {form.get('code')} ({leads_count} leads conservés)")
+    
+    return {"success": True, "message": f"Formulaire archivé. {leads_count} leads conservés dans la base."}
+
+@api_router.delete("/forms/{form_id}/permanent")
+async def permanent_delete_form(form_id: str, confirm_code: str, user: dict = Depends(require_admin)):
+    """
+    Suppression PERMANENTE d'un formulaire - UNIQUEMENT pour l'admin avec code de confirmation.
+    Les leads restent TOUJOURS dans la base avec leur product_type.
+    """
+    # Vérifier le code de confirmation (les 8 premiers caractères de l'ID)
+    if confirm_code != form_id[:8]:
+        raise HTTPException(status_code=400, detail=f"Code de confirmation incorrect. Entrez les 8 premiers caractères de l'ID: {form_id[:8]}")
+    
+    form = await db.forms.find_one({"id": form_id}, {"_id": 0})
+    if not form:
+        raise HTTPException(status_code=404, detail="Formulaire non trouvé")
+    
+    # Compter les leads qui resteront
+    leads_count = await db.leads.count_documents({"form_code": form.get("code")})
+    
+    # Supprimer le formulaire
+    result = await db.forms.delete_one({"id": form_id})
+    
+    await log_activity(user["id"], user["email"], "permanent_delete", "form", form_id, 
+                      f"Formulaire SUPPRIMÉ: {form.get('code')} ({leads_count} leads conservés)")
+    
+    return {"success": True, "message": f"Formulaire supprimé définitivement. {leads_count} leads conservés."}
     return {"success": True}
 
 @api_router.post("/forms/generate-missing-keys")
