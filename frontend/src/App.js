@@ -4604,6 +4604,7 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
           <Route path="/compare" element={<ProtectedRoute><CompareDashboard /></ProtectedRoute>} />
+          <Route path="/billing" element={<AdminRoute><BillingPage /></AdminRoute>} />
           <Route path="/analytics" element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
           <Route path="/leads" element={<AdminRoute><LeadsPage /></AdminRoute>} />
           <Route path="/lps" element={<ProtectedRoute><LPsPage /></ProtectedRoute>} />
