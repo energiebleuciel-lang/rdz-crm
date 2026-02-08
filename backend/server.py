@@ -850,6 +850,37 @@ async def delete_form(form_id: str, user: dict = Depends(require_admin)):
     await log_activity(user["id"], user["email"], "delete", "form", form_id, "Formulaire supprimé")
     return {"success": True}
 
+@api_router.post("/forms/generate-missing-keys")
+async def generate_missing_api_keys(user: dict = Depends(require_admin)):
+    """Générer les clés API internes pour les formulaires qui n'en ont pas"""
+    forms_without_key = await db.forms.find(
+        {"$or": [{"internal_api_key": {"$exists": False}}, {"internal_api_key": ""}]}
+    ).to_list(1000)
+    
+    updated_count = 0
+    for form in forms_without_key:
+        new_key = str(uuid.uuid4())
+        await db.forms.update_one(
+            {"id": form["id"]},
+            {"$set": {"internal_api_key": new_key}}
+        )
+        updated_count += 1
+    
+    return {"success": True, "updated_count": updated_count}
+
+@api_router.post("/forms/{form_id}/regenerate-key")
+async def regenerate_form_api_key(form_id: str, user: dict = Depends(get_current_user)):
+    """Régénérer la clé API interne d'un formulaire"""
+    new_key = str(uuid.uuid4())
+    result = await db.forms.update_one(
+        {"id": form_id},
+        {"$set": {"internal_api_key": new_key}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Formulaire non trouvé")
+    await log_activity(user["id"], user["email"], "regenerate_key", "form", form_id, "Clé API régénérée")
+    return {"success": True, "internal_api_key": new_key}
+
 @api_router.post("/forms/{form_id}/duplicate")
 async def duplicate_form(form_id: str, new_code: str, new_name: str, new_crm_api_key: str, user: dict = Depends(get_current_user)):
     """Duplicate a Form with a new code, name, and CRM API key"""
