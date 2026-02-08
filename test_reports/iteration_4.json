@@ -1,0 +1,128 @@
+{
+  "summary": "Completed comprehensive testing of new CRM features. All 15 backend API tests passed (100%). Frontend UI testing verified all new features: form creation with crm_api_key and auto-generated internal_api_key, form duplication with new CRM API key, account images library tab, and retry-failed endpoint.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_new_crm_features.py",
+    "/app/test_reports/pytest/pytest_new_crm_features.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Form creation correctly generates internal_api_key (UUID) automatically",
+    "Form duplication requires new_crm_api_key parameter and generates new internal_api_key",
+    "Account images library allows add/remove images with name and URL",
+    "POST /api/leads/retry-failed endpoint works correctly for nightly job",
+    "Lead submission validates phone (10 digits), nom (required), and postal code (France metro)",
+    "CRM integration section displays correctly in form modal with orange styling"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_new_crm_features.py"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "email": "energiebleuciel@gmail.com",
+    "password": "92Ruemarxdormoy"
+  },
+  "seed_data_creation": "Test forms and images created and cleaned up during tests",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All new CRM features tested and working: 1) Form creation with crm_api_key field and auto-generated internal_api_key, 2) Form duplication requires new_crm_api_key and generates new internal_api_key, 3) Account modal has 'Images' tab for image library management, 4) POST /api/leads/retry-failed endpoint for nightly job retry of failed leads, 5) Lead submission with CRM sending when phone valid and config present. External CRM APIs (ZR7/MDL) are REAL APIs - not mocked.",
+  "features_tested": [
+    {
+      "feature": "Form creation with crm_api_key",
+      "status": "PASS",
+      "details": "crm_api_key stored correctly, internal_api_key auto-generated as UUID"
+    },
+    {
+      "feature": "Form creation without crm_api_key",
+      "status": "PASS",
+      "details": "internal_api_key still generated even when crm_api_key is empty"
+    },
+    {
+      "feature": "Form duplication with new CRM API key",
+      "status": "PASS",
+      "details": "Duplicated form gets new code, name, crm_api_key, and new internal_api_key"
+    },
+    {
+      "feature": "Form duplication requires new_crm_api_key",
+      "status": "PASS",
+      "details": "Returns 422 validation error if new_crm_api_key not provided"
+    },
+    {
+      "feature": "Account images library - add images",
+      "status": "PASS",
+      "details": "Images added to account with name and URL, persisted correctly"
+    },
+    {
+      "feature": "Account images library - structure",
+      "status": "PASS",
+      "details": "images field is a list of {name, url} objects"
+    },
+    {
+      "feature": "POST /api/leads/retry-failed endpoint",
+      "status": "PASS",
+      "details": "Returns {success: true, results: {total, success, failed, skipped}}"
+    },
+    {
+      "feature": "retry-failed with hours parameter",
+      "status": "PASS",
+      "details": "Accepts ?hours=N parameter to filter leads by age"
+    },
+    {
+      "feature": "retry-failed requires authentication",
+      "status": "PASS",
+      "details": "Returns 401 without auth token"
+    },
+    {
+      "feature": "Lead submission basic",
+      "status": "PASS",
+      "details": "Lead saved with status 'no_config' when form not found"
+    },
+    {
+      "feature": "Lead phone validation",
+      "status": "PASS",
+      "details": "Returns 400 for invalid phone (must be 10 digits)"
+    },
+    {
+      "feature": "Lead nom validation",
+      "status": "PASS",
+      "details": "Returns 400 for empty nom"
+    },
+    {
+      "feature": "Lead postal code validation",
+      "status": "PASS",
+      "details": "Returns 400 for non-France metro postal codes"
+    },
+    {
+      "feature": "Frontend: Form modal CRM integration section",
+      "status": "PASS",
+      "details": "Shows 'Intégration CRM (ZR7 / MDL)' with crm_api_key input"
+    },
+    {
+      "feature": "Frontend: Form edit shows internal_api_key",
+      "status": "PASS",
+      "details": "Displays internal_api_key with 'Copier' button when editing form"
+    },
+    {
+      "feature": "Frontend: Form duplicate modal",
+      "status": "PASS",
+      "details": "Shows 'Clé API CRM destination (ZR7/MDL) *' required field"
+    },
+    {
+      "feature": "Frontend: Account Images tab",
+      "status": "PASS",
+      "details": "Shows 'Bibliothèque d'images du compte' with add/remove functionality"
+    }
+  ],
+  "external_apis_note": "ZR7 (https://app.zr7-digital.fr/lead/api/create_lead/) and MDL (https://app.maisonsdulead.fr/lead/api/create_lead/) are REAL external APIs - not mocked. Lead submission may fail if CRM API keys are invalid."
+}
