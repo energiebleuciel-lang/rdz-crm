@@ -1245,7 +1245,8 @@ class BulkDeleteRequest(BaseModel):
     lead_ids: List[str]
 
 @api_router.post("/leads/bulk-delete")
-async def delete_multiple_leads(request: BulkDeleteRequest, user: dict = Depends(get_current_user)):
+async def delete_multiple_leads(request: BulkDeleteRequest, user: dict = Depends(require_admin)):
+    """Delete multiple leads - Admin only"""
     """Delete multiple leads"""
     if not request.lead_ids:
         raise HTTPException(status_code=400, detail="Aucun lead à supprimer")
