@@ -664,13 +664,26 @@ async def track_form_start(data: FormStartTrack):
 
 @api_router.post("/submit-lead")
 async def submit_lead(lead: LeadData):
-    """Submit a lead - saves to DB and sends to CRM API"""
+    """Submit a lead - validates, saves to DB and sends to CRM API"""
     timestamp = int(datetime.now(timezone.utc).timestamp())
     
-    # Format phone
-    phone = ''.join(filter(str.isdigit, lead.phone))
-    if len(phone) == 9 and not phone.startswith('0'):
-        phone = '0' + phone
+    # Validate phone (10 digits, required)
+    phone_valid, phone_result = validate_phone_fr(lead.phone)
+    if not phone_valid:
+        raise HTTPException(status_code=400, detail=phone_result)
+    phone = phone_result
+    
+    # Validate nom (required)
+    if not lead.nom or len(lead.nom.strip()) < 2:
+        raise HTTPException(status_code=400, detail="Le nom est obligatoire (minimum 2 caractères)")
+    
+    # Validate postal code (France metro only if provided)
+    code_postal = lead.code_postal or ""
+    if code_postal:
+        cp_valid, cp_result = validate_postal_code_fr(code_postal)
+        if not cp_valid:
+            raise HTTPException(status_code=400, detail=cp_result)
+        code_postal = cp_result
     
     # Get form config
     form_config = await db.forms.find_one({"code": lead.form_code})
@@ -689,9 +702,10 @@ async def submit_lead(lead: LeadData):
         "form_code": lead.form_code or "",
         "lp_code": lead.lp_code or "",
         "phone": phone,
-        "nom": lead.nom,
+        "nom": lead.nom.strip(),
         "email": lead.email or "",
         "departement": lead.departement or "",
+        "code_postal": code_postal,
         "type_logement": lead.type_logement or "",
         "statut_occupant": lead.statut_occupant or "",
         "facture_electricite": lead.facture_electricite or "",
@@ -708,11 +722,12 @@ async def submit_lead(lead: LeadData):
     lead_payload = {
         "phone": phone,
         "register_date": timestamp,
-        "nom": lead.nom,
+        "nom": lead.nom.strip(),
         "prenom": "",
         "email": lead.email or "",
         "custom_fields": {
             "departement": {"value": lead.departement or ""},
+            "code_postal": {"value": code_postal},
             "type_logement": {"value": lead.type_logement or ""},
             "statut_occupant": {"value": lead.statut_occupant or ""},
             "facture_electricite": {"value": lead.facture_electricite or ""}
