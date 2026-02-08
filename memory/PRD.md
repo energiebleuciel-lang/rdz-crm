@@ -29,6 +29,19 @@ CRM multi-tenant pour centraliser et redistribuer les leads solaires (PAC, PV, I
 
 ## Fonctionnalités Implémentées
 
+### Phase 11 - Sécurité & Analytics (08/02/2026)
+- [x] **Sécurité multi-tenant** : Filtrage des données par `allowed_accounts` pour utilisateurs non-admin
+  - `/api/accounts` : filtre par comptes autorisés
+  - `/api/forms` : filtre par comptes autorisés
+  - `/api/leads` : filtre par formulaires des comptes autorisés
+  - `/api/lps` : filtre par comptes autorisés
+- [x] **Stats de transformation sur page Formulaires** :
+  - Colonne "Démarrés" (form_starts)
+  - Colonne "Complétés" (leads)
+  - Colonne "% Transfo" (conversion_rate avec couleurs)
+  - Colonne "Produit" (badges PV/PAC/ITE colorés)
+- [x] **Champ civilite** ajouté à l'envoi API vers ZR7/MDL
+
 ### Phase 10 - Finalisation (08/02/2026)
 - [x] **Sélection produit visible** : Gros boutons jaunes PAC/PV/ITE dans le formulaire
 - [x] **Limites inter-CRM** : Nombre max de leads par produit par mois qu'un CRM peut recevoir
@@ -47,6 +60,31 @@ CRM multi-tenant pour centraliser et redistribuer les leads solaires (PAC, PV, I
 - [x] Routage intelligent basé sur commandes (départements 01-95)
 - [x] Rôles Admin/Éditeur/Lecteur
 - [x] Job nocturne retry leads échoués
+
+## Sécurité Multi-Tenant
+
+### Fonctions de filtrage (server.py)
+```python
+def get_account_filter(user: dict) -> dict:
+    """Filtre MongoDB pour comptes autorisés"""
+    if user.get("role") == "admin":
+        return {}
+    allowed = user.get("allowed_accounts", [])
+    return {"id": {"$in": allowed}} if allowed else {}
+
+def get_account_ids_filter(user: dict) -> dict:
+    """Filtre pour entités liées à un account_id"""
+    if user.get("role") == "admin":
+        return {}
+    allowed = user.get("allowed_accounts", [])
+    return {"account_id": {"$in": allowed}} if allowed else {}
+```
+
+### Comment assigner un utilisateur à des comptes
+1. Admin va dans "Utilisateurs"
+2. Édite l'utilisateur
+3. Définit `allowed_accounts` = liste des IDs de comptes autorisés
+4. Si vide, l'utilisateur voit tout (comme avant)
 
 ## Configuration CRM (Paramètres)
 
@@ -80,7 +118,7 @@ CRM multi-tenant pour centraliser et redistribuer les leads solaires (PAC, PV, I
 ### Leads
 ```
 POST /api/submit-lead          # Soumettre un lead
-GET /api/leads                 # Liste des leads (admin)
+GET /api/leads                 # Liste des leads (filtré par allowed_accounts)
 POST /api/leads/archive        # Archiver > 3 mois
 ```
 
@@ -102,6 +140,15 @@ Body: {
 ```
 
 ## Schéma DB
+
+### users
+```json
+{
+  "email": "user@example.com",
+  "role": "editor",
+  "allowed_accounts": ["account-id-1", "account-id-2"]
+}
+```
 
 ### crms
 ```json
@@ -129,8 +176,8 @@ Body: {
 
 ## Backlog
 
-### P0 - Sécurité
-- [ ] Backend filtrage par allowed_accounts
+### P0 - Complété ✅
+- [x] Backend filtrage par allowed_accounts
 
 ### P1 - Améliorations
 - [ ] Graphiques visuels dashboard facturation
@@ -141,4 +188,5 @@ Body: {
 - [ ] Refactoring server.py en modules
 
 ## Déploiement
-- **Prévu**: Hostinger (après validation utilisateur)
+- **Live**: https://rdz-group-ltd.online (Hostinger VPS)
+- **Preview**: https://solar-dash-pro.preview.emergentagent.com
