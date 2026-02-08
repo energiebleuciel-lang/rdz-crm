@@ -1,16 +1,18 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import httpx
-
+import hashlib
+import secrets
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -20,29 +22,82 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# API Lead Configuration
-LEAD_API_URL = 'https://maison-du-lead.com/lead/api/create_lead/'
-LEAD_API_KEY = '0c21a444-2fc9-412f-9092-658cb6d62de6'
-
-# Create the main app without a prefix
-app = FastAPI()
-
-# Create a router with the /api prefix
+app = FastAPI(title="CRM Leads System")
 api_router = APIRouter(prefix="/api")
+security = HTTPBearer(auto_error=False)
 
+# ==================== MODELS ====================
 
-# Define Models
-class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
-    
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+class UserCreate(BaseModel):
+    email: str
+    password: str
+    nom: str
+    role: str = "viewer"  # admin, editor, viewer
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
+class UserLogin(BaseModel):
+    email: str
+    password: str
 
-# Lead Model
+class UserResponse(BaseModel):
+    id: str
+    email: str
+    nom: str
+    role: str
+
+class CRMCreate(BaseModel):
+    name: str  # "Maison du Lead", "ZR7"
+    slug: str  # "mdl", "zr7"
+    api_url: str
+    description: Optional[str] = ""
+
+class SubAccountCreate(BaseModel):
+    crm_id: str
+    name: str
+    domain: Optional[str] = ""
+    logo_url: Optional[str] = ""
+    logo_secondary_url: Optional[str] = ""
+    favicon_url: Optional[str] = ""
+    privacy_policy_url: Optional[str] = ""
+    terms_url: Optional[str] = ""
+    legal_mentions_url: Optional[str] = ""
+    layout: str = "center"  # left, right, center
+    primary_color: Optional[str] = "#3B82F6"
+    tracking_pixel_header: Optional[str] = ""
+    tracking_cta_code: Optional[str] = ""
+    tracking_conversion_type: str = "redirect"  # code, redirect, both
+    tracking_conversion_code: Optional[str] = ""
+    tracking_redirect_url: Optional[str] = ""
+    notes: Optional[str] = ""
+
+class LPCreate(BaseModel):
+    sub_account_id: str
+    code: str  # LP-TAB-V1
+    name: str
+    url: Optional[str] = ""
+    source_type: str  # native, google, facebook, tiktok
+    source_name: str  # Taboola, Outbrain, Google Ads
+    cta_selector: str = ".cta-btn"
+    screenshot_url: Optional[str] = ""
+    diffusion_url: Optional[str] = ""
+    notes: Optional[str] = ""
+    status: str = "active"  # active, paused, archived
+
+class FormCreate(BaseModel):
+    sub_account_id: str
+    lp_ids: List[str] = []  # List of LP IDs linked to this form
+    code: str  # PV-TAB-001
+    name: str
+    product_type: str  # panneaux, pompes, isolation
+    source_type: str
+    source_name: str
+    api_key: str  # API key for the CRM
+    tracking_type: str = "redirect"  # code, redirect, both
+    tracking_code: Optional[str] = ""
+    redirect_url: Optional[str] = ""
+    screenshot_url: Optional[str] = ""
+    notes: Optional[str] = ""
+    status: str = "active"
+
 class LeadData(BaseModel):
     phone: str
     nom: str
@@ -51,83 +106,393 @@ class LeadData(BaseModel):
     type_logement: Optional[str] = ""
     statut_occupant: Optional[str] = ""
     facture_electricite: Optional[str] = ""
-    # Multi-form support
     form_id: Optional[str] = "default"
-    form_name: Optional[str] = "Formulaire Principal"
+    form_code: Optional[str] = ""
+    lp_code: Optional[str] = ""
 
-class LeadResponse(BaseModel):
-    success: bool
-    message: str
-    duplicate: Optional[bool] = False
+class CommentCreate(BaseModel):
+    entity_type: str  # lp, form
+    entity_id: str
+    content: str
 
-# Form Configuration Model
-class FormConfig(BaseModel):
-    form_id: str
-    form_name: str
-    api_url: str
-    api_key: str
-    redirect_url: str
-    active: bool = True
+class CTAClickTrack(BaseModel):
+    lp_code: str
+    domain: Optional[str] = ""
 
-# Add your routes to the router instead of directly to app
-@api_router.get("/")
-async def root():
-    return {"message": "Hello World"}
+class FormStartTrack(BaseModel):
+    form_code: str
+    lp_code: Optional[str] = ""
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.model_dump()
-    status_obj = StatusCheck(**status_dict)
+# ==================== AUTH HELPERS ====================
+
+def hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def generate_token() -> str:
+    return secrets.token_urlsafe(32)
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    if not credentials:
+        raise HTTPException(status_code=401, detail="Non authentifié")
     
-    # Convert to dict and serialize datetime to ISO string for MongoDB
-    doc = status_obj.model_dump()
-    doc['timestamp'] = doc['timestamp'].isoformat()
+    token = credentials.credentials
+    session = await db.sessions.find_one({"token": token, "expires_at": {"$gt": datetime.now(timezone.utc).isoformat()}})
     
-    _ = await db.status_checks.insert_one(doc)
-    return status_obj
+    if not session:
+        raise HTTPException(status_code=401, detail="Session expirée")
+    
+    user = await db.users.find_one({"id": session["user_id"]}, {"_id": 0, "password": 0})
+    if not user:
+        raise HTTPException(status_code=401, detail="Utilisateur non trouvé")
+    
+    return user
 
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
-    
-    # Convert ISO string timestamps back to datetime objects
-    for check in status_checks:
-        if isinstance(check['timestamp'], str):
-            check['timestamp'] = datetime.fromisoformat(check['timestamp'])
-    
-    return status_checks
+async def get_optional_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    if not credentials:
+        return None
+    try:
+        return await get_current_user(credentials)
+    except:
+        return None
 
-# Lead submission endpoint (proxy to avoid CORS issues)
-@api_router.post("/submit-lead", response_model=LeadResponse)
+async def require_admin(user: dict = Depends(get_current_user)):
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Accès admin requis")
+    return user
+
+async def log_activity(user_id: str, user_email: str, action: str, entity_type: str = "", entity_id: str = "", details: str = ""):
+    await db.activity_logs.insert_one({
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "user_email": user_email,
+        "action": action,
+        "entity_type": entity_type,
+        "entity_id": entity_id,
+        "details": details,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+
+# ==================== AUTH ENDPOINTS ====================
+
+@api_router.post("/auth/register")
+async def register(user: UserCreate):
+    existing = await db.users.find_one({"email": user.email})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email déjà utilisé")
+    
+    user_doc = {
+        "id": str(uuid.uuid4()),
+        "email": user.email,
+        "password": hash_password(user.password),
+        "nom": user.nom,
+        "role": user.role,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.users.insert_one(user_doc)
+    
+    return {"success": True, "message": "Utilisateur créé"}
+
+@api_router.post("/auth/login")
+async def login(credentials: UserLogin):
+    user = await db.users.find_one({"email": credentials.email})
+    if not user or user["password"] != hash_password(credentials.password):
+        raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
+    
+    token = generate_token()
+    expires = datetime.now(timezone.utc) + timedelta(days=7)
+    
+    await db.sessions.insert_one({
+        "token": token,
+        "user_id": user["id"],
+        "expires_at": expires.isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    await log_activity(user["id"], user["email"], "login", details="Connexion réussie")
+    
+    return {
+        "token": token,
+        "user": {
+            "id": user["id"],
+            "email": user["email"],
+            "nom": user["nom"],
+            "role": user["role"]
+        }
+    }
+
+@api_router.post("/auth/logout")
+async def logout(user: dict = Depends(get_current_user), credentials: HTTPAuthorizationCredentials = Depends(security)):
+    await db.sessions.delete_one({"token": credentials.credentials})
+    await log_activity(user["id"], user["email"], "logout", details="Déconnexion")
+    return {"success": True}
+
+@api_router.get("/auth/me")
+async def get_me(user: dict = Depends(get_current_user)):
+    return user
+
+@api_router.post("/auth/init-admin")
+async def init_admin():
+    """Create initial admin user if no users exist"""
+    count = await db.users.count_documents({})
+    if count > 0:
+        raise HTTPException(status_code=400, detail="Des utilisateurs existent déjà")
+    
+    admin_doc = {
+        "id": str(uuid.uuid4()),
+        "email": "energiebleuciel@gmail.com",
+        "password": hash_password("92Ruemarxdormoy"),
+        "nom": "Admin",
+        "role": "admin",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.users.insert_one(admin_doc)
+    return {"success": True, "message": "Admin créé"}
+
+# ==================== CRM ENDPOINTS ====================
+
+@api_router.get("/crms")
+async def get_crms(user: dict = Depends(get_current_user)):
+    crms = await db.crms.find({}, {"_id": 0}).to_list(100)
+    return {"crms": crms}
+
+@api_router.post("/crms")
+async def create_crm(crm: CRMCreate, user: dict = Depends(require_admin)):
+    crm_doc = {
+        "id": str(uuid.uuid4()),
+        **crm.model_dump(),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.crms.insert_one(crm_doc)
+    await log_activity(user["id"], user["email"], "create", "crm", crm_doc["id"], f"CRM créé: {crm.name}")
+    return {"success": True, "crm": {k: v for k, v in crm_doc.items() if k != "_id"}}
+
+@api_router.post("/crms/init")
+async def init_crms(user: dict = Depends(require_admin)):
+    """Initialize default CRMs"""
+    existing = await db.crms.count_documents({})
+    if existing > 0:
+        return {"message": "CRMs déjà initialisés"}
+    
+    crms = [
+        {"id": str(uuid.uuid4()), "name": "Maison du Lead", "slug": "mdl", "api_url": "https://maison-du-lead.com/lead/api/create_lead/", "description": "CRM Maison du Lead", "created_at": datetime.now(timezone.utc).isoformat()},
+        {"id": str(uuid.uuid4()), "name": "ZR7 Digital", "slug": "zr7", "api_url": "https://app.zr7-digital.fr/lead/api/create_lead/", "description": "CRM ZR7", "created_at": datetime.now(timezone.utc).isoformat()}
+    ]
+    await db.crms.insert_many(crms)
+    return {"success": True, "message": "CRMs initialisés"}
+
+# ==================== SUB-ACCOUNT ENDPOINTS ====================
+
+@api_router.get("/sub-accounts")
+async def get_sub_accounts(crm_id: Optional[str] = None, user: dict = Depends(get_current_user)):
+    query = {"crm_id": crm_id} if crm_id else {}
+    accounts = await db.sub_accounts.find(query, {"_id": 0}).to_list(100)
+    return {"sub_accounts": accounts}
+
+@api_router.get("/sub-accounts/{account_id}")
+async def get_sub_account(account_id: str, user: dict = Depends(get_current_user)):
+    account = await db.sub_accounts.find_one({"id": account_id}, {"_id": 0})
+    if not account:
+        raise HTTPException(status_code=404, detail="Sous-compte non trouvé")
+    return account
+
+@api_router.post("/sub-accounts")
+async def create_sub_account(account: SubAccountCreate, user: dict = Depends(get_current_user)):
+    account_doc = {
+        "id": str(uuid.uuid4()),
+        **account.model_dump(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": user["id"]
+    }
+    await db.sub_accounts.insert_one(account_doc)
+    await log_activity(user["id"], user["email"], "create", "sub_account", account_doc["id"], f"Sous-compte créé: {account.name}")
+    return {"success": True, "sub_account": {k: v for k, v in account_doc.items() if k != "_id"}}
+
+@api_router.put("/sub-accounts/{account_id}")
+async def update_sub_account(account_id: str, account: SubAccountCreate, user: dict = Depends(get_current_user)):
+    result = await db.sub_accounts.update_one(
+        {"id": account_id},
+        {"$set": {**account.model_dump(), "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Sous-compte non trouvé")
+    await log_activity(user["id"], user["email"], "update", "sub_account", account_id, f"Sous-compte modifié: {account.name}")
+    return {"success": True}
+
+@api_router.delete("/sub-accounts/{account_id}")
+async def delete_sub_account(account_id: str, user: dict = Depends(require_admin)):
+    result = await db.sub_accounts.delete_one({"id": account_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Sous-compte non trouvé")
+    await log_activity(user["id"], user["email"], "delete", "sub_account", account_id, "Sous-compte supprimé")
+    return {"success": True}
+
+# ==================== LP ENDPOINTS ====================
+
+@api_router.get("/lps")
+async def get_lps(sub_account_id: Optional[str] = None, user: dict = Depends(get_current_user)):
+    query = {"sub_account_id": sub_account_id} if sub_account_id else {}
+    lps = await db.lps.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    
+    # Add stats for each LP
+    for lp in lps:
+        lp["stats"] = {
+            "cta_clicks": await db.cta_clicks.count_documents({"lp_code": lp["code"]}),
+            "forms_started": await db.form_starts.count_documents({"lp_code": lp["code"]}),
+            "leads": await db.leads.count_documents({"lp_code": lp["code"]})
+        }
+    
+    return {"lps": lps}
+
+@api_router.get("/lps/{lp_id}")
+async def get_lp(lp_id: str, user: dict = Depends(get_current_user)):
+    lp = await db.lps.find_one({"id": lp_id}, {"_id": 0})
+    if not lp:
+        raise HTTPException(status_code=404, detail="LP non trouvée")
+    return lp
+
+@api_router.post("/lps")
+async def create_lp(lp: LPCreate, user: dict = Depends(get_current_user)):
+    lp_doc = {
+        "id": str(uuid.uuid4()),
+        **lp.model_dump(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": user["id"]
+    }
+    await db.lps.insert_one(lp_doc)
+    await log_activity(user["id"], user["email"], "create", "lp", lp_doc["id"], f"LP créée: {lp.code}")
+    return {"success": True, "lp": {k: v for k, v in lp_doc.items() if k != "_id"}}
+
+@api_router.put("/lps/{lp_id}")
+async def update_lp(lp_id: str, lp: LPCreate, user: dict = Depends(get_current_user)):
+    result = await db.lps.update_one(
+        {"id": lp_id},
+        {"$set": {**lp.model_dump(), "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="LP non trouvée")
+    await log_activity(user["id"], user["email"], "update", "lp", lp_id, f"LP modifiée: {lp.code}")
+    return {"success": True}
+
+@api_router.delete("/lps/{lp_id}")
+async def delete_lp(lp_id: str, user: dict = Depends(require_admin)):
+    result = await db.lps.delete_one({"id": lp_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="LP non trouvée")
+    await log_activity(user["id"], user["email"], "delete", "lp", lp_id, "LP supprimée")
+    return {"success": True}
+
+# ==================== FORM ENDPOINTS ====================
+
+@api_router.get("/forms")
+async def get_forms(sub_account_id: Optional[str] = None, user: dict = Depends(get_current_user)):
+    query = {"sub_account_id": sub_account_id} if sub_account_id else {}
+    forms = await db.forms.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    
+    # Add stats for each form
+    for form in forms:
+        form["stats"] = {
+            "started": await db.form_starts.count_documents({"form_code": form["code"]}),
+            "completed": await db.leads.count_documents({"form_code": form["code"]}),
+            "success": await db.leads.count_documents({"form_code": form["code"], "api_status": "success"}),
+            "failed": await db.leads.count_documents({"form_code": form["code"], "api_status": "failed"})
+        }
+        if form["stats"]["started"] > 0:
+            form["stats"]["conversion_rate"] = round(form["stats"]["completed"] / form["stats"]["started"] * 100, 1)
+        else:
+            form["stats"]["conversion_rate"] = 0
+    
+    return {"forms": forms}
+
+@api_router.get("/forms/{form_id}")
+async def get_form(form_id: str, user: dict = Depends(get_current_user)):
+    form = await db.forms.find_one({"id": form_id}, {"_id": 0})
+    if not form:
+        raise HTTPException(status_code=404, detail="Formulaire non trouvé")
+    return form
+
+@api_router.post("/forms")
+async def create_form(form: FormCreate, user: dict = Depends(get_current_user)):
+    form_doc = {
+        "id": str(uuid.uuid4()),
+        **form.model_dump(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": user["id"]
+    }
+    await db.forms.insert_one(form_doc)
+    await log_activity(user["id"], user["email"], "create", "form", form_doc["id"], f"Formulaire créé: {form.code}")
+    return {"success": True, "form": {k: v for k, v in form_doc.items() if k != "_id"}}
+
+@api_router.put("/forms/{form_id}")
+async def update_form(form_id: str, form: FormCreate, user: dict = Depends(get_current_user)):
+    result = await db.forms.update_one(
+        {"id": form_id},
+        {"$set": {**form.model_dump(), "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Formulaire non trouvé")
+    await log_activity(user["id"], user["email"], "update", "form", form_id, f"Formulaire modifié: {form.code}")
+    return {"success": True}
+
+@api_router.delete("/forms/{form_id}")
+async def delete_form(form_id: str, user: dict = Depends(require_admin)):
+    result = await db.forms.delete_one({"id": form_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Formulaire non trouvé")
+    await log_activity(user["id"], user["email"], "delete", "form", form_id, "Formulaire supprimé")
+    return {"success": True}
+
+# ==================== TRACKING ENDPOINTS (PUBLIC) ====================
+
+@api_router.post("/track/cta-click")
+async def track_cta_click(data: CTAClickTrack):
+    """Track CTA clicks on LPs - called from LP tracking script"""
+    await db.cta_clicks.insert_one({
+        "id": str(uuid.uuid4()),
+        "lp_code": data.lp_code,
+        "domain": data.domain,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    return {"success": True}
+
+@api_router.post("/track/form-start")
+async def track_form_start(data: FormStartTrack):
+    """Track form starts - called when form is loaded"""
+    await db.form_starts.insert_one({
+        "id": str(uuid.uuid4()),
+        "form_code": data.form_code,
+        "lp_code": data.lp_code,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    return {"success": True}
+
+# ==================== LEAD SUBMISSION ====================
+
+@api_router.post("/submit-lead")
 async def submit_lead(lead: LeadData):
-    """
-    Proxy endpoint to submit leads to the external API
-    ALWAYS saves lead to MongoDB first, then sends to external API
-    Supports multiple forms with different API configurations
-    """
+    """Submit a lead - saves to DB and sends to CRM API"""
     timestamp = int(datetime.now(timezone.utc).timestamp())
     
-    # Format phone number
+    # Format phone
     phone = ''.join(filter(str.isdigit, lead.phone))
     if len(phone) == 9 and not phone.startswith('0'):
         phone = '0' + phone
     
-    # Get form configuration (use default if not found)
-    form_config = await db.form_configs.find_one({"form_id": lead.form_id})
-    if not form_config:
-        # Use default config
-        api_url = LEAD_API_URL
-        api_key = LEAD_API_KEY
+    # Get form config
+    form_config = await db.forms.find_one({"code": lead.form_code})
+    if form_config:
+        sub_account = await db.sub_accounts.find_one({"id": form_config.get("sub_account_id")})
+        crm = await db.crms.find_one({"id": sub_account.get("crm_id")}) if sub_account else None
+        api_url = crm.get("api_url") if crm else "https://maison-du-lead.com/lead/api/create_lead/"
+        api_key = form_config.get("api_key", "")
     else:
-        api_url = form_config.get("api_url", LEAD_API_URL)
-        api_key = form_config.get("api_key", LEAD_API_KEY)
+        api_url = "https://maison-du-lead.com/lead/api/create_lead/"
+        api_key = "0c21a444-2fc9-412f-9092-658cb6d62de6"
     
-    # Prepare lead document for MongoDB
     lead_doc = {
         "id": str(uuid.uuid4()),
-        "form_id": lead.form_id or "default",
-        "form_name": lead.form_name or "Formulaire Principal",
+        "form_id": lead.form_id,
+        "form_code": lead.form_code or "",
+        "lp_code": lead.lp_code or "",
         "phone": phone,
         "nom": lead.nom,
         "email": lead.email or "",
@@ -138,19 +503,13 @@ async def submit_lead(lead: LeadData):
         "created_at": datetime.now(timezone.utc).isoformat(),
         "register_date": timestamp,
         "api_status": "pending",
-        "api_response": None,
-        "api_attempts": 0,
-        "api_url": api_url  # Track which API was used
+        "api_url": api_url
     }
     
-    # STEP 1: ALWAYS save to MongoDB first (never lose a lead!)
-    try:
-        await db.leads.insert_one(lead_doc)
-        logger.info(f"Lead saved to MongoDB: {lead.nom}, phone: {phone}, form: {lead.form_id}, id: {lead_doc['id']}")
-    except Exception as e:
-        logger.error(f"MongoDB Error: {str(e)}")
+    # Save to DB first
+    await db.leads.insert_one(lead_doc)
     
-    # STEP 2: Send to external API
+    # Send to CRM API
     lead_payload = {
         "phone": phone,
         "register_date": timestamp,
@@ -161,11 +520,9 @@ async def submit_lead(lead: LeadData):
             "departement": {"value": lead.departement or ""},
             "type_logement": {"value": lead.type_logement or ""},
             "statut_occupant": {"value": lead.statut_occupant or ""},
-            "facture_electricite": {"value": lead.facture_electricite or ""},
+            "facture_electricite": {"value": lead.facture_electricite or ""}
         }
     }
-    
-    logger.info(f"Sending lead to API: {api_url}")
     
     api_status = "failed"
     api_response = None
@@ -175,240 +532,421 @@ async def submit_lead(lead: LeadData):
             response = await http_client.post(
                 api_url,
                 json=lead_payload,
-                headers={
-                    "Authorization": api_key,
-                    "Content-Type": "application/json"
-                }
+                headers={"Authorization": api_key, "Content-Type": "application/json"}
             )
-            
             data = response.json()
             api_response = str(data)
-            logger.info(f"API Response: status={response.status_code}, data={data}")
             
             if response.status_code == 201:
                 api_status = "success"
-                result = LeadResponse(success=True, message="Lead créé avec succès")
-            elif response.status_code == 200 and "doublon" in str(data.get("message", "")).lower():
+            elif "doublon" in str(data.get("message", "")).lower():
                 api_status = "duplicate"
-                result = LeadResponse(success=True, message="Lead déjà enregistré", duplicate=True)
             else:
                 api_status = "failed"
-                result = LeadResponse(
-                    success=False, 
-                    message=data.get("message") or data.get("error") or "Erreur lors de la création"
-                )
-                
-    except httpx.TimeoutException:
-        logger.error("API Timeout")
-        api_status = "failed"
-        api_response = "Timeout"
-        result = LeadResponse(success=False, message="Timeout - le serveur ne répond pas")
     except Exception as e:
-        logger.error(f"API Error: {str(e)}")
         api_status = "failed"
         api_response = str(e)
-        result = LeadResponse(success=False, message=f"Erreur: {str(e)}")
     
-    # STEP 3: Update MongoDB with API result
-    try:
-        await db.leads.update_one(
-            {"id": lead_doc["id"]},
-            {"$set": {
-                "api_status": api_status,
-                "api_response": api_response,
-                "api_attempts": 1,
-                "last_attempt_at": datetime.now(timezone.utc).isoformat()
-            }}
-        )
-    except Exception as e:
-        logger.error(f"MongoDB Update Error: {str(e)}")
+    await db.leads.update_one(
+        {"id": lead_doc["id"]},
+        {"$set": {"api_status": api_status, "api_response": api_response}}
+    )
     
-    return LeadResponse(success=True, message="Lead enregistré avec succès")
+    return {"success": True, "message": "Lead enregistré", "status": api_status}
 
+# ==================== LEADS MANAGEMENT ====================
 
-# Endpoint to get all leads (for admin)
 @api_router.get("/leads")
-async def get_leads(status: Optional[str] = None):
-    """Get all leads, optionally filtered by API status"""
+async def get_leads(
+    crm_id: Optional[str] = None,
+    sub_account_id: Optional[str] = None,
+    form_code: Optional[str] = None,
+    status: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    limit: int = 100,
+    user: dict = Depends(get_current_user)
+):
     query = {}
     if status:
         query["api_status"] = status
+    if form_code:
+        query["form_code"] = form_code
+    if date_from:
+        query["created_at"] = {"$gte": date_from}
+    if date_to:
+        query.setdefault("created_at", {})["$lte"] = date_to
     
-    leads = await db.leads.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    leads = await db.leads.find(query, {"_id": 0}).sort("created_at", -1).to_list(limit)
     return {"leads": leads, "count": len(leads)}
 
-
-# Endpoint to retry failed leads
-@api_router.post("/leads/retry-failed")
-async def retry_failed_leads(form_id: Optional[str] = None):
-    """Retry sending failed leads to external API"""
-    query = {"api_status": "failed"}
-    if form_id:
-        query["form_id"] = form_id
-        
-    failed_leads = await db.leads.find(query, {"_id": 0}).to_list(100)
+@api_router.post("/leads/retry/{lead_id}")
+async def retry_lead(lead_id: str, user: dict = Depends(get_current_user)):
+    lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead non trouvé")
     
-    results = {"retried": 0, "success": 0, "failed": 0}
+    # Get API config
+    form_config = await db.forms.find_one({"code": lead.get("form_code")})
+    api_key = form_config.get("api_key") if form_config else "0c21a444-2fc9-412f-9092-658cb6d62de6"
+    api_url = lead.get("api_url", "https://maison-du-lead.com/lead/api/create_lead/")
     
-    for lead_doc in failed_leads:
-        results["retried"] += 1
-        
-        # Get form config for this lead
-        form_config = await db.form_configs.find_one({"form_id": lead_doc.get("form_id", "default")})
-        api_url = form_config.get("api_url", LEAD_API_URL) if form_config else LEAD_API_URL
-        api_key = form_config.get("api_key", LEAD_API_KEY) if form_config else LEAD_API_KEY
-        
-        lead_payload = {
-            "phone": lead_doc["phone"],
-            "register_date": lead_doc["register_date"],
-            "nom": lead_doc["nom"],
-            "prenom": "",
-            "email": lead_doc.get("email", ""),
-            "custom_fields": {
-                "departement": {"value": lead_doc.get("departement", "")},
-                "type_logement": {"value": lead_doc.get("type_logement", "")},
-                "statut_occupant": {"value": lead_doc.get("statut_occupant", "")},
-                "facture_electricite": {"value": lead_doc.get("facture_electricite", "")},
-            }
+    lead_payload = {
+        "phone": lead["phone"],
+        "register_date": lead["register_date"],
+        "nom": lead["nom"],
+        "prenom": "",
+        "email": lead.get("email", ""),
+        "custom_fields": {
+            "departement": {"value": lead.get("departement", "")},
+            "type_logement": {"value": lead.get("type_logement", "")},
+            "statut_occupant": {"value": lead.get("statut_occupant", "")},
+            "facture_electricite": {"value": lead.get("facture_electricite", "")}
         }
-        
-        try:
-            async with httpx.AsyncClient(timeout=30.0) as http_client:
-                response = await http_client.post(
-                    api_url,
-                    json=lead_payload,
-                    headers={
-                        "Authorization": api_key,
-                        "Content-Type": "application/json"
-                    }
-                )
-                
-                data = response.json()
-                
-                if response.status_code == 201:
-                    api_status = "success"
-                    results["success"] += 1
-                elif "doublon" in str(data.get("message", "")).lower():
-                    api_status = "duplicate"
-                    results["success"] += 1
-                else:
-                    api_status = "failed"
-                    results["failed"] += 1
-                
-                await db.leads.update_one(
-                    {"id": lead_doc["id"]},
-                    {"$set": {
-                        "api_status": api_status,
-                        "api_response": str(data),
-                        "api_attempts": lead_doc.get("api_attempts", 0) + 1,
-                        "last_attempt_at": datetime.now(timezone.utc).isoformat()
-                    }}
-                )
-                
-        except Exception as e:
-            results["failed"] += 1
-            logger.error(f"Retry failed for {lead_doc['id']}: {str(e)}")
+    }
     
-    return results
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as http_client:
+            response = await http_client.post(
+                api_url,
+                json=lead_payload,
+                headers={"Authorization": api_key, "Content-Type": "application/json"}
+            )
+            data = response.json()
+            
+            if response.status_code == 201:
+                api_status = "success"
+            elif "doublon" in str(data.get("message", "")).lower():
+                api_status = "duplicate"
+            else:
+                api_status = "failed"
+            
+            await db.leads.update_one(
+                {"id": lead_id},
+                {"$set": {"api_status": api_status, "api_response": str(data), "retried_at": datetime.now(timezone.utc).isoformat()}}
+            )
+            
+            return {"success": True, "status": api_status}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
+# ==================== ANALYTICS ====================
 
-# ==================== ADMIN ENDPOINTS ====================
+@api_router.get("/analytics/stats")
+async def get_analytics_stats(
+    crm_id: Optional[str] = None,
+    sub_account_id: Optional[str] = None,
+    period: str = "today",  # today, week, month, custom
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    # Calculate date range based on period (French timezone)
+    now = datetime.now(timezone.utc) + timedelta(hours=1)  # UTC+1 for France
+    
+    if period == "today":
+        start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif period == "week":
+        start_date = now - timedelta(days=now.weekday())
+        start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif period == "month":
+        start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    elif period == "custom" and date_from:
+        start_date = datetime.fromisoformat(date_from)
+    else:
+        start_date = now - timedelta(days=30)
+    
+    end_date = datetime.fromisoformat(date_to) if date_to else now
+    
+    query = {"created_at": {"$gte": start_date.isoformat(), "$lte": end_date.isoformat()}}
+    
+    stats = {
+        "period": period,
+        "start_date": start_date.isoformat(),
+        "end_date": end_date.isoformat(),
+        "cta_clicks": await db.cta_clicks.count_documents(query),
+        "forms_started": await db.form_starts.count_documents(query),
+        "leads_total": await db.leads.count_documents(query),
+        "leads_success": await db.leads.count_documents({**query, "api_status": "success"}),
+        "leads_failed": await db.leads.count_documents({**query, "api_status": "failed"}),
+        "leads_duplicate": await db.leads.count_documents({**query, "api_status": "duplicate"})
+    }
+    
+    # Calculate conversion rates
+    if stats["cta_clicks"] > 0:
+        stats["cta_to_form_rate"] = round(stats["forms_started"] / stats["cta_clicks"] * 100, 1)
+    else:
+        stats["cta_to_form_rate"] = 0
+    
+    if stats["forms_started"] > 0:
+        stats["form_to_lead_rate"] = round(stats["leads_total"] / stats["forms_started"] * 100, 1)
+    else:
+        stats["form_to_lead_rate"] = 0
+    
+    return stats
+
+@api_router.get("/analytics/winners")
+async def get_winners(
+    period: str = "week",
+    user: dict = Depends(get_current_user)
+):
+    """Get best and worst performing LPs and Forms"""
+    now = datetime.now(timezone.utc) + timedelta(hours=1)
+    
+    if period == "today":
+        start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif period == "week":
+        start_date = now - timedelta(days=7)
+    else:
+        start_date = now - timedelta(days=30)
+    
+    query = {"created_at": {"$gte": start_date.isoformat()}}
+    
+    # Get LP performance
+    lp_pipeline = [
+        {"$match": query},
+        {"$group": {
+            "_id": "$lp_code",
+            "leads": {"$sum": 1},
+            "success": {"$sum": {"$cond": [{"$eq": ["$api_status", "success"]}, 1, 0]}}
+        }},
+        {"$sort": {"leads": -1}},
+        {"$limit": 10}
+    ]
+    lp_stats = await db.leads.aggregate(lp_pipeline).to_list(10)
+    
+    # Get Form performance
+    form_pipeline = [
+        {"$match": query},
+        {"$group": {
+            "_id": "$form_code",
+            "leads": {"$sum": 1},
+            "success": {"$sum": {"$cond": [{"$eq": ["$api_status", "success"]}, 1, 0]}}
+        }},
+        {"$sort": {"leads": -1}},
+        {"$limit": 10}
+    ]
+    form_stats = await db.leads.aggregate(form_pipeline).to_list(10)
+    
+    # Calculate winners and losers
+    lp_winners = [{"code": s["_id"], "leads": s["leads"], "success_rate": round(s["success"]/s["leads"]*100, 1) if s["leads"] > 0 else 0} for s in lp_stats if s["_id"]]
+    form_winners = [{"code": s["_id"], "leads": s["leads"], "success_rate": round(s["success"]/s["leads"]*100, 1) if s["leads"] > 0 else 0} for s in form_stats if s["_id"]]
+    
+    return {
+        "period": period,
+        "lp_winners": sorted(lp_winners, key=lambda x: x["leads"], reverse=True)[:5],
+        "lp_losers": sorted(lp_winners, key=lambda x: x["leads"])[:5] if len(lp_winners) > 5 else [],
+        "form_winners": sorted(form_winners, key=lambda x: x["leads"], reverse=True)[:5],
+        "form_losers": sorted(form_winners, key=lambda x: x["leads"])[:5] if len(form_winners) > 5 else []
+    }
+
+# ==================== COMMENTS ====================
+
+@api_router.get("/comments")
+async def get_comments(entity_type: str, entity_id: str, user: dict = Depends(get_current_user)):
+    comments = await db.comments.find(
+        {"entity_type": entity_type, "entity_id": entity_id},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    return {"comments": comments}
+
+@api_router.post("/comments")
+async def create_comment(comment: CommentCreate, user: dict = Depends(get_current_user)):
+    comment_doc = {
+        "id": str(uuid.uuid4()),
+        **comment.model_dump(),
+        "user_id": user["id"],
+        "user_name": user["nom"],
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.comments.insert_one(comment_doc)
+    await log_activity(user["id"], user["email"], "comment", comment.entity_type, comment.entity_id, f"Commentaire ajouté")
+    return {"success": True, "comment": {k: v for k, v in comment_doc.items() if k != "_id"}}
+
+# ==================== ACTIVITY LOG ====================
+
+@api_router.get("/activity-logs")
+async def get_activity_logs(limit: int = 100, user: dict = Depends(require_admin)):
+    logs = await db.activity_logs.find({}, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    return {"logs": logs}
+
+# ==================== SCRIPT GENERATOR ====================
+
+@api_router.get("/generate-script/lp/{lp_id}")
+async def generate_lp_script(lp_id: str, user: dict = Depends(get_current_user)):
+    """Generate tracking script for LP"""
+    lp = await db.lps.find_one({"id": lp_id}, {"_id": 0})
+    if not lp:
+        raise HTTPException(status_code=404, detail="LP non trouvée")
+    
+    sub_account = await db.sub_accounts.find_one({"id": lp.get("sub_account_id")}, {"_id": 0})
+    
+    backend_url = os.environ.get("BACKEND_URL", "https://rdz-group-ltd.online")
+    
+    script = f"""<!-- Tracking CTA - {lp['code']} -->
+<script>
+(function() {{
+  var lpCode = '{lp['code']}';
+  var backendUrl = '{backend_url}';
+  
+  // Track CTA clicks
+  document.querySelectorAll('{lp.get('cta_selector', '.cta-btn')}').forEach(function(btn) {{
+    btn.addEventListener('click', function() {{
+      fetch(backendUrl + '/api/track/cta-click', {{
+        method: 'POST',
+        headers: {{'Content-Type': 'application/json'}},
+        body: JSON.stringify({{ lp_code: lpCode, domain: window.location.hostname }})
+      }});
+    }});
+  }});
+}})();
+</script>"""
+
+    # Add pixel if configured
+    if sub_account and sub_account.get("tracking_pixel_header"):
+        script = sub_account["tracking_pixel_header"] + "\n\n" + script
+    
+    instructions = f"""
+📋 INSTRUCTIONS POUR {lp['code']}
+
+1️⃣ PIXEL HEADER (à mettre dans <head>)
+{sub_account.get('tracking_pixel_header', '(Non configuré pour ce compte)')}
+
+2️⃣ SCRIPT TRACKING CTA (à mettre avant </body>)
+{script}
+
+3️⃣ CONFIGURATION
+- Sélecteur CTA : {lp.get('cta_selector', '.cta-btn')}
+- Source : {lp.get('source_name', 'Non défini')}
+
+⚠️ Ce script se déclenche quand un visiteur clique sur un bouton CTA.
+"""
+    
+    return {"script": script, "instructions": instructions, "lp": lp}
+
+@api_router.get("/generate-script/form/{form_id}")
+async def generate_form_script(form_id: str, user: dict = Depends(get_current_user)):
+    """Generate tracking and integration info for Form"""
+    form = await db.forms.find_one({"id": form_id}, {"_id": 0})
+    if not form:
+        raise HTTPException(status_code=404, detail="Formulaire non trouvé")
+    
+    sub_account = await db.sub_accounts.find_one({"id": form.get("sub_account_id")}, {"_id": 0})
+    
+    backend_url = os.environ.get("BACKEND_URL", "https://rdz-group-ltd.online")
+    
+    # Form start tracking script
+    form_start_script = f"""<!-- Tracking Form Start - {form['code']} -->
+<script>
+fetch('{backend_url}/api/track/form-start', {{
+  method: 'POST',
+  headers: {{'Content-Type': 'application/json'}},
+  body: JSON.stringify({{ form_code: '{form['code']}', lp_code: new URLSearchParams(window.location.search).get('lp') || '' }})
+}});
+</script>"""
+
+    # Conversion tracking
+    if form.get("tracking_type") == "code":
+        conversion_info = f"Code de conversion (après envoi téléphone):\n{form.get('tracking_code', '(Non configuré)')}"
+    elif form.get("tracking_type") == "redirect":
+        conversion_info = f"Redirection vers: {form.get('redirect_url', '(Non configuré)')}"
+    else:
+        conversion_info = f"Code: {form.get('tracking_code', '(Non configuré)')}\nRedirection: {form.get('redirect_url', '(Non configuré)')}"
+    
+    instructions = f"""
+📋 INSTRUCTIONS POUR {form['code']}
+
+1️⃣ TRACKING DÉMARRAGE (à mettre au chargement du formulaire)
+{form_start_script}
+
+2️⃣ CONFIGURATION API
+- URL Backend: {backend_url}/api/submit-lead
+- Form Code: {form['code']}
+- Clé API CRM: {form.get('api_key', '(Non configuré)')}
+
+3️⃣ TRACKING CONVERSION
+Type: {form.get('tracking_type', 'redirect')}
+{conversion_info}
+
+4️⃣ LPs LIÉES
+{', '.join(form.get('lp_ids', [])) or '(Aucune LP liée)'}
+"""
+    
+    return {"form_start_script": form_start_script, "instructions": instructions, "form": form}
+
+# ==================== USERS MANAGEMENT ====================
+
+@api_router.get("/users")
+async def get_users(user: dict = Depends(require_admin)):
+    users = await db.users.find({}, {"_id": 0, "password": 0}).to_list(100)
+    return {"users": users}
+
+@api_router.put("/users/{user_id}/role")
+async def update_user_role(user_id: str, role: str, admin: dict = Depends(require_admin)):
+    if role not in ["admin", "editor", "viewer"]:
+        raise HTTPException(status_code=400, detail="Rôle invalide")
+    
+    result = await db.users.update_one({"id": user_id}, {"$set": {"role": role}})
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+    
+    await log_activity(admin["id"], admin["email"], "update_role", "user", user_id, f"Rôle changé en: {role}")
+    return {"success": True}
+
+@api_router.delete("/users/{user_id}")
+async def delete_user(user_id: str, admin: dict = Depends(require_admin)):
+    if admin["id"] == user_id:
+        raise HTTPException(status_code=400, detail="Vous ne pouvez pas vous supprimer")
+    
+    result = await db.users.delete_one({"id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+    
+    await db.sessions.delete_many({"user_id": user_id})
+    await log_activity(admin["id"], admin["email"], "delete", "user", user_id, "Utilisateur supprimé")
+    return {"success": True}
+
+# ==================== LEGACY ENDPOINTS ====================
+
+@api_router.get("/")
+async def root():
+    return {"message": "CRM API OK", "version": "2.0"}
 
 @api_router.get("/admin/stats")
-async def get_admin_stats():
-    """Get global statistics for all leads"""
+async def legacy_admin_stats():
     total = await db.leads.count_documents({})
     success = await db.leads.count_documents({"api_status": "success"})
     failed = await db.leads.count_documents({"api_status": "failed"})
     duplicate = await db.leads.count_documents({"api_status": "duplicate"})
-    pending = await db.leads.count_documents({"api_status": "pending"})
-    
-    return {
-        "total": total,
-        "success": success,
-        "failed": failed,
-        "duplicate": duplicate,
-        "pending": pending
-    }
-
+    return {"total": total, "success": success, "failed": failed, "duplicate": duplicate}
 
 @api_router.get("/admin/forms")
-async def get_admin_forms():
-    """Get all forms with their statistics"""
-    # Get unique form_ids from leads
+async def legacy_admin_forms():
     pipeline = [
         {"$group": {
-            "_id": {
-                "form_id": {"$ifNull": ["$form_id", "default"]},
-                "form_name": {"$ifNull": ["$form_name", "Formulaire Principal"]}
-            },
+            "_id": {"form_id": "$form_id", "form_code": "$form_code"},
             "total": {"$sum": 1},
             "success": {"$sum": {"$cond": [{"$eq": ["$api_status", "success"]}, 1, 0]}},
-            "failed": {"$sum": {"$cond": [{"$eq": ["$api_status", "failed"]}, 1, 0]}},
-            "duplicate": {"$sum": {"$cond": [{"$eq": ["$api_status", "duplicate"]}, 1, 0]}},
-            "pending": {"$sum": {"$cond": [{"$eq": ["$api_status", "pending"]}, 1, 0]}},
-            "last_lead": {"$max": "$created_at"}
-        }},
-        {"$sort": {"last_lead": -1}}
+            "failed": {"$sum": {"$cond": [{"$eq": ["$api_status", "failed"]}, 1, 0]}}
+        }}
     ]
-    
     results = await db.leads.aggregate(pipeline).to_list(100)
-    
-    forms = []
-    for r in results:
-        form_id = r["_id"].get("form_id") or "default"
-        form_name = r["_id"].get("form_name") or "Formulaire Principal"
-        forms.append({
-            "form_id": form_id,
-            "form_name": form_name,
-            "total": r["total"],
-            "success": r["success"],
-            "failed": r["failed"],
-            "duplicate": r["duplicate"],
-            "pending": r["pending"],
-            "last_lead": r["last_lead"]
-        })
-    
+    forms = [{"form_id": r["_id"].get("form_id", "default"), "form_code": r["_id"].get("form_code", ""), "total": r["total"], "success": r["success"], "failed": r["failed"]} for r in results]
     return {"forms": forms}
 
+# ==================== APP SETUP ====================
 
-@api_router.get("/admin/form-configs")
-async def get_form_configs():
-    """Get all form configurations"""
-    configs = await db.form_configs.find({}, {"_id": 0}).to_list(100)
-    return {"configs": configs}
-
-
-@api_router.post("/admin/form-configs")
-async def create_form_config(config: FormConfig):
-    """Create or update a form configuration"""
-    config_dict = config.model_dump()
-    config_dict["updated_at"] = datetime.now(timezone.utc).isoformat()
-    
-    await db.form_configs.update_one(
-        {"form_id": config.form_id},
-        {"$set": config_dict},
-        upsert=True
-    )
-    
-    return {"success": True, "message": f"Configuration {config.form_id} enregistrée"}
-
-# Include the router in the main app
 app.include_router(api_router)
 
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 @app.on_event("shutdown")
