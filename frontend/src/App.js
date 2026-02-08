@@ -5,7 +5,8 @@ import {
   Settings, Plus, LogOut, Home, Layers, FileText, TrendingUp, MessageSquare, 
   Activity, ChevronRight, ChevronDown, Edit, Trash2, ExternalLink, Code,
   Building, Globe, Image, Shield, Bell, Filter, Calendar, Award, AlertTriangle,
-  HelpCircle, BookOpen, Zap, Target, MousePointer, Send, Database, Lock
+  HelpCircle, BookOpen, Zap, Target, MousePointer, Send, Database, Lock,
+  FolderOpen, Tag, Link2, Clipboard
 } from 'lucide-react';
 
 const API = process.env.REACT_APP_BACKEND_URL || '';
