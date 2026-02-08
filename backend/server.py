@@ -1190,6 +1190,146 @@ async def get_winners(
         "form_losers": sorted(form_winners, key=lambda x: x["leads"])[:5] if len(form_winners) > 5 else []
     }
 
+@api_router.get("/analytics/compare")
+async def get_comparison_stats(
+    crm_ids: Optional[str] = None,  # Comma-separated CRM IDs or "all"
+    diffusion_category: Optional[str] = None,  # native, google, facebook, tiktok, all
+    period: str = "week",
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    """
+    Dashboard comparatif global - Compare stats par type de diffusion et CRM
+    Permet de voir les performances en temps réel par source
+    """
+    now = datetime.now(timezone.utc) + timedelta(hours=1)
+    
+    # Calculate date range
+    if period == "today":
+        start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif period == "week":
+        start_date = now - timedelta(days=7)
+    elif period == "month":
+        start_date = now - timedelta(days=30)
+    elif period == "custom" and date_from:
+        start_date = datetime.fromisoformat(date_from)
+    else:
+        start_date = now - timedelta(days=7)
+    
+    end_date = datetime.fromisoformat(date_to) if date_to else now
+    base_query = {"created_at": {"$gte": start_date.isoformat(), "$lte": end_date.isoformat()}}
+    
+    # Get CRM filter
+    crm_filter = []
+    if crm_ids and crm_ids != "all":
+        crm_filter = crm_ids.split(",")
+    
+    # Get all forms with their source info
+    form_query = {}
+    if crm_filter:
+        sub_accounts = await db.sub_accounts.find({"crm_id": {"$in": crm_filter}}, {"id": 1}).to_list(100)
+        sub_account_ids = [sa["id"] for sa in sub_accounts]
+        form_query["sub_account_id"] = {"$in": sub_account_ids}
+    
+    all_forms = await db.forms.find(form_query, {"_id": 0}).to_list(500)
+    
+    # Filter by diffusion category if specified
+    if diffusion_category and diffusion_category != "all":
+        # Get diffusion sources in this category
+        sources = await db.diffusion_sources.find({"category": diffusion_category}, {"name": 1}).to_list(50)
+        source_names = [s["name"].lower() for s in sources]
+        all_forms = [f for f in all_forms if f.get("source_name", "").lower() in source_names or f.get("source_type") == diffusion_category]
+    
+    # Group forms by source type/category
+    form_codes_by_source = {}
+    for form in all_forms:
+        source_type = form.get("source_type", "other")
+        if source_type not in form_codes_by_source:
+            form_codes_by_source[source_type] = []
+        if form.get("code"):
+            form_codes_by_source[source_type].append(form["code"])
+    
+    # Calculate stats per source
+    stats_by_source = {}
+    for source_type, form_codes in form_codes_by_source.items():
+        if not form_codes:
+            continue
+        
+        lead_query = {**base_query, "form_code": {"$in": form_codes}}
+        form_start_query = {**base_query, "form_code": {"$in": form_codes}}
+        
+        leads_total = await db.leads.count_documents(lead_query)
+        leads_success = await db.leads.count_documents({**lead_query, "api_status": "success"})
+        forms_started = await db.form_starts.count_documents(form_start_query)
+        
+        # Calculate conversion rate (started → completed)
+        conversion_rate = round(leads_total / forms_started * 100, 1) if forms_started > 0 else 0
+        
+        stats_by_source[source_type] = {
+            "source_type": source_type,
+            "forms_count": len(form_codes),
+            "forms_started": forms_started,
+            "leads_total": leads_total,
+            "leads_success": leads_success,
+            "conversion_rate": conversion_rate,  # % démarrés → finis
+            "success_rate": round(leads_success / leads_total * 100, 1) if leads_total > 0 else 0
+        }
+    
+    # Get totals
+    all_form_codes = [f["code"] for f in all_forms if f.get("code")]
+    total_query = {**base_query}
+    if all_form_codes:
+        total_query["form_code"] = {"$in": all_form_codes}
+    
+    total_stats = {
+        "forms_started": await db.form_starts.count_documents({**base_query, "form_code": {"$in": all_form_codes}} if all_form_codes else base_query),
+        "leads_total": await db.leads.count_documents(total_query if all_form_codes else base_query),
+        "leads_success": await db.leads.count_documents({**total_query, "api_status": "success"} if all_form_codes else {**base_query, "api_status": "success"}),
+        "cta_clicks": await db.cta_clicks.count_documents(base_query)
+    }
+    total_stats["conversion_rate"] = round(total_stats["leads_total"] / total_stats["forms_started"] * 100, 1) if total_stats["forms_started"] > 0 else 0
+    
+    # Get CRM breakdown if multiple CRMs selected
+    crm_breakdown = {}
+    crms = await db.crms.find({}, {"_id": 0}).to_list(10)
+    for crm in crms:
+        if crm_filter and crm["id"] not in crm_filter:
+            continue
+        
+        crm_sub_accounts = await db.sub_accounts.find({"crm_id": crm["id"]}, {"id": 1}).to_list(50)
+        crm_sub_ids = [sa["id"] for sa in crm_sub_accounts]
+        crm_forms = [f for f in all_forms if f.get("sub_account_id") in crm_sub_ids]
+        crm_form_codes = [f["code"] for f in crm_forms if f.get("code")]
+        
+        if crm_form_codes:
+            crm_lead_query = {**base_query, "form_code": {"$in": crm_form_codes}}
+            crm_leads = await db.leads.count_documents(crm_lead_query)
+            crm_success = await db.leads.count_documents({**crm_lead_query, "api_status": "success"})
+            crm_started = await db.form_starts.count_documents({**base_query, "form_code": {"$in": crm_form_codes}})
+            
+            crm_breakdown[crm["slug"]] = {
+                "name": crm["name"],
+                "forms_count": len(crm_form_codes),
+                "forms_started": crm_started,
+                "leads_total": crm_leads,
+                "leads_success": crm_success,
+                "conversion_rate": round(crm_leads / crm_started * 100, 1) if crm_started > 0 else 0
+            }
+    
+    return {
+        "period": period,
+        "start_date": start_date.isoformat(),
+        "end_date": end_date.isoformat(),
+        "filters": {
+            "crm_ids": crm_ids,
+            "diffusion_category": diffusion_category
+        },
+        "totals": total_stats,
+        "by_source": stats_by_source,
+        "by_crm": crm_breakdown
+    }
+
 # ==================== COMMENTS ====================
 
 @api_router.get("/comments")
