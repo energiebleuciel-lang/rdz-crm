@@ -897,75 +897,20 @@ async def track_form_start(data: FormStartTrack):
 
 # ==================== LEAD SUBMISSION ====================
 
-@api_router.post("/submit-lead")
-async def submit_lead(lead: LeadData):
-    """Submit a lead - validates, saves to DB and sends to CRM API"""
-    timestamp = int(datetime.now(timezone.utc).timestamp())
-    
-    # Validate phone (10 digits, required)
-    phone_valid, phone_result = validate_phone_fr(lead.phone)
-    if not phone_valid:
-        raise HTTPException(status_code=400, detail=phone_result)
-    phone = phone_result
-    
-    # Validate nom (required)
-    if not lead.nom or len(lead.nom.strip()) < 2:
-        raise HTTPException(status_code=400, detail="Le nom est obligatoire (minimum 2 caractères)")
-    
-    # Validate postal code (France metro only if provided)
-    code_postal = lead.code_postal or ""
-    if code_postal:
-        cp_valid, cp_result = validate_postal_code_fr(code_postal)
-        if not cp_valid:
-            raise HTTPException(status_code=400, detail=cp_result)
-        code_postal = cp_result
-    
-    # Get form config
-    form_config = await db.forms.find_one({"code": lead.form_code})
-    if form_config:
-        sub_account = await db.accounts.find_one({"id": form_config.get("sub_account_id")})
-        crm = await db.crms.find_one({"id": sub_account.get("crm_id")}) if sub_account else None
-        api_url = crm.get("api_url") if crm else "https://maison-du-lead.com/lead/api/create_lead/"
-        api_key = form_config.get("api_key", "")
-    else:
-        api_url = "https://maison-du-lead.com/lead/api/create_lead/"
-        api_key = "0c21a444-2fc9-412f-9092-658cb6d62de6"
-    
-    lead_doc = {
-        "id": str(uuid.uuid4()),
-        "form_id": lead.form_id,
-        "form_code": lead.form_code or "",
-        "lp_code": lead.lp_code or "",
-        "phone": phone,
-        "nom": lead.nom.strip(),
-        "email": lead.email or "",
-        "departement": lead.departement or "",
-        "code_postal": code_postal,
-        "type_logement": lead.type_logement or "",
-        "statut_occupant": lead.statut_occupant or "",
-        "facture_electricite": lead.facture_electricite or "",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "register_date": timestamp,
-        "api_status": "pending",
-        "api_url": api_url
-    }
-    
-    # Save to DB first
-    await db.leads.insert_one(lead_doc)
-    
-    # Send to CRM API
+async def send_lead_to_crm(lead_doc: dict, api_url: str, api_key: str) -> tuple:
+    """Helper function to send a lead to external CRM (ZR7/MDL)"""
     lead_payload = {
-        "phone": phone,
-        "register_date": timestamp,
-        "nom": lead.nom.strip(),
+        "phone": lead_doc["phone"],
+        "register_date": lead_doc["register_date"],
+        "nom": lead_doc["nom"],
         "prenom": "",
-        "email": lead.email or "",
+        "email": lead_doc.get("email", ""),
         "custom_fields": {
-            "departement": {"value": lead.departement or ""},
-            "code_postal": {"value": code_postal},
-            "type_logement": {"value": lead.type_logement or ""},
-            "statut_occupant": {"value": lead.statut_occupant or ""},
-            "facture_electricite": {"value": lead.facture_electricite or ""}
+            "departement": {"value": lead_doc.get("departement", "")},
+            "code_postal": {"value": lead_doc.get("code_postal", "")},
+            "type_logement": {"value": lead_doc.get("type_logement", "")},
+            "statut_occupant": {"value": lead_doc.get("statut_occupant", "")},
+            "facture_electricite": {"value": lead_doc.get("facture_electricite", "")}
         }
     }
     
@@ -992,7 +937,88 @@ async def submit_lead(lead: LeadData):
         api_status = "failed"
         api_response = str(e)
     
-    await db.leads.update_one(
+    return api_status, api_response
+
+@api_router.post("/submit-lead")
+async def submit_lead(lead: LeadData):
+    """Submit a lead - validates, saves to DB and sends to CRM API instantly if phone is valid"""
+    timestamp = int(datetime.now(timezone.utc).timestamp())
+    
+    # Validate phone (10 digits, required)
+    phone_valid, phone_result = validate_phone_fr(lead.phone)
+    if not phone_valid:
+        raise HTTPException(status_code=400, detail=phone_result)
+    phone = phone_result
+    
+    # Validate nom (required)
+    if not lead.nom or len(lead.nom.strip()) < 2:
+        raise HTTPException(status_code=400, detail="Le nom est obligatoire (minimum 2 caractères)")
+    
+    # Validate postal code (France metro only if provided)
+    code_postal = lead.code_postal or ""
+    if code_postal:
+        cp_valid, cp_result = validate_postal_code_fr(code_postal)
+        if not cp_valid:
+            raise HTTPException(status_code=400, detail=cp_result)
+        code_postal = cp_result
+    
+    # Get form config - try both account_id and sub_account_id for compatibility
+    form_config = await db.forms.find_one({"code": lead.form_code})
+    api_url = ""
+    api_key = ""
+    account_id = None
+    
+    if form_config:
+        account_id = form_config.get("account_id") or form_config.get("sub_account_id")
+        account = await db.accounts.find_one({"id": account_id}) if account_id else None
+        crm = await db.crms.find_one({"id": account.get("crm_id")}) if account else None
+        
+        # URL API du CRM destination
+        api_url = crm.get("api_url") if crm else ""
+        # Clé API spécifique à ce formulaire (fournie par l'utilisateur)
+        api_key = form_config.get("crm_api_key") or form_config.get("api_key") or ""
+    
+    # Déterminer si on peut envoyer vers le CRM
+    can_send_to_crm = bool(phone and api_url and api_key)
+    
+    lead_doc = {
+        "id": str(uuid.uuid4()),
+        "form_id": lead.form_id,
+        "form_code": lead.form_code or "",
+        "lp_code": lead.lp_code or "",
+        "account_id": account_id or "",
+        "phone": phone,
+        "nom": lead.nom.strip(),
+        "email": lead.email or "",
+        "departement": lead.departement or "",
+        "code_postal": code_postal,
+        "type_logement": lead.type_logement or "",
+        "statut_occupant": lead.statut_occupant or "",
+        "facture_electricite": lead.facture_electricite or "",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "register_date": timestamp,
+        "api_status": "pending" if can_send_to_crm else "no_config",
+        "api_url": api_url,
+        "sent_to_crm": False,
+        "retry_count": 0
+    }
+    
+    # Save to DB first
+    await db.leads.insert_one(lead_doc)
+    
+    # Envoi instantané vers le CRM SI téléphone valide ET config présente
+    if can_send_to_crm:
+        api_status, api_response = await send_lead_to_crm(lead_doc, api_url, api_key)
+        
+        await db.leads.update_one(
+            {"id": lead_doc["id"]},
+            {"$set": {
+                "api_status": api_status, 
+                "api_response": api_response,
+                "sent_to_crm": api_status in ["success", "duplicate"],
+                "sent_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
         {"id": lead_doc["id"]},
         {"$set": {"api_status": api_status, "api_response": api_response}}
     )
