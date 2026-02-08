@@ -919,6 +919,7 @@ const AccountsPage = () => {
   const tabs = [
     { id: 'general', label: 'Général', icon: Building },
     { id: 'logos', label: 'Logos', icon: Image },
+    { id: 'images', label: 'Images', icon: FolderOpen },
     { id: 'tracking', label: 'Tracking GTM', icon: Target },
     { id: 'legal', label: 'Légal', icon: Shield },
     { id: 'form', label: 'Formulaire', icon: FileText },
