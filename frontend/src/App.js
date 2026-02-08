@@ -1330,8 +1330,8 @@ const LPsPage = () => {
             </h4>
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Sous-compte *</label>
-                <select value={formData.sub_account_id} onChange={e => setFormData({ ...formData, sub_account_id: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" required>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Compte *</label>
+                <select value={formData.account_id} onChange={e => setFormData({ ...formData, account_id: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" required>
                   <option value="">Sélectionner</option>
                   {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                 </select>
