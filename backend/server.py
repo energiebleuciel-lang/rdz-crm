@@ -395,8 +395,19 @@ async def delete_lp(lp_id: str, user: dict = Depends(require_admin)):
 # ==================== FORM ENDPOINTS ====================
 
 @api_router.get("/forms")
-async def get_forms(sub_account_id: Optional[str] = None, user: dict = Depends(get_current_user)):
-    query = {"sub_account_id": sub_account_id} if sub_account_id else {}
+async def get_forms(sub_account_id: Optional[str] = None, crm_id: Optional[str] = None, user: dict = Depends(get_current_user)):
+    query = {}
+    if sub_account_id:
+        query["sub_account_id"] = sub_account_id
+    elif crm_id:
+        # Get all sub-accounts for this CRM
+        sub_accounts = await db.sub_accounts.find({"crm_id": crm_id}, {"id": 1}).to_list(100)
+        sub_account_ids = [sa["id"] for sa in sub_accounts]
+        if sub_account_ids:
+            query["sub_account_id"] = {"$in": sub_account_ids}
+        else:
+            return {"forms": []}
+    
     forms = await db.forms.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
     
     # Add stats for each form
@@ -579,6 +590,21 @@ async def get_leads(
     user: dict = Depends(get_current_user)
 ):
     query = {}
+    
+    # Filter by CRM - get all form codes belonging to this CRM's sub-accounts
+    if crm_id:
+        sub_accounts = await db.sub_accounts.find({"crm_id": crm_id}, {"id": 1}).to_list(100)
+        sub_account_ids = [sa["id"] for sa in sub_accounts]
+        if sub_account_ids:
+            forms = await db.forms.find({"sub_account_id": {"$in": sub_account_ids}}, {"code": 1}).to_list(100)
+            form_codes = [f["code"] for f in forms if f.get("code")]
+            if form_codes:
+                query["form_code"] = {"$in": form_codes}
+            else:
+                return {"leads": [], "count": 0}
+        else:
+            return {"leads": [], "count": 0}
+    
     if status:
         query["api_status"] = status
     if form_code:
@@ -669,18 +695,50 @@ async def get_analytics_stats(
     
     end_date = datetime.fromisoformat(date_to) if date_to else now
     
-    query = {"created_at": {"$gte": start_date.isoformat(), "$lte": end_date.isoformat()}}
+    base_query = {"created_at": {"$gte": start_date.isoformat(), "$lte": end_date.isoformat()}}
+    
+    # Build CRM-specific filter for leads
+    lead_query = {**base_query}
+    lp_codes_filter = None
+    form_codes_filter = None
+    
+    if crm_id:
+        sub_accounts = await db.sub_accounts.find({"crm_id": crm_id}, {"id": 1}).to_list(100)
+        sub_account_ids = [sa["id"] for sa in sub_accounts]
+        
+        if sub_account_ids:
+            # Get LP codes for CTA clicks filtering
+            lps = await db.lps.find({"sub_account_id": {"$in": sub_account_ids}}, {"code": 1}).to_list(100)
+            lp_codes_filter = [lp["code"] for lp in lps if lp.get("code")]
+            
+            # Get form codes for leads filtering  
+            forms = await db.forms.find({"sub_account_id": {"$in": sub_account_ids}}, {"code": 1}).to_list(100)
+            form_codes_filter = [f["code"] for f in forms if f.get("code")]
+            
+            if form_codes_filter:
+                lead_query["form_code"] = {"$in": form_codes_filter}
+            else:
+                lead_query["form_code"] = {"$in": []}  # No forms = no leads
+    
+    # Build queries with CRM filter
+    cta_query = {**base_query}
+    if lp_codes_filter is not None:
+        cta_query["lp_code"] = {"$in": lp_codes_filter} if lp_codes_filter else {"$in": []}
+    
+    form_start_query = {**base_query}
+    if form_codes_filter is not None:
+        form_start_query["form_code"] = {"$in": form_codes_filter} if form_codes_filter else {"$in": []}
     
     stats = {
         "period": period,
         "start_date": start_date.isoformat(),
         "end_date": end_date.isoformat(),
-        "cta_clicks": await db.cta_clicks.count_documents(query),
-        "forms_started": await db.form_starts.count_documents(query),
-        "leads_total": await db.leads.count_documents(query),
-        "leads_success": await db.leads.count_documents({**query, "api_status": "success"}),
-        "leads_failed": await db.leads.count_documents({**query, "api_status": "failed"}),
-        "leads_duplicate": await db.leads.count_documents({**query, "api_status": "duplicate"})
+        "cta_clicks": await db.cta_clicks.count_documents(cta_query),
+        "forms_started": await db.form_starts.count_documents(form_start_query),
+        "leads_total": await db.leads.count_documents(lead_query),
+        "leads_success": await db.leads.count_documents({**lead_query, "api_status": "success"}),
+        "leads_failed": await db.leads.count_documents({**lead_query, "api_status": "failed"}),
+        "leads_duplicate": await db.leads.count_documents({**lead_query, "api_status": "duplicate"})
     }
     
     # Calculate conversion rates
@@ -698,6 +756,7 @@ async def get_analytics_stats(
 
 @api_router.get("/analytics/winners")
 async def get_winners(
+    crm_id: Optional[str] = None,
     period: str = "week",
     user: dict = Depends(get_current_user)
 ):
@@ -712,6 +771,21 @@ async def get_winners(
         start_date = now - timedelta(days=30)
     
     query = {"created_at": {"$gte": start_date.isoformat()}}
+    
+    # Filter by CRM if specified
+    if crm_id:
+        sub_accounts = await db.sub_accounts.find({"crm_id": crm_id}, {"id": 1}).to_list(100)
+        sub_account_ids = [sa["id"] for sa in sub_accounts]
+        
+        if sub_account_ids:
+            forms = await db.forms.find({"sub_account_id": {"$in": sub_account_ids}}, {"code": 1}).to_list(100)
+            form_codes = [f["code"] for f in forms if f.get("code")]
+            if form_codes:
+                query["form_code"] = {"$in": form_codes}
+            else:
+                return {"period": period, "lp_winners": [], "lp_losers": [], "form_winners": [], "form_losers": []}
+        else:
+            return {"period": period, "lp_winners": [], "lp_losers": [], "form_winners": [], "form_losers": []}
     
     # Get LP performance
     lp_pipeline = [
