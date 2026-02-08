@@ -317,6 +317,36 @@ async def require_admin(user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Accès admin requis")
     return user
 
+def get_account_filter(user: dict) -> dict:
+    """
+    Retourne un filtre MongoDB pour restreindre les données aux comptes autorisés.
+    - Si l'utilisateur est admin ou n'a pas de restriction (allowed_accounts vide), retourne {}
+    - Sinon, retourne un filtre sur les IDs de comptes autorisés
+    """
+    if user.get("role") == "admin":
+        return {}
+    
+    allowed_accounts = user.get("allowed_accounts", [])
+    if not allowed_accounts:
+        # Pas de restriction définie = accès à tous
+        return {}
+    
+    return {"id": {"$in": allowed_accounts}}
+
+def get_account_ids_filter(user: dict) -> dict:
+    """
+    Retourne un filtre MongoDB pour les entités liées à un account_id.
+    Utilisé pour LPs, Forms, etc.
+    """
+    if user.get("role") == "admin":
+        return {}
+    
+    allowed_accounts = user.get("allowed_accounts", [])
+    if not allowed_accounts:
+        return {}
+    
+    return {"account_id": {"$in": allowed_accounts}}
+
 async def log_activity(user_id: str, user_email: str, action: str, entity_type: str = "", entity_id: str = "", details: str = ""):
     await db.activity_logs.insert_one({
         "id": str(uuid.uuid4()),
