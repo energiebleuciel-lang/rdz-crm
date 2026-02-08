@@ -1812,10 +1812,39 @@ const ScriptGeneratorPage = () => {
   const { selectedCRM } = useCRM();
   const [lps, setLps] = useState([]);
   const [forms, setForms] = useState([]);
+  const [accounts, setAccounts] = useState([]);
   const [selectedLP, setSelectedLP] = useState('');
   const [selectedForm, setSelectedForm] = useState('');
-  const [generatedScript, setGeneratedScript] = useState(null);
+  const [generatedBrief, setGeneratedBrief] = useState(null);
   const [copied, setCopied] = useState(false);
+  
+  // LP selection options
+  const [lpOptions, setLpOptions] = useState({
+    include_logo_main: false,
+    include_logo_secondary: false,
+    include_logo_small: false,
+    include_favicon: false,
+    include_gtm_pixel: false,
+    include_gtm_conversion: false,
+    include_gtm_cta: false,
+    include_privacy_policy: false,
+    include_legal_mentions: false,
+    include_colors: false,
+    include_redirect_url: '',
+    include_notes: false
+  });
+  
+  // Form selection options
+  const [formOptions, setFormOptions] = useState({
+    include_logo_main: false,
+    include_logo_secondary: false,
+    include_gtm_pixel: false,
+    include_gtm_conversion: false,
+    include_privacy_policy: false,
+    include_redirect_url: '',
+    include_api_key: false,
+    include_notes: false
+  });
 
   useEffect(() => {
     loadData();
@@ -1824,27 +1853,51 @@ const ScriptGeneratorPage = () => {
   const loadData = async () => {
     try {
       const crmParam = selectedCRM ? `?crm_id=${selectedCRM}` : '';
-      const [lpsRes, formsRes] = await Promise.all([
+      const [lpsRes, formsRes, accountsRes] = await Promise.all([
         authFetch(`${API}/api/lps${crmParam}`),
-        authFetch(`${API}/api/forms${crmParam}`)
+        authFetch(`${API}/api/forms${crmParam}`),
+        authFetch(`${API}/api/accounts${crmParam}`)
       ]);
       if (lpsRes.ok) setLps((await lpsRes.json()).lps || []);
       if (formsRes.ok) setForms((await formsRes.json()).forms || []);
+      if (accountsRes.ok) setAccounts((await accountsRes.json()).accounts || []);
     } catch (e) {
       console.error(e);
     }
   };
 
-  const generateLPScript = async () => {
+  // Get redirect URLs for selected LP's account
+  const getRedirectUrlsForLP = () => {
+    if (!selectedLP) return [];
+    const lp = lps.find(l => l.id === selectedLP);
+    if (!lp) return [];
+    const accountId = lp.account_id || lp.sub_account_id;
+    const account = accounts.find(a => a.id === accountId);
+    return account?.named_redirect_urls || [];
+  };
+
+  // Get redirect URLs for selected Form's account
+  const getRedirectUrlsForForm = () => {
+    if (!selectedForm) return [];
+    const form = forms.find(f => f.id === selectedForm);
+    if (!form) return [];
+    const accountId = form.account_id || form.sub_account_id;
+    const account = accounts.find(a => a.id === accountId);
+    return account?.named_redirect_urls || [];
+  };
+
+  const generateLPBrief = async () => {
     if (!selectedLP) return;
     try {
-      const res = await authFetch(`${API}/api/generate-script/lp/${selectedLP}`);
+      const res = await authFetch(`${API}/api/generate-brief/lp`, {
+        method: 'POST',
+        body: JSON.stringify({ lp_id: selectedLP, ...lpOptions })
+      });
       if (res.ok) {
-        setGeneratedScript(await res.json());
+        setGeneratedBrief(await res.json());
       } else {
-        console.error('Error generating LP script:', res.status);
         const data = await res.json().catch(() => ({}));
-        alert(data.detail || 'Erreur lors de la génération du script');
+        alert(data.detail || 'Erreur lors de la génération');
       }
     } catch (e) {
       console.error(e);
@@ -1852,16 +1905,18 @@ const ScriptGeneratorPage = () => {
     }
   };
 
-  const generateFormScript = async () => {
+  const generateFormBrief = async () => {
     if (!selectedForm) return;
     try {
-      const res = await authFetch(`${API}/api/generate-script/form/${selectedForm}`);
+      const res = await authFetch(`${API}/api/generate-brief/form`, {
+        method: 'POST',
+        body: JSON.stringify({ form_id: selectedForm, ...formOptions })
+      });
       if (res.ok) {
-        setGeneratedScript(await res.json());
+        setGeneratedBrief(await res.json());
       } else {
-        console.error('Error generating Form script:', res.status);
         const data = await res.json().catch(() => ({}));
-        alert(data.detail || 'Erreur lors de la génération du script');
+        alert(data.detail || 'Erreur lors de la génération');
       }
     } catch (e) {
       console.error(e);
