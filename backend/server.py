@@ -814,7 +814,12 @@ async def duplicate_lp(lp_id: str, new_code: str, new_name: str, user: dict = De
 # ==================== FORM ENDPOINTS ====================
 
 @api_router.get("/forms")
-async def get_forms(sub_account_id: Optional[str] = None, crm_id: Optional[str] = None, user: dict = Depends(get_current_user)):
+async def get_forms(
+    sub_account_id: Optional[str] = None, 
+    crm_id: Optional[str] = None, 
+    product_type: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
     query = {}
     if sub_account_id:
         query["sub_account_id"] = sub_account_id
@@ -826,6 +831,10 @@ async def get_forms(sub_account_id: Optional[str] = None, crm_id: Optional[str] 
             query["sub_account_id"] = {"$in": sub_account_ids}
         else:
             return {"forms": []}
+    
+    # Filtre par type de produit
+    if product_type:
+        query["product_type"] = product_type
     
     forms = await db.forms.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
     
