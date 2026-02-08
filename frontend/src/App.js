@@ -132,25 +132,39 @@ const Sidebar = () => {
 
   const isActive = (path) => location.pathname.startsWith(path);
 
+  // Menu réorganisé logiquement
   const menuItems = [
     { path: '/dashboard', icon: Home, label: 'Tableau de bord' },
-    { path: '/compare', icon: BarChart3, label: 'Dashboard Comparatif' },
-    { path: '/analytics', icon: TrendingUp, label: 'Analytics' },
-    { path: '/leads', icon: Users, label: 'Leads' },
-    { path: '/lps', icon: Layers, label: 'Landing Pages' },
-    { path: '/forms', icon: FileText, label: 'Formulaires' },
-    { path: '/accounts', icon: Building, label: 'Sous-comptes' },
-    { path: '/assets', icon: FolderOpen, label: 'Bibliothèque Assets' },
-    { path: '/generator', icon: Code, label: 'Générateur Scripts' },
-    { path: '/guide', icon: HelpCircle, label: 'Guide d\'utilisation' },
+    { path: '/compare', icon: BarChart3, label: 'Comparatif' },
   ];
 
+  // Section: Gestion
+  const gestionItems = [
+    { path: '/leads', icon: Users, label: 'Leads' },
+    { path: '/accounts', icon: Building, label: 'Comptes' },
+    { path: '/lps', icon: Layers, label: 'Landing Pages' },
+    { path: '/forms', icon: FileText, label: 'Formulaires' },
+  ];
+
+  // Section: Outils
+  const outilsItems = [
+    { path: '/generator', icon: Code, label: 'Générateur Scripts' },
+    { path: '/assets', icon: FolderOpen, label: 'Bibliothèque Assets' },
+    { path: '/analytics', icon: TrendingUp, label: 'Analytics détaillé' },
+  ];
+
+  // Section: Configuration
+  const configItems = [
+    { path: '/diffusion', icon: Send, label: 'Sources Diffusion' },
+    { path: '/products', icon: Tag, label: 'Types Produits' },
+  ];
+
+  // Section: Administration
   const adminItems = [
     { path: '/users', icon: Shield, label: 'Utilisateurs' },
     { path: '/activity', icon: Activity, label: 'Journal activité' },
-    { path: '/diffusion', icon: Send, label: 'Sources Diffusion' },
-    { path: '/products', icon: Tag, label: 'Types Produits' },
     { path: '/settings', icon: Settings, label: 'Paramètres' },
+    { path: '/guide', icon: HelpCircle, label: 'Guide d\'utilisation' },
   ];
 
   return (
