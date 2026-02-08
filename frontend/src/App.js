@@ -3572,8 +3572,8 @@ const AssetsPage = () => {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Associer à</label>
-              <select value={formData.sub_account_id} onChange={e => setFormData({ ...formData, sub_account_id: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg">
+              <label className="block text-sm font-medium text-slate-700 mb-1">Associer à un compte</label>
+              <select value={formData.account_id} onChange={e => setFormData({ ...formData, account_id: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg">
                 <option value="">Global (tous les comptes)</option>
                 {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
               </select>
