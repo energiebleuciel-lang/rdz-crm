@@ -58,12 +58,16 @@ class CRMCreate(BaseModel):
     # Commandes par produit : départements où ce CRM a des commandes
     # Format: {"PAC": ["75", "92", "93"], "PV": ["13", "31"], "ITE": ["59", "62"]}
     commandes: Optional[Dict[str, List[str]]] = {}
+    # Prix par lead par produit en euros (pour facturation inter-CRM)
+    # Format: {"PAC": 25.0, "PV": 20.0, "ITE": 30.0}
+    lead_prices: Optional[Dict[str, float]] = {}
 
 class CRMUpdate(BaseModel):
     name: Optional[str] = None
     api_url: Optional[str] = None
     description: Optional[str] = None
     commandes: Optional[Dict[str, List[str]]] = None
+    lead_prices: Optional[Dict[str, float]] = None
 
 # Diffusion source types (Native, Google Ads, etc.)
 class DiffusionSourceCreate(BaseModel):
