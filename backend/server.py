@@ -677,7 +677,8 @@ async def update_asset(asset_id: str, asset: AssetCreate, user: dict = Depends(g
     return {"success": True}
 
 @api_router.delete("/assets/{asset_id}")
-async def delete_asset(asset_id: str, user: dict = Depends(get_current_user)):
+async def delete_asset(asset_id: str, user: dict = Depends(require_admin)):
+    """Delete an asset - Admin only"""
     result = await db.assets.delete_one({"id": asset_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Asset non trouvé")
