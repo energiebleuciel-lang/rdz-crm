@@ -1336,7 +1336,7 @@ async def submit_lead(lead: LeadData):
     
     can_send = bool(phone and api_url and api_key)
     
-    # Stocker le lead
+    # Stocker le lead avec infos complètes de la plateforme cible
     lead_doc = {
         "id": str(uuid.uuid4()),
         "form_id": lead.form_id or "",
@@ -1345,7 +1345,11 @@ async def submit_lead(lead: LeadData):
         "account_id": account_id or "",
         "product_type": product_type,
         "origin_crm_id": origin_crm.get("id") if origin_crm else "",
+        "origin_crm_name": origin_crm.get("name") if origin_crm else "",
+        "origin_crm_slug": origin_crm.get("slug") if origin_crm else "",
         "target_crm_id": target_crm.get("id") if target_crm else "",
+        "target_crm_name": target_crm.get("name") if target_crm else "",
+        "target_crm_slug": target_crm.get("slug") if target_crm else "",
         "routing_reason": routing_reason,
         "phone": phone,
         "nom": (lead.nom or "").strip(),
@@ -1374,10 +1378,18 @@ async def submit_lead(lead: LeadData):
     if can_send:
         api_status, api_response = await send_lead_to_crm(lead_doc, api_url, api_key)
         
+        # Construire le statut détaillé avec plateforme
+        status_detail = f"{api_status}"
+        if api_status == "success":
+            status_detail = f"envoyé/{target_crm.get('slug', 'crm')}"
+        elif api_status == "duplicate":
+            status_detail = f"doublon/{target_crm.get('slug', 'crm')}"
+        
         await db.leads.update_one(
             {"id": lead_doc["id"]},
             {"$set": {
-                "api_status": api_status, 
+                "api_status": api_status,
+                "status_detail": status_detail,
                 "api_response": api_response,
                 "sent_to_crm": api_status in ["success", "duplicate"],
                 "sent_at": datetime.now(timezone.utc).isoformat()
