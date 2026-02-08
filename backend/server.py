@@ -61,6 +61,9 @@ class CRMCreate(BaseModel):
     # Prix par lead par produit en euros (pour facturation inter-CRM)
     # Format: {"PAC": 25.0, "PV": 20.0, "ITE": 30.0}
     lead_prices: Optional[Dict[str, float]] = {}
+    # Limites de leads inter-CRM par produit par mois (0 = illimité)
+    # Format: {"PAC": 100, "PV": 200, "ITE": 50}
+    routing_limits: Optional[Dict[str, int]] = {}
 
 class CRMUpdate(BaseModel):
     name: Optional[str] = None
@@ -68,6 +71,7 @@ class CRMUpdate(BaseModel):
     description: Optional[str] = None
     commandes: Optional[Dict[str, List[str]]] = None
     lead_prices: Optional[Dict[str, float]] = None
+    routing_limits: Optional[Dict[str, int]] = None
 
 # Diffusion source types (Native, Google Ads, etc.)
 class DiffusionSourceCreate(BaseModel):
