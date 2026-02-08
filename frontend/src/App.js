@@ -1644,7 +1644,7 @@ const FormsPage = () => {
       <Modal isOpen={!!showDuplicateModal} onClose={() => setShowDuplicateModal(null)} title="Dupliquer le formulaire">
         <div className="space-y-4">
           <p className="text-sm text-slate-600">
-            Dupliquer <strong>{showDuplicateModal?.name}</strong>. Seule la <strong>clé API</strong> sera différente.
+            Dupliquer <strong>{showDuplicateModal?.name}</strong>. Une nouvelle clé API interne sera générée automatiquement.
           </p>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Nouveau code *</label>
@@ -1655,13 +1655,13 @@ const FormsPage = () => {
             <input type="text" value={duplicateData.new_name} onChange={e => setDuplicateData({ ...duplicateData, new_name: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" required />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Nouvelle clé API CRM *</label>
-            <input type="text" value={duplicateData.new_api_key} onChange={e => setDuplicateData({ ...duplicateData, new_api_key: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-sm" placeholder="uuid-xxx-xxx" required />
-            <p className="text-xs text-slate-500 mt-1">La clé API fournie par le CRM pour cette campagne</p>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Clé API CRM destination (ZR7/MDL) *</label>
+            <input type="text" value={duplicateData.new_crm_api_key} onChange={e => setDuplicateData({ ...duplicateData, new_crm_api_key: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-sm" placeholder="uuid-xxx-xxx" required />
+            <p className="text-xs text-slate-500 mt-1">La clé API fournie par ZR7 ou MDL pour ce formulaire</p>
           </div>
           <div className="flex justify-end gap-2 pt-4">
             <button type="button" onClick={() => setShowDuplicateModal(null)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Annuler</button>
-            <button onClick={duplicateForm} disabled={!duplicateData.new_api_key} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">Dupliquer</button>
+            <button onClick={duplicateForm} disabled={!duplicateData.new_crm_api_key} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">Dupliquer</button>
           </div>
         </div>
       </Modal>
