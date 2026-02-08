@@ -625,7 +625,7 @@ async def get_assets(crm_id: Optional[str] = None, sub_account_id: Optional[str]
         query["$or"] = [{"sub_account_id": sub_account_id}, {"sub_account_id": None}]
     elif crm_id:
         # Get assets for all sub-accounts of this CRM + global assets
-        sub_accounts = await db.sub_accounts.find({"crm_id": crm_id}, {"id": 1}).to_list(100)
+        sub_accounts = await db.accounts.find({"crm_id": crm_id}, {"id": 1}).to_list(100)
         sub_account_ids = [sa["id"] for sa in sub_accounts]
         query["$or"] = [{"sub_account_id": {"$in": sub_account_ids}}, {"sub_account_id": None}, {"crm_id": crm_id}]
     
@@ -672,7 +672,7 @@ async def get_lps(sub_account_id: Optional[str] = None, crm_id: Optional[str] = 
         query["sub_account_id"] = sub_account_id
     elif crm_id:
         # Get all sub-accounts for this CRM
-        sub_accounts = await db.sub_accounts.find({"crm_id": crm_id}, {"id": 1}).to_list(100)
+        sub_accounts = await db.accounts.find({"crm_id": crm_id}, {"id": 1}).to_list(100)
         sub_account_ids = [sa["id"] for sa in sub_accounts]
         if sub_account_ids:
             query["sub_account_id"] = {"$in": sub_account_ids}
@@ -762,7 +762,7 @@ async def get_forms(sub_account_id: Optional[str] = None, crm_id: Optional[str] 
         query["sub_account_id"] = sub_account_id
     elif crm_id:
         # Get all sub-accounts for this CRM
-        sub_accounts = await db.sub_accounts.find({"crm_id": crm_id}, {"id": 1}).to_list(100)
+        sub_accounts = await db.accounts.find({"crm_id": crm_id}, {"id": 1}).to_list(100)
         sub_account_ids = [sa["id"] for sa in sub_accounts]
         if sub_account_ids:
             query["sub_account_id"] = {"$in": sub_account_ids}
@@ -901,7 +901,7 @@ async def submit_lead(lead: LeadData):
     # Get form config
     form_config = await db.forms.find_one({"code": lead.form_code})
     if form_config:
-        sub_account = await db.sub_accounts.find_one({"id": form_config.get("sub_account_id")})
+        sub_account = await db.accounts.find_one({"id": form_config.get("sub_account_id")})
         crm = await db.crms.find_one({"id": sub_account.get("crm_id")}) if sub_account else None
         api_url = crm.get("api_url") if crm else "https://maison-du-lead.com/lead/api/create_lead/"
         api_key = form_config.get("api_key", "")
@@ -994,7 +994,7 @@ async def get_leads(
     
     # Filter by CRM - get all form codes belonging to this CRM's sub-accounts
     if crm_id:
-        sub_accounts = await db.sub_accounts.find({"crm_id": crm_id}, {"id": 1}).to_list(100)
+        sub_accounts = await db.accounts.find({"crm_id": crm_id}, {"id": 1}).to_list(100)
         sub_account_ids = [sa["id"] for sa in sub_accounts]
         if sub_account_ids:
             forms = await db.forms.find({"sub_account_id": {"$in": sub_account_ids}}, {"code": 1}).to_list(100)
@@ -1123,7 +1123,7 @@ async def get_analytics_stats(
     form_codes_filter = None
     
     if crm_id:
-        sub_accounts = await db.sub_accounts.find({"crm_id": crm_id}, {"id": 1}).to_list(100)
+        sub_accounts = await db.accounts.find({"crm_id": crm_id}, {"id": 1}).to_list(100)
         sub_account_ids = [sa["id"] for sa in sub_accounts]
         
         if sub_account_ids:
@@ -1194,7 +1194,7 @@ async def get_winners(
     
     # Filter by CRM if specified
     if crm_id:
-        sub_accounts = await db.sub_accounts.find({"crm_id": crm_id}, {"id": 1}).to_list(100)
+        sub_accounts = await db.accounts.find({"crm_id": crm_id}, {"id": 1}).to_list(100)
         sub_account_ids = [sa["id"] for sa in sub_accounts]
         
         if sub_account_ids:
@@ -1283,7 +1283,7 @@ async def get_comparison_stats(
     # Get all forms with their source info
     form_query = {}
     if crm_filter:
-        sub_accounts = await db.sub_accounts.find({"crm_id": {"$in": crm_filter}}, {"id": 1}).to_list(100)
+        sub_accounts = await db.accounts.find({"crm_id": {"$in": crm_filter}}, {"id": 1}).to_list(100)
         sub_account_ids = [sa["id"] for sa in sub_accounts]
         form_query["sub_account_id"] = {"$in": sub_account_ids}
     
@@ -1352,7 +1352,7 @@ async def get_comparison_stats(
         if crm_filter and crm["id"] not in crm_filter:
             continue
         
-        crm_sub_accounts = await db.sub_accounts.find({"crm_id": crm["id"]}, {"id": 1}).to_list(50)
+        crm_sub_accounts = await db.accounts.find({"crm_id": crm["id"]}, {"id": 1}).to_list(50)
         crm_sub_ids = [sa["id"] for sa in crm_sub_accounts]
         crm_forms = [f for f in all_forms if f.get("sub_account_id") in crm_sub_ids]
         crm_form_codes = [f["code"] for f in crm_forms if f.get("code")]
@@ -1424,7 +1424,7 @@ async def generate_lp_script(lp_id: str, user: dict = Depends(get_current_user))
     if not lp:
         raise HTTPException(status_code=404, detail="LP non trouvée")
     
-    sub_account = await db.sub_accounts.find_one({"id": lp.get("sub_account_id")}, {"_id": 0})
+    sub_account = await db.accounts.find_one({"id": lp.get("sub_account_id")}, {"_id": 0})
     
     backend_url = os.environ.get("BACKEND_URL", "https://rdz-group-ltd.online")
     
@@ -1476,7 +1476,7 @@ async def generate_form_script(form_id: str, user: dict = Depends(get_current_us
     if not form:
         raise HTTPException(status_code=404, detail="Formulaire non trouvé")
     
-    sub_account = await db.sub_accounts.find_one({"id": form.get("sub_account_id")}, {"_id": 0})
+    sub_account = await db.accounts.find_one({"id": form.get("sub_account_id")}, {"_id": 0})
     
     backend_url = os.environ.get("BACKEND_URL", "https://rdz-group-ltd.online")
     
