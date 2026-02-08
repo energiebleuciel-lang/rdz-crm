@@ -877,16 +877,29 @@ async def get_forms(
     user: dict = Depends(get_current_user)
 ):
     query = {}
+    
+    # Appliquer le filtre par comptes autorisés (sécurité multi-tenant)
+    allowed_account_ids = user.get("allowed_accounts", []) if user.get("role") != "admin" and user.get("allowed_accounts") else None
+    
     if sub_account_id:
+        # Vérifier que l'utilisateur a accès à ce compte
+        if allowed_account_ids and sub_account_id not in allowed_account_ids:
+            return {"forms": []}
         query["sub_account_id"] = sub_account_id
     elif crm_id:
         # Get all sub-accounts for this CRM
-        sub_accounts = await db.accounts.find({"crm_id": crm_id}, {"id": 1}).to_list(100)
+        crm_query = {"crm_id": crm_id}
+        if allowed_account_ids:
+            crm_query["id"] = {"$in": allowed_account_ids}
+        sub_accounts = await db.accounts.find(crm_query, {"id": 1}).to_list(100)
         sub_account_ids = [sa["id"] for sa in sub_accounts]
         if sub_account_ids:
             query["sub_account_id"] = {"$in": sub_account_ids}
         else:
             return {"forms": []}
+    elif allowed_account_ids:
+        # Pas de filtre CRM, mais l'utilisateur a des restrictions
+        query["sub_account_id"] = {"$in": allowed_account_ids}
     
     # Filtre par type de produit
     if product_type:
