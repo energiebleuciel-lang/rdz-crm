@@ -1446,6 +1446,7 @@ const FormsPage = () => {
   const [showDuplicateModal, setShowDuplicateModal] = useState(null);
   const [editingForm, setEditingForm] = useState(null);
   const [duplicateData, setDuplicateData] = useState({ new_code: '', new_name: '', new_api_key: '' });
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     account_id: '', lp_ids: [], code: '', name: '', product_type: 'panneaux',
     source_type: 'native', source_name: '', api_key: '', tracking_type: 'redirect',
