@@ -136,6 +136,7 @@ const Sidebar = () => {
   const menuItems = [
     { path: '/dashboard', icon: Home, label: 'Tableau de bord' },
     { path: '/compare', icon: BarChart3, label: 'Comparatif' },
+    { path: '/billing', icon: TrendingUp, label: 'Facturation Inter-CRM' },
   ];
 
   // Section: Gestion
