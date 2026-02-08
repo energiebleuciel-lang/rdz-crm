@@ -108,9 +108,25 @@ const AuthProvider = ({ children }) => {
 // ==================== COMPONENTS ====================
 
 const Sidebar = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, authFetch } = useAuth();
+  const { selectedCRM, selectCRM, crms, setCrms } = useCRM();
   const location = useLocation();
-  const [expanded, setExpanded] = useState({ crm: true });
+
+  useEffect(() => {
+    loadCRMs();
+  }, []);
+
+  const loadCRMs = async () => {
+    try {
+      const res = await authFetch(`${API}/api/crms`);
+      if (res.ok) {
+        const data = await res.json();
+        setCrms(data.crms || []);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const isActive = (path) => location.pathname.startsWith(path);
 
@@ -138,6 +154,29 @@ const Sidebar = () => {
           CRM Dashboard
         </h1>
         <p className="text-xs text-slate-400 mt-1">Gestion des leads</p>
+      </div>
+
+      {/* CRM Selector */}
+      <div className="p-4 border-b border-slate-700">
+        <label className="block text-xs text-slate-400 mb-2">Sélectionner le CRM</label>
+        <select
+          value={selectedCRM}
+          onChange={e => selectCRM(e.target.value)}
+          className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">Tous les CRMs</option>
+          {crms.map(crm => (
+            <option key={crm.id} value={crm.id}>{crm.name}</option>
+          ))}
+        </select>
+        {selectedCRM && (
+          <div className="mt-2 flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${crms.find(c => c.id === selectedCRM)?.slug === 'mdl' ? 'bg-blue-500' : 'bg-green-500'}`} />
+            <span className="text-xs text-slate-300">
+              {crms.find(c => c.id === selectedCRM)?.name}
+            </span>
+          </div>
+        )}
       </div>
 
       <nav className="flex-1 p-4 space-y-1">
