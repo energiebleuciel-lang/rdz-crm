@@ -1099,10 +1099,53 @@ const AccountsPage = () => {
                 <textarea value={formData.gtm_cta_code || ''} onChange={e => setFormData({ ...formData, gtm_cta_code: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-xs" rows={3} placeholder="dataLayer.push({event: 'cta_click'});" />
                 <p className="text-xs text-slate-500 mt-1">Exécuté au clic sur les boutons CTA</p>
               </div>
+              
+              {/* URLs de redirection nommées */}
+              <div className="border-t pt-4">
+                <label className="block text-sm font-medium text-slate-700 mb-2">URLs de redirection nommées</label>
+                <p className="text-xs text-slate-500 mb-3">Créez plusieurs URLs de redirection (ex: "Google", "Taboola", "Facebook") pour pouvoir choisir laquelle utiliser dans chaque LP/Form</p>
+                
+                {/* Liste des URLs existantes */}
+                {(formData.named_redirect_urls || []).length > 0 && (
+                  <div className="space-y-2 mb-3">
+                    {formData.named_redirect_urls.map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-2 bg-slate-50 p-2 rounded-lg">
+                        <span className="font-medium text-slate-700 min-w-20">{item.name}</span>
+                        <span className="text-xs text-slate-500 flex-1 truncate">{item.url}</span>
+                        <button type="button" onClick={() => removeRedirectUrl(idx)} className="p-1 text-red-600 hover:bg-red-100 rounded">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Ajouter une nouvelle URL */}
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    value={newRedirectUrl.name} 
+                    onChange={e => setNewRedirectUrl({ ...newRedirectUrl, name: e.target.value })}
+                    placeholder="Nom (ex: Google)" 
+                    className="w-32 px-2 py-1 text-sm border border-slate-300 rounded" 
+                  />
+                  <input 
+                    type="url" 
+                    value={newRedirectUrl.url} 
+                    onChange={e => setNewRedirectUrl({ ...newRedirectUrl, url: e.target.value })}
+                    placeholder="URL (https://...)" 
+                    className="flex-1 px-2 py-1 text-sm border border-slate-300 rounded" 
+                  />
+                  <button type="button" onClick={addRedirectUrl} className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">
+                    Ajouter
+                  </button>
+                </div>
+              </div>
+              
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">URL de redirection par défaut</label>
                 <input type="url" value={formData.default_redirect_url || ''} onChange={e => setFormData({ ...formData, default_redirect_url: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="https://exemple.fr/merci/" />
-                <p className="text-xs text-slate-500 mt-1">Page de remerciement après soumission (si tracking redirection)</p>
+                <p className="text-xs text-slate-500 mt-1">Utilisée si aucune URL nommée n'est sélectionnée</p>
               </div>
             </div>
           )}
