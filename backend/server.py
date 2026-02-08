@@ -237,6 +237,8 @@ class LeadData(BaseModel):
     form_id: Optional[str] = "default"
     form_code: Optional[str] = ""
     lp_code: Optional[str] = ""
+    # SÉCURITÉ : Clé API obligatoire pour authentifier la requête
+    api_key: Optional[str] = ""  # internal_api_key du formulaire
 
 class CommentCreate(BaseModel):
     entity_type: str  # lp, form
