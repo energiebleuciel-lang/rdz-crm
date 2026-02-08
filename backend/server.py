@@ -1547,6 +1547,35 @@ async def update_user_role(user_id: str, role: str, admin: dict = Depends(requir
     await log_activity(admin["id"], admin["email"], "update_role", "user", user_id, f"Rôle changé en: {role}")
     return {"success": True}
 
+@api_router.put("/users/{user_id}")
+async def update_user(user_id: str, update: UserUpdate, admin: dict = Depends(require_admin)):
+    """Update user role and/or allowed accounts"""
+    update_data = {}
+    
+    if update.role is not None:
+        if update.role not in ["admin", "editor", "viewer"]:
+            raise HTTPException(status_code=400, detail="Rôle invalide")
+        update_data["role"] = update.role
+    
+    if update.allowed_accounts is not None:
+        update_data["allowed_accounts"] = update.allowed_accounts
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="Aucune donnée à mettre à jour")
+    
+    result = await db.users.update_one({"id": user_id}, {"$set": update_data})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+    
+    details = []
+    if update.role:
+        details.append(f"Rôle: {update.role}")
+    if update.allowed_accounts is not None:
+        details.append(f"Comptes: {len(update.allowed_accounts)} autorisés")
+    
+    await log_activity(admin["id"], admin["email"], "update", "user", user_id, ", ".join(details))
+    return {"success": True}
+
 @api_router.delete("/users/{user_id}")
 async def delete_user(user_id: str, admin: dict = Depends(require_admin)):
     if admin["id"] == user_id:
