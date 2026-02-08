@@ -1533,19 +1533,6 @@ const UsersPage = () => {
     </div>
   );
 };
-            { key: 'created_at', label: 'Créé le', render: v => new Date(v).toLocaleDateString('fr-FR') },
-            { key: 'actions', label: '', render: (_, row) => row.id !== currentUser?.id && (
-              <button onClick={() => deleteUser(row.id)} className="p-1 hover:bg-slate-100 rounded text-red-600">
-                <Trash2 className="w-4 h-4" />
-              </button>
-            )}
-          ]}
-          data={users}
-        />
-      </div>
-    </div>
-  );
-};
 
 const ActivityPage = () => {
   const { authFetch } = useAuth();
