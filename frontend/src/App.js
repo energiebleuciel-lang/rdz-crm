@@ -748,9 +748,10 @@ const LeadsPage = () => {
                   <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Date</th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Nom</th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Téléphone</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Email</th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">CP</th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Form</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Produit</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Plateforme</th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Statut</th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Actions</th>
                 </tr>
