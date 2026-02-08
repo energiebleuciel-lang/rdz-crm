@@ -1593,6 +1593,621 @@ const ActivityPage = () => {
   );
 };
 
+const GuidePage = () => {
+  const [activeSection, setActiveSection] = useState('intro');
+
+  const sections = [
+    { id: 'intro', label: 'Introduction', icon: BookOpen },
+    { id: 'crm-selector', label: 'Sélecteur CRM', icon: Building },
+    { id: 'accounts', label: 'Sous-comptes', icon: Database },
+    { id: 'lps', label: 'Landing Pages', icon: Layers },
+    { id: 'forms', label: 'Formulaires', icon: FileText },
+    { id: 'tracking', label: 'Tracking', icon: Target },
+    { id: 'leads', label: 'Gestion Leads', icon: Users },
+    { id: 'analytics', label: 'Analytics', icon: TrendingUp },
+    { id: 'generator', label: 'Générateur Scripts', icon: Code },
+    { id: 'users', label: 'Utilisateurs', icon: Shield },
+    { id: 'workflow', label: 'Workflow Complet', icon: Zap },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+          <BookOpen className="w-6 h-6 text-blue-600" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Guide d'utilisation</h1>
+          <p className="text-slate-500">Tout savoir sur le fonctionnement du CRM</p>
+        </div>
+      </div>
+
+      <div className="grid lg:grid-cols-4 gap-6">
+        {/* Navigation */}
+        <div className="lg:col-span-1">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sticky top-6">
+            <h3 className="font-semibold text-slate-800 mb-3">Sections</h3>
+            <nav className="space-y-1">
+              {sections.map(section => (
+                <button
+                  key={section.id}
+                  onClick={() => setActiveSection(section.id)}
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left text-sm transition-colors ${
+                    activeSection === section.id 
+                      ? 'bg-blue-50 text-blue-700 font-medium' 
+                      : 'text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <section.icon className="w-4 h-4" />
+                  {section.label}
+                </button>
+              ))}
+            </nav>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="lg:col-span-3 space-y-6">
+          {/* Introduction */}
+          {activeSection === 'intro' && (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-blue-600" />
+                Bienvenue dans le CRM
+              </h2>
+              <p className="text-slate-600">
+                Ce CRM vous permet de gérer vos leads provenant de différentes sources (Taboola, Outbrain, Facebook, Google, TikTok) 
+                et de les envoyer vers vos CRMs de destination (Maison du Lead, ZR7 Digital).
+              </p>
+              
+              <div className="bg-blue-50 rounded-lg p-4">
+                <h4 className="font-semibold text-blue-800 mb-2">🎯 Fonctionnalités principales</h4>
+                <ul className="text-sm text-blue-700 space-y-1">
+                  <li>• <strong>Multi-CRM</strong> : Gérer MDL et ZR7 séparément</li>
+                  <li>• <strong>Sous-comptes</strong> : Un compte par site/domaine</li>
+                  <li>• <strong>Tracking complet</strong> : Pixels, CTA, conversions</li>
+                  <li>• <strong>Analytics</strong> : Statistiques et gagnants/perdants</li>
+                  <li>• <strong>Générateur de scripts</strong> : Code prêt à copier</li>
+                </ul>
+              </div>
+
+              <div className="bg-slate-50 rounded-lg p-4">
+                <h4 className="font-semibold text-slate-800 mb-2">📊 Structure des données</h4>
+                <pre className="text-sm text-slate-600 bg-white p-3 rounded border border-slate-200">
+{`CRM (MDL ou ZR7)
+  └── Sous-compte (1 par site/domaine)
+        ├── Landing Pages (LP)
+        │     └── Tracking CTA (clics)
+        └── Formulaires
+              └── Leads (données)`}
+                </pre>
+              </div>
+            </div>
+          )}
+
+          {/* CRM Selector */}
+          {activeSection === 'crm-selector' && (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <Building className="w-5 h-5 text-blue-600" />
+                Sélecteur CRM
+              </h2>
+              
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <h4 className="font-semibold text-yellow-800 mb-2">⚠️ Important</h4>
+                <p className="text-sm text-yellow-700">
+                  Le sélecteur CRM en haut à gauche de l'écran filtre TOUTES les données affichées.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div className="p-4 bg-slate-50 rounded-lg">
+                  <h4 className="font-medium text-slate-800">🔹 Tous les CRMs</h4>
+                  <p className="text-sm text-slate-600 mt-1">Affiche les données de MDL ET ZR7 combinées</p>
+                </div>
+                <div className="p-4 bg-blue-50 rounded-lg">
+                  <h4 className="font-medium text-blue-800">🔹 Maison du Lead (MDL)</h4>
+                  <p className="text-sm text-blue-700 mt-1">Affiche UNIQUEMENT les leads envoyés vers MDL</p>
+                </div>
+                <div className="p-4 bg-green-50 rounded-lg">
+                  <h4 className="font-medium text-green-800">🔹 ZR7 Digital</h4>
+                  <p className="text-sm text-green-700 mt-1">Affiche UNIQUEMENT les leads envoyés vers ZR7</p>
+                </div>
+              </div>
+
+              <div className="bg-slate-100 rounded-lg p-4">
+                <h4 className="font-semibold text-slate-800 mb-2">💡 Conseil</h4>
+                <p className="text-sm text-slate-600">
+                  Votre sélection est mémorisée. Quand vous revenez sur le dashboard, 
+                  le même CRM sera automatiquement sélectionné.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Sous-comptes */}
+          {activeSection === 'accounts' && (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <Database className="w-5 h-5 text-blue-600" />
+                Sous-comptes
+              </h2>
+              
+              <p className="text-slate-600">
+                Un sous-compte représente <strong>un site/domaine spécifique</strong>. 
+                Chaque sous-compte a ses propres configurations.
+              </p>
+
+              <div className="bg-green-50 rounded-lg p-4">
+                <h4 className="font-semibold text-green-800 mb-3">📋 Informations à renseigner</h4>
+                <div className="grid md:grid-cols-2 gap-3 text-sm">
+                  <div className="bg-white p-3 rounded border border-green-200">
+                    <strong className="text-green-800">CRM</strong>
+                    <p className="text-green-700">MDL ou ZR7</p>
+                  </div>
+                  <div className="bg-white p-3 rounded border border-green-200">
+                    <strong className="text-green-800">Nom du compte</strong>
+                    <p className="text-green-700">Ex: "Solaire Pro"</p>
+                  </div>
+                  <div className="bg-white p-3 rounded border border-green-200">
+                    <strong className="text-green-800">Domaine</strong>
+                    <p className="text-green-700">Ex: maprime-solaire.fr</p>
+                  </div>
+                  <div className="bg-white p-3 rounded border border-green-200">
+                    <strong className="text-green-800">Layout</strong>
+                    <p className="text-green-700">Gauche / Centre / Droite</p>
+                  </div>
+                  <div className="bg-white p-3 rounded border border-green-200">
+                    <strong className="text-green-800">URL Logo</strong>
+                    <p className="text-green-700">Logo du site</p>
+                  </div>
+                  <div className="bg-white p-3 rounded border border-green-200">
+                    <strong className="text-green-800">Politique confidentialité</strong>
+                    <p className="text-green-700">URL de la page</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-orange-50 rounded-lg p-4">
+                <h4 className="font-semibold text-orange-800 mb-2">🎯 Tracking par sous-compte</h4>
+                <ul className="text-sm text-orange-700 space-y-2">
+                  <li><strong>Pixel Header</strong> : Code Facebook/Google à mettre dans &lt;head&gt;</li>
+                  <li><strong>Type conversion</strong> : Code / Redirection / Les deux</li>
+                  <li><strong>Code conversion</strong> : Script après envoi téléphone</li>
+                  <li><strong>URL redirection</strong> : Page merci après soumission</li>
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {/* Landing Pages */}
+          {activeSection === 'lps' && (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <Layers className="w-5 h-5 text-blue-600" />
+                Landing Pages (LP)
+              </h2>
+              
+              <p className="text-slate-600">
+                Une LP est la page sur laquelle arrivent vos visiteurs depuis les pubs (Taboola, Outbrain, etc.).
+              </p>
+
+              <div className="bg-blue-50 rounded-lg p-4">
+                <h4 className="font-semibold text-blue-800 mb-3">📋 Créer une LP</h4>
+                <div className="space-y-2 text-sm text-blue-700">
+                  <p><strong>Code LP</strong> : Identifiant unique (ex: LP-TAB-V1)</p>
+                  <p><strong>Nom</strong> : Description claire</p>
+                  <p><strong>Type source</strong> : Native / Google / Facebook / TikTok</p>
+                  <p><strong>Source</strong> : Taboola, Outbrain, etc.</p>
+                  <p><strong>Sélecteur CTA</strong> : Classe CSS des boutons (ex: .cta-btn)</p>
+                </div>
+              </div>
+
+              <div className="bg-purple-50 rounded-lg p-4">
+                <h4 className="font-semibold text-purple-800 mb-2">🖱️ Tracking CTA</h4>
+                <p className="text-sm text-purple-700 mb-3">
+                  Le tracking CTA permet de savoir combien de visiteurs cliquent sur vos boutons CTA.
+                </p>
+                <div className="bg-white p-3 rounded border border-purple-200">
+                  <p className="text-xs text-purple-600 mb-1">Script à coller sur TOUS les boutons CTA :</p>
+                  <code className="text-xs text-purple-800">
+                    Allez dans "Générateur Scripts" → Sélectionnez la LP → Copiez le code
+                  </code>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 rounded-lg p-4">
+                <h4 className="font-semibold text-slate-800 mb-2">📊 Stats trackées par LP</h4>
+                <ul className="text-sm text-slate-600 space-y-1">
+                  <li>• <strong>Clics CTA</strong> : Nombre de clics sur les boutons</li>
+                  <li>• <strong>Forms démarrés</strong> : Visiteurs arrivés sur le formulaire</li>
+                  <li>• <strong>Leads</strong> : Formulaires soumis avec succès</li>
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {/* Formulaires */}
+          {activeSection === 'forms' && (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <FileText className="w-5 h-5 text-blue-600" />
+                Formulaires
+              </h2>
+              
+              <p className="text-slate-600">
+                Le formulaire capture les informations du prospect (nom, téléphone, email, etc.) 
+                et les envoie vers votre CRM.
+              </p>
+
+              <div className="bg-green-50 rounded-lg p-4">
+                <h4 className="font-semibold text-green-800 mb-3">📋 Créer un formulaire</h4>
+                <div className="space-y-2 text-sm text-green-700">
+                  <p><strong>Code Form</strong> : Identifiant unique (ex: PV-TAB-001)</p>
+                  <p><strong>Type produit</strong> : Panneaux / Pompes / Isolation</p>
+                  <p><strong>Source</strong> : Taboola, Outbrain, etc.</p>
+                  <p><strong>Clé API CRM</strong> : Fournie par vous à chaque création</p>
+                </div>
+              </div>
+
+              <div className="bg-orange-50 rounded-lg p-4">
+                <h4 className="font-semibold text-orange-800 mb-2">🎯 Tracking conversion</h4>
+                <div className="space-y-3 text-sm">
+                  <div className="bg-white p-3 rounded border border-orange-200">
+                    <strong className="text-orange-800">Option 1 : Code</strong>
+                    <p className="text-orange-700">Script déclenché après envoi du téléphone</p>
+                  </div>
+                  <div className="bg-white p-3 rounded border border-orange-200">
+                    <strong className="text-orange-800">Option 2 : Redirection</strong>
+                    <p className="text-orange-700">Redirige vers une page /merci/ avec pixel</p>
+                  </div>
+                  <div className="bg-white p-3 rounded border border-orange-200">
+                    <strong className="text-orange-800">Option 3 : Les deux</strong>
+                    <p className="text-orange-700">Code déclenché + redirection</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Tracking */}
+          {activeSection === 'tracking' && (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <Target className="w-5 h-5 text-blue-600" />
+                Types de Tracking
+              </h2>
+
+              <div className="space-y-4">
+                <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
+                  <h4 className="font-semibold text-blue-800 flex items-center gap-2">
+                    <MousePointer className="w-4 h-4" />
+                    1. Pixel Header (LP + Formulaire)
+                  </h4>
+                  <p className="text-sm text-blue-700 mt-2">
+                    Code Facebook Pixel, Google Ads, etc. à mettre dans le &lt;head&gt; de la page.
+                  </p>
+                  <div className="bg-white mt-2 p-2 rounded text-xs text-blue-600">
+                    <strong>Où :</strong> Header de la LP ET du formulaire
+                  </div>
+                </div>
+
+                <div className="p-4 border border-purple-200 rounded-lg bg-purple-50">
+                  <h4 className="font-semibold text-purple-800 flex items-center gap-2">
+                    <MousePointer className="w-4 h-4" />
+                    2. Tracking CTA (LP seulement)
+                  </h4>
+                  <p className="text-sm text-purple-700 mt-2">
+                    Script sur les boutons CTA pour compter les clics.
+                  </p>
+                  <div className="bg-white mt-2 p-2 rounded text-xs text-purple-600">
+                    <strong>Où :</strong> Sur TOUS les boutons CTA de la LP
+                  </div>
+                  <div className="bg-white mt-2 p-2 rounded text-xs text-purple-600">
+                    <strong>Généré par :</strong> Le générateur de scripts
+                  </div>
+                </div>
+
+                <div className="p-4 border border-green-200 rounded-lg bg-green-50">
+                  <h4 className="font-semibold text-green-800 flex items-center gap-2">
+                    <Send className="w-4 h-4" />
+                    3. Tracking Conversion (Formulaire seulement)
+                  </h4>
+                  <p className="text-sm text-green-700 mt-2">
+                    Se déclenche après l'envoi du formulaire (téléphone validé).
+                  </p>
+                  <div className="bg-white mt-2 p-2 rounded text-xs text-green-600">
+                    <strong>Options :</strong> Code JavaScript / Page de redirection / Les deux
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <h4 className="font-semibold text-yellow-800 mb-2">⚠️ Rappel important</h4>
+                <ul className="text-sm text-yellow-700 space-y-1">
+                  <li>• <strong>Pixel</strong> = LP + Formulaire (vous fournissez le code)</li>
+                  <li>• <strong>CTA</strong> = LP seulement (généré par le dashboard)</li>
+                  <li>• <strong>Conversion</strong> = Formulaire seulement (vous choisissez le type)</li>
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {/* Leads */}
+          {activeSection === 'leads' && (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <Users className="w-5 h-5 text-blue-600" />
+                Gestion des Leads
+              </h2>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="p-4 bg-green-50 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                    <strong className="text-green-800">Succès</strong>
+                  </div>
+                  <p className="text-sm text-green-700">Lead envoyé et accepté par le CRM</p>
+                </div>
+                <div className="p-4 bg-red-50 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <XCircle className="w-5 h-5 text-red-600" />
+                    <strong className="text-red-800">Échec</strong>
+                  </div>
+                  <p className="text-sm text-red-700">Erreur lors de l'envoi (retry possible)</p>
+                </div>
+                <div className="p-4 bg-orange-50 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertTriangle className="w-5 h-5 text-orange-600" />
+                    <strong className="text-orange-800">Doublon</strong>
+                  </div>
+                  <p className="text-sm text-orange-700">Téléphone déjà existant dans le CRM</p>
+                </div>
+                <div className="p-4 bg-slate-50 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <RefreshCw className="w-5 h-5 text-slate-600" />
+                    <strong className="text-slate-800">En attente</strong>
+                  </div>
+                  <p className="text-sm text-slate-700">Lead sauvegardé, envoi en cours</p>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 rounded-lg p-4">
+                <h4 className="font-semibold text-blue-800 mb-2">💡 Fonctionnalités</h4>
+                <ul className="text-sm text-blue-700 space-y-1">
+                  <li>• <strong>Filtrer</strong> par statut (succès, échec, doublon)</li>
+                  <li>• <strong>Retry</strong> les leads en échec</li>
+                  <li>• <strong>Export CSV</strong> pour Excel</li>
+                  <li>• <strong>Voir les détails</strong> de chaque lead</li>
+                </ul>
+              </div>
+
+              <div className="bg-green-50 rounded-lg p-4">
+                <h4 className="font-semibold text-green-800 mb-2">✅ Sécurité des données</h4>
+                <p className="text-sm text-green-700">
+                  Tous les leads sont d'abord sauvegardés dans la base de données AVANT 
+                  d'être envoyés au CRM. Même si l'envoi échoue, aucune donnée n'est perdue.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Analytics */}
+          {activeSection === 'analytics' && (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-blue-600" />
+                Analytics
+              </h2>
+
+              <div className="bg-blue-50 rounded-lg p-4">
+                <h4 className="font-semibold text-blue-800 mb-3">📊 Métriques disponibles</h4>
+                <div className="grid md:grid-cols-2 gap-3 text-sm">
+                  <div className="bg-white p-3 rounded">
+                    <strong className="text-blue-800">Clics CTA</strong>
+                    <p className="text-blue-600">Clics sur les boutons des LP</p>
+                  </div>
+                  <div className="bg-white p-3 rounded">
+                    <strong className="text-blue-800">Forms démarrés</strong>
+                    <p className="text-blue-600">Visiteurs arrivés sur le formulaire</p>
+                  </div>
+                  <div className="bg-white p-3 rounded">
+                    <strong className="text-blue-800">Leads reçus</strong>
+                    <p className="text-blue-600">Formulaires soumis</p>
+                  </div>
+                  <div className="bg-white p-3 rounded">
+                    <strong className="text-blue-800">Taux conversion</strong>
+                    <p className="text-blue-600">% de transformation</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-green-50 rounded-lg p-4">
+                <h4 className="font-semibold text-green-800 mb-2">🏆 Gagnants / Perdants</h4>
+                <p className="text-sm text-green-700 mb-3">
+                  Identifiez rapidement vos meilleures et pires performances :
+                </p>
+                <ul className="text-sm text-green-700 space-y-1">
+                  <li>• <strong>LP Gagnantes</strong> : Plus de leads, meilleur taux</li>
+                  <li>• <strong>LP à améliorer</strong> : Peu de leads, taux faible</li>
+                  <li>• <strong>Forms Gagnants</strong> : Meilleure conversion</li>
+                </ul>
+              </div>
+
+              <div className="bg-slate-50 rounded-lg p-4">
+                <h4 className="font-semibold text-slate-800 mb-2">📅 Filtres période (Fuseau France)</h4>
+                <ul className="text-sm text-slate-600 space-y-1">
+                  <li>• <strong>Aujourd'hui</strong> : Données du jour</li>
+                  <li>• <strong>Cette semaine</strong> : Depuis lundi</li>
+                  <li>• <strong>Ce mois</strong> : Depuis le 1er</li>
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {/* Générateur */}
+          {activeSection === 'generator' && (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <Code className="w-5 h-5 text-blue-600" />
+                Générateur de Scripts
+              </h2>
+
+              <p className="text-slate-600">
+                Le générateur crée automatiquement les scripts de tracking à copier-coller.
+              </p>
+
+              <div className="bg-purple-50 rounded-lg p-4">
+                <h4 className="font-semibold text-purple-800 mb-3">🔹 Script LP (Tracking CTA)</h4>
+                <ol className="text-sm text-purple-700 space-y-2">
+                  <li><strong>1.</strong> Sélectionnez une LP dans le menu déroulant</li>
+                  <li><strong>2.</strong> Cliquez sur "Générer le script"</li>
+                  <li><strong>3.</strong> Copiez le code généré</li>
+                  <li><strong>4.</strong> Collez-le sur TOUS les boutons CTA de votre LP</li>
+                </ol>
+              </div>
+
+              <div className="bg-green-50 rounded-lg p-4">
+                <h4 className="font-semibold text-green-800 mb-3">🔹 Script Formulaire</h4>
+                <ol className="text-sm text-green-700 space-y-2">
+                  <li><strong>1.</strong> Sélectionnez un formulaire</li>
+                  <li><strong>2.</strong> Cliquez sur "Générer le script"</li>
+                  <li><strong>3.</strong> Suivez les instructions pour l'intégration</li>
+                </ol>
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <h4 className="font-semibold text-yellow-800 mb-2">💡 Le script inclut</h4>
+                <ul className="text-sm text-yellow-700 space-y-1">
+                  <li>• Code de tracking prêt à l'emploi</li>
+                  <li>• Instructions détaillées</li>
+                  <li>• Configuration du sous-compte (pixels, etc.)</li>
+                  <li>• Bouton "Copier" pour faciliter</li>
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {/* Utilisateurs */}
+          {activeSection === 'users' && (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <Shield className="w-5 h-5 text-blue-600" />
+                Gestion des Utilisateurs
+              </h2>
+
+              <div className="bg-blue-50 rounded-lg p-4">
+                <h4 className="font-semibold text-blue-800 mb-3">👥 Rôles disponibles</h4>
+                <div className="space-y-3">
+                  <div className="bg-white p-3 rounded border border-blue-200">
+                    <strong className="text-blue-800">🔴 Admin</strong>
+                    <p className="text-sm text-blue-600 mt-1">
+                      Accès complet : créer, modifier, supprimer, gérer les utilisateurs
+                    </p>
+                  </div>
+                  <div className="bg-white p-3 rounded border border-blue-200">
+                    <strong className="text-blue-800">🟡 Éditeur</strong>
+                    <p className="text-sm text-blue-600 mt-1">
+                      Peut créer et modifier LP, Forms, Sous-comptes (pas de suppression)
+                    </p>
+                  </div>
+                  <div className="bg-white p-3 rounded border border-blue-200">
+                    <strong className="text-blue-800">🟢 Lecteur</strong>
+                    <p className="text-sm text-blue-600 mt-1">
+                      Peut uniquement consulter les données (pas de modification)
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 rounded-lg p-4">
+                <h4 className="font-semibold text-slate-800 mb-2">📜 Journal d'activité</h4>
+                <p className="text-sm text-slate-600">
+                  Les admins peuvent voir toutes les actions des utilisateurs :
+                  connexions, modifications, créations, suppressions.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Workflow */}
+          {activeSection === 'workflow' && (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <Zap className="w-5 h-5 text-blue-600" />
+                Workflow Complet
+              </h2>
+
+              <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-lg p-4">
+                <h4 className="font-semibold text-slate-800 mb-4">🚀 Créer une nouvelle campagne</h4>
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm">1</div>
+                    <div>
+                      <strong className="text-slate-800">Créer le sous-compte</strong>
+                      <p className="text-sm text-slate-600">Si nouveau site/domaine, créez d'abord le sous-compte avec ses configs</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm">2</div>
+                    <div>
+                      <strong className="text-slate-800">Créer la LP</strong>
+                      <p className="text-sm text-slate-600">Ajoutez la Landing Page avec son code unique (ex: LP-TAB-V1)</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm">3</div>
+                    <div>
+                      <strong className="text-slate-800">Créer le formulaire</strong>
+                      <p className="text-sm text-slate-600">Ajoutez le formulaire avec son code et la clé API du CRM</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-sm">4</div>
+                    <div>
+                      <strong className="text-slate-800">Générer les scripts</strong>
+                      <p className="text-sm text-slate-600">Utilisez le générateur pour obtenir les codes de tracking</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-sm">5</div>
+                    <div>
+                      <strong className="text-slate-800">Intégrer et tester</strong>
+                      <p className="text-sm text-slate-600">Collez les scripts sur vos pages et vérifiez le fonctionnement</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-orange-50 rounded-lg p-4">
+                <h4 className="font-semibold text-orange-800 mb-2">🔄 Dupliquer une campagne</h4>
+                <p className="text-sm text-orange-700 mb-3">
+                  Pour dupliquer une campagne existante (ex: Taboola → Outbrain) :
+                </p>
+                <ol className="text-sm text-orange-700 space-y-1">
+                  <li>1. Créez une nouvelle LP avec un nouveau code</li>
+                  <li>2. Créez un nouveau formulaire (ou réutilisez l'existant)</li>
+                  <li>3. Changez la source (Outbrain au lieu de Taboola)</li>
+                  <li>4. Générez les nouveaux scripts</li>
+                </ol>
+              </div>
+
+              <div className="bg-slate-100 rounded-lg p-4">
+                <h4 className="font-semibold text-slate-800 mb-2">📞 Besoin d'aide ?</h4>
+                <p className="text-sm text-slate-600">
+                  Pour toute modification ou nouvelle fonctionnalité, revenez me voir 
+                  sur Emergent et décrivez ce dont vous avez besoin. Je ferai les modifications 
+                  et vous fournirai les fichiers à déployer.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const SettingsPage = () => {
   const { authFetch } = useAuth();
   const [crms, setCrms] = useState([]);
