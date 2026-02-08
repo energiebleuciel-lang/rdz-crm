@@ -1447,6 +1447,95 @@ async def get_archived_leads(
     
     return {"leads": leads, "count": len(leads), "total": total}
 
+# Modèle pour marquer une période comme facturée
+class BillingPeriodCreate(BaseModel):
+    year: int
+    month: int  # 1-12
+    from_crm_id: str  # CRM qui paie
+    to_crm_id: str    # CRM qui reçoit
+    amount: float
+    lead_count: int
+    notes: Optional[str] = ""
+
+@api_router.post("/billing/mark-invoiced")
+async def mark_period_invoiced(billing: BillingPeriodCreate, user: dict = Depends(require_admin)):
+    """Marquer une période comme facturée entre deux CRMs"""
+    # Vérifier si déjà facturé
+    existing = await db.billing_history.find_one({
+        "year": billing.year,
+        "month": billing.month,
+        "from_crm_id": billing.from_crm_id,
+        "to_crm_id": billing.to_crm_id
+    })
+    
+    if existing:
+        # Mettre à jour
+        await db.billing_history.update_one(
+            {"id": existing["id"]},
+            {"$set": {
+                "amount": billing.amount,
+                "lead_count": billing.lead_count,
+                "notes": billing.notes,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "updated_by": user["id"]
+            }}
+        )
+        return {"success": True, "message": "Facturation mise à jour", "id": existing["id"]}
+    
+    # Créer nouvelle entrée
+    billing_doc = {
+        "id": str(uuid.uuid4()),
+        "year": billing.year,
+        "month": billing.month,
+        "from_crm_id": billing.from_crm_id,
+        "to_crm_id": billing.to_crm_id,
+        "amount": billing.amount,
+        "lead_count": billing.lead_count,
+        "notes": billing.notes,
+        "invoiced_at": datetime.now(timezone.utc).isoformat(),
+        "invoiced_by": user["id"]
+    }
+    await db.billing_history.insert_one(billing_doc)
+    
+    # Récupérer les noms des CRMs pour le log
+    from_crm = await db.crms.find_one({"id": billing.from_crm_id})
+    to_crm = await db.crms.find_one({"id": billing.to_crm_id})
+    
+    await log_activity(user["id"], user["email"], "invoice", "billing", billing_doc["id"], 
+                      f"Facturé {billing.month}/{billing.year}: {from_crm.get('name', '')} → {to_crm.get('name', '')} = {billing.amount}€")
+    
+    return {"success": True, "message": "Période marquée comme facturée", "id": billing_doc["id"]}
+
+@api_router.get("/billing/history")
+async def get_billing_history(
+    year: Optional[int] = None,
+    user: dict = Depends(require_admin)
+):
+    """Récupérer l'historique des facturations"""
+    query = {}
+    if year:
+        query["year"] = year
+    
+    history = await db.billing_history.find(query, {"_id": 0}).sort([("year", -1), ("month", -1)]).to_list(100)
+    
+    # Enrichir avec les noms des CRMs
+    crms = await db.crms.find({}, {"_id": 0}).to_list(10)
+    crm_map = {crm["id"]: crm["name"] for crm in crms}
+    
+    for item in history:
+        item["from_crm_name"] = crm_map.get(item.get("from_crm_id"), "Inconnu")
+        item["to_crm_name"] = crm_map.get(item.get("to_crm_id"), "Inconnu")
+    
+    return {"history": history}
+
+@api_router.delete("/billing/history/{billing_id}")
+async def delete_billing_record(billing_id: str, user: dict = Depends(require_admin)):
+    """Supprimer un enregistrement de facturation"""
+    result = await db.billing_history.delete_one({"id": billing_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Enregistrement non trouvé")
+    return {"success": True}
+
 @api_router.get("/billing/dashboard")
 async def get_billing_dashboard(
     date_from: Optional[str] = None,
