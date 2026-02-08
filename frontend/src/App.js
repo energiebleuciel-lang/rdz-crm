@@ -770,10 +770,42 @@ const LeadsPage = () => {
                     <td className="py-3 px-4 text-sm text-slate-700">{new Date(lead.created_at).toLocaleString('fr-FR')}</td>
                     <td className="py-3 px-4 text-sm text-slate-700">{lead.nom}</td>
                     <td className="py-3 px-4 text-sm text-slate-700">{lead.phone}</td>
-                    <td className="py-3 px-4 text-sm text-slate-700">{lead.email}</td>
                     <td className="py-3 px-4 text-sm text-slate-700">{lead.code_postal || lead.departement}</td>
                     <td className="py-3 px-4 text-sm text-slate-700">{lead.form_code || lead.form_id}</td>
-                    <td className="py-3 px-4"><StatusBadge status={lead.api_status} /></td>
+                    <td className="py-3 px-4">
+                      {(() => {
+                        const pt = lead.product_type || 'PV';
+                        const colors = { 'PV': 'bg-yellow-100 text-yellow-700', 'PAC': 'bg-blue-100 text-blue-700', 'ITE': 'bg-green-100 text-green-700' };
+                        return <span className={`text-xs font-bold px-2 py-0.5 rounded ${colors[pt] || 'bg-slate-100 text-slate-700'}`}>{pt}</span>;
+                      })()}
+                    </td>
+                    <td className="py-3 px-4">
+                      {lead.target_crm_slug ? (
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded ${lead.target_crm_slug === 'mdl' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                          {lead.target_crm_name || lead.target_crm_slug.toUpperCase()}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-400">-</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4">
+                      {(() => {
+                        const status = lead.api_status;
+                        const slug = lead.target_crm_slug;
+                        if (status === 'success') {
+                          return <span className="text-xs font-medium px-2 py-0.5 rounded bg-green-100 text-green-700">✓ Envoyé</span>;
+                        } else if (status === 'duplicate') {
+                          return <span className="text-xs font-medium px-2 py-0.5 rounded bg-orange-100 text-orange-700">Doublon</span>;
+                        } else if (status === 'failed') {
+                          return <span className="text-xs font-medium px-2 py-0.5 rounded bg-red-100 text-red-700">Échec</span>;
+                        } else if (status === 'no_config') {
+                          return <span className="text-xs font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-600">Pas de clé API</span>;
+                        } else if (status === 'duplicate_today') {
+                          return <span className="text-xs font-medium px-2 py-0.5 rounded bg-orange-100 text-orange-700">Doublon jour</span>;
+                        }
+                        return <span className="text-xs font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-700">{status || 'En attente'}</span>;
+                      })()}
+                    </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-1">
                         {lead.api_status === 'failed' && (
