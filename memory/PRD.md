@@ -1,154 +1,145 @@
-# CRM Multi-tenant - Gestion de Leads Solaires
+# EnerSolar CRM - Gestion de Leads Solaires
 
 ## Problème Original
-Créer un CRM multi-tenant pour la gestion de leads solaires. Le système centralise toutes les informations (logos, images, codes GTM, textes légaux) au niveau du Compte, génère des briefs textuels pour les développeurs, et route les leads vers les CRM destination (ZR7 Digital ou Maison du Lead).
+CRM multi-tenant pour centraliser et redistribuer les leads solaires (PAC, PV, ITE) vers ZR7 Digital et Maison du Lead, avec routage intelligent et facturation inter-CRM.
 
 ## Architecture Technique
 
 ### Stack
-- **Frontend**: React 18 avec Tailwind CSS, React Router
+- **Frontend**: React 18 + Tailwind CSS + React Router
 - **Backend**: FastAPI (Python)
 - **Base de données**: MongoDB
 - **Authentification**: JWT
 
-### Flux des Leads avec Routage Intelligent
+### Flux des Leads
 ```
-[Formulaire Web]
-     ↓ (Lead soumis via /api/submit-lead avec form_code)
-[CE CRM] → Stocke le lead
-     ↓ (Routage intelligent OPTIONNEL)
-[Vérification des commandes]
-  → Si commandes configurées:
-    → CRM origine a commande pour ce département/produit? → Envoi vers origine
-    → Sinon, autre CRM a commande? → Reroutage vers autre CRM
-    → Aucun CRM n'a commande? → Fallback vers origine
-  → Si pas de commandes: → Envoi direct vers CRM origine
+[Formulaire Web] → POST /api/submit-lead
      ↓
-[ZR7 ou MDL] → Via leur API avec crm_api_key
+[Anti-doublon] → Même téléphone + même produit/jour ?
+     ↓ (non)
+[Routage intelligent] → Si commandes configurées + formulaire non exclu
+     → CRM origine a commande ? → Envoi vers origine
+     → Sinon, autre CRM a commande ? → Reroutage
+     → Aucun ? → Fallback vers origine
      ↓
-[Facturation Inter-CRM] → Si reroutage, montants calculés selon prix configurés
-```
-
-## APIs CRM Destination
-- **ZR7 Digital**: `POST https://app.zr7-digital.fr/lead/api/create_lead/`
-- **Maison du Lead**: `POST https://app.maisonsdulead.fr/lead/api/create_lead/`
-- **Format**: JSON avec Header `Authorization: <token>`
-
-## API Ce CRM - Envoi des Leads
-
-### Endpoint
-```
-POST /api/submit-lead
-Content-Type: application/json
-```
-
-### Body (JSON)
-```json
-{
-  "form_code": "VOTRE-CODE-FORM",
-  "phone": "0612345678",
-  "nom": "Dupont",
-  "prenom": "Jean",
-  "civilite": "M.",
-  "email": "email@example.com",
-  "departement": "75",
-  "code_postal": "75001",
-  "superficie_logement": "120",
-  "chauffage_actuel": "Gaz",
-  "type_logement": "Maison",
-  "statut_occupant": "Propriétaire",
-  "facture_electricite": "150"
-}
+[ZR7 ou MDL] → Via API externe
+     ↓
+[Facturation] → Si reroutage, montants calculés
 ```
 
 ## Fonctionnalités Implémentées
 
-### Phase 9 - Facturation Inter-CRM (Complété - 08/02/2026)
-- [x] **Dashboard de facturation** (`/billing`) : Statistiques par CRM, leads routés, montants à facturer
-- [x] **Configuration des prix par lead** : Prix PAC/PV/ITE en euros par CRM
-- [x] **Filtres par type de produit** : Boutons Tous/PV/PAC/ITE sur page Formulaires
-- [x] **Archivage automatique** : Endpoint `/api/leads/archive?months=3` + bouton dans UI
-- [x] **Routage intelligent** : Reroutage basé sur commandes (départements/produits) par CRM
+### Phase 10 - Finalisation (08/02/2026)
+- [x] **Marquage facturation** : Bouton "Marquer ce mois comme facturé" avec historique
+- [x] **Exclusion routage** : Checkbox par formulaire pour éviter reroutage (doublons cross-CRM)
+- [x] **Anti-doublon amélioré** : Même téléphone + même produit/jour (PAC, PV, ITE indépendants)
+- [x] **Guide refait** : 7 sections (Intro, Démarrage, Formulaires, Routage, Facturation, API, FAQ)
+- [x] **Filtres produit** : Boutons Tous/PV/PAC/ITE sur page Formulaires
 
-### Phase 8 - Finalisation (Complété)
-- [x] Clé API interne visible avec bouton copier
-- [x] Brief Generator avec Notice API auto-incluse
-- [x] Suppression réservée aux Admins
-- [x] Leads réservés aux Admins
-- [x] Guide d'utilisation complet
-- [x] Tous les champs ZR7/MDL supportés
+### Phase 9 - Facturation Inter-CRM
+- [x] Dashboard facturation avec stats par CRM
+- [x] Configuration prix par lead (PAC/PV/ITE en €)
+- [x] Archivage automatique (> 3 mois)
 
-## Nouveaux Endpoints (Phase 9)
+### Phases Précédentes
+- [x] Gestion Comptes, LPs, Formulaires
+- [x] Générateur de Briefs avec validations automatiques
+- [x] Routage intelligent basé sur commandes (départements 01-95)
+- [x] Rôles Admin/Éditeur/Lecteur
+- [x] Job nocturne retry leads échoués
+
+## Règles Métier Clés
+
+### Anti-Doublon
+- **Doublon** = même téléphone + même produit (PAC, PV ou ITE) par jour
+- Un client peut s'inscrire PAC et PV le même jour = 2 leads valides
+
+### Exclusion Routage Inter-CRM
+- Formulaires de redirection marqués "Exclure du routage"
+- Évite de livrer 2x le même client (ex: PAC sur MDL + PV via redirect sur ZR7)
+
+### Routage Intelligent (Optionnel)
+- S'active uniquement si commandes configurées
+- Formulaire non exclu + département présent
+- Fallback vers CRM d'origine si aucune commande trouvée
+
+## Endpoints Principaux
+
+### Leads
+```
+POST /api/submit-lead          # Soumettre un lead
+GET /api/leads                 # Liste des leads (admin)
+POST /api/leads/archive        # Archiver > 3 mois
+```
 
 ### Facturation
 ```
-GET /api/billing/dashboard?date_from=X&date_to=Y
-```
-Retourne:
-- `crm_stats[]` : Par CRM → leads_originated, leads_received, leads_rerouted_out/in, amount_to_invoice/pay, net_balance
-- `transfers[]` : Détail des transferts inter-CRM avec montants
-
-### Archivage
-```
-POST /api/leads/archive?months=3  (Admin only)
-GET /api/leads/archived?limit=100&date_from=X&date_to=Y  (Admin only)
+GET /api/billing/dashboard     # Stats par CRM et période
+POST /api/billing/mark-invoiced # Marquer période facturée
+GET /api/billing/history       # Historique facturations
+DELETE /api/billing/history/{id} # Supprimer enregistrement
 ```
 
-### Configuration CRM avec Prix
+### Formulaires
 ```
-PUT /api/crms/{crm_id}
-Body: { "commandes": {...}, "lead_prices": {"PAC": 25, "PV": 20, "ITE": 30} }
+GET /api/forms?product_type=panneaux # Avec filtre produit
+POST /api/forms               # Créer (avec exclude_from_routing)
+PUT /api/forms/{id}           # Modifier
 ```
 
-## Rôles Utilisateurs
+## Schéma DB
 
-| Rôle | Accès | Peut supprimer | Accès Leads | Accès Facturation |
-|------|-------|----------------|-------------|-------------------|
-| Admin | Complet | ✅ | ✅ | ✅ |
-| Éditeur | Créer/Modifier | ❌ | ❌ | ❌ |
-| Lecteur | Consultation | ❌ | ❌ | ❌ |
+### forms
+```json
+{
+  "code": "PV-TAB-001",
+  "product_type": "panneaux",
+  "crm_api_key": "uuid",
+  "internal_api_key": "uuid",
+  "exclude_from_routing": false
+}
+```
 
-## Credentials de Test
+### leads
+```json
+{
+  "phone": "0612345678",
+  "product_type": "PV",
+  "origin_crm_id": "uuid",
+  "target_crm_id": "uuid",
+  "routing_reason": "direct_to_origin | rerouted_to_zr7"
+}
+```
+
+### billing_history
+```json
+{
+  "year": 2026,
+  "month": 2,
+  "from_crm_id": "uuid",
+  "to_crm_id": "uuid",
+  "amount": 500.00,
+  "lead_count": 20,
+  "notes": "Facture #123"
+}
+```
+
+## Credentials Test
 - **Email**: energiebleuciel@gmail.com
 - **Password**: 92Ruemarxdormoy
 
 ## Backlog
 
 ### P0 - Sécurité
-- [ ] **Backend filtrage par allowed_accounts** : Filtrer données selon permissions utilisateur
+- [ ] Backend filtrage par allowed_accounts (faille sécurité)
 
 ### P1 - Améliorations
-- [ ] Générateur de LP HTML avec style officiel
-- [ ] Générateur de Formulaires HTML avec GTM intégré
-- [ ] Graphiques visuels sur dashboard de facturation
+- [ ] Graphiques visuels dashboard facturation
+- [ ] Export CSV des leads/facturations
 
 ### P2 - Technique
-- [ ] Refactoring Frontend (App.js > 4500 lignes)
-- [ ] Refactoring Backend (server.py vers modules)
+- [ ] Refactoring App.js (4800+ lignes)
+- [ ] Refactoring server.py en modules
 
-## Schéma DB Mis à Jour
-
-### Collection `crms`
-```json
-{
-  "id": "uuid",
-  "name": "Maison du Lead",
-  "slug": "mdl",
-  "api_url": "https://...",
-  "commandes": {"PAC": ["75", "92"], "PV": ["13"], "ITE": []},
-  "lead_prices": {"PAC": 25.0, "PV": 20.0, "ITE": 30.0}
-}
-```
-
-### Collection `leads` (champs ajoutés)
-```json
-{
-  "origin_crm_id": "uuid",
-  "target_crm_id": "uuid",
-  "routing_reason": "direct_to_origin | rerouted_to_zr7 | no_order_fallback_origin",
-  "product_type": "PAC | PV | ITE"
-}
-```
-
-### Collection `leads_archived`
-Même structure que `leads` + `archived_at`
+## Déploiement
+- **Prévu**: Hostinger (après validation utilisateur)
