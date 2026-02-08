@@ -1611,7 +1611,6 @@ class BriefSelectionForm(BaseModel):
     # Infos dynamiques (saisies au moment de générer)
     crm_api_key: Optional[str] = ""  # Clé API CRM destination (ZR7/MDL)
     # Éléments à inclure du compte
-    include_internal_api_key: bool = True  # Inclure la clé API interne (pour recevoir les leads)
     include_logo_main: bool = False
     include_logo_secondary: bool = False
     include_images: List[str] = []  # Liste des noms d'images à inclure
