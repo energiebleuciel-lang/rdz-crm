@@ -75,6 +75,7 @@ class AccountCreate(BaseModel):
     primary_color: Optional[str] = "#3B82F6"
     secondary_color: Optional[str] = "#1E40AF"
     # Textes légaux
+    cgu_text: Optional[str] = ""           # CGU séparées
     privacy_policy_text: Optional[str] = ""
     legal_mentions_text: Optional[str] = ""
     # GTM & Tracking
