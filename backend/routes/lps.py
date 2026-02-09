@@ -23,7 +23,11 @@ async def list_lps(
     if account_id:
         query["account_id"] = account_id
     if status:
-        query["status"] = status
+        # Inclure les documents qui ont status=active OU qui n'ont pas de champ status
+        query["$or"] = [
+            {"status": status},
+            {"status": {"$exists": False}}
+        ]
     
     lps = await db.lps.find(query, {"_id": 0}).sort("created_at", -1).to_list(200)
     
