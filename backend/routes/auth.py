@@ -21,15 +21,15 @@ security = HTTPBearer(auto_error=False)
 DEFAULT_PERMISSIONS = {
     "admin": {
         "dashboard": True, "accounts": True, "lps": True, "forms": True,
-        "leads": True, "commandes": True, "settings": True, "users": True
+        "leads": True, "departements": True, "commandes": True, "settings": True, "users": True
     },
     "editor": {
         "dashboard": True, "accounts": True, "lps": True, "forms": True,
-        "leads": True, "commandes": False, "settings": False, "users": False
+        "leads": True, "departements": True, "commandes": False, "settings": False, "users": False
     },
     "viewer": {
         "dashboard": True, "accounts": False, "lps": True, "forms": True,
-        "leads": True, "commandes": False, "settings": False, "users": False
+        "leads": True, "departements": True, "commandes": False, "settings": False, "users": False
     }
 }
 
