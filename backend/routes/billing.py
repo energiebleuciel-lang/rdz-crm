@@ -345,3 +345,65 @@ async def get_cross_crm_summary(
         "transactions": billing.get("transactions"),
         "balances": billing.get("balances")
     }
+
+
+# ==================== FACTURATION PAR SEMAINE ====================
+
+@router.get("/weeks/current")
+async def get_current_week_info(user: dict = Depends(get_current_user)):
+    """Retourne l'année et le numéro de semaine actuels."""
+    year, week = get_current_week()
+    return {"year": year, "week": week}
+
+
+@router.get("/weeks/{year}/{week}")
+async def get_week_billing_view(
+    year: int,
+    week: int,
+    user: dict = Depends(get_current_user)
+):
+    """
+    Récupère la facturation pour une semaine spécifique.
+    
+    - year: Année (ex: 2026)
+    - week: Numéro de semaine ISO (1-52)
+    """
+    if week < 1 or week > 53:
+        raise HTTPException(status_code=400, detail="Numéro de semaine invalide (1-53)")
+    
+    # Données de facturation
+    billing = await get_week_billing(year, week)
+    
+    # Statut de facturation
+    status = await get_week_invoice_status(year, week)
+    
+    return {
+        **billing,
+        "invoice_status": status
+    }
+
+
+@router.post("/weeks/{year}/{week}/invoice")
+async def toggle_week_invoice(
+    year: int,
+    week: int,
+    invoiced: bool = True,
+    user: dict = Depends(require_admin)
+):
+    """
+    Marque une semaine comme facturée ou non facturée.
+    """
+    result = await mark_week_as_invoiced(year, week, invoiced)
+    return result
+
+
+@router.get("/weeks/history")
+async def get_weeks_history(
+    limit: int = Query(52, description="Nombre de semaines à retourner"),
+    user: dict = Depends(get_current_user)
+):
+    """
+    Liste les semaines avec leur statut de facturation.
+    """
+    weeks = await list_invoiced_weeks(limit)
+    return {"weeks": weeks, "count": len(weeks)}
