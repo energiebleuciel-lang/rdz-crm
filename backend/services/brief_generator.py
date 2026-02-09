@@ -412,60 +412,7 @@ Ou avec un lien:
 -->
 '''
 
-    # ==================== STATS EXPLIQUÉES ====================
-    stats_explanation = f'''
-📊 STATISTIQUES TRACKÉES ET REMONTÉES DANS VOTRE CRM
-
-┌────────────────────────────────────────────────────────────────┐
-│ 🔵 ÉVÉNEMENTS SUR LA LANDING PAGE ({lp_code or "Pas de LP liée"})            │
-├────────────────────────────────────────────────────────────────┤
-│ • Visites LP      : Nombre de visiteurs sur la LP              │
-│                     → Déclenché automatiquement au chargement  │
-│                                                                │
-│ • Clics CTA       : Nombre de clics sur le bouton d'action     │
-│                     → Déclenché par trackCTAClick()            │
-├────────────────────────────────────────────────────────────────┤
-│ 🟢 ÉVÉNEMENTS SUR LE FORMULAIRE ({form_code})                  │
-├────────────────────────────────────────────────────────────────┤
-│ • Forms démarrés  : Nombre qui commencent le formulaire        │
-│                     → Déclenché par trackFormStart()           │
-│                                                                │
-│ • Leads terminés  : Nombre qui valident (téléphone OK)         │
-│                     → Déclenché par submitLead() avec succès   │
-├────────────────────────────────────────────────────────────────┤
-│ 📈 TAUX DE CONVERSION                                          │
-├────────────────────────────────────────────────────────────────┤
-│ • LP → CTA        : (Clics CTA / Visites LP) × 100             │
-│   → Mesure l'efficacité de votre LP à générer des clics        │
-│                                                                │
-│ • CTA → Démarré   : (Forms démarrés / Clics CTA) × 100         │
-│   → Mesure la transition entre LP et formulaire                │
-│                                                                │
-│ • Démarré → Fini  : (Leads terminés / Forms démarrés) × 100    │
-│   → Mesure l'efficacité de votre formulaire                    │
-│                                                                │
-│ • CONVERSION TOTALE: (Leads terminés / Visites LP) × 100       │
-│   → Votre taux de conversion global du tunnel                  │
-└────────────────────────────────────────────────────────────────┘
-
-🔗 CODE DE LIAISON: {liaison_code or "Aucun (pas de LP liée)"}
-   Ce code unique permet de tracer tout le parcours d'un visiteur
-   de la LP jusqu'à la conversion.
-'''
-
-    # ==================== VALIDATION TÉLÉPHONE ====================
-    phone_validation = {
-        "rules": [
-            "10 chiffres obligatoires",
-            "Doit commencer par 0",
-            "Pas de suite (0123456789)",
-            "Pas de répétition (0666666666)"
-        ],
-        "example": "0612345678",
-        "auto_format": "Si 9 chiffres sans 0, ajoute automatiquement le 0"
-    }
-
-    # ==================== RÉSULTAT ====================
+    # ==================== RÉSULTAT SIMPLIFIÉ ====================
     return {
         "form": {
             "id": form_id,
@@ -494,8 +441,6 @@ Ou avec un lien:
             "form": script_form
         },
         "lead_fields": LEAD_FIELDS,
-        "stats_explanation": stats_explanation,
-        "phone_validation": phone_validation,
         "api_url": api_url
     }
 
