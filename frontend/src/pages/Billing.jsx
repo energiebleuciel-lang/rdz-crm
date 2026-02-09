@@ -33,7 +33,7 @@ export default function Billing() {
   const loadBilling = async () => {
     setLoading(true);
     try {
-      const data = await api.get(`/billing/cross-crm?period=${period}`);
+      const data = await api.get(`/api/billing/cross-crm?period=${period}`);
       setBilling(data);
     } catch (err) {
       console.error('Erreur chargement facturation:', err);
@@ -43,7 +43,7 @@ export default function Billing() {
 
   const loadVerificationStatus = async () => {
     try {
-      const data = await api.get('/verification/status');
+      const data = await api.get('/api/verification/status');
       setVerificationStatus(data);
     } catch (err) {
       console.error('Erreur chargement status:', err);
@@ -53,7 +53,7 @@ export default function Billing() {
   const runVerification = async () => {
     setRunningVerification(true);
     try {
-      const result = await api.post('/verification/run');
+      const result = await api.post('/api/verification/run');
       alert(result.message);
       loadVerificationStatus();
     } catch (err) {
