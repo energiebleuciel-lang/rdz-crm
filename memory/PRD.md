@@ -5,34 +5,51 @@ CRM multi-tenant pour centraliser et redistribuer les leads solaires (PAC, PV, I
 
 ## Fonctionnalités Implémentées
 
-### ✅ Système Anti-Bug - File d'Attente des Leads (09/02/2026)
-- **File d'attente automatique** : Si un CRM externe (ZR7/MDL) est down, les leads sont automatiquement mis en file d'attente
-- **Retry automatique** : 5 tentatives avec délais progressifs (1min, 5min, 15min, 1h, 2h)
-- **Monitoring CRM** : Détection automatique de l'état de santé des CRM externes
-- **Dashboard temps réel** : Widget "File d'attente des leads" sur le dashboard avec stats
-- **Endpoints API** :
-  - `GET /api/queue/stats` : Statistiques de la file
-  - `GET /api/queue/items` : Liste des éléments en queue
-  - `POST /api/queue/process` : Traitement manuel (admin)
-  - `POST /api/queue/retry-exhausted` : Réinitialiser les leads épuisés
-- **UI Component** : `QueueStatus.jsx` pour visualisation
+### ✅ Endpoint Public pour Récupérer les Formulaires (09/02/2026)
+- **GET /api/forms/public/{form_code}**: Récupérer un formulaire par son code sans authentification
+- **GET /api/forms/public/by-lp/{lp_code}**: Récupérer les formulaires liés à une LP
+- Retourne: infos form, LP liée, compte (logos, couleurs)
+
+### ✅ Endpoint Départements France Métropolitaine (09/02/2026)
+- **GET /api/forms/config/departements**: Liste des 96 départements (01-95 + 2A, 2B)
+- Format: `{"code": "75", "nom": "Paris"}`
+
+### ✅ Champs de Récupération de Lead Étendus (09/02/2026)
+Nouveaux champs disponibles dans l'API v1/leads:
+- **Identité**: phone (obligatoire), nom, prenom, civilite, email
+- **Localisation**: code_postal, departement, ville, adresse
+- **Logement**: type_logement, statut_occupant, surface_habitable, annee_construction, type_chauffage
+- **Énergie**: facture_electricite, facture_chauffage
+- **Projet**: type_projet, delai_projet, budget
+- **Tracking**: lp_code, liaison_code, source, utm_source, utm_medium, utm_campaign
+- **Consentement**: rgpd_consent, newsletter
+
+### ✅ Scripts LP/Form Synchronisés (09/02/2026)
+- Scripts générés dans le Brief avec code de liaison automatique
+- Format: `{LP_CODE}_{FORM_CODE}`
+- UTM tracking transmis de LP vers Form
+- Console logs pour debugging
+
+### ✅ Brief Développeur Amélioré (09/02/2026)
+- Affichage de l'endpoint public
+- Liste complète des champs disponibles par catégorie
+- Scripts commentés et documentés
+- Statistiques trackées expliquées
+
+### ✅ Page Leads Améliorée (09/02/2026)
+- Vue détaillée de chaque lead (modal)
+- Export CSV complet avec tous les champs
+- Colonnes: Source, UTM tracking
+- Affichage du département avec code postal
+
+### ✅ Système Anti-Bug - File d'Attente des Leads
+- File d'attente automatique si CRM externe down
+- Retry automatique: 5 tentatives avec délais progressifs
+- Dashboard temps réel avec widget
 
 ### ✅ Codes Formulaires Auto-générés
-- Format automatique: `PV-001`, `PAC-002`, `ITE-003`
-- Compteur intelligent par type de produit
-- Fonctionne pour création ET duplication
-
-### ✅ Statistiques de Conversion
-- **Démarré** = Premier clic sur bouton "Suivant" ou "Commencer" (trackFormStart())
-- **Terminé** = Clic sur bouton final après validation téléphone (submitLeadToCRM())
-- **% Conversion** = Terminés / Démarrés × 100
-
-### ✅ Brief Développeur Complet
-- Endpoint `/api/forms/{form_id}/brief`
-- Script de tracking multi-étapes
-- Support logo/badge du compte
-- Aides financières avec montants
-- 3 options de tracking conversion : GTM, Redirect, ou les 2
+- Format: `PV-001`, `PAC-002`, `ITE-003`
+- Codes LP: `LP-001`, `LP-002`, etc.
 
 ### ✅ UI Formulaires Style Landbot
 - Vue cartes avec stats visuelles
@@ -41,39 +58,105 @@ CRM multi-tenant pour centraliser et redistribuer les leads solaires (PAC, PV, I
 
 ## Architecture Technique
 
-### Backend
-- `/app/backend/server.py` - API FastAPI principale
-- `/app/backend/lead_queue_service.py` - **NEW** Service de file d'attente
-- `/app/backend/email_service.py` - Service d'emails (SendGrid)
-- `/app/backend/scheduler_service.py` - Tâches planifiées
+### Backend (V2 - Modulaire)
+```
+/app/backend/
+├── server.py           # Point d'entrée FastAPI
+├── config.py           # Configuration, DB, helpers
+├── models.py           # Modèles Pydantic
+├── routes/
+│   ├── auth.py         # Login, sessions, API key
+│   ├── accounts.py     # Comptes clients
+│   ├── crms.py         # CRMs externes (ZR7, MDL)
+│   ├── lps.py          # Landing Pages
+│   ├── forms.py        # Formulaires + endpoints publics
+│   ├── leads.py        # API v1 + gestion leads
+│   ├── tracking.py     # Events LP/Form
+│   └── queue.py        # File d'attente
+└── services/
+    ├── brief_generator.py  # Génération scripts
+    └── lead_sender.py      # Envoi CRM externe
+```
 
-### Frontend
-- `/app/frontend/src/App.js` - Application React principale
-- `/app/frontend/src/components/QueueStatus.jsx` - **NEW** Widget file d'attente
-- `/app/frontend/src/components/FormsGrid.jsx` - Grille des formulaires
-- `/app/frontend/src/components/FormCard.jsx` - Carte formulaire
+### Frontend (V2 - Modulaire)
+```
+/app/frontend/src/
+├── App.jsx             # Routes principales
+├── pages/
+│   ├── Dashboard.jsx
+│   ├── Accounts.jsx
+│   ├── LandingPages.jsx
+│   ├── Forms.jsx
+│   ├── Leads.jsx
+│   └── Settings.jsx
+├── components/
+│   ├── Layout.jsx
+│   └── UI.jsx
+└── hooks/
+    ├── useAuth.js
+    └── useApi.js
+```
 
 ### Collections MongoDB
-- `leads` - Leads avec statut `queued` si en attente
-- `lead_queue` - File d'attente avec metadata de retry
-- `forms`, `accounts`, `crms` - Configuration
+- `users`, `sessions` - Auth
+- `accounts` - Comptes clients
+- `crms` - CRMs externes
+- `lps` - Landing Pages
+- `forms` - Formulaires
+- `leads` - Leads reçus
+- `tracking` - Events de tracking
+- `lead_queue` - File d'attente
+- `system_config` - Config (API key globale)
+
+## Endpoints API Clés
+
+### Publics (sans auth)
+- `GET /api/forms/public/{form_code}` - Récupérer config form
+- `GET /api/forms/public/by-lp/{lp_code}` - Forms liés à une LP
+- `GET /api/forms/config/departements` - Liste départements FR
+- `POST /api/track/lp-visit` - Track visite LP
+- `POST /api/track/cta-click` - Track clic CTA
+- `POST /api/track/form-start` - Track début form
+
+### API v1 (Token auth)
+- `POST /api/v1/leads` - Soumettre un lead
+
+### Authentifiés (Bearer token)
+- `GET /api/forms` - Liste formulaires
+- `GET /api/forms/brief/{form_id}` - Brief développeur
+- `GET /api/leads` - Liste leads
+- `GET /api/auth/api-key` - Récupérer clé API globale
 
 ## Credentials Test
 - **Email**: energiebleuciel@gmail.com
 - **Password**: 92Ruemarxdormoy
+- **ZR7 API Key (PV)**: 342b6515-7424-43a6-b5c9-142385fc6ef1
+- **MDL API Key (PV)**: 00f4e557-4903-47c6-87db-e3d41460ce45
 
 ## Backlog
 
-### En Attente (P1)
-- [ ] Vérification SendGrid (Settings → Sender Authentication)
-- [ ] Mode Campagne Test (multi-LP ou multi-Form)
-- [ ] Supprimer bouton "Régénérer" clé API
+### P0 - Critique
+- [x] URL RDZ pour récupérer les forms (endpoint public)
+- [x] Champs de récupération de lead complets
+- [x] Départements France métropolitaine (01-95)
+- [x] Scripts LP/Form synchronisés
+- [ ] Facturation Inter-CRM & Prix des leads
 
-### Technique (P2)
-- [ ] Refactoring App.js en composants séparés
-- [ ] Refactoring server.py en modules (routes, services)
-- [ ] Formulaires hébergés dans l'app
+### P1 - Important
+- [ ] Support complet GTM & Redirect tracking
+- [ ] Sous-comptes (Sub-accounts)
+- [ ] Sources de diffusion
+- [ ] Configuration Types de produits
+
+### P2 - Nice to have
+- [ ] Bibliothèque d'images
+- [ ] Logs d'activité
+- [ ] Alertes système
+- [ ] Mode Campagne A/B Testing
+
+### Technique
+- [ ] Vérification SendGrid (dépend action utilisateur)
 
 ## Déploiement
-- **Live**: https://rdz-group-ltd.online (Hostinger VPS)
 - **Preview**: https://leadsolar-2.preview.emergentagent.com
+- **Production**: https://rdz-group-ltd.online (Hostinger VPS - à déployer)
