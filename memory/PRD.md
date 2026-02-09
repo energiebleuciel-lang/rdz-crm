@@ -9,26 +9,47 @@ CRM multi-tenant pour centraliser et redistribuer les leads solaires (PAC, PV, I
 
 ## Fonctionnalités Implémentées
 
-### ✅ Facturation Inter-CRM & Vérification Nocturne (09/02/2026)
-- **Page Facturation** (`/billing`): Vue complète des leads cross-CRM
-  - Statistiques par période (7 jours, 30 jours)
-  - Balances par CRM (à recevoir vs à payer)
-  - Transactions détaillées
-  - Détail des leads cross-CRM
-- **API `/api/billing/cross-crm`**: Calcul automatique des montants
-  - Si ZR7 envoie un lead à MDL → MDL doit payer ZR7
-  - Prix basé sur `prix_unitaire` des commandes
-- **Vérification Nocturne (3h UTC)**: Tâche planifiée APScheduler
-  - Vérifie tous les leads des 24 dernières heures
-  - Relance automatique des leads échoués (sauf doublons CRM)
-  - Génère un rapport de réconciliation
-  - API `/api/verification/run` pour exécution manuelle
-  - API `/api/verification/status` pour statut
+### ✅ Facturation Inter-CRM avec Navigation par Semaine (09/02/2026)
+- **Navigation par semaine**: Boutons < Semaine précédente | Semaine suivante >
+- **Affichage dates**: Format "29/12/2025 → 04/01/2026"
+- **Bouton "Marquer comme facturé"**: Toggle le statut de facturation par semaine
+- **Calcul automatique**: Si ZR7 → MDL = MDL doit payer ZR7
+- **APIs**:
+  - `GET /api/billing/weeks/current` - Semaine actuelle
+  - `GET /api/billing/weeks/{year}/{week}` - Données de facturation d'une semaine
+  - `POST /api/billing/weeks/{year}/{week}/invoice` - Marquer comme facturé
+
+### ✅ Prix par Lead dans Commandes (09/02/2026)
+- Champ `prix_unitaire` éditable directement dans la liste des commandes
+- Format: "Prix: [0] €"
+- Mise à jour via API `PUT /api/commandes/{id}`
+
+### ✅ CGU & Politique de Confidentialité dans Comptes (09/02/2026)
+- Section dépliable "Textes Légaux (CGU, Confidentialité)"
+- Champs:
+  - `cgu_text`: Conditions Générales d'Utilisation
+  - `privacy_policy_text`: Politique de Confidentialité
+  - `legal_mentions_text`: Mentions Légales (optionnel)
+
+### ✅ Logos et Boutons CGU/Privacy dans Brief (09/02/2026)
+- `logos_html`: Code HTML avec logos (principal, secondaire, favicon)
+- `legal_html`: Boutons cliquables CGU/Privacy qui ouvrent un popup
+- Inclus pour les 2 modes: embedded ET redirect
+
+### ✅ Filtrage Leads/Départements par CRM (09/02/2026)
+- API `GET /api/leads?crm_id={uuid}` filtre côté backend
+- API `GET /api/stats/departements?crm_id={uuid}` filtre côté backend
+- Frontend utilise le CRM sélectionné automatiquement
+
+### ✅ Vérification Nocturne (09/02/2026)
+- Tâche planifiée APScheduler à 3h UTC tous les jours
+- Vérifie tous les leads des 24 dernières heures
+- Relance automatiquement les leads échoués (sauf doublons CRM)
+- APIs: `/api/verification/run`, `/api/verification/status`
 
 ### ✅ Système de Commandes & Routage Cross-CRM
 - Routage intelligent des leads basé sur les commandes actives
 - Fallback cross-CRM si le CRM principal n'a pas de commande active
-- Configurable par formulaire (`allow_cross_crm`)
 
 ### ✅ Gestion des Utilisateurs & Permissions
 - CRUD complet des utilisateurs
@@ -39,22 +60,6 @@ CRM multi-tenant pour centraliser et redistribuer les leads solaires (PAC, PV, I
 - Statistiques par département, produit, source
 - Filtres avancés par période et CRM
 
-### ✅ Gestion des Leads Rejetés
-- Affichage des raisons d'échec
-- Bouton "Relancer" pour les leads échoués
-
-### ✅ Journal d'Activité
-- Suivi des actions utilisateurs
-
-### ✅ Autres Fonctionnalités
-- Endpoint Public pour Récupérer les Formulaires
-- Départements France Métropolitaine (01-95)
-- Champs de Récupération de Lead Étendus
-- Scripts LP/Form Synchronisés
-- Navigation par CRM
-- Configuration GTM dans les Comptes
-- Configuration Redirection dans les Formulaires
-
 ## Architecture Technique
 
 ### Backend (V2 - Modulaire)
@@ -64,120 +69,80 @@ CRM multi-tenant pour centraliser et redistribuer les leads solaires (PAC, PV, I
 ├── config.py              # Configuration, DB, helpers
 ├── models.py              # Modèles Pydantic
 ├── routes/
-│   ├── auth.py            # Login, sessions, users, permissions
-│   ├── accounts.py        # Comptes clients
-│   ├── crms.py            # CRMs externes (ZR7, MDL)
-│   ├── lps.py             # Landing Pages
-│   ├── forms.py           # Formulaires + endpoints publics
-│   ├── leads.py           # API v1 + gestion leads
-│   ├── tracking.py        # Events LP/Form
-│   ├── queue.py           # File d'attente
-│   ├── commandes.py       # Gestion des commandes de leads
-│   ├── stats.py           # Statistiques par département
-│   ├── billing.py         # Facturation inter-CRM
+│   ├── auth.py            # Login, sessions, users
+│   ├── accounts.py        # Comptes (avec CGU)
+│   ├── crms.py, lps.py, forms.py, leads.py
+│   ├── commandes.py       # Commandes avec prix_unitaire
+│   ├── stats.py           # Stats avec filtre CRM
+│   ├── billing.py         # Facturation par semaine
 │   └── verification.py    # Vérification nocturne
 └── services/
-    ├── brief_generator.py      # Génération scripts
-    ├── lead_sender.py          # Envoi CRM externe
-    ├── activity_logger.py      # Journal d'activité
-    ├── billing.py              # Calcul facturation
-    └── nightly_verification.py # Vérification nocturne
+    ├── brief_generator.py # Génération scripts + logos + legal
+    ├── billing.py         # Calcul facturation par semaine
+    └── nightly_verification.py
 ```
 
 ### Frontend (V2 - Modulaire)
 ```
 /app/frontend/src/
-├── App.jsx             # Routes principales
+├── App.jsx
 ├── pages/
-│   ├── Dashboard.jsx
-│   ├── Accounts.jsx
-│   ├── LandingPages.jsx
-│   ├── Forms.jsx
-│   ├── Leads.jsx
-│   ├── Departements.jsx
-│   ├── Commandes.jsx
-│   ├── Billing.jsx     # Facturation inter-CRM
-│   ├── UsersPage.jsx
-│   └── Settings.jsx
-├── components/
-│   ├── Layout.jsx
-│   └── UI.jsx
-└── hooks/
-    ├── useAuth.js
-    ├── useApi.js
-    └── useCRM.js
+│   ├── Billing.jsx      # Navigation par semaine
+│   ├── Commandes.jsx    # Prix par lead éditable
+│   ├── Accounts.jsx     # Section CGU/Privacy
+│   ├── Leads.jsx        # Filtré par CRM backend
+│   └── Departements.jsx # Filtré par CRM backend
+└── hooks/, components/
 ```
 
 ### Collections MongoDB
-- `users`, `sessions` - Auth
-- `accounts` - Comptes clients
-- `crms` - CRMs externes
-- `lps` - Landing Pages
-- `forms` - Formulaires
-- `leads` - Leads reçus
-- `tracking` - Events de tracking
-- `lead_queue` - File d'attente
-- `commandes` - Commandes de leads
-- `activity_logs` - Journal d'activité
-- `billing_history` - Historique facturation
-- `lead_prices` - Prix des leads
-- `verification_reports` - Rapports de vérification nocturne
-- `system_config` - Config (API key globale)
+- `billing_weeks` - Statut facturé par semaine
+- `verification_reports` - Rapports vérification nocturne
+- `accounts` - Avec champs cgu_text, privacy_policy_text
+- `commandes` - Avec champ prix_unitaire
 
 ## Endpoints API Clés
 
-### Facturation & Vérification
-- `GET /api/billing/cross-crm` - Facturation inter-CRM
-- `GET /api/billing/cross-crm/summary` - Résumé facturation
-- `GET /api/verification/status` - Statut vérification nocturne
-- `POST /api/verification/run` - Lancer vérification manuellement
-- `GET /api/verification/reports` - Liste des rapports
+### Facturation par Semaine
+- `GET /api/billing/weeks/current` - Semaine actuelle
+- `GET /api/billing/weeks/{year}/{week}` - Données d'une semaine
+- `POST /api/billing/weeks/{year}/{week}/invoice?invoiced=true` - Marquer facturé
 
-### Publics (sans auth)
-- `GET /api/forms/public/{form_code}` - Récupérer config form
-- `GET /api/forms/public/by-lp/{lp_code}` - Forms liés à une LP
-- `GET /api/forms/config/departements` - Liste départements FR
-
-### API v1 (Token auth)
-- `POST /api/v1/leads` - Soumettre un lead
-
-### Authentifiés (Bearer token)
-- `GET /api/forms` - Liste formulaires
-- `GET /api/forms/brief/{form_id}` - Brief développeur
-- `GET /api/leads` - Liste leads
-- `POST /api/leads/{lead_id}/retry` - Relancer un lead
+### Filtrage CRM
+- `GET /api/leads?crm_id={uuid}` - Leads filtrés par CRM
+- `GET /api/stats/departements?crm_id={uuid}` - Stats filtrées par CRM
 
 ## Credentials Test
 - **Email**: energiebleuciel@gmail.com
 - **Password**: 92Ruemarxdormoy
-- **ZR7 API Key (PV)**: 342b6515-7424-43a6-b5c9-142385fc6ef1
-- **MDL API Key (PV)**: 00f4e557-4903-47c6-87db-e3d41460ce45
+- **MDL CRM ID**: 19e96529-6cf5-404c-86a6-a02c32d905a2
+- **ZR7 CRM ID**: 0a463b29-ae11-4198-b092-143d7899b62d
 
 ## Backlog
 
 ### P0 - Critique
-- [x] URL RDZ pour récupérer les forms (endpoint public)
-- [x] Champs de récupération de lead complets
-- [x] Départements France métropolitaine (01-95)
-- [x] Scripts LP/Form synchronisés
-- [x] Facturation Inter-CRM & Prix des leads
-- [x] Vérification nocturne (rollback 3h du matin)
-- [ ] **Déploiement sur Hostinger** (en attente validation utilisateur)
+- [x] Facturation par semaine avec navigation
+- [x] Prix par lead dans Commandes
+- [x] CGU/Privacy dans Comptes
+- [x] Logos + Legal dans Brief
+- [x] Filtrage CRM backend pour Leads/Départements
+- [ ] **Déploiement sur Hostinger** (prêt pour déploiement)
 
 ### P1 - Important
 - [ ] Support complet GTM & Redirect tracking
 - [ ] Sous-comptes (Sub-accounts)
 - [ ] Sources de diffusion
-- [ ] Configuration Types de produits
 
 ### P2 - Nice to have
 - [ ] Bibliothèque d'images
 - [ ] Alertes système
 - [ ] Mode Campagne A/B Testing
 
-### Technique
-- [ ] Vérification SendGrid (dépend action utilisateur)
+## Tests
+- **Tests backend**: 21/21 passés (100%)
+- **Tests frontend**: UI validée
+- **Rapport**: `/app/test_reports/iteration_9.json`
 
 ## Déploiement
 - **Preview**: https://crm-lead-routing.preview.emergentagent.com
-- **Production**: https://rdz-group-ltd.online (Hostinger VPS - à déployer)
+- **Production**: https://rdz-group-ltd.online (Hostinger VPS - prêt)
