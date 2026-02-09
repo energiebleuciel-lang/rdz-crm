@@ -1,15 +1,17 @@
 /**
- * Page Formulaires - Style cartes Landbot
+ * Page Formulaires - Filtrée par CRM sélectionné
  */
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useCRM } from '../hooks/useCRM';
 import { API } from '../hooks/useApi';
 import { Card, Modal, Button, Input, Select, Loading, EmptyState, Badge } from '../components/UI';
 import { FileText, Plus, Edit, Trash2, Copy, Code, ExternalLink, Link2 } from 'lucide-react';
 
 export default function Forms() {
   const { authFetch } = useAuth();
+  const { selectedCRM, currentCRM } = useCRM();
   const [forms, setForms] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [lps, setLps] = useState([]);
@@ -32,29 +34,42 @@ export default function Forms() {
   });
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (selectedCRM) {
+      loadData();
+    }
+  }, [selectedCRM]);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [formsRes, accountsRes, lpsRes] = await Promise.all([
+      // Charger les comptes filtrés par CRM
+      const accountsRes = await authFetch(`${API}/api/accounts?crm_id=${selectedCRM}`);
+      let accountsList = [];
+      if (accountsRes.ok) {
+        const data = await accountsRes.json();
+        accountsList = data.accounts || [];
+        setAccounts(accountsList);
+      }
+      
+      // Charger les forms et LPs des comptes de ce CRM
+      const accountIds = accountsList.map(a => a.id);
+      
+      const [formsRes, lpsRes] = await Promise.all([
         authFetch(`${API}/api/forms`),
-        authFetch(`${API}/api/accounts`),
         authFetch(`${API}/api/lps`)
       ]);
       
       if (formsRes.ok) {
         const data = await formsRes.json();
-        setForms(data.forms || []);
-      }
-      if (accountsRes.ok) {
-        const data = await accountsRes.json();
-        setAccounts(data.accounts || []);
+        // Filtrer les forms par comptes du CRM
+        const filteredForms = (data.forms || []).filter(f => accountIds.includes(f.account_id));
+        setForms(filteredForms);
       }
       if (lpsRes.ok) {
         const data = await lpsRes.json();
-        setLps(data.lps || []);
+        // Filtrer les LPs par comptes du CRM
+        const filteredLps = (data.lps || []).filter(l => accountIds.includes(l.account_id));
+        setLps(filteredLps);
       }
     } catch (e) {
       console.error('Load error:', e);
