@@ -139,7 +139,20 @@ export default function Leads() {
       case 'duplicate': return 'warning';
       case 'queued': return 'info';
       case 'failed': return 'danger';
+      case 'no_crm': return 'secondary';
       default: return 'default';
+    }
+  };
+  
+  const statusLabel = (status) => {
+    switch (status) {
+      case 'success': return 'Envoyé';
+      case 'duplicate': return 'Doublon';
+      case 'queued': return 'En queue';
+      case 'failed': return 'Échoué';
+      case 'no_crm': return 'Sans CRM';
+      case 'pending': return 'En attente';
+      default: return status;
     }
   };
 
