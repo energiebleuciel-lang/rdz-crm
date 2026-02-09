@@ -1334,14 +1334,25 @@ input, select {{ width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #E
         "tracking_script": tracking_script,
         "usage_example": usage_example,
         "aides_financieres": aides_config,
-        "logo": {
-            "logo_main": logos.get('logo_main', ''),
-            "logo_secondary": logos.get('logo_secondary', ''),
+        "logos": {
+            "logo_left": logo_left,
+            "logo_right": logo_right,
+            "logo_mini": logo_mini,
             "account_name": account_name
         },
+        "gtm_conversion_code": gtm_conversion,
         "tracking_logic": {
             "started": "Premier clic sur N'IMPORTE QUEL CTA (trackFormStart()) - ajoutez data-action='start' ou onclick='trackFormStart();'",
-            "finished": "Clic sur bouton final après validation téléphone (submitLeadToCRM())"
+            "finished": "Dernier CTA après validation téléphone (submitLeadToCRM()) - déclenche aussi le GTM conversion"
+        },
+        "phone_validation": {
+            "rules": [
+                "Exactement 10 chiffres",
+                "Doit commencer par 0",
+                "Pas de suite (0123456789, 0102030405)",
+                "Pas de répétition (0000000000, 0666666666)"
+            ],
+            "function": "validatePhone(phone) - retourne true/false"
         },
         "required_fields": ["civilite", "nom", "prenom", "phone", "email", "code_postal", "ville"],
         "optional_fields": ["type_logement", "statut_occupant", "revenu_fiscal", "surface_habitable"]
