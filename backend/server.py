@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, status
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, BackgroundTasks
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -24,6 +24,14 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger("crm_system")
+
+# Import du service d'emails
+try:
+    from email_service import email_service
+    EMAIL_SERVICE_AVAILABLE = True
+except ImportError:
+    EMAIL_SERVICE_AVAILABLE = False
+    logger.warning("Service d'emails non disponible")
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
