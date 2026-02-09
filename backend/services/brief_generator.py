@@ -959,7 +959,15 @@ Placez votre formulaire dans un conteneur avec cet ID :
     FORM_URL: "{form_url}",
     LIAISON_CODE: "{liaison_code}",
     PRODUCT_TYPE: "{product_type}",
-    MODE: "redirect"
+    MODE: "redirect",
+    
+    // ========== ENDPOINTS API ==========
+    ENDPOINTS: {{
+      GET_FORM_CONFIG: "{api_url}/api/forms/public/{form_code}",
+      GET_LP_FORMS: "{api_url}/api/forms/public/by-lp/{lp_code}",
+      TRACK_LP_VISIT: "{api_url}/api/track/lp-visit",
+      TRACK_CTA_CLICK: "{api_url}/api/track/cta-click"
+    }}
   }};
 
   // ========== UTM PARAMS ==========
@@ -972,7 +980,7 @@ Placez votre formulaire dans un conteneur avec cet ID :
 
   // ========== TRACKING LP VIEW ==========
   function trackLPView() {{
-    fetch(CONFIG.API_URL + "/api/track/lp-visit", {{
+    fetch(CONFIG.ENDPOINTS.TRACK_LP_VISIT, {{
       method: "POST",
       headers: {{ "Content-Type": "application/json" }},
       body: JSON.stringify({{
