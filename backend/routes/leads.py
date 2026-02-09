@@ -322,10 +322,6 @@ async def retry_lead(lead_id: str, user: dict = Depends(get_current_user)):
     )
     
     return {"success": status in ["success", "duplicate"], "status": status, "crm": target_crm.get("slug")}
-        }}
-    )
-    
-    return {"success": True, "status": status}
 
 
 @router.delete("/leads/{lead_id}")
