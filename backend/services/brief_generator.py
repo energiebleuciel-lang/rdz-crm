@@ -504,44 +504,94 @@ async def generate_brief_for_lp(lp_id: str) -> dict:
         "conversion": account.get("gtm_conversion", "")
     }
     
-    # Textes légaux
+    # Textes légaux (cgu_text est le nouveau champ, legal_mentions_text est l'ancien fallback)
     legal = {
-        "cgu": account.get("legal_mentions_text", ""),
+        "cgu": account.get("cgu_text", "") or account.get("legal_mentions_text", ""),
         "privacy": account.get("privacy_policy_text", "")
     }
     
     api_url = BACKEND_URL
     
-    # ==================== BANDEAU CGU/PRIVACY (accordion) ====================
-    legal_banner_html = ""
+    # ==================== LOGOS HTML ====================
+    logos_html = ""
+    if logos.get("main") or logos.get("secondary") or logos.get("mini"):
+        logos_html = f'''
+<!-- ========== LOGOS (à utiliser dans votre page) ========== -->
+<!-- Logo Principal (Header gauche) -->
+{f'<img src="{logos.get("main")}" alt="{account_name}" style="height:50px;width:auto;" class="logo-main" />' if logos.get("main") else "<!-- Pas de logo principal configuré -->"}
+
+<!-- Logo Secondaire (Header droite) -->
+{f'<img src="{logos.get("secondary")}" alt="{account_name}" style="height:40px;width:auto;" class="logo-secondary" />' if logos.get("secondary") else "<!-- Pas de logo secondaire configuré -->"}
+
+<!-- Favicon / Mini Logo -->
+{f'<link rel="icon" href="{logos.get("mini")}" type="image/x-icon" />' if logos.get("mini") else "<!-- Pas de favicon configuré -->"}
+
+<!-- URLs des logos pour utilisation dynamique -->
+<script>
+window.__LOGOS__ = {{
+  main: "{logos.get('main', '')}",
+  secondary: "{logos.get('secondary', '')}",
+  mini: "{logos.get('mini', '')}"
+}};
+</script>
+'''
+
+    # ==================== BOUTONS CGU/PRIVACY (popup/accordion) ====================
+    legal_buttons_html = ""
     if legal.get("cgu") or legal.get("privacy"):
-        legal_banner_html = f'''
-<!-- ========== BANDEAU MENTIONS LÉGALES (à placer en bas de page) ========== -->
-<div id="legal-banner" style="background:#f8f9fa;border-top:1px solid #e9ecef;padding:15px;margin-top:40px;font-size:12px;color:#6c757d;">
-  <div style="max-width:1200px;margin:0 auto;">
-    <div style="display:flex;gap:20px;flex-wrap:wrap;">
-      {f"""<div>
-        <button onclick="document.getElementById('cgu-content').style.display=document.getElementById('cgu-content').style.display==='none'?'block':'none'" 
-                style="background:none;border:none;color:#007bff;cursor:pointer;padding:0;font-size:12px;">
-          📋 Conditions Générales d'Utilisation ▼
-        </button>
-        <div id="cgu-content" style="display:none;margin-top:10px;padding:10px;background:white;border-radius:4px;max-height:200px;overflow-y:auto;">
-          {legal.get("cgu", "").replace(chr(10), "<br>")}
-        </div>
-      </div>""" if legal.get("cgu") else ""}
-      {f"""<div>
-        <button onclick="document.getElementById('privacy-content').style.display=document.getElementById('privacy-content').style.display==='none'?'block':'none'" 
-                style="background:none;border:none;color:#007bff;cursor:pointer;padding:0;font-size:12px;">
-          🔒 Politique de Confidentialité ▼
-        </button>
-        <div id="privacy-content" style="display:none;margin-top:10px;padding:10px;background:white;border-radius:4px;max-height:200px;overflow-y:auto;">
-          {legal.get("privacy", "").replace(chr(10), "<br>")}
-        </div>
-      </div>""" if legal.get("privacy") else ""}
-    </div>
-    <p style="margin-top:10px;margin-bottom:0;">© {account_name} - Tous droits réservés</p>
+        legal_buttons_html = f'''
+<!-- ========== BOUTONS CGU/PRIVACY (à placer en bas de page) ========== -->
+<div id="legal-buttons" style="position:fixed;bottom:0;left:0;right:0;background:#f8f9fa;border-top:1px solid #e9ecef;padding:10px 20px;font-size:12px;z-index:9999;">
+  <div style="max-width:1200px;margin:0 auto;display:flex;justify-content:center;gap:30px;align-items:center;">
+    {f"""<button onclick="openLegalPopup('cgu')" 
+            style="background:none;border:none;color:#007bff;cursor:pointer;padding:5px 10px;font-size:12px;text-decoration:underline;">
+      Conditions Générales d'Utilisation
+    </button>""" if legal.get("cgu") else ""}
+    {f"""<button onclick="openLegalPopup('privacy')" 
+            style="background:none;border:none;color:#007bff;cursor:pointer;padding:5px 10px;font-size:12px;text-decoration:underline;">
+      Politique de Confidentialité
+    </button>""" if legal.get("privacy") else ""}
+    <span style="color:#6c757d;">© {account_name}</span>
   </div>
 </div>
+
+<!-- Popup CGU/Privacy -->
+<div id="legal-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10000;justify-content:center;align-items:center;">
+  <div style="background:white;border-radius:8px;max-width:700px;width:90%;max-height:80vh;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,0.2);">
+    <div style="padding:15px 20px;border-bottom:1px solid #e9ecef;display:flex;justify-content:space-between;align-items:center;">
+      <h3 id="legal-popup-title" style="margin:0;font-size:16px;color:#333;"></h3>
+      <button onclick="closeLegalPopup()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#666;">&times;</button>
+    </div>
+    <div id="legal-popup-content" style="padding:20px;overflow-y:auto;max-height:60vh;font-size:13px;line-height:1.6;color:#444;"></div>
+  </div>
+</div>
+
+<script>
+// Textes légaux
+var __LEGAL_TEXTS__ = {{
+  cgu: `{legal.get("cgu", "").replace("`", "\\`").replace("${", "\\${") if legal.get("cgu") else ""}`,
+  privacy: `{legal.get("privacy", "").replace("`", "\\`").replace("${", "\\${") if legal.get("privacy") else ""}`
+}};
+
+function openLegalPopup(type) {{
+  var popup = document.getElementById('legal-popup');
+  var title = document.getElementById('legal-popup-title');
+  var content = document.getElementById('legal-popup-content');
+  
+  title.textContent = type === 'cgu' ? "Conditions Générales d'Utilisation" : "Politique de Confidentialité";
+  content.innerHTML = __LEGAL_TEXTS__[type].replace(/\\n/g, '<br>');
+  popup.style.display = 'flex';
+}}
+
+function closeLegalPopup() {{
+  document.getElementById('legal-popup').style.display = 'none';
+}}
+
+// Fermer popup en cliquant dehors
+document.getElementById('legal-popup').addEventListener('click', function(e) {{
+  if (e.target === this) closeLegalPopup();
+}});
+</script>
 '''
 
     # ==================== GÉNÉRATION SCRIPTS ====================
