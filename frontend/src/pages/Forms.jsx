@@ -29,6 +29,7 @@ export default function Forms() {
     product_type: 'PV',
     lp_id: '',
     crm_api_key: '',
+    allow_cross_crm: true,
     tracking_type: 'redirect',
     redirect_url: '/merci'
   });
