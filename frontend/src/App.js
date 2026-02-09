@@ -1744,7 +1744,7 @@ const FormsPage = () => {
         onDuplicateForm={(form) => {
           setShowDuplicateModal(form);
           setDuplicateData({
-            new_code: form.code + '-COPY',
+            new_code: '',  // Auto-généré par le backend
             new_name: form.name + ' (copie)',
             new_crm_api_key: ''
           });
@@ -1754,30 +1754,132 @@ const FormsPage = () => {
           // Le composant FormsGrid gère déjà la copie du form_id
           console.log('Form ID copié:', form.id);
         }}
+        onViewBrief={(form) => {
+          // Charger le brief depuis l'API
+          fetch(`${API}/api/forms/${form.id}/brief`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+          })
+            .then(r => r.json())
+            .then(data => {
+              setBriefData(data);
+              setShowBriefModal(true);
+            })
+            .catch(err => {
+              console.error('Erreur chargement brief:', err);
+              alert('Erreur lors du chargement du brief');
+            });
+        }}
       />
+
+      {/* Modal Brief Développeur */}
+      <Modal isOpen={showBriefModal} onClose={() => setShowBriefModal(false)} title="📋 Brief Développeur">
+        <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+          {briefData && (
+            <>
+              {/* Header info */}
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-bold text-blue-800">{briefData.form_name}</h3>
+                    <p className="text-sm text-blue-600">Code: <code className="bg-blue-100 px-2 py-0.5 rounded">{briefData.form_code}</code></p>
+                    <p className="text-sm text-blue-600">Produit: {briefData.product_label}</p>
+                  </div>
+                  <span className="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg">{briefData.product_type}</span>
+                </div>
+              </div>
+
+              {/* API Info */}
+              <div className="bg-slate-50 p-4 rounded-lg">
+                <h4 className="font-bold text-slate-800 mb-2">🔗 Endpoint API</h4>
+                <code className="block bg-slate-800 text-green-400 p-3 rounded text-sm overflow-x-auto">
+                  POST {briefData.api_endpoint}
+                </code>
+                <p className="text-xs text-slate-500 mt-2">Header: <code>Authorization: Token {briefData.api_key?.substring(0, 20)}...</code></p>
+                <p className="text-xs text-red-500 mt-1">⚠️ {briefData.api_key_warning}</p>
+              </div>
+
+              {/* Champs requis */}
+              <div>
+                <h4 className="font-bold text-slate-800 mb-2">📝 Champs requis</h4>
+                <div className="flex flex-wrap gap-2">
+                  {briefData.required_fields?.map(f => (
+                    <span key={f} className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded">{f} *</span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Champs optionnels */}
+              <div>
+                <h4 className="font-bold text-slate-800 mb-2">📝 Champs optionnels</h4>
+                <div className="flex flex-wrap gap-2">
+                  {briefData.optional_fields?.map(f => (
+                    <span key={f} className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded">{f}</span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Script de tracking */}
+              <div>
+                <h4 className="font-bold text-slate-800 mb-2">📜 Script de Tracking</h4>
+                <p className="text-xs text-slate-500 mb-2">Copiez ce script dans le &lt;head&gt; de votre page HTML</p>
+                <pre className="bg-slate-800 text-green-400 p-3 rounded text-xs overflow-x-auto whitespace-pre-wrap max-h-48">
+                  {briefData.tracking_script}
+                </pre>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(briefData.tracking_script);
+                    alert('✅ Script copié !');
+                  }}
+                  className="mt-2 px-3 py-1 bg-slate-600 text-white text-sm rounded hover:bg-slate-700"
+                >
+                  📋 Copier le script
+                </button>
+              </div>
+
+              {/* Exemple d'utilisation */}
+              <div>
+                <h4 className="font-bold text-slate-800 mb-2">💡 Exemple d'utilisation</h4>
+                <pre className="bg-slate-800 text-green-400 p-3 rounded text-xs overflow-x-auto whitespace-pre-wrap max-h-64">
+                  {briefData.usage_example}
+                </pre>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(briefData.usage_example);
+                    alert('✅ Exemple copié !');
+                  }}
+                  className="mt-2 px-3 py-1 bg-slate-600 text-white text-sm rounded hover:bg-slate-700"
+                >
+                  📋 Copier l'exemple
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </Modal>
 
       {/* Modal Duplicate Form */}
       <Modal isOpen={!!showDuplicateModal} onClose={() => setShowDuplicateModal(null)} title="Dupliquer le formulaire">
         <div className="space-y-4">
           <p className="text-sm text-slate-600">
-            Dupliquer <strong>{showDuplicateModal?.name}</strong>. Une nouvelle clé API interne sera générée automatiquement.
+            Dupliquer <strong>{showDuplicateModal?.name}</strong>. Le code et la clé API seront générés automatiquement.
           </p>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Nouveau code *</label>
-            <input type="text" value={duplicateData.new_code} onChange={e => setDuplicateData({ ...duplicateData, new_code: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" required />
+          <div className="bg-blue-50 p-3 rounded-lg">
+            <p className="text-sm text-blue-700">
+              <strong>✨ Auto-génération :</strong> Le code sera généré automatiquement (ex: PV-012, PAC-005)
+            </p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Nouveau nom *</label>
-            <input type="text" value={duplicateData.new_name} onChange={e => setDuplicateData({ ...duplicateData, new_name: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" required />
+            <label className="block text-sm font-medium text-slate-700 mb-1">Nouveau nom</label>
+            <input type="text" value={duplicateData.new_name} onChange={e => setDuplicateData({ ...duplicateData, new_name: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Clé API CRM destination (ZR7/MDL) *</label>
-            <input type="text" value={duplicateData.new_crm_api_key} onChange={e => setDuplicateData({ ...duplicateData, new_crm_api_key: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-sm" placeholder="uuid-xxx-xxx" required />
-            <p className="text-xs text-slate-500 mt-1">La clé API fournie par ZR7 ou MDL pour ce formulaire</p>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Clé API CRM destination (ZR7/MDL)</label>
+            <input type="text" value={duplicateData.new_crm_api_key} onChange={e => setDuplicateData({ ...duplicateData, new_crm_api_key: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-sm" placeholder="uuid-xxx-xxx (optionnel)" />
+            <p className="text-xs text-slate-500 mt-1">La clé API fournie par ZR7 ou MDL (peut être ajoutée plus tard)</p>
           </div>
           <div className="flex justify-end gap-2 pt-4">
             <button type="button" onClick={() => setShowDuplicateModal(null)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Annuler</button>
-            <button onClick={duplicateForm} disabled={!duplicateData.new_crm_api_key} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">Dupliquer</button>
+            <button onClick={duplicateForm} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Dupliquer</button>
           </div>
         </div>
       </Modal>
