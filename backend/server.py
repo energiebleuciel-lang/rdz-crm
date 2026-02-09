@@ -1716,32 +1716,8 @@ async def get_global_api_key(user: dict = Depends(get_current_user)):
         "endpoint": "POST /api/v1/leads"
     }
 
-@api_router.post("/settings/api-key/regenerate")
-async def regenerate_global_api_key(user: dict = Depends(get_current_user)):
-    """
-    Régénère la clé API globale. ATTENTION: Invalide l'ancienne clé!
-    """
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Seul l'admin peut régénérer la clé API")
-    
-    # Supprimer l'ancienne clé
-    await db.system_config.delete_one({"type": "global_api_key"})
-    
-    # Créer une nouvelle clé
-    new_api_key = f"crm_{secrets.token_urlsafe(32)}"
-    await db.system_config.insert_one({
-        "type": "global_api_key",
-        "api_key": new_api_key,
-        "created_at": datetime.now(timezone.utc).isoformat()
-    })
-    
-    await log_alert("WARNING", "API_KEY_REGENERATED", f"Clé API globale régénérée par {user['email']}")
-    
-    return {
-        "success": True,
-        "api_key": new_api_key,
-        "message": "Nouvelle clé API générée. L'ancienne clé ne fonctionne plus."
-    }
+# Note: L'endpoint /settings/api-key/regenerate a été supprimé pour sécurité
+# La clé API globale est maintenant PERMANENTE et ne peut plus être régénérée
 
 # ==================== AUTH ENDPOINTS ====================
 
