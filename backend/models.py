@@ -17,6 +17,7 @@ class UserPermissions(BaseModel):
     lps: bool = True
     forms: bool = True
     leads: bool = True
+    departements: bool = True  # Stats départements
     commandes: bool = False  # Réservé admin par défaut
     settings: bool = False   # Réservé admin par défaut
     users: bool = False      # Réservé admin par défaut
