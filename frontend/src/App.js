@@ -1689,13 +1689,24 @@ const FormsPage = () => {
   };
 
   const duplicateForm = async () => {
-    if (!showDuplicateModal || !duplicateData.new_code || !duplicateData.new_name || !duplicateData.new_crm_api_key) return;
+    if (!showDuplicateModal) return;
     try {
-      const res = await authFetch(`${API}/api/forms/${showDuplicateModal.id}/duplicate?new_code=${encodeURIComponent(duplicateData.new_code)}&new_name=${encodeURIComponent(duplicateData.new_name)}&new_crm_api_key=${encodeURIComponent(duplicateData.new_crm_api_key)}`, { method: 'POST' });
+      // Les paramètres new_code et new_crm_api_key sont optionnels maintenant (auto-générés)
+      const params = new URLSearchParams();
+      if (duplicateData.new_code) params.append('new_code', duplicateData.new_code);
+      if (duplicateData.new_name) params.append('new_name', duplicateData.new_name);
+      if (duplicateData.new_crm_api_key) params.append('new_crm_api_key', duplicateData.new_crm_api_key);
+      
+      const res = await authFetch(`${API}/api/forms/${showDuplicateModal.id}/duplicate?${params.toString()}`, { method: 'POST' });
       if (res.ok) {
+        const data = await res.json();
         setShowDuplicateModal(null);
         setDuplicateData({ new_code: '', new_name: '', new_crm_api_key: '' });
         loadData();
+        // Afficher le code généré
+        if (data.generated_code) {
+          alert(`✅ Formulaire dupliqué !\n\nNouveau code: ${data.generated_code}\n\n⚠️ Pensez à vérifier l'URL de redirection et les codes GTM.`);
+        }
       }
     } catch (e) {
       console.error(e);
