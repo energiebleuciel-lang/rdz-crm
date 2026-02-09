@@ -7,7 +7,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useCRM } from '../hooks/useCRM';
 import { 
   Home, Layers, FileText, Users, Settings, LogOut, 
-  Building, Globe, Zap, ChevronDown, Database, Package
+  Building, Globe, Zap, ChevronDown, Database, Package, UserCog
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -18,6 +18,7 @@ const menuItems = [
   { path: '/forms', icon: FileText, label: 'Formulaires' },
   { path: '/leads', icon: Users, label: 'Leads' },
   { path: '/commandes', icon: Package, label: 'Commandes' },
+  { path: '/users', icon: UserCog, label: 'Utilisateurs' },
   { path: '/settings', icon: Settings, label: 'Paramètres' },
 ];
 
