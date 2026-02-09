@@ -2371,8 +2371,23 @@ const ScriptGeneratorPage = () => {
                   <CheckboxOption label="Pixel GTM (header)" checked={formOptions.include_gtm_pixel} onChange={e => setFormOptions({...formOptions, include_gtm_pixel: e.target.checked})} />
                   <CheckboxOption label="Code conversion GTM" checked={formOptions.include_gtm_conversion} onChange={e => setFormOptions({...formOptions, include_gtm_conversion: e.target.checked})} />
                   <CheckboxOption label="Politique confidentialité" checked={formOptions.include_privacy_policy} onChange={e => setFormOptions({...formOptions, include_privacy_policy: e.target.checked})} />
-                  <CheckboxOption label="Clé API CRM" checked={formOptions.include_api_key} onChange={e => setFormOptions({...formOptions, include_api_key: e.target.checked})} />
                   <CheckboxOption label="Notes" checked={formOptions.include_notes} onChange={e => setFormOptions({...formOptions, include_notes: e.target.checked})} />
+                </div>
+                
+                {/* Option clé API interne - IMPORTANTE */}
+                <div className="pt-2 border-t border-slate-200">
+                  <label className="flex items-center gap-2 cursor-pointer p-2 bg-orange-50 rounded-lg border border-orange-200">
+                    <input 
+                      type="checkbox" 
+                      checked={formOptions.include_internal_api_key || false} 
+                      onChange={e => setFormOptions({...formOptions, include_internal_api_key: e.target.checked})} 
+                      className="rounded border-orange-300 text-orange-600" 
+                    />
+                    <div>
+                      <span className="text-sm font-medium text-orange-800">🔑 Inclure la CLÉ API dans le script</span>
+                      <p className="text-xs text-orange-600">Cochez pour que le développeur puisse intégrer le formulaire</p>
+                    </div>
+                  </label>
                 </div>
 
                 {/* Redirect URL selector */}
