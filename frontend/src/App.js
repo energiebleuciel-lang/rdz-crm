@@ -6,8 +6,12 @@ import {
   Activity, ChevronRight, ChevronDown, Edit, Trash2, ExternalLink, Code,
   Building, Globe, Image, Shield, Bell, Filter, Calendar, Award, AlertTriangle,
   HelpCircle, BookOpen, Zap, Target, MousePointer, Send, Database, Lock,
-  FolderOpen, Tag, Link2, Clipboard, Key
+  FolderOpen, Tag, Link2, Clipboard, Key, Grid, List
 } from 'lucide-react';
+
+// Import des composants modulaires indépendants
+import FormsGrid from './components/FormsGrid';
+import FormCard from './components/FormCard';
 
 const API = process.env.REACT_APP_BACKEND_URL || '';
 
