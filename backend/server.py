@@ -982,14 +982,17 @@ async def get_form_brief(form_id: str, user: dict = Depends(get_current_user)):
                 "tva_reduite": "TVA 5.5%"
             }
     
-    # Logo du compte
-    logo_url = account.get('logo_main_url', '') if account else ''
+    # TOUS les logos du compte
+    logos = {
+        "logo_main": account.get('logo_main_url', '') if account else '',
+        "logo_secondary": account.get('logo_secondary_url', '') if account else '',
+    }
     account_name = account.get('name', 'EnerSolar') if account else 'EnerSolar'
     
-    # Script JavaScript de tracking AMÉLIORÉ
+    # Script JavaScript de tracking - VERSION GÉNÉRIQUE pour tout premier CTA
     tracking_script = f'''
 <!-- ============================================================ -->
-<!-- EnerSolar CRM - Script de Tracking v2.0                      -->
+<!-- EnerSolar CRM - Script de Tracking v2.1                      -->
 <!-- Placer dans le <head> de votre page                          -->
 <!-- ============================================================ -->
 <script>
@@ -1005,7 +1008,8 @@ async def get_form_brief(form_id: str, user: dict = Depends(get_current_user)):
   var hasFinished = false;
   
   // ============================================================
-  // 1. DÉMARRÉ = Premier clic sur un bouton "Suivant" ou "Commencer"
+  // 1. DÉMARRÉ = Premier clic sur N'IMPORTE QUEL CTA (bouton)
+  //    Appelez trackFormStart() sur votre premier bouton d'action
   // ============================================================
   window.trackFormStart = function() {{
     if (hasStarted) return; // Ne tracker qu'une seule fois
