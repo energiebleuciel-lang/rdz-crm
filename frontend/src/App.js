@@ -1,7 +1,7 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation, Link } from 'react-router-dom';
 import { 
-  BarChart3, Users, CheckCircle, XCircle, RefreshCw, Download, Eye, Search, Copy, 
+  BarChart3, Users, CheckCircle, XCircle, RefreshCw, Download, Eye, EyeOff, Search, Copy, 
   Settings, Plus, LogOut, Home, Layers, FileText, TrendingUp, MessageSquare, 
   Activity, ChevronRight, ChevronDown, Edit, Trash2, ExternalLink, Code,
   Building, Globe, Image, Shield, Bell, Filter, Calendar, Award, AlertTriangle,
