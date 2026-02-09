@@ -24,7 +24,9 @@ db = client[DB_NAME]
 print(f"[CONFIG] Using database: {DB_NAME}")
 
 # Backend URL (pour les scripts de tracking)
-BACKEND_URL = os.environ.get('BACKEND_URL', 'https://rdz-group-ltd.online')
+BACKEND_URL = os.environ.get('BACKEND_URL')
+if not BACKEND_URL:
+    raise ValueError("BACKEND_URL environment variable is required")
 
 
 # ==================== HELPERS ====================
