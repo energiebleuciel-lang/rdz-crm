@@ -193,9 +193,50 @@ export default function LandingPages() {
     }
   };
 
-  const copyScript = (script) => {
-    navigator.clipboard.writeText(script);
-    alert('Script copié !');
+  const [copySuccess, setCopySuccess] = useState(null);
+
+  const copyScript = async (script) => {
+    try {
+      // Méthode moderne
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(script);
+        setCopySuccess('Script copié !');
+        setTimeout(() => setCopySuccess(null), 2000);
+        return;
+      }
+      
+      // Fallback avec textarea
+      const textarea = document.createElement('textarea');
+      textarea.value = script;
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
+      textarea.style.top = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textarea);
+      
+      if (successful) {
+        setCopySuccess('Script copié !');
+        setTimeout(() => setCopySuccess(null), 2000);
+      } else {
+        throw new Error('execCommand failed');
+      }
+    } catch (err) {
+      console.error('Copy failed:', err);
+      // Dernier fallback: ouvrir dans une nouvelle fenêtre
+      const blob = new Blob([script], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const newWindow = window.open(url, '_blank');
+      if (!newWindow) {
+        alert('Impossible de copier. Sélectionnez le texte manuellement.');
+      } else {
+        setCopySuccess('Script ouvert dans un nouvel onglet');
+        setTimeout(() => setCopySuccess(null), 3000);
+      }
+    }
   };
 
   const getAccountName = (accountId) => {
