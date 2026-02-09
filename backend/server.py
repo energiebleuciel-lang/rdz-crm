@@ -1763,26 +1763,56 @@ async def retry_failed_leads(hours: int = 24, user: dict = Depends(get_current_u
 
 @api_router.delete("/leads/{lead_id}")
 async def delete_lead(lead_id: str, user: dict = Depends(require_admin)):
-    """Delete a single lead - Admin only"""
-    result = await db.leads.delete_one({"id": lead_id})
-    if result.deleted_count == 0:
+    """
+    ARCHIVE un lead au lieu de le supprimer.
+    Les leads ne sont JAMAIS supprimés définitivement - ils sont conservés pour l'historique.
+    """
+    # Récupérer le lead
+    lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
+    if not lead:
         raise HTTPException(status_code=404, detail="Lead non trouvé")
-    await log_activity(user["id"], user["email"], "delete", "lead", lead_id, "Lead supprimé")
-    return {"success": True}
+    
+    # Archiver au lieu de supprimer
+    lead["archived"] = True
+    lead["archived_at"] = datetime.now(timezone.utc).isoformat()
+    lead["archived_by"] = user["id"]
+    
+    await db.leads.update_one(
+        {"id": lead_id},
+        {"$set": {"archived": True, "archived_at": lead["archived_at"], "archived_by": user["id"]}}
+    )
+    
+    await log_activity(user["id"], user["email"], "archive", "lead", lead_id, "Lead archivé (conservé dans la base)")
+    await log_alert("INFO", "LEAD_ARCHIVED", f"Lead {lead_id} archivé par {user['email']}")
+    
+    return {"success": True, "message": "Lead archivé (les données sont conservées)"}
 
 class BulkDeleteRequest(BaseModel):
     lead_ids: List[str]
 
 @api_router.post("/leads/bulk-delete")
 async def delete_multiple_leads(request: BulkDeleteRequest, user: dict = Depends(require_admin)):
-    """Delete multiple leads - Admin only"""
-    """Delete multiple leads"""
+    """
+    ARCHIVE plusieurs leads au lieu de les supprimer.
+    Les leads ne sont JAMAIS supprimés définitivement.
+    """
     if not request.lead_ids:
-        raise HTTPException(status_code=400, detail="Aucun lead à supprimer")
+        raise HTTPException(status_code=400, detail="Aucun lead à archiver")
     
-    result = await db.leads.delete_many({"id": {"$in": request.lead_ids}})
-    await log_activity(user["id"], user["email"], "delete", "leads", ",".join(request.lead_ids[:5]), f"{result.deleted_count} leads supprimés")
-    return {"success": True, "deleted_count": result.deleted_count}
+    # Archiver au lieu de supprimer
+    result = await db.leads.update_many(
+        {"id": {"$in": request.lead_ids}},
+        {"$set": {
+            "archived": True,
+            "archived_at": datetime.now(timezone.utc).isoformat(),
+            "archived_by": user["id"]
+        }}
+    )
+    
+    await log_activity(user["id"], user["email"], "archive", "leads", ",".join(request.lead_ids[:5]), f"{result.modified_count} leads archivés")
+    await log_alert("INFO", "LEADS_BULK_ARCHIVED", f"{result.modified_count} leads archivés par {user['email']}")
+    
+    return {"success": True, "archived_count": result.modified_count, "message": "Leads archivés (données conservées)"}
 
 # ==================== ARCHIVAGE & FACTURATION ====================
 
@@ -1790,7 +1820,7 @@ async def delete_multiple_leads(request: BulkDeleteRequest, user: dict = Depends
 async def archive_old_leads(months: int = 3, user: dict = Depends(require_admin)):
     """
     Archiver les leads de plus de X mois.
-    Les leads sont déplacés vers la collection 'leads_archived'.
+    Les leads sont MARQUÉS comme archivés mais restent dans la collection principale.
     """
     cutoff_date = datetime.now(timezone.utc) - timedelta(days=months * 30)
     
