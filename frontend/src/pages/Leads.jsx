@@ -29,22 +29,18 @@ export default function Leads() {
     try {
       setLoading(true);
       
-      // Charger les comptes filtrés par CRM
-      const accountsRes = await authFetch(`${API}/api/accounts?crm_id=${selectedCRM}`);
-      let accountIds = [];
-      if (accountsRes.ok) {
-        const data = await accountsRes.json();
-        const accountsList = data.accounts || [];
-        setAccounts(accountsList);
-        accountIds = accountsList.map(a => a.id);
-      }
-      
-      // Charger les leads et filtrer par comptes du CRM
-      const res = await authFetch(`${API}/api/leads?limit=500`);
+      // Charger les leads filtrés directement par CRM côté backend
+      const res = await authFetch(`${API}/api/leads?crm_id=${selectedCRM}&limit=500`);
       if (res.ok) {
         const data = await res.json();
-        const filteredLeads = (data.leads || []).filter(l => accountIds.includes(l.account_id));
-        setLeads(filteredLeads);
+        setLeads(data.leads || []);
+      }
+      
+      // Charger les comptes pour référence
+      const accountsRes = await authFetch(`${API}/api/accounts?crm_id=${selectedCRM}`);
+      if (accountsRes.ok) {
+        const data = await accountsRes.json();
+        setAccounts(data.accounts || []);
       }
     } catch (e) {
       console.error('Load error:', e);
