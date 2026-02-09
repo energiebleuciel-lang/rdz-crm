@@ -1546,19 +1546,56 @@ async def get_form(form_id: str, user: dict = Depends(get_current_user)):
 
 @api_router.post("/forms")
 async def create_form(form: FormCreate, user: dict = Depends(get_current_user)):
+    """
+    Créer un nouveau formulaire.
+    Le CODE est AUTO-GÉNÉRÉ basé sur le type de produit et un compteur.
+    Format: PV-001, PAC-002, ITE-003, etc.
+    """
+    # Auto-générer le code si non fourni ou vide
+    if not form.code or form.code.strip() == "":
+        # Mapping type produit -> préfixe
+        prefix_map = {
+            'panneaux': 'PV',
+            'pompes': 'PAC', 
+            'isolation': 'ITE',
+            'PV': 'PV',
+            'PAC': 'PAC',
+            'ITE': 'ITE'
+        }
+        prefix = prefix_map.get(form.product_type, 'FORM')
+        
+        # Compter les formulaires existants avec ce préfixe pour générer un numéro unique
+        existing_count = await db.forms.count_documents({
+            "code": {"$regex": f"^{prefix}-"}
+        })
+        
+        # Générer le code: PREFIXE-XXX (ex: PV-001, PAC-015)
+        new_number = existing_count + 1
+        auto_code = f"{prefix}-{new_number:03d}"
+        
+        # Vérifier unicité et incrémenter si nécessaire
+        while await db.forms.find_one({"code": auto_code}):
+            new_number += 1
+            auto_code = f"{prefix}-{new_number:03d}"
+        
+        form_code = auto_code
+    else:
+        form_code = form.code
+    
     # Générer une clé API interne unique pour ce CRM
     internal_api_key = str(uuid.uuid4())
     
     form_doc = {
         "id": str(uuid.uuid4()),
         **form.model_dump(),
+        "code": form_code,  # Utiliser le code auto-généré
         "internal_api_key": internal_api_key,  # Clé pour recevoir les leads sur CE CRM
         "created_at": datetime.now(timezone.utc).isoformat(),
         "created_by": user["id"]
     }
     await db.forms.insert_one(form_doc)
-    await log_activity(user["id"], user["email"], "create", "form", form_doc["id"], f"Formulaire créé: {form.code}")
-    return {"success": True, "form": {k: v for k, v in form_doc.items() if k != "_id"}}
+    await log_activity(user["id"], user["email"], "create", "form", form_doc["id"], f"Formulaire créé: {form_code}")
+    return {"success": True, "form": {k: v for k, v in form_doc.items() if k != "_id"}, "generated_code": form_code}
 
 @api_router.put("/forms/{form_id}")
 async def update_form(form_id: str, form: FormCreate, user: dict = Depends(get_current_user)):
