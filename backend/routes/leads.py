@@ -174,13 +174,14 @@ async def submit_lead_v1(data: LeadSubmit, request: Request, api_key: str = Depe
         "target_crm_id": target_crm.get("id") if target_crm else None,
         "target_crm_slug": target_crm.get("slug") if target_crm else None,
         "routing_reason": routing_reason,
-        "api_status": "pending",
+        "allow_cross_crm": allow_cross_crm,
+        "api_status": api_status,
         "sent_to_crm": False
     }
     
     await db.leads.insert_one(lead_doc)
     
-    # 5. Envoyer au CRM externe
+    # 5. Envoyer au CRM externe si on a une cible
     if target_crm and api_url and api_key_crm:
         status, response, should_queue = await send_to_crm(lead_doc, api_url, api_key_crm)
         
