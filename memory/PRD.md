@@ -3,6 +3,10 @@
 ## Problème Original
 CRM multi-tenant pour centraliser et redistribuer les leads solaires (PAC, PV, ITE) vers ZR7 Digital et Maison du Lead.
 
+## URL Production
+- **API Backend**: https://rdz-group-ltd.online
+- **Preview**: https://leadsolar-2.preview.emergentagent.com
+
 ## Fonctionnalités Implémentées
 
 ### ✅ Endpoint Public pour Récupérer les Formulaires (09/02/2026)
@@ -28,33 +32,17 @@ Nouveaux champs disponibles dans l'API v1/leads:
 - Scripts générés dans le Brief avec code de liaison automatique
 - Format: `{LP_CODE}_{FORM_CODE}`
 - UTM tracking transmis de LP vers Form
-- Console logs pour debugging
+- URL de production: https://rdz-group-ltd.online
 
-### ✅ Brief Développeur Amélioré (09/02/2026)
-- Affichage de l'endpoint public
-- Liste complète des champs disponibles par catégorie
-- Scripts commentés et documentés
-- Statistiques trackées expliquées
+### ✅ Configuration GTM dans les Comptes (09/02/2026)
+- Champs GTM HEAD, BODY et Conversion
+- Type de tracking par défaut configurable
+- Options: Redirection, GTM, Les deux
 
-### ✅ Page Leads Améliorée (09/02/2026)
-- Vue détaillée de chaque lead (modal)
-- Export CSV complet avec tous les champs
-- Colonnes: Source, UTM tracking
-- Affichage du département avec code postal
-
-### ✅ Système Anti-Bug - File d'Attente des Leads
-- File d'attente automatique si CRM externe down
-- Retry automatique: 5 tentatives avec délais progressifs
-- Dashboard temps réel avec widget
-
-### ✅ Codes Formulaires Auto-générés
-- Format: `PV-001`, `PAC-002`, `ITE-003`
-- Codes LP: `LP-001`, `LP-002`, etc.
-
-### ✅ UI Formulaires Style Landbot
-- Vue cartes avec stats visuelles
-- Filtres par produit (PV/PAC/ITE)
-- Actions: Brief, Copier ID, Éditer, Dupliquer, Archiver
+### ✅ Configuration Redirection dans les Formulaires (09/02/2026)
+- Option "Que faire après la soumission du lead ?"
+- Choix: Redirection, GTM, Les deux, Rien (le form gère)
+- URL de redirection configurable
 
 ## Architecture Technique
 
