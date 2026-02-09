@@ -3,9 +3,10 @@ Routes pour la Facturation inter-CRM
 - Prix des leads par produit/département
 - Historique de facturation
 - Dashboard facturation
+- Vue cross-CRM (ZR7 <-> MDL)
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
 from typing import Optional, Dict, List
 from datetime import datetime, timezone, timedelta
@@ -13,6 +14,7 @@ import uuid
 
 from config import db, now_iso
 from routes.auth import get_current_user, require_admin
+from services.billing import get_cross_crm_billing
 
 router = APIRouter(prefix="/billing", tags=["Facturation"])
 
