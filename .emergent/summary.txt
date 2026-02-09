@@ -1,80 +1,310 @@
 <analysis>**original_problem_statement:**
-The user wants to build a multi-tenant CRM and lead management dashboard for their solar panel company. Key features include a central asset hub, a Landbot.io-style API model, form management with a card-based UI, a sophisticated Brief Generator for developers, robust LP-to-form tracking, and an anti-bug system with a lead queue.
+The user is building a multi-tenant CRM and lead management dashboard for their solar panel company. The application started as a V2 refactor and has since evolved to include a sophisticated rule-based lead routing engine (Commandes), cross-CRM fallback logic, a complete user management system with role-based permissions, an activity log, and multiple dashboards for analytics.
 
-Following an initial refactor, the user has requested and overseen the implementation of several major new features to prepare the application for deployment. These include:
-- A sophisticated, rule-based lead routing engine (Commandes) that distributes leads to different CRMs (MDL or ZR7) based on product type and department.
-- A cross-CRM fallback system, allowing a lead to be routed to a secondary CRM if the primary one has no active commande. This is configurable per-form.
-- A comprehensive user management system with role-based permissions for each section of the application.
-- An activity log to track all significant user actions.
-- A detailed statistics dashboard to analyze lead generation by department, product, and source, with powerful filtering capabilities.
-- A system for managing rejected leads, showing the reason for failure and allowing them to be relaunched.
+In this session, the user requested several new features and refinements:
+1.  A nightly job to automatically re-process failed leads.
+2.  An inter-CRM billing/reporting system with weekly navigation and the ability to mark weeks as invoiced.
+3.  The ability to set a price per lead within the Commandes UI.
+4.  Enhancements to the Brief Generator to include separate CGU/Privacy Policy text from the Account settings, embed logos as HTML, and crucially, embed all necessary API endpoints directly into the generated JavaScript code.
+5.  A fix for CRM-based data filtering on the Leads and Departments pages.
+6.  The removal of the ability to regenerate the global API key, making it a permanent, unique key.
+7.  Finally, the main goal is to deploy the completed application to the user's Hostinger VPS.
 
 **User's preferred language**: French
 
 **what currently exists?**
-The application is a feature-rich, full-stack V2 application. All original requirements from the user in this session have been implemented and tested by the agent.
-- **Core Systems:** The LP + Form Duo system is functional. The application correctly filters all data based on the globally selected CRM (Maison du Lead or ZR7).
-- **Lead Routing:** A complete Commandes system is in place. An administrator can define which products and departments are active for each CRM. The lead submission endpoint now uses a sophisticated routing logic: it checks the primary CRM's commands, then checks a fallback CRM (if enabled on the form), and otherwise queues the lead.
-- **User Management:** A full user and permissions system has been implemented. Admins can create users, assign roles (Admin, Editor, Reader), and grant access to specific sections (Dashboard, LPs, Forms, Leads, Commandes, Départements, Settings, Users).
-- **Analytics & Logging:**
-    - An Activity Log tracks user actions like logins and entity modifications.
-    - A new Départements page provides a detailed statistical breakdown of leads by department, product, and source, with date and multi-select filters.
-    - The Leads page now shows the reason for any submission failure (e.g., Invalid phone number, No active command) and includes a Relaunch button.
-- **UI/UX:**
-    - The Brief Generator has been simplified to only include technical scripts and legal text, as requested.
-    - The copy-to-clipboard functionality has been made more robust with visual feedback.
-    - The Forms page now displays key stats (Started, Leads, Conversion %).
-    - The Settings page has been cleaned up, with command management moved to its own dedicated page.
+A feature-rich, full-stack application (React, FastAPI, MongoDB) that has been extensively tested.
+- **Core Systems:** All core features from the previous session (Lead Routing, User Management, Analytics, Activity Log) are functional.
+- **Nightly Verification:** An  job runs at 3 AM UTC to automatically retry eligible failed leads from the previous 24 hours. A UI component on the new Billing page shows its status and allows for manual execution.
+- **Inter-CRM Billing Reporting:** A new Billing page provides a weekly breakdown of cross-CRM lead transactions. It supports navigation between weeks and allows an admin to mark a week as invoiced, which is persisted in the database.
+- **Brief Generator v3:** The brief generator is highly advanced. It now dynamically includes logos, clickable CGU/Privacy Policy modals, and embeds all required endpoints (, , ) directly into the JavaScript  object for all three modes (standalone form, embedded LP+form, redirect LP->form).
+- **Security/UX Refinements:** The ability to regenerate the global API key has been removed from both the backend and frontend, as requested by the user. Backend-driven CRM filtering is now correctly implemented for all relevant pages.
+- **Deployment Prep:** The codebase has been prepared for deployment by fixing  and removing hardcoded secrets.
 
 **Last working item**:
-- **Last item agent was working:** The agent implemented the user's final request before deployment: displaying the reason for lead submission failure on the Leads page (e.g., Pas de commande active). The agent also confirmed that all data views (Leads, Commandes, Départements) are correctly dissociated and filtered by the globally selected CRM.
-- **Status:** USER VERIFICATION PENDING
-- **Agent Testing Done:** Y (via screenshots and validating the UI showed the correct failure reasons for different lead statuses)
-- **Which testing method agent to use?** manual testing by curl
+- **Last item agent was working:** Guiding the user through the process of deploying the application to their Hostinger VPS. The user encountered an error while trying to install system dependencies () on their Ubuntu 24.04 server.
+- **Status:** BLOCKED
+- **Agent Testing Done:** Y
+- **Which testing method agent to use?** NA
 - **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-- **Issue 1: Final User Validation Before Deployment (Priority: P0)**
-  - **Description:** The user has requested a series of major features which have all been implemented and tested by the agent. A final, comprehensive validation by the user is required across all new functionalities before proceeding with deployment.
+- **Issue 1: Resolve Deployment Environment Issues (Priority: P0)**
+  - **Description:** The user is unable to proceed with deployment because the Reading package lists...
+Building dependency tree...
+Reading state information...
+python3.11 is already the newest version (3.11.2-6+deb12u6).
+python3.11 set to manually installed.
+0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded. command failed on their Ubuntu 24.04 VPS.
+  - **Attempted fixes:** The agent correctly identified that Ubuntu 24.04 uses Python 3.12+ and provided the updated command: Reading package lists...
+Building dependency tree...
+Reading state information...
+python3 is already the newest version (3.11.2-1+b1).
+python3 set to manually installed.
+git is already the newest version (1:2.39.5-0+deb12u3).
+nginx is already the newest version (1.22.1-9+deb12u3).
+supervisor is already the newest version (4.2.5-1).
+The following additional packages will be installed:
+  javascript-common libexpat1-dev libjs-jquery libjs-sphinxdoc
+  libjs-underscore libpython3-dev libpython3.11 libpython3.11-dev python3-acme
+  python3-certbot python3-certifi python3-chardet python3-charset-normalizer
+  python3-configargparse python3-configobj python3-dev python3-distutils
+  python3-icu python3-idna python3-josepy python3-lib2to3 python3-openssl
+  python3-parsedatetime python3-pip-whl python3-requests python3-rfc3339
+  python3-setuptools python3-setuptools-whl python3-tz python3-urllib3
+  python3-wheel python3.11-dev python3.11-venv
+Suggested packages:
+  python-certbot-doc python3-certbot-apache python-acme-doc
+  python-certbot-nginx-doc python-configobj-doc python-openssl-doc
+  python3-openssl-dbg python3-socks python-requests-doc python-setuptools-doc
+  python3-brotli
+The following NEW packages will be installed:
+  certbot javascript-common libexpat1-dev libjs-jquery libjs-sphinxdoc
+  libjs-underscore libpython3-dev libpython3.11 libpython3.11-dev python3-acme
+  python3-certbot python3-certbot-nginx python3-certifi python3-chardet
+  python3-charset-normalizer python3-configargparse python3-configobj
+  python3-dev python3-distutils python3-icu python3-idna python3-josepy
+  python3-lib2to3 python3-openssl python3-parsedatetime python3-pip
+  python3-pip-whl python3-requests python3-rfc3339 python3-setuptools
+  python3-setuptools-whl python3-tz python3-urllib3 python3-venv python3-wheel
+  python3.11-dev python3.11-venv
+0 upgraded, 37 newly installed, 0 to remove and 0 not upgraded.
+Need to get 14.1 MB of archives.
+After this operation, 56.7 MB of additional disk space will be used.
+Get:1 http://deb.debian.org/debian bookworm/main arm64 python3-openssl all 23.0.0-1 [50.8 kB]
+Get:2 http://deb.debian.org/debian bookworm/main arm64 python3-josepy all 1.13.0-1 [23.1 kB]
+Get:3 http://deb.debian.org/debian bookworm/main arm64 python3-certifi all 2022.9.24-1 [153 kB]
+Get:4 http://deb.debian.org/debian bookworm/main arm64 python3-charset-normalizer all 3.0.1-2 [49.3 kB]
+Get:5 http://deb.debian.org/debian bookworm/main arm64 python3-idna all 3.3-1+deb12u1 [41.0 kB]
+Get:6 http://deb.debian.org/debian-security bookworm-security/main arm64 python3-urllib3 all 1.26.12-1+deb12u3 [114 kB]
+Get:7 http://deb.debian.org/debian bookworm/main arm64 python3-chardet all 5.1.0+dfsg-2 [110 kB]
+Get:8 http://deb.debian.org/debian bookworm/main arm64 python3-requests all 2.28.1+dfsg-1 [67.9 kB]
+Get:9 http://deb.debian.org/debian bookworm/main arm64 python3-tz all 2022.7.1-4 [30.1 kB]
+Get:10 http://deb.debian.org/debian bookworm/main arm64 python3-rfc3339 all 1.1-4 [7088 B]
+Get:11 http://deb.debian.org/debian bookworm/main arm64 python3-acme all 2.1.0-1 [32.0 kB]
+Get:12 http://deb.debian.org/debian bookworm/main arm64 python3-configargparse all 1.5.3-1 [26.1 kB]
+Get:13 http://deb.debian.org/debian bookworm/main arm64 python3-configobj all 5.0.8-1 [34.5 kB]
+Get:14 http://deb.debian.org/debian bookworm/main arm64 python3-parsedatetime all 2.6-3 [41.2 kB]
+Get:15 http://deb.debian.org/debian bookworm/main arm64 python3-certbot all 2.1.0-4 [209 kB]
+Get:16 http://deb.debian.org/debian bookworm/main arm64 certbot all 2.1.0-4 [122 kB]
+Get:17 http://deb.debian.org/debian bookworm/main arm64 javascript-common all 11+nmu1 [6260 B]
+Get:18 http://deb.debian.org/debian bookworm/main arm64 libexpat1-dev arm64 2.5.0-1+deb12u2 [136 kB]
+Get:19 http://deb.debian.org/debian bookworm/main arm64 libjs-jquery all 3.6.1+dfsg+~3.5.14-1 [326 kB]
+Get:20 http://deb.debian.org/debian bookworm/main arm64 libjs-underscore all 1.13.4~dfsg+~1.11.4-3 [116 kB]
+Get:21 http://deb.debian.org/debian bookworm/main arm64 libjs-sphinxdoc all 5.3.0-4 [130 kB]
+Get:22 http://deb.debian.org/debian bookworm/main arm64 libpython3.11 arm64 3.11.2-6+deb12u6 [1841 kB]
+Get:23 http://deb.debian.org/debian bookworm/main arm64 libpython3.11-dev arm64 3.11.2-6+deb12u6 [4390 kB]
+Get:24 http://deb.debian.org/debian bookworm/main arm64 libpython3-dev arm64 3.11.2-1+b1 [9564 B]
+Get:25 http://deb.debian.org/debian bookworm/main arm64 python3-certbot-nginx all 2.1.0-2 [37.4 kB]
+Get:26 http://deb.debian.org/debian bookworm/main arm64 python3.11-dev arm64 3.11.2-6+deb12u6 [617 kB]
+Get:27 http://deb.debian.org/debian bookworm/main arm64 python3-lib2to3 all 3.11.2-3 [76.3 kB]
+Get:28 http://deb.debian.org/debian bookworm/main arm64 python3-distutils all 3.11.2-3 [131 kB]
+Get:29 http://deb.debian.org/debian bookworm/main arm64 python3-dev arm64 3.11.2-1+b1 [26.2 kB]
+Get:30 http://deb.debian.org/debian bookworm/main arm64 python3-icu arm64 2.10.2-1+b3 [413 kB]
+Get:31 http://deb.debian.org/debian bookworm/main arm64 python3-setuptools all 66.1.1-1+deb12u2 [522 kB]
+Get:32 http://deb.debian.org/debian bookworm/main arm64 python3-wheel all 0.38.4-2 [30.8 kB]
+Get:33 http://deb.debian.org/debian bookworm/main arm64 python3-pip all 23.0.1+dfsg-1 [1325 kB]
+Get:34 http://deb.debian.org/debian bookworm/main arm64 python3-pip-whl all 23.0.1+dfsg-1 [1717 kB]
+Get:35 http://deb.debian.org/debian bookworm/main arm64 python3-setuptools-whl all 66.1.1-1+deb12u2 [1112 kB]
+Get:36 http://deb.debian.org/debian bookworm/main arm64 python3.11-venv arm64 3.11.2-6+deb12u6 [5896 B]
+Get:37 http://deb.debian.org/debian bookworm/main arm64 python3-venv arm64 3.11.2-1+b1 [1200 B]
+Fetched 14.1 MB in 0s (37.0 MB/s)
+Selecting previously unselected package python3-openssl.
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 37768 files and directories currently installed.)
+Preparing to unpack .../00-python3-openssl_23.0.0-1_all.deb ...
+Unpacking python3-openssl (23.0.0-1) ...
+Selecting previously unselected package python3-josepy.
+Preparing to unpack .../01-python3-josepy_1.13.0-1_all.deb ...
+Unpacking python3-josepy (1.13.0-1) ...
+Selecting previously unselected package python3-certifi.
+Preparing to unpack .../02-python3-certifi_2022.9.24-1_all.deb ...
+Unpacking python3-certifi (2022.9.24-1) ...
+Selecting previously unselected package python3-charset-normalizer.
+Preparing to unpack .../03-python3-charset-normalizer_3.0.1-2_all.deb ...
+Unpacking python3-charset-normalizer (3.0.1-2) ...
+Selecting previously unselected package python3-idna.
+Preparing to unpack .../04-python3-idna_3.3-1+deb12u1_all.deb ...
+Unpacking python3-idna (3.3-1+deb12u1) ...
+Selecting previously unselected package python3-urllib3.
+Preparing to unpack .../05-python3-urllib3_1.26.12-1+deb12u3_all.deb ...
+Unpacking python3-urllib3 (1.26.12-1+deb12u3) ...
+Selecting previously unselected package python3-chardet.
+Preparing to unpack .../06-python3-chardet_5.1.0+dfsg-2_all.deb ...
+Unpacking python3-chardet (5.1.0+dfsg-2) ...
+Selecting previously unselected package python3-requests.
+Preparing to unpack .../07-python3-requests_2.28.1+dfsg-1_all.deb ...
+Unpacking python3-requests (2.28.1+dfsg-1) ...
+Selecting previously unselected package python3-tz.
+Preparing to unpack .../08-python3-tz_2022.7.1-4_all.deb ...
+Unpacking python3-tz (2022.7.1-4) ...
+Selecting previously unselected package python3-rfc3339.
+Preparing to unpack .../09-python3-rfc3339_1.1-4_all.deb ...
+Unpacking python3-rfc3339 (1.1-4) ...
+Selecting previously unselected package python3-acme.
+Preparing to unpack .../10-python3-acme_2.1.0-1_all.deb ...
+Unpacking python3-acme (2.1.0-1) ...
+Selecting previously unselected package python3-configargparse.
+Preparing to unpack .../11-python3-configargparse_1.5.3-1_all.deb ...
+Unpacking python3-configargparse (1.5.3-1) ...
+Selecting previously unselected package python3-configobj.
+Preparing to unpack .../12-python3-configobj_5.0.8-1_all.deb ...
+Unpacking python3-configobj (5.0.8-1) ...
+Selecting previously unselected package python3-parsedatetime.
+Preparing to unpack .../13-python3-parsedatetime_2.6-3_all.deb ...
+Unpacking python3-parsedatetime (2.6-3) ...
+Selecting previously unselected package python3-certbot.
+Preparing to unpack .../14-python3-certbot_2.1.0-4_all.deb ...
+Unpacking python3-certbot (2.1.0-4) ...
+Selecting previously unselected package certbot.
+Preparing to unpack .../15-certbot_2.1.0-4_all.deb ...
+Unpacking certbot (2.1.0-4) ...
+Selecting previously unselected package javascript-common.
+Preparing to unpack .../16-javascript-common_11+nmu1_all.deb ...
+Unpacking javascript-common (11+nmu1) ...
+Selecting previously unselected package libexpat1-dev:arm64.
+Preparing to unpack .../17-libexpat1-dev_2.5.0-1+deb12u2_arm64.deb ...
+Unpacking libexpat1-dev:arm64 (2.5.0-1+deb12u2) ...
+Selecting previously unselected package libjs-jquery.
+Preparing to unpack .../18-libjs-jquery_3.6.1+dfsg+~3.5.14-1_all.deb ...
+Unpacking libjs-jquery (3.6.1+dfsg+~3.5.14-1) ...
+Selecting previously unselected package libjs-underscore.
+Preparing to unpack .../19-libjs-underscore_1.13.4~dfsg+~1.11.4-3_all.deb ...
+Unpacking libjs-underscore (1.13.4~dfsg+~1.11.4-3) ...
+Selecting previously unselected package libjs-sphinxdoc.
+Preparing to unpack .../20-libjs-sphinxdoc_5.3.0-4_all.deb ...
+Unpacking libjs-sphinxdoc (5.3.0-4) ...
+Selecting previously unselected package libpython3.11:arm64.
+Preparing to unpack .../21-libpython3.11_3.11.2-6+deb12u6_arm64.deb ...
+Unpacking libpython3.11:arm64 (3.11.2-6+deb12u6) ...
+Selecting previously unselected package libpython3.11-dev:arm64.
+Preparing to unpack .../22-libpython3.11-dev_3.11.2-6+deb12u6_arm64.deb ...
+Unpacking libpython3.11-dev:arm64 (3.11.2-6+deb12u6) ...
+Selecting previously unselected package libpython3-dev:arm64.
+Preparing to unpack .../23-libpython3-dev_3.11.2-1+b1_arm64.deb ...
+Unpacking libpython3-dev:arm64 (3.11.2-1+b1) ...
+Selecting previously unselected package python3-certbot-nginx.
+Preparing to unpack .../24-python3-certbot-nginx_2.1.0-2_all.deb ...
+Unpacking python3-certbot-nginx (2.1.0-2) ...
+Selecting previously unselected package python3.11-dev.
+Preparing to unpack .../25-python3.11-dev_3.11.2-6+deb12u6_arm64.deb ...
+Unpacking python3.11-dev (3.11.2-6+deb12u6) ...
+Selecting previously unselected package python3-lib2to3.
+Preparing to unpack .../26-python3-lib2to3_3.11.2-3_all.deb ...
+Unpacking python3-lib2to3 (3.11.2-3) ...
+Selecting previously unselected package python3-distutils.
+Preparing to unpack .../27-python3-distutils_3.11.2-3_all.deb ...
+Unpacking python3-distutils (3.11.2-3) ...
+Selecting previously unselected package python3-dev.
+Preparing to unpack .../28-python3-dev_3.11.2-1+b1_arm64.deb ...
+Unpacking python3-dev (3.11.2-1+b1) ...
+Selecting previously unselected package python3-icu.
+Preparing to unpack .../29-python3-icu_2.10.2-1+b3_arm64.deb ...
+Unpacking python3-icu (2.10.2-1+b3) ...
+Selecting previously unselected package python3-setuptools.
+Preparing to unpack .../30-python3-setuptools_66.1.1-1+deb12u2_all.deb ...
+Unpacking python3-setuptools (66.1.1-1+deb12u2) ...
+Selecting previously unselected package python3-wheel.
+Preparing to unpack .../31-python3-wheel_0.38.4-2_all.deb ...
+Unpacking python3-wheel (0.38.4-2) ...
+Selecting previously unselected package python3-pip.
+Preparing to unpack .../32-python3-pip_23.0.1+dfsg-1_all.deb ...
+Unpacking python3-pip (23.0.1+dfsg-1) ...
+Selecting previously unselected package python3-pip-whl.
+Preparing to unpack .../33-python3-pip-whl_23.0.1+dfsg-1_all.deb ...
+Unpacking python3-pip-whl (23.0.1+dfsg-1) ...
+Selecting previously unselected package python3-setuptools-whl.
+Preparing to unpack .../34-python3-setuptools-whl_66.1.1-1+deb12u2_all.deb ...
+Unpacking python3-setuptools-whl (66.1.1-1+deb12u2) ...
+Selecting previously unselected package python3.11-venv.
+Preparing to unpack .../35-python3.11-venv_3.11.2-6+deb12u6_arm64.deb ...
+Unpacking python3.11-venv (3.11.2-6+deb12u6) ...
+Selecting previously unselected package python3-venv.
+Preparing to unpack .../36-python3-venv_3.11.2-1+b1_arm64.deb ...
+Unpacking python3-venv (3.11.2-1+b1) ...
+Setting up javascript-common (11+nmu1) ...
+Setting up python3-configargparse (1.5.3-1) ...
+Setting up python3-setuptools-whl (66.1.1-1+deb12u2) ...
+Setting up python3-parsedatetime (2.6-3) ...
+Setting up libpython3.11:arm64 (3.11.2-6+deb12u6) ...
+Setting up python3-icu (2.10.2-1+b3) ...
+Setting up python3-pip-whl (23.0.1+dfsg-1) ...
+Setting up python3-charset-normalizer (3.0.1-2) ...
+Setting up python3-openssl (23.0.0-1) ...
+Setting up python3-tz (2022.7.1-4) ...
+Setting up python3-chardet (5.1.0+dfsg-2) ...
+Setting up python3-configobj (5.0.8-1) ...
+Setting up libexpat1-dev:arm64 (2.5.0-1+deb12u2) ...
+Setting up python3-certifi (2022.9.24-1) ...
+Setting up libpython3.11-dev:arm64 (3.11.2-6+deb12u6) ...
+Setting up python3-idna (3.3-1+deb12u1) ...
+Setting up python3-urllib3 (1.26.12-1+deb12u3) ...
+Setting up python3-josepy (1.13.0-1) ...
+Setting up libjs-jquery (3.6.1+dfsg+~3.5.14-1) ...
+Setting up python3-rfc3339 (1.1-4) ...
+Setting up python3-lib2to3 (3.11.2-3) ...
+Setting up libjs-underscore (1.13.4~dfsg+~1.11.4-3) ...
+Setting up python3-distutils (3.11.2-3) ...
+Setting up libpython3-dev:arm64 (3.11.2-1+b1) ...
+Setting up python3-setuptools (66.1.1-1+deb12u2) ...
+Setting up python3.11-dev (3.11.2-6+deb12u6) ...
+Setting up python3-wheel (0.38.4-2) ...
+Setting up python3.11-venv (3.11.2-6+deb12u6) ...
+Setting up python3-requests (2.28.1+dfsg-1) ...
+Setting up python3-pip (23.0.1+dfsg-1) ...
+Setting up libjs-sphinxdoc (5.3.0-4) ...
+Setting up python3-venv (3.11.2-1+b1) ...
+Setting up python3-acme (2.1.0-1) ...
+Setting up python3-dev (3.11.2-1+b1) ...
+Setting up python3-certbot (2.1.0-4) ...
+Setting up certbot (2.1.0-4) ...
+Created symlink /etc/systemd/system/timers.target.wants/certbot.timer → /lib/systemd/system/certbot.timer.
+Setting up python3-certbot-nginx (2.1.0-2) ...
+Processing triggers for libc-bin (2.36-9+deb12u13) ....
   - **Next debug checklist:**
-    1.  Ask the user to test the Commandes system by disabling a command and submitting a lead to see if it gets queued or rerouted.
-    2.  Ask the user to test the Users system by creating a new user with limited permissions and logging in as them to verify access restrictions.
-    3.  Ask the user to test the Leads page, particularly the Relancer button on a failed lead.
-    4.  Ask the user to explore the Départements statistics page and test the filters.
-  - **Why fix this issue and what will be achieved with the fix?** To get final user approval on the current feature set, ensuring the application meets all their requirements before deploying to production.
-  - **Status:** USER VERIFICATION PENDING
+    1.  Wait for the user to execute the corrected Reading package lists...
+Building dependency tree...
+Reading state information...
+0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded. command in their VPS terminal.
+    2.  Confirm that all system dependencies (Python, Node, Nginx, etc.) are installed successfully.
+    3.  If successful, proceed to the next step of the deployment guide (MongoDB installation).
+  - **Why fix this issue and what will be achieved with the fix?** This is the primary blocker preventing the application from going live on the user's production server.
+  - **Status:** BLOCKED
   - **Is recurring issue?** N
-  - **Should Test frontend/backend/both after fix?** Both.
+  - **Should Test frontend/backend/both after fix?** Both (after full deployment).
   - **Blocked on other issue:** None.
 
 **In progress Task List**:
-- None.
+- **Task 1: Complete Hostinger Deployment Guide (Priority: P0)**
+  - **Where to resume:** Resume the deployment guide from Étape 3 : Installer MongoDB once the user confirms the system dependencies from Étape 2 are installed correctly. The subsequent steps will involve cloning the Git repo, configuring environment variables (), setting up Nginx as a reverse proxy, creating Supervisor configs to manage the frontend and backend processes, and securing the site with an SSL certificate via Certbot.
+  - **What will be achieved with this?** A fully functional, production-ready deployment of the application on the user's VPS.
+  - **Status:** IN PROGRESS
+  - **Should Test frontend/backend/both after fix?** Both.
+  - **Blocked on something:** Issue 1: Resolve Deployment Environment Issues.
 
 **Upcoming and Future Tasks**
 - **Upcoming Tasks:**
-    - **P0: Deploy to Hostinger:** Once the user gives final validation, the next immediate step is to guide the user through deploying the application to their production environment.
-    - **P1: Implement Facturation Inter-CRM (Billing):** This is the most critical feature from the original V1 application that is still missing in the V2 refactor. This involves building out the backend logic in  and creating the corresponding frontend UI.
-    - **P2: Implement remaining P1 features from original spec:** Sub-accounts, Diffusion Sources, and full Product Type configuration.
+  - **P1: Implement remaining V1 features:** The original spec included Sub-accounts, Diffusion Sources, and a more detailed Product Type configuration.
+  - **P2: Add system alerts:** The user mentioned wanting automatic email alerts.
 - **Future Tasks:**
-    - **P2:** Image Library, Activity Logs (further enhancements), System Alerts.
-    - **P3:** A/B Testing (Campaign Mode).
-    - **Backlog:** Hostable Forms, API Documentation Page.
+  - **P2:** Image Library, further enhancements to Activity Logs.
+  - **P3:** A/B Testing (Campaign Mode).
+  - **Backlog:** Hostable Forms, API Documentation Page.
 
 **Completed work in this session**
-- **Commands & Cross-CRM Lead Routing:** Implemented a complete system for defining lead orders and routing leads based on their availability, including a cross-CRM fallback mechanism.
-- **User Management & Permissions:** Created a full user CRUD system with granular, section-based permissions.
-- **Départements Statistics Dashboard:** Built a new analytics page with detailed lead statistics and advanced filters.
-- **Rejected Lead Management:** Enhanced the Leads page to show failure reasons and add a Relancer button for failed/queued leads.
-- **Activity Log:** Implemented a backend service and UI to log and view key user actions.
-- **Bug Fix & Robustness:**
-  - Fixed a critical database connection issue where the app was not reading the  file correctly.
-  - Fixed a bug in the unique code generation logic for LPs and Forms.
-  - Made the Copy Script functionality in the Brief modal more robust and added visual feedback.
-- **UI/UX Enhancements:**
-  - Added conversion stats to the Forms list page.
-  - Simplified the Brief generator output to remove marketing text.
-  - Cleaned up the Settings page.
-- **End-to-End Testing:** Performed comprehensive testing of the entire LP -> Form -> Lead submission flow for both MDL and ZR7 CRMs, and ran a full test suite using the testing agent, which passed successfully.
+- **Nightly Lead Verification System:** Implemented a scheduled job () to retry failed leads and added a UI on the new Billing page to manage it.
+- **Inter-CRM Billing Reporting Page:** Created a new page with weekly navigation and a Mark as Invoiced feature.
+- **Brief Generator Major Overhaul:**
+  - Embedded all API endpoints (, , ) directly into the JavaScript configuration object of every generated script.
+  - Added support for separate CGU and Privacy Policy text from Account settings, displayed in clickable modals.
+  - Included account logos directly as HTML in the brief.
+- **Core Feature Enhancements:**
+  - Added a  field to the Commandes UI to set a price per lead.
+  - Removed the ability to regenerate the global API key, making it permanent.
+- **Bug Fixes:**
+  - Corrected CRM filtering logic on the Leads and Départements pages to be backend-driven.
+  - Fixed multiple bugs in the  service related to f-strings and incorrect variable names.
+- **Comprehensive Testing:** Successfully ran the  twice, achieving a 100% pass rate on all features, including all new additions and regression tests.
+- **Deployment Guidance:** Initiated and provided a detailed step-by-step guide for deploying the application on a Hostinger VPS.
 
 **Earlier issues found/mentioned but not fixed**
 - **SendGrid 401 Unauthorized:** This issue remains on hold as it requires user action within their SendGrid account.
@@ -87,92 +317,94 @@ The application is a feature-rich, full-stack V2 application. All original requi
 
 **Key Technical Concepts**
 - **Full Stack:** React, FastAPI, MongoDB
-- **Architecture:** Modular backend (routes, services) and frontend (pages, components, hooks).
-- **State Management:** React Context API for global state (selected CRM, auth).
-- **Backend Logic:** Complex business logic for lead routing. Use of MongoDB aggregation pipelines for the statistics dashboard.
-- **Authentication:** JWT for UI login, Token-based for API v1, with a new role-based permission system.
+- **Scheduled Jobs:**  is used to run the background task for nightly lead verification.
+- **Dynamic Script Generation:** The  service constructs complex, context-aware JavaScript code snippets for different embedding modes (standalone, embedded, redirect).
+- **Production Deployment:** The current focus is on a traditional VPS deployment using Nginx (reverse proxy), Supervisor (process management), and Certbot (SSL).
 
 **key DB schema**
-- **User:** 
-- **ActivityLog:** 
-- **Commande:** 
-- **Form:** 
-- **Lead:** 
+- **Account:**  (Added ).
+- **Commande:**  (Now editable and used from the UI).
+- **BillingReport** (Implicit Collection): A new collection is used to store the status of weekly billing reports, e.g., .
 
 **changes in tech stack**
-- None.
+-  was added to the backend dependencies.
 
 **All files of reference**
-- **Backend (Heavily Modified/Created):**
-  - : Completely refactored to implement the new command-based routing logic.
-  - : Heavily modified to add User CRUD, permissions, and activity logging endpoints.
-  - : New file for managing lead commands.
-  - : New file with MongoDB aggregation pipelines for the analytics dashboard.
-  - : Updated with , , and new fields in , , and .
-  - : New service for logging user actions.
-  - : Simplified to remove marketing text.
-- **Frontend (Heavily Modified/Created):**
-  - : New page to manage lead commands.
-  - : New analytics dashboard page.
-  - : New page for user management and activity log.
-  - : Updated with status filters, failure reasons, and a Relancer button.
-  - : Updated to show stats and include the  checkbox in the modal.
-  -  & : Updated with routes and navigation links for the new pages.
+- : The most heavily modified file. It now embeds all dynamic information (endpoints, legal text, logos) directly into the generated JavaScript for maximum portability.
+- : A new page providing the UI for the weekly billing report and the nightly verification job status.
+- : New service that handles the logic for aggregating weekly billing data and managing the invoiced status.
+- : New service containing the logic for the scheduled lead verification task.
+- : Modified to initialize and start the .
+- : Modified to add an inline-editable price field.
+-  & : Modified to use the new backend-driven CRM filtering.
+-  & : Modified to completely remove the API key regeneration functionality.
 
 **Areas that need refactoring**:
-- The lead routing logic in  () is now quite large and could potentially be moved to its own service file (e.g., ) to keep the route file cleaner.
+- The lead routing logic in  () is complex and could be extracted into a dedicated service for better separation of concerns.
 
 **key api endpoints**
-- : Initializes default commands for all CRMs.
-- : Main endpoint for the analytics dashboard.
-- , , : User management endpoints.
-- : Fetches the audit trail.
-- : Reruns the routing logic for a failed or queued lead.
-- : The public lead submission endpoint, now using the advanced routing logic.
+- : Retrieves billing data for a specific week.
+- : Marks a billing week as invoiced.
+- : Manually triggers the nightly lead verification process.
+- : Fetches leads filtered by a specific CRM ID.
+- : Public endpoint for fetching form configuration, now embedded in briefs.
+- : Public endpoint for lead submission, now embedded in briefs.
 
 **Critical Info for New Agent**
-- **User Validation is the Blocker:** Do not start any new coding tasks (including the Billing feature) until the user has fully tested and validated the massive set of features just implemented. The immediate next action is to  to guide the user through this validation process.
-- **Deployment is Next:** The user's explicit goal is to deploy the application. Once validation is complete, the next task is deployment to Hostinger.
-- **The Core Logic is New:** The heart of the application—how leads are processed and routed—was completely rewritten in this session to use the Commandes system. Be sure to understand the flow in  before making any changes.
-- **Permissions are Active:** All routes are now protected. The current admin user has full access, but any new users will have restricted access based on their configured permissions. Remember to consider permissions when adding new features or pages.
+- **Deployment is the active, high-priority task.** The user is in their VPS terminal, ready to execute commands. The immediate goal is to help them overcome the environment setup blocker (Python version) and complete the deployment.
+- **The user's server is Ubuntu 24.04.** Be mindful that default packages (like Python) may differ from older LTS versions. The agent has already provided a corrected command for this.
+- **The user is very meticulous about the Briefs.** The final implementation, where all endpoints are embedded directly in the JavaScript, is exactly what the user wanted. Do not regress on this feature.
+- **The application has been thoroughly tested.** Two full test runs from the testing subagent passed with 100% success after the latest features were added. You can be confident in the application's functionality prior to deployment.
 
 **documents and test reports created in this job**
 - 
 - 
-- : A successful, comprehensive test report from the testing agent.
+- 
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Request for a Départements dashboard with detailed stats and filters. (FEATURE REQUEST) - Implemented.
-2.  **Agent:** Clarified understanding and started coding. (ACKNOWLEDGED)
-3.  **Agent:** Presented the finished Départements page. (COMPLETED)
-4.  **User:** Confirmed it looks good, and asked to dissociate data by CRM. Also requested that the reason for lead failure be shown on the leads page. (REFINEMENT/FEATURE REQUEST) - Implemented.
-5.  **Agent:** Added the failure reason to the UI and confirmed CRM data dissociation. (COMPLETED)
-6.  **User:** Approved. Requested user management with permissions and an activity log. Asked for a full code review. (FEATURE REQUEST) - Implemented.
-7.  **Agent:** Implemented user management and activity log, then ran a full test suite which passed. (COMPLETED)
-8.  **User:** Approved. Added a final request for the Départements stats dashboard. (FEATURE REQUEST) - Implemented.
-9.  **User:** Approved the stats dashboard. Requested the lead failure reason be displayed. (REFINEMENT) - Implemented.
-10. **User:** Final approval and confirmation of CRM data dissociation, with the final instruction to add failure reasons and then deploy. (FINAL POLISH & GO-AHEAD FOR DEPLOYMENT)
+1. **User (ACTION):** Asks to proceed with Hostinger deployment.
+2. **User (BLOCKER):** Pastes terminal output showing python3.11 installation failure on their VPS.
+3. **User (CLARIFICATION):** Asks for an explanation of LP Redirect vs LP Embedded.
+4. **User (ACTION):** Confirms they have saved the code to GitHub and are ready to deploy.
+5. **Agent (RESPONSE):** Provides a full, step-by-step deployment guide for Hostinger.
+6. **User (INFO):** Pastes their initial  connection and Hit:1 http://deb.debian.org/debian bookworm InRelease
+Get:2 http://deb.debian.org/debian bookworm-updates InRelease [55.4 kB]
+Get:3 http://deb.debian.org/debian-security bookworm-security InRelease [48.0 kB]
+Hit:4 https://deb.nodesource.com/node_20.x nodistro InRelease
+Hit:5 https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 InRelease
+Get:6 http://deb.debian.org/debian-security bookworm-security/main arm64 Packages [290 kB]
+Fetched 394 kB in 1s (589 kB/s)
+Reading package lists...
+Building dependency tree...
+Reading state information...
+1 package can be upgraded. Run 'apt list --upgradable' to see it. output.
+7. **User (BLOCKER):** Pastes the output showing Reading package lists...
+Building dependency tree...
+Reading state information...
+0 upgraded, 0 newly installed, 0 to remove and 1 not upgraded. for  failed again.
+8. **Agent (RESPONSE/FIX):** Provides the corrected Reading package lists...
+Building dependency tree...
+Reading state information...
+0 upgraded, 0 newly installed, 0 to remove and 1 not upgraded. command for Ubuntu 24.04, which uses  (v3.12) by default.
+9. **User (PENDING):** The user has not yet responded after receiving the corrected installation command. The next step is for them to run it on their server.
+10. **User (ACTION):** The final step of the conversation was the user's terminal output showing the installation failure, prompting the agent's last fix.
 
 **Project Health Check:**
-- **Broken:** The application is not yet feature-complete compared to its original V1 state. Facturation (Billing), Sub-accounts, and other features are still missing.
+- **Broken:** The production deployment is currently broken/incomplete due to an environment setup issue on the user's VPS.
 - **Mocked:** None.
 
 **3rd Party Integrations**
-- Maison du Lead API
-- ZR7 Digital API
-- SendGrid (Partially integrated, non-functional, deprioritized)
-- APScheduler (for background jobs)
+- **Application:** Maison du Lead API, ZR7 Digital API, SendGrid (inactive), APScheduler.
+- **Deployment:** Git/GitHub, Nginx, Supervisor, Certbot (Let's Encrypt).
 
 **Testing status**
-- **Testing agent used after significant changes:** YES. A full suite of 32 backend tests and frontend tests were run and passed.
+- **Testing agent used after significant changes:** YES. Two comprehensive test runs were executed via .
 - **Troubleshoot agent used after agent stuck in loop:** NO
-- **Test files created:** 
-- **Known regressions:** Several features from the original application are still missing in the V2 build (e.g., Billing, Sub-accounts).
+- **Test files created:** , 
+- **Known regressions:** V1 features like sub-accounts are still pending re-implementation.
 
 **Credentials to test flow:**
 - **UI Login:**  / 
-- **ZR7 API Key (PV):** 
-- **MDL API Key (PV):** 
 
 **What agent forgot to execute**
-- The agent successfully implemented all user requests from this session. The long-term task of re-implementing V1 features (like Billing) was correctly put on hold to address the user's immediate, high-priority requests for the new Command, User, and Stats systems.</analysis>
+- The agent has successfully addressed all of the user's direct requests in this session. The long-term refactoring of  was correctly deprioritized in favor of new features and the critical deployment task.</analysis>

@@ -5,7 +5,7 @@ CRM multi-tenant pour centraliser et redistribuer les leads solaires (PAC, PV, I
 
 ## URL Production
 - **API Backend**: https://rdz-group-ltd.online
-- **Preview**: https://crm-lead-routing.preview.emergentagent.com
+- **Preview**: https://sun-leads-pro.preview.emergentagent.com
 
 ## Fonctionnalités Implémentées
 
@@ -144,5 +144,5 @@ CRM multi-tenant pour centraliser et redistribuer les leads solaires (PAC, PV, I
 - **Rapport**: `/app/test_reports/iteration_9.json`
 
 ## Déploiement
-- **Preview**: https://crm-lead-routing.preview.emergentagent.com
+- **Preview**: https://sun-leads-pro.preview.emergentagent.com
 - **Production**: https://rdz-group-ltd.online (Hostinger VPS - prêt)
