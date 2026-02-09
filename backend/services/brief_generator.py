@@ -837,7 +837,9 @@ Placez votre formulaire dans un conteneur avec cet ID :
 </div>
 -->
 
-{legal_banner_html}
+{logos_html}
+
+{legal_buttons_html}
 '''
         
         return {
@@ -864,6 +866,8 @@ Placez votre formulaire dans un conteneur avec cet ID :
             },
             "scripts": {
                 "combined": script_combined,
+                "logos_html": logos_html,
+                "legal_html": legal_buttons_html,
                 "lp": None,
                 "form": None
             },
