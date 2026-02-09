@@ -289,3 +289,52 @@ async def get_billing_stats(user: dict = Depends(get_current_user)):
             "total_amount": round(year_total, 2)
         }
     }
+
+
+# ==================== FACTURATION CROSS-CRM ====================
+
+@router.get("/cross-crm")
+async def get_cross_crm_billing_view(
+    period: str = Query("month", description="Période: week, month, custom"),
+    date_from: Optional[str] = Query(None, description="Date début (format ISO ou YYYY-MM-DD)"),
+    date_to: Optional[str] = Query(None, description="Date fin (format ISO ou YYYY-MM-DD)"),
+    user: dict = Depends(get_current_user)
+):
+    """
+    Facturation inter-CRM - Vue des leads cross-CRM.
+    
+    Montre:
+    - Total des leads de la période
+    - Leads cross-CRM (envoyés d'un CRM à un autre)
+    - Qui doit quoi à qui
+    - Balances nettes par CRM
+    
+    Exemple: Si ZR7 envoie un lead à MDL, MDL doit payer ZR7.
+    """
+    billing = await get_cross_crm_billing(
+        period=period,
+        date_from=date_from,
+        date_to=date_to
+    )
+    
+    return billing
+
+
+@router.get("/cross-crm/summary")
+async def get_cross_crm_summary(
+    period: str = Query("month"),
+    user: dict = Depends(get_current_user)
+):
+    """
+    Résumé simplifié de la facturation cross-CRM (sans détails des leads).
+    """
+    billing = await get_cross_crm_billing(period=period)
+    
+    return {
+        "period": billing.get("period"),
+        "total_leads": billing.get("total_leads_period"),
+        "cross_crm_leads": billing.get("cross_crm_leads"),
+        "cross_crm_percentage": billing.get("cross_crm_percentage"),
+        "transactions": billing.get("transactions"),
+        "balances": billing.get("balances")
+    }
