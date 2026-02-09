@@ -7,7 +7,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useCRM } from '../hooks/useCRM';
 import { API } from '../hooks/useApi';
 import { Card, Modal, Button, Input, Select, Loading, EmptyState, Badge } from '../components/UI';
-import { Globe, Plus, Edit, Trash2, Copy, Code, ExternalLink, Link2, AlertTriangle } from 'lucide-react';
+import { Globe, Plus, Edit, Trash2, Copy, Code, ExternalLink, Link2, AlertTriangle, Check, Clipboard } from 'lucide-react';
 
 export default function LandingPages() {
   const { authFetch } = useAuth();
