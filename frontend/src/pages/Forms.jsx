@@ -88,6 +88,7 @@ export default function Forms() {
       product_type: 'PV',
       lp_id: '',
       crm_api_key: '',
+      allow_cross_crm: true,
       tracking_type: 'redirect',
       redirect_url: '/merci'
     });
@@ -103,6 +104,7 @@ export default function Forms() {
       product_type: formItem.product_type,
       lp_id: formItem.lp_id || '',
       crm_api_key: formItem.crm_api_key || '',
+      allow_cross_crm: formItem.allow_cross_crm !== false,
       tracking_type: formItem.tracking_type || 'redirect',
       redirect_url: formItem.redirect_url || '/merci'
     });
