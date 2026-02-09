@@ -582,6 +582,9 @@ const DashboardPage = () => {
         </div>
       </div>
 
+      {/* File d'attente des leads */}
+      <QueueStatus token={localStorage.getItem('token')} apiUrl={API} />
+
       <div className="bg-white rounded-xl shadow-sm border border-slate-200">
         <div className="p-4 border-b border-slate-200">
           <h3 className="font-semibold text-slate-800">Derniers leads</h3>
