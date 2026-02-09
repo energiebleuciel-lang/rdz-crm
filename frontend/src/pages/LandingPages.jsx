@@ -239,10 +239,17 @@ export default function LandingPages() {
                   <div className="flex items-center gap-3 mb-2">
                     <Badge variant="default">{lp.code}</Badge>
                     <h3 className="font-semibold text-slate-800">{lp.name}</h3>
-                    <Badge variant={lp.form_mode === 'embedded' ? 'success' : 'info'}>
-                      {lp.form_mode === 'embedded' ? 'Embedded' : 'Redirect'}
-                    </Badge>
-                    <Badge variant="warning">{lp.product_type}</Badge>
+                    {lp.form_id || lp.form ? (
+                      <Badge variant={lp.form_mode === 'embedded' ? 'success' : 'info'}>
+                        {lp.form_mode === 'embedded' ? 'Embedded' : 'Redirect'}
+                      </Badge>
+                    ) : (
+                      <Badge variant="warning" className="flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" />
+                        Ancien format
+                      </Badge>
+                    )}
+                    {lp.product_type && <Badge variant="warning">{lp.product_type}</Badge>}
                   </div>
                   
                   <div className="text-sm text-slate-500 space-y-1">
