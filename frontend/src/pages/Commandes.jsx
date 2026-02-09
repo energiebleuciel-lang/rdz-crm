@@ -119,6 +119,24 @@ export default function Commandes() {
     }
   };
 
+  const updatePrice = async (commande, price) => {
+    try {
+      const res = await authFetch(`${API}/api/commandes/${commande.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ prix_unitaire: price })
+      });
+
+      if (res.ok) {
+        // Mise à jour locale pour éviter un rechargement
+        setCommandes(prev => prev.map(c => 
+          c.id === commande.id ? { ...c, prix_unitaire: price } : c
+        ));
+      }
+    } catch (e) {
+      alert('Erreur: ' + e.message);
+    }
+  };
+
   const handleDelete = async (commande) => {
     if (!window.confirm('Supprimer cette commande ?')) return;
     
