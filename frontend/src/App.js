@@ -12,6 +12,7 @@ import {
 // Import des composants modulaires indépendants
 import FormsGrid from './components/FormsGrid';
 import FormCard from './components/FormCard';
+import QueueStatus from './components/QueueStatus';
 
 const API = process.env.REACT_APP_BACKEND_URL || '';
 
