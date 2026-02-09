@@ -932,19 +932,19 @@ async def get_email_config(user: dict = Depends(get_current_user)):
 # ==================== BRIEF DÉVELOPPEUR & SCRIPT TRACKING ====================
 
 @api_router.get("/forms/{form_id}/brief")
-async def get_form_brief(form_id: str, user: dict = Depends(get_current_user)):
+async def get_form_brief(form_id: str, lp_code: str = "", user: dict = Depends(get_current_user)):
     """
     Génère le brief complet pour les développeurs avec:
-    - form_id et endpoint API
-    - Script de tracking (form_start au premier clic, lead submission à la fin)
-    - Support logo/badge
-    - Aides financières configurées
+    - Système de liaison LP ↔ Formulaire
+    - 2 scénarios : même page ou pages différentes
+    - 3 options de tracking conversion : GTM, Redirect, ou les 2
+    - Guide d'utilisation complet en français
     """
     form = await db.forms.find_one({"id": form_id}, {"_id": 0})
     if not form:
         raise HTTPException(status_code=404, detail="Formulaire non trouvé")
     
-    # Récupérer le compte pour le logo
+    # Récupérer le compte pour les logos
     account = None
     if form.get('account_id'):
         account = await db.accounts.find_one({"id": form['account_id']}, {"_id": 0})
@@ -955,39 +955,717 @@ async def get_form_brief(form_id: str, user: dict = Depends(get_current_user)):
     api_key = await get_or_create_global_api_key()
     backend_url = os.environ.get('BACKEND_URL', 'https://rdz-group-ltd.online')
     
-    # Produit info
-    product_labels = {'panneaux': 'Panneaux Solaires (PV)', 'pompes': 'Pompes à Chaleur (PAC)', 'isolation': 'Isolation (ITE)', 'PV': 'Panneaux Solaires (PV)', 'PAC': 'Pompes à Chaleur (PAC)', 'ITE': 'Isolation (ITE)'}
+    # Infos produit
+    product_labels = {'panneaux': 'Panneaux Solaires (PV)', 'pompes': 'Pompes à Chaleur (PAC)', 'isolation': 'Isolation (ITE)', 'PV': 'PV', 'PAC': 'PAC', 'ITE': 'ITE'}
     product_label = product_labels.get(form.get('product_type', ''), 'Non défini')
     
-    # Aides financières par produit
+    # Aides financières
     aides_config = form.get('aides', {})
     if not aides_config:
         if form.get('product_type') in ['panneaux', 'PV']:
-            aides_config = {
-                "prime_autoconsommation": "Jusqu'à 2 520€",
-                "tva_reduite": "TVA 10% au lieu de 20%",
-                "revente_edf": "Revente surplus EDF OA"
-            }
+            aides_config = {"prime_autoconsommation": "Jusqu'à 2 520€", "tva_reduite": "TVA 10%", "revente_edf": "Revente EDF OA"}
         elif form.get('product_type') in ['pompes', 'PAC']:
-            aides_config = {
-                "maprimereno": "Jusqu'à 11 000€",
-                "cee": "Prime CEE variable",
-                "tva_reduite": "TVA 5.5%",
-                "eco_ptz": "Éco-PTZ jusqu'à 50 000€"
-            }
+            aides_config = {"maprimereno": "Jusqu'à 11 000€", "cee": "Prime CEE", "tva_reduite": "TVA 5.5%", "eco_ptz": "Éco-PTZ 50 000€"}
         elif form.get('product_type') in ['isolation', 'ITE']:
-            aides_config = {
-                "maprimereno": "Jusqu'à 75€/m²",
-                "cee": "Prime CEE variable",
-                "tva_reduite": "TVA 5.5%"
-            }
+            aides_config = {"maprimereno": "Jusqu'à 75€/m²", "cee": "Prime CEE", "tva_reduite": "TVA 5.5%"}
     
-    # TOUS les logos du compte
-    logos = {
-        "logo_main": account.get('logo_main_url', '') if account else '',
-        "logo_secondary": account.get('logo_secondary_url', '') if account else '',
-    }
+    # LES 3 LOGOS
+    logo_left = account.get('logo_main_url', '') or account.get('logo_left_url', '') if account else ''
+    logo_right = account.get('logo_secondary_url', '') or account.get('logo_right_url', '') if account else ''
+    logo_mini = account.get('logo_small_url', '') or account.get('logo_mini_url', '') if account else ''
     account_name = account.get('name', 'EnerSolar') if account else 'EnerSolar'
+    
+    # Code GTM du compte
+    gtm_head = account.get('gtm_head', '') if account else ''
+    gtm_body = account.get('gtm_body', '') if account else ''
+    gtm_conversion = account.get('gtm_conversion_code', '') if account else ''
+    
+    # CODES
+    form_code = form.get('code', '')
+    lp_code_param = lp_code or "LP-XXX"  # Paramètre optionnel
+    liaison_code = f"{lp_code_param}_{form_code}" if lp_code else f"LP-XXX_{form_code}"
+    redirect_url = form.get('redirect_url_name', '/merci')
+    
+    # ================================================================
+    # GUIDE D'UTILISATION COMPLET
+    # ================================================================
+    guide_utilisation = f'''
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    GUIDE D'UTILISATION - SYSTÈME LP ↔ FORMULAIRE             ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+📋 INFORMATIONS DU FORMULAIRE
+────────────────────────────────────────────────────────────────────────────────
+• Code Formulaire : {form_code}
+• Nom : {form.get('name', '')}
+• Produit : {product_label}
+• Compte : {account_name}
+
+🔗 SYSTÈME DE LIAISON LP ↔ FORMULAIRE
+────────────────────────────────────────────────────────────────────────────────
+
+Le code de liaison permet de tracker la conversion entre une LP et un formulaire.
+
+  EXEMPLE DE CODE DE LIAISON : {liaison_code}
+  
+  Format : [CODE_LP]_[CODE_FORM]
+  
+  • Si vous changez de LP → Modifiez seulement la partie LP-XXX
+  • Si vous changez de Formulaire → Créez un nouveau brief avec le nouveau form_id
+
+
+════════════════════════════════════════════════════════════════════════════════
+                         SCÉNARIO 1 : MÊME PAGE
+              (LP et Formulaire sur la même page / intégré)
+════════════════════════════════════════════════════════════════════════════════
+
+📍 QUAND UTILISER ?
+   → La LP et le formulaire sont sur la MÊME page
+   → Le CTA de la LP fait défiler vers le formulaire ou l'affiche
+
+📊 TRACKING :
+   • DÉMARRÉ = Premier CTA de la LP cliqué (ex: "Obtenir mon devis")
+   • TERMINÉ = Dernier CTA du formulaire cliqué (après validation téléphone)
+
+
+════════════════════════════════════════════════════════════════════════════════
+                      SCÉNARIO 2 : PAGES DIFFÉRENTES
+              (LP sur une page, Formulaire sur une autre page)
+════════════════════════════════════════════════════════════════════════════════
+
+📍 QUAND UTILISER ?
+   → La LP est sur une page (ex: lp.monsite.com)
+   → Le formulaire est sur une autre page (ex: form.monsite.com)
+   → Le CTA de la LP redirige vers la page du formulaire
+
+📊 TRACKING :
+   • DÉMARRÉ = CTA de la LP cliqué → redirige avec le code de liaison dans l'URL
+   • TERMINÉ = Dernier CTA du formulaire cliqué
+   
+📍 URL DE REDIRECTION :
+   Le CTA de la LP doit rediriger vers :
+   
+   {form.get('url', 'https://votre-formulaire.com')}?lp={lp_code_param}&liaison={liaison_code}
+
+
+════════════════════════════════════════════════════════════════════════════════
+                    OPTIONS DE TRACKING "TERMINÉ" (Conversion)
+════════════════════════════════════════════════════════════════════════════════
+
+Choisissez UNE des 3 options pour tracker la conversion finale :
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ OPTION A : GTM SEULEMENT                                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ • Le code GTM s'exécute IMMÉDIATEMENT après le clic sur le dernier CTA     │
+│ • Pas de redirection (ou redirection après le GTM)                          │
+│ • Idéal pour : Google Ads, Facebook Pixel sur la même page                  │
+│                                                                             │
+│ CONFIGURATION :                                                             │
+│   → Mettez votre code GTM dans la variable gtmConversionCode               │
+│   → Mettez redirectUrl = "" (vide) si pas de redirection                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ OPTION B : PAGE DE REDIRECTION SEULEMENT (Thank You Page)                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ • Après le clic, redirection vers une page de remerciement                  │
+│ • Le tracking se fait sur la page de destination                            │
+│ • Idéal pour : Pixel sur thank you page, tracking par URL                   │
+│                                                                             │
+│ CONFIGURATION :                                                             │
+│   → Mettez gtmConversionCode = "" (vide)                                   │
+│   → Mettez redirectUrl = "{redirect_url}"                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ OPTION C : GTM + REDIRECTION (Les 2)                                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ • Le code GTM s'exécute D'ABORD                                             │
+│ • PUIS redirection vers la thank you page                                   │
+│ • Idéal pour : Double tracking (GTM + pixel sur thank you)                  │
+│                                                                             │
+│ CONFIGURATION :                                                             │
+│   → Mettez votre code GTM dans gtmConversionCode                           │
+│   → Mettez redirectUrl = "{redirect_url}"                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+════════════════════════════════════════════════════════════════════════════════
+                         VALIDATION TÉLÉPHONE
+════════════════════════════════════════════════════════════════════════════════
+
+Le bouton final est DÉSACTIVÉ tant que le téléphone n'est pas valide.
+
+✅ RÈGLES DE VALIDATION :
+   • Exactement 10 chiffres
+   • Doit commencer par 0
+   • Pas de suite (0123456789, 0102030405, 0601020304...)
+   • Pas de répétition (0000000000, 0666666666...)
+
+✅ EXEMPLES VALIDES :
+   0612345678, 0756891234, 0198765432
+
+❌ EXEMPLES INVALIDES :
+   06123456789 (11 chiffres)
+   612345678 (pas de 0 au début)
+   0123456789 (suite)
+   0666666666 (répétition)
+
+
+════════════════════════════════════════════════════════════════════════════════
+                    COMMENT CHANGER LA LIAISON LP ↔ FORMULAIRE
+════════════════════════════════════════════════════════════════════════════════
+
+📌 SI VOUS TESTEZ UNE NOUVELLE LP (même formulaire) :
+────────────────────────────────────────────────────────────────────────────────
+1. Dans le script de la NOUVELLE LP, changez la variable LP_CODE :
+   
+   var LP_CODE = "LP-NOUVELLE";  // Ancien: "LP-XXX"
+   
+2. Le code de liaison devient automatiquement : LP-NOUVELLE_{form_code}
+3. Vous verrez les stats séparées pour chaque LP dans le dashboard
+
+
+📌 SI VOUS TESTEZ UN NOUVEAU FORMULAIRE (même LP) :
+────────────────────────────────────────────────────────────────────────────────
+1. Créez le nouveau formulaire dans le CRM
+2. Générez un nouveau brief avec le nouveau form_id
+3. Dans le script de la LP, changez l'URL de redirection du CTA :
+   
+   Ancienne URL : {form.get('url', '#')}?lp=...
+   Nouvelle URL : [URL_NOUVEAU_FORM]?lp=...
+
+4. Remplacez le script du formulaire par le nouveau
+
+
+📌 SI VOUS CHANGEZ LES DEUX (nouvelle LP + nouveau formulaire) :
+────────────────────────────────────────────────────────────────────────────────
+1. Créez le nouveau formulaire dans le CRM
+2. Générez un nouveau brief
+3. Mettez le nouveau LP_CODE dans le script LP
+4. Mettez la nouvelle URL dans le CTA de la LP
+5. Remplacez le script du formulaire
+
+
+════════════════════════════════════════════════════════════════════════════════
+                              LES 3 LOGOS
+════════════════════════════════════════════════════════════════════════════════
+
+📌 LOGO GAUCHE (Principal) :
+   {logo_left if logo_left else "⚠️ Non défini - Ajoutez-le dans le compte"}
+
+📌 LOGO DROITE (Partenaire/Secondaire) :
+   {logo_right if logo_right else "⚠️ Non défini - Ajoutez-le dans le compte"}
+
+📌 MINI LOGO (Favicon navigateur) :
+   {logo_mini if logo_mini else "⚠️ Non défini - Ajoutez-le dans le compte"}
+
+CODE HTML DES LOGOS :
+<div class="header-logos">
+  <img src="{logo_left}" alt="{account_name}" class="logo-left" />
+  <img src="{logo_right}" alt="{account_name}" class="logo-right" />
+</div>
+<link rel="icon" href="{logo_mini}" type="image/png">
+
+
+════════════════════════════════════════════════════════════════════════════════
+                           CODES GTM DU COMPTE
+════════════════════════════════════════════════════════════════════════════════
+
+📌 GTM HEAD (dans <head>) :
+{gtm_head if gtm_head else "⚠️ Non configuré"}
+
+📌 GTM BODY (après <body>) :
+{gtm_body if gtm_body else "⚠️ Non configuré"}
+
+📌 GTM CONVERSION (après soumission lead) :
+{gtm_conversion if gtm_conversion else "⚠️ Non configuré - Ajoutez-le dans le compte ou passez-le en paramètre"}
+
+
+════════════════════════════════════════════════════════════════════════════════
+                          AIDES FINANCIÈRES
+════════════════════════════════════════════════════════════════════════════════
+
+'''
+    
+    # Ajouter les aides au guide
+    for aide_nom, aide_val in aides_config.items():
+        guide_utilisation += f"• {aide_nom.upper()}: {aide_val}\n"
+    
+    # ================================================================
+    # SCRIPT COMPLET
+    # ================================================================
+    script_complet = f'''
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- SCRIPT ENERSOLAR CRM - VERSION COMPLÈTE v3.0                               -->
+<!-- Formulaire : {form_code} | Compte : {account_name}                          -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+
+<!-- ═══════════════════════ PARTIE 1 : CONFIGURATION ═══════════════════════ -->
+<script>
+(function() {{
+  // ══════════════════════════════════════════════════════════════════════════
+  // CONFIGURATION - MODIFIEZ ICI SELON VOS BESOINS
+  // ══════════════════════════════════════════════════════════════════════════
+  
+  var CONFIG = {{
+    // API CRM
+    CRM_API: "{backend_url}/api",
+    API_KEY: "{api_key}",
+    
+    // CODES D'IDENTIFICATION
+    FORM_ID: "{form_id}",
+    FORM_CODE: "{form_code}",
+    LP_CODE: "{lp_code_param}",  // ◄── CHANGEZ ICI si vous testez une nouvelle LP
+    
+    // CODE DE LIAISON (auto-généré)
+    get LIAISON_CODE() {{ return this.LP_CODE + "_" + this.FORM_CODE; }},
+    
+    // OPTION DE TRACKING CONVERSION (choisissez A, B ou C)
+    // A = GTM seulement | B = Redirect seulement | C = GTM + Redirect
+    TRACKING_OPTION: "C",  // ◄── CHANGEZ ICI selon votre besoin
+    
+    // GTM CONVERSION CODE (si option A ou C)
+    GTM_CONVERSION_CODE: `{gtm_conversion}`,  // ◄── METTEZ VOTRE CODE GTM ICI
+    
+    // URL DE REDIRECTION (si option B ou C)
+    REDIRECT_URL: "{redirect_url}"  // ◄── CHANGEZ ICI si besoin
+  }};
+  
+  // ══════════════════════════════════════════════════════════════════════════
+  // ÉTAT DU TRACKING (ne pas modifier)
+  // ══════════════════════════════════════════════════════════════════════════
+  var hasStarted = false;
+  var hasFinished = false;
+  
+  // Récupérer le code LP depuis l'URL (si pages différentes)
+  var urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('lp')) {{
+    CONFIG.LP_CODE = urlParams.get('lp');
+  }}
+  if (urlParams.get('liaison')) {{
+    // Utiliser le code de liaison de l'URL si présent
+    var liaisonFromUrl = urlParams.get('liaison');
+  }}
+  
+  // ══════════════════════════════════════════════════════════════════════════
+  // FONCTION 1 : TRACKING "DÉMARRÉ" (Premier CTA)
+  // Appelez trackFormStart() sur votre premier bouton
+  // ══════════════════════════════════════════════════════════════════════════
+  window.trackFormStart = function() {{
+    if (hasStarted) return;
+    hasStarted = true;
+    
+    var data = {{
+      form_code: CONFIG.FORM_CODE,
+      lp_code: CONFIG.LP_CODE,
+      liaison_code: CONFIG.LIAISON_CODE
+    }};
+    
+    fetch(CONFIG.CRM_API + "/track/form-start", {{
+      method: "POST",
+      headers: {{ "Content-Type": "application/json" }},
+      body: JSON.stringify(data)
+    }})
+    .then(function() {{ console.log("[CRM] ✓ Démarré - LP:" + CONFIG.LP_CODE + " → Form:" + CONFIG.FORM_CODE); }})
+    .catch(function(e) {{ console.log("[CRM] Erreur tracking:", e); }});
+  }};
+  
+  // ══════════════════════════════════════════════════════════════════════════
+  // FONCTION 2 : VALIDATION TÉLÉPHONE
+  // Retourne true si le téléphone est valide
+  // ══════════════════════════════════════════════════════════════════════════
+  window.validatePhone = function(phone) {{
+    // Nettoyer le numéro
+    phone = (phone || '').replace(/\\s/g, '').replace(/[^0-9]/g, '');
+    
+    // Règle 1 : Exactement 10 chiffres
+    if (phone.length !== 10) return false;
+    
+    // Règle 2 : Commence par 0
+    if (phone[0] !== '0') return false;
+    
+    // Règle 3 : Pas de suite simple (0123456789, 9876543210)
+    if ('0123456789'.indexOf(phone) !== -1) return false;
+    if ('9876543210'.indexOf(phone) !== -1) return false;
+    
+    // Règle 4 : Pas de suite par paires (01 02 03 04 05)
+    var isPairSequence = true;
+    for (var i = 0; i < 8; i += 2) {{
+      var curr = parseInt(phone.substring(i, i+2));
+      var next = parseInt(phone.substring(i+2, i+4));
+      if (Math.abs(next - curr) !== 1) {{ isPairSequence = false; break; }}
+    }}
+    if (isPairSequence) return false;
+    
+    // Règle 5 : Pas de répétition (0666666666)
+    var firstDigit = phone[1];
+    var sameCount = 0;
+    for (var j = 1; j < phone.length; j++) {{
+      if (phone[j] === firstDigit) sameCount++;
+    }}
+    if (sameCount >= 8) return false;
+    
+    return true;
+  }};
+  
+  // ══════════════════════════════════════════════════════════════════════════
+  // FONCTION 3 : SOUMISSION LEAD + TRACKING "TERMINÉ"
+  // Gère les 3 options de tracking conversion
+  // ══════════════════════════════════════════════════════════════════════════
+  window.submitLeadToCRM = function(leadData) {{
+    // Nettoyer et valider le téléphone
+    var phone = (leadData.phone || '').replace(/\\s/g, '').replace(/[^0-9]/g, '');
+    
+    if (!validatePhone(phone)) {{
+      return Promise.reject(new Error("Téléphone invalide"));
+    }}
+    if (!leadData.nom || !leadData.prenom) {{
+      return Promise.reject(new Error("Nom et Prénom requis"));
+    }}
+    if (!leadData.code_postal || leadData.code_postal.length !== 5) {{
+      return Promise.reject(new Error("Code postal invalide"));
+    }}
+    
+    leadData.phone = phone;
+    leadData.lp_code = CONFIG.LP_CODE;
+    leadData.liaison_code = CONFIG.LIAISON_CODE;
+    
+    hasFinished = true;
+    
+    return fetch(CONFIG.CRM_API + "/v1/leads", {{
+      method: "POST",
+      headers: {{
+        "Content-Type": "application/json",
+        "Authorization": "Token " + CONFIG.API_KEY
+      }},
+      body: JSON.stringify({{
+        form_id: CONFIG.FORM_ID,
+        ...leadData
+      }})
+    }})
+    .then(function(r) {{ return r.json(); }})
+    .then(function(data) {{
+      if (data.success) {{
+        console.log("[CRM] ✓ Lead soumis - Liaison:" + CONFIG.LIAISON_CODE);
+        
+        // ════════════════════════════════════════════════════════════════════
+        // TRACKING CONVERSION SELON L'OPTION CHOISIE
+        // ════════════════════════════════════════════════════════════════════
+        
+        // OPTION A ou C : Exécuter le GTM
+        if ((CONFIG.TRACKING_OPTION === "A" || CONFIG.TRACKING_OPTION === "C") && CONFIG.GTM_CONVERSION_CODE) {{
+          try {{
+            eval(CONFIG.GTM_CONVERSION_CODE);
+            console.log("[CRM] ✓ GTM Conversion déclenché");
+          }} catch(e) {{
+            console.log("[CRM] Erreur GTM:", e);
+          }}
+        }}
+        
+        // OPTION B ou C : Redirection
+        if ((CONFIG.TRACKING_OPTION === "B" || CONFIG.TRACKING_OPTION === "C") && CONFIG.REDIRECT_URL) {{
+          // Petit délai pour laisser le GTM s'exécuter (si option C)
+          setTimeout(function() {{
+            window.location.href = CONFIG.REDIRECT_URL;
+          }}, CONFIG.TRACKING_OPTION === "C" ? 500 : 0);
+        }}
+      }}
+      return data;
+    }})
+    .catch(function(e) {{
+      console.error("[CRM] Erreur soumission:", e);
+      throw e;
+    }});
+  }};
+  
+  // ══════════════════════════════════════════════════════════════════════════
+  // AUTO-ATTACH : Attache trackFormStart au premier CTA automatiquement
+  // ══════════════════════════════════════════════════════════════════════════
+  document.addEventListener("DOMContentLoaded", function() {{
+    var ctaButtons = document.querySelectorAll(
+      '[data-action="start"], .btn-cta, .btn-start, [onclick*="trackFormStart"]'
+    );
+    ctaButtons.forEach(function(btn) {{
+      btn.addEventListener("click", trackFormStart, {{ once: true }});
+    }});
+  }});
+  
+}})();
+</script>
+'''
+    
+    # ================================================================
+    # EXEMPLE HTML COMPLET
+    # ================================================================
+    exemple_html = f'''
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- EXEMPLE HTML COMPLET - FORMULAIRE MULTI-ÉTAPES                             -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{form.get('name', 'Formulaire')}</title>
+  
+  <!-- MINI LOGO / FAVICON -->
+  <link rel="icon" href="{logo_mini}" type="image/png">
+  
+  <!-- GTM HEAD -->
+  {gtm_head}
+  
+</head>
+<body>
+  <!-- GTM BODY -->
+  {gtm_body}
+  
+  <!-- ════════════════════════════════════════════════════════════════════════ -->
+  <!-- HEADER AVEC LES 3 LOGOS                                                  -->
+  <!-- ════════════════════════════════════════════════════════════════════════ -->
+  <header class="form-header">
+    <div class="logos">
+      <img src="{logo_left}" alt="{account_name}" class="logo logo-left" />
+      <img src="{logo_right}" alt="{account_name}" class="logo logo-right" />
+    </div>
+    <div class="badges">
+      <span class="badge">✓ RGE Qualifié</span>
+      <span class="badge">✓ Garantie 25 ans</span>
+    </div>
+  </header>
+  
+  <!-- ════════════════════════════════════════════════════════════════════════ -->
+  <!-- SCÉNARIO 1 : LP + FORMULAIRE MÊME PAGE                                   -->
+  <!-- ════════════════════════════════════════════════════════════════════════ -->
+  
+  <!-- Section LP -->
+  <section id="lp-section" class="lp-content">
+    <h1>Économisez sur votre facture d'énergie</h1>
+    <p>Profitez des aides de l'État pour vos travaux</p>
+    
+    <!-- PREMIER CTA = Déclenche "Démarré" -->
+    <button onclick="trackFormStart(); document.getElementById('form-section').scrollIntoView();" 
+            class="btn-cta" data-action="start">
+      Je calcule mes aides →
+    </button>
+  </section>
+  
+  <!-- Section Formulaire -->
+  <section id="form-section">
+    
+    <!-- ÉTAPE 1 -->
+    <div id="step1" class="form-step active">
+      <h3>Votre projet</h3>
+      <select name="type_logement" required>
+        <option value="">Type de logement</option>
+        <option value="maison">Maison</option>
+        <option value="appartement">Appartement</option>
+      </select>
+      <select name="statut_occupant" required>
+        <option value="">Vous êtes...</option>
+        <option value="proprietaire">Propriétaire</option>
+        <option value="locataire">Locataire</option>
+      </select>
+      <button type="button" onclick="showStep(2);" class="btn-next">Suivant</button>
+    </div>
+    
+    <!-- ÉTAPE 2 -->
+    <div id="step2" class="form-step">
+      <h3>Vos coordonnées</h3>
+      <select name="civilite" required>
+        <option value="">Civilité</option>
+        <option value="M.">M.</option>
+        <option value="Mme">Mme</option>
+      </select>
+      <input type="text" name="nom" placeholder="Nom *" required />
+      <input type="text" name="prenom" placeholder="Prénom *" required />
+      <input type="email" name="email" placeholder="Email *" required />
+      <button type="button" onclick="showStep(1);">← Retour</button>
+      <button type="button" onclick="showStep(3);" class="btn-next">Suivant</button>
+    </div>
+    
+    <!-- ÉTAPE 3 : TÉLÉPHONE + DERNIER CTA -->
+    <div id="step3" class="form-step">
+      <h3>Dernière étape</h3>
+      <input type="text" name="code_postal" placeholder="Code postal *" required maxlength="5" />
+      <input type="text" name="ville" placeholder="Ville *" required />
+      <input type="tel" name="phone" id="phoneInput" placeholder="Téléphone *" required />
+      <p id="phoneError" style="color:red; display:none;">Numéro invalide</p>
+      
+      <!-- DERNIER CTA = Déclenche "Terminé" + GTM + Redirect -->
+      <button type="button" onclick="submitForm();" id="submitBtn" class="btn-submit" disabled>
+        ✓ Recevoir mon devis gratuit
+      </button>
+    </div>
+    
+  </section>
+  
+  <!-- ════════════════════════════════════════════════════════════════════════ -->
+  <!-- SCRIPT CRM (COPIÉ D'EN HAUT)                                             -->
+  <!-- ════════════════════════════════════════════════════════════════════════ -->
+  <!-- Collez ici le script complet de la section "SCRIPT COMPLET" -->
+  
+  <!-- ════════════════════════════════════════════════════════════════════════ -->
+  <!-- LOGIQUE DU FORMULAIRE                                                    -->
+  <!-- ════════════════════════════════════════════════════════════════════════ -->
+  <script>
+  // Navigation entre étapes
+  function showStep(n) {{
+    document.querySelectorAll('.form-step').forEach(el => el.classList.remove('active'));
+    document.getElementById('step' + n).classList.add('active');
+  }}
+  
+  // Validation téléphone en temps réel
+  document.getElementById('phoneInput').addEventListener('input', function(e) {{
+    var isValid = validatePhone(e.target.value);
+    document.getElementById('submitBtn').disabled = !isValid;
+    document.getElementById('phoneError').style.display = isValid ? 'none' : 'block';
+  }});
+  
+  // Soumission du formulaire
+  function submitForm() {{
+    var data = {{
+      civilite: document.querySelector('[name="civilite"]').value,
+      nom: document.querySelector('[name="nom"]').value,
+      prenom: document.querySelector('[name="prenom"]').value,
+      email: document.querySelector('[name="email"]').value,
+      phone: document.querySelector('[name="phone"]').value,
+      code_postal: document.querySelector('[name="code_postal"]').value,
+      ville: document.querySelector('[name="ville"]').value,
+      type_logement: document.querySelector('[name="type_logement"]')?.value || '',
+      statut_occupant: document.querySelector('[name="statut_occupant"]')?.value || ''
+    }};
+    
+    submitLeadToCRM(data)
+      .then(function(result) {{
+        if (!result.success) {{
+          alert("Erreur: " + (result.detail || "Veuillez réessayer"));
+        }}
+        // La redirection est gérée automatiquement par submitLeadToCRM
+      }})
+      .catch(function(err) {{
+        alert("Erreur: " + err.message);
+      }});
+  }}
+  </script>
+  
+  <!-- ════════════════════════════════════════════════════════════════════════ -->
+  <!-- CSS DE BASE                                                              -->
+  <!-- ════════════════════════════════════════════════════════════════════════ -->
+  <style>
+  .form-step {{ display: none; }}
+  .form-step.active {{ display: block; }}
+  .form-header {{ display: flex; justify-content: space-between; padding: 20px; }}
+  .logos {{ display: flex; gap: 20px; }}
+  .logo {{ max-height: 50px; }}
+  .badge {{ background: #10B981; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; }}
+  .btn-cta, .btn-next {{ background: #3B82F6; color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; }}
+  .btn-submit {{ background: #10B981; color: white; padding: 16px 32px; border: none; border-radius: 8px; cursor: pointer; width: 100%; }}
+  .btn-submit:disabled {{ background: #9CA3AF; cursor: not-allowed; }}
+  input, select {{ width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #E5E7EB; border-radius: 8px; }}
+  </style>
+  
+</body>
+</html>
+'''
+    
+    # ================================================================
+    # SCRIPT LP SEULE (pour pages différentes)
+    # ================================================================
+    script_lp_seul = f'''
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- SCRIPT LP SEULE (si LP et Formulaire sur pages différentes)                -->
+<!-- À mettre sur la page de la Landing Page                                    -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+
+<script>
+(function() {{
+  // Configuration LP
+  var LP_CONFIG = {{
+    CRM_API: "{backend_url}/api",
+    LP_CODE: "{lp_code_param}",          // ◄── CHANGEZ ICI pour une nouvelle LP
+    FORM_CODE: "{form_code}",
+    FORM_URL: "{form.get('url', 'https://votre-formulaire.com')}"  // ◄── URL du formulaire
+  }};
+  
+  LP_CONFIG.LIAISON_CODE = LP_CONFIG.LP_CODE + "_" + LP_CONFIG.FORM_CODE;
+  
+  // Track le clic sur le CTA de la LP
+  window.trackLPClick = function() {{
+    // Enregistrer le clic LP
+    fetch(LP_CONFIG.CRM_API + "/track/form-start", {{
+      method: "POST",
+      headers: {{ "Content-Type": "application/json" }},
+      body: JSON.stringify({{
+        form_code: LP_CONFIG.FORM_CODE,
+        lp_code: LP_CONFIG.LP_CODE,
+        liaison_code: LP_CONFIG.LIAISON_CODE
+      }})
+    }})
+    .then(function() {{
+      console.log("[LP] ✓ Clic enregistré - Redirection vers formulaire");
+      // Rediriger vers le formulaire avec les paramètres
+      window.location.href = LP_CONFIG.FORM_URL + 
+        "?lp=" + LP_CONFIG.LP_CODE + 
+        "&liaison=" + LP_CONFIG.LIAISON_CODE;
+    }})
+    .catch(function() {{
+      // En cas d'erreur, rediriger quand même
+      window.location.href = LP_CONFIG.FORM_URL + 
+        "?lp=" + LP_CONFIG.LP_CODE + 
+        "&liaison=" + LP_CONFIG.LIAISON_CODE;
+    }});
+  }};
+}})();
+</script>
+
+<!-- EXEMPLE CTA LP -->
+<button onclick="trackLPClick();" class="btn-cta">
+  Obtenir mon devis gratuit →
+</button>
+'''
+    
+    return {
+        "form_id": form_id,
+        "form_code": form_code,
+        "form_name": form.get('name', ''),
+        "product_type": form.get('product_type', ''),
+        "product_label": product_label,
+        "api_endpoint": f"{backend_url}/api/v1/leads",
+        "api_key": api_key,
+        "guide_utilisation": guide_utilisation,
+        "script_complet": script_complet,
+        "exemple_html": exemple_html,
+        "script_lp_seul": script_lp_seul,
+        "logos": {
+            "logo_left": logo_left,
+            "logo_right": logo_right,
+            "logo_mini": logo_mini,
+            "account_name": account_name
+        },
+        "gtm": {
+            "gtm_head": gtm_head,
+            "gtm_body": gtm_body,
+            "gtm_conversion": gtm_conversion
+        },
+        "codes": {
+            "form_code": form_code,
+            "lp_code": lp_code_param,
+            "liaison_code": liaison_code
+        },
+        "aides_financieres": aides_config,
+        "redirect_url": redirect_url,
+        "phone_validation": {
+            "rules": [
+                "Exactement 10 chiffres",
+                "Commence par 0",
+                "Pas de suite (0123456789, 0102030405)",
+                "Pas de répétition (0666666666)"
+            ]
+        }
+    }
     
     # Script JavaScript de tracking - VERSION GÉNÉRIQUE pour tout premier CTA
     tracking_script = f'''
