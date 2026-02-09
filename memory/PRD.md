@@ -76,4 +76,4 @@ CRM multi-tenant pour centraliser et redistribuer les leads solaires (PAC, PV, I
 
 ## Déploiement
 - **Live**: https://rdz-group-ltd.online (Hostinger VPS)
-- **Preview**: https://leadsolar-1.preview.emergentagent.com
+- **Preview**: https://leadsolar-2.preview.emergentagent.com
