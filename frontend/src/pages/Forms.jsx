@@ -410,6 +410,21 @@ export default function Forms() {
               onChange={e => setForm({...form, crm_api_key: e.target.value})}
               placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
             />
+            
+            <div className="mt-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.allow_cross_crm}
+                  onChange={e => setForm({...form, allow_cross_crm: e.target.checked})}
+                  className="w-4 h-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500"
+                />
+                <span className="text-sm text-slate-700">Autoriser le Cross-CRM</span>
+              </label>
+              <p className="text-xs text-slate-500 mt-1 ml-6">
+                Si coché et que le CRM principal n'a pas de commande pour ce lead, essayer de l'envoyer à l'autre CRM
+              </p>
+            </div>
           </div>
 
           <div className="border-t pt-4 mt-4">
