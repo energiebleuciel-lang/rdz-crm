@@ -5,7 +5,7 @@ CRM multi-tenant pour centraliser et redistribuer les leads solaires (PAC, PV, I
 
 ## URL Production
 - **API Backend**: https://rdz-group-ltd.online
-- **Preview**: https://leadsolar-2.preview.emergentagent.com
+- **Preview**: https://solar-crm-14.preview.emergentagent.com
 
 ## Fonctionnalités Implémentées
 
@@ -156,5 +156,5 @@ Nouveaux champs disponibles dans l'API v1/leads:
 - [ ] Vérification SendGrid (dépend action utilisateur)
 
 ## Déploiement
-- **Preview**: https://leadsolar-2.preview.emergentagent.com
+- **Preview**: https://solar-crm-14.preview.emergentagent.com
 - **Production**: https://rdz-group-ltd.online (Hostinger VPS - à déployer)

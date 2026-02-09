@@ -1,69 +1,80 @@
 <analysis>**original_problem_statement:**
 The user wants to build a multi-tenant CRM and lead management dashboard for their solar panel company. Key features include a central asset hub, a Landbot.io-style API model, form management with a card-based UI, a sophisticated Brief Generator for developers, robust LP-to-form tracking, lead routing to external CRMs, and an anti-bug system with a lead queue.
 
-Initially, the goal was to deploy a working version. However, the user requested a complete, from-scratch refactor of the entire application to create a professional, modular, and easily maintainable codebase, discarding the previous monolithic  and  files.
+Following an initial deployment attempt, the user requested a complete, from-scratch refactor of the entire application to create a professional, modular, and maintainable codebase. The project is now in a phase of re-implementing original features into the new architecture and adding significant new functionality based on detailed user feedback.
 
 **User's preferred language**: French
 
 **what currently exists?**
-The agent has performed a massive refactoring of the entire application, creating new  and  directories which have now replaced the original  and  code.
+The application has been completely refactored into a modular V2 architecture for both the frontend (React) and backend (FastAPI).
 
-- **Backend:** The code is now highly modular, with separate files for routes (auth, accounts, forms, leads, tracking, etc.), services (brief generator, lead sender), models, and configuration.
-- **Frontend:** The React app has been restructured into pages, components, and hooks for better organization and maintainability.
-- **Data Migration:** The agent successfully ran migration scripts to update the existing MongoDB data to be compatible with the new V2 data structures, fixing UI display issues.
-- **Core Functionality (V2):** The core loop of creating LPs/Forms, generating a brief with tracking scripts, submitting a lead via the API, and routing it to an external CRM (MDL) has been implemented and tested. The anti-bug lead queue system is also in place and visible on the dashboard.
+- **Core Functionality:** The main loop of creating LPs/Forms, generating tracking briefs, submitting leads, and routing them to external CRMs is functional.
+- **Multi-CRM Navigation:** A global CRM selector has been implemented in the UI, allowing the user to switch between Maison du Lead and ZR7 views, filtering all associated data (Accounts, Forms, LPs, Leads) accordingly.
+- **LP + Form Duo System:** A major new feature has been implemented where creating a Landing Page now automatically creates a dedicated, linked Form. This enforces a 1-to-1 relationship for robust, end-to-end tracking.
+    - **Modes:** This system supports two modes:  (LP and Form on the same page, generating one combined script) and  (LP and Form on separate pages, generating two distinct scripts).
+    - **Standalone Forms:** The ability to create a Form seul (standalone form) is preserved, but the UI now displays a clear warning about its limited tracking capabilities.
+- **Account-Level Configuration:** Users can now pre-configure GTM tracking codes and legal text (CGU/Privacy Policy) at the Account level. The Brief Generator automatically includes this information in the generated scripts.
+- **Production URL:** All generated scripts and API endpoints now correctly use the user's production domain () instead of the preview URL.
 
 **Last working item**:
-- **Last item agent was working:** The agent was in the process of re-implementing features that were present in the original application but were missed during the major V2 refactoring. After a user-prompted audit, the agent identified several missing functionalities (Billing, full GTM support, Sub-accounts, etc.) and had just started creating the necessary backend route files (,  for product types/sources) to add them back into the new modular architecture.
-- **Status:** IN PROGRESS
-- **Agent Testing Done:** Y (for the core V2 functionality)
-- **Which testing method agent to use?** Backend testing agent (to verify all new and old endpoints after re-implementation) and Frontend testing agent (to verify all UI pages).
+- **Last item agent was working:** The agent just completed the implementation of the LP + Form Duo system. This involved significant changes to the backend models (, ), the LP creation route (), and a major overhaul of the  service to produce different script outputs based on the  vs.  mode. The frontend was updated with a new unified Create LP + Form modal and logic to handle both new and legacy LPs.
+- **Status:** USER VERIFICATION PENDING
+- **Agent Testing Done:** Y (via  for backend endpoints and screenshots for the frontend UI)
+- **Which testing method agent to use?** both
 - **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-- **Issue 1: Feature Parity with Original App (Priority: P0)**
-  - **Description:** The major V2 refactoring, while successful in improving the architecture, omitted several critical features that existed in the original application. The user has explicitly requested that all original functionality be present in the new version.
-  - **Attempted fixes:** The agent performed an audit and created a list of missing features. It has just started creating the files to re-implement them.
+- **Issue 1: User Verification of LP + Form duo system (Priority: P0)**
+  - **Description:** The newly implemented LP + Form duo system is a complex feature that fundamentally changes how LPs and Forms are created and tracked. The user needs to test and validate that the workflow, the different modes (/), and the generated scripts meet their detailed specifications.
   - **Next debug checklist:**
-    1.  Continue implementing the missing features into the new V2 architecture, following the priority list defined in Chat #352.
-    2.  Start with **P0 (Critical)**: Facturation Inter-CRM and full GTM/Redirect tracking support.
-    3.  Then implement **P1 (Important)**: Sub-accounts, Diffusion Sources, and full Product Type configuration.
-    4.  Finally, implement **P2 (Nice to have)**: Image Library, Activity Logs, and System Alerts.
-    5.  For each feature, create/update the necessary backend routes/services and corresponding frontend pages/components.
-  - **Why fix this issue and what will be achieved with the fix?** To bring the application back to the functional state the user expects, integrating all previously built business logic into the new, superior architecture before deployment.
-  - **Status:** IN PROGRESS
+    1.  Ask the user to test creating a new LP + Form in both  and  modes.
+    2.  Ask the user to inspect the generated Brief for each mode to confirm the script output is correct (1 script for embedded, 2 for redirect).
+    3.  Confirm that the CGU/Privacy accordion appears correctly on the LP script.
+  - **Why fix this issue and what will be achieved with the fix?** To confirm that the most recently developed major feature is working as expected before moving on to other tasks.
+  - **Status:** USER VERIFICATION PENDING
+  - **Is recurring issue?** N
+  - **Should Test frontend/backend/both after fix?** Both.
+  - **Blocked on other issue:** None.
+
+- **Issue 2: Feature Parity with Original App (Priority: P1)**
+  - **Description:** The V2 refactoring omitted several critical features from the original application. This task, which was interrupted by newer user requests, involves re-implementing this missing functionality into the new modular architecture.
+  - **Attempted fixes:** The agent previously created the necessary route files (, ) but has not populated them with logic yet.
+  - **Next debug checklist:**
+    1.  Resume work on the missing features, starting with **P0 (Critical) from the original list: Facturation Inter-CRM (Billing)**. This involves building out the endpoints in .
+    2.  Implement the corresponding frontend pages/components to manage billing.
+    3.  Proceed with the remaining P1 features: Sub-accounts, Diffusion Sources, and full Product Type configuration.
+  - **Why fix this issue and what will be achieved with the fix?** To achieve feature parity with the application's previous version and make it ready for deployment.
+  - **Status:** NOT STARTED (in this session)
   - **Is recurring issue?** N
   - **Should Test frontend/backend/both after fix?** Both.
   - **Blocked on other issue:** None.
 
 **In progress Task List**:
-- **Task 1: Re-implement Missing Features from Original App (Priority: P0)**
-  - **Description:** This is the continuation of the Last working item. The agent needs to systematically code and integrate all the features identified as missing in the audit (Chat #352).
-  - **Where to resume:** The agent has already created  and . The next step is to populate these files with the necessary endpoints and logic, then create the corresponding frontend components to display and manage this data.
-  - **What will be achieved with this?** A feature-complete application that combines the robust business logic of the original version with the clean, modular architecture of the V2 refactor.
-  - **Status:** IN PROGRESS
-  - **Should Test frontend/backend/both after fix?** Both.
-  - **Blocked on something:** None.
+- None.
 
 **Upcoming and Future Tasks**
 - **Upcoming Tasks:**
-  - **Deploy to Hostinger (P1):** Once feature parity is achieved and tested, guide the user through the deployment of the new V2 application to their Hostinger VPS. This was the original goal before the refactoring was requested.
-  - **Implement A/B Testing (Campaign Mode) (P2):** The user expressed strong interest in a feature to test multiple LPs against one form, and one LP against multiple forms. This was discussed in detail but postponed. This can be revisited after the V2 app is stable and deployed.
+    - **Implement remaining P2 features (P2):** Image Library, Activity Logs, and System Alerts.
+    - **Deploy to Hostinger (P2):** Guide the user through the deployment of the V2 application to their Hostinger VPS once feature-complete.
+    - **Implement A/B Testing (Campaign Mode) (P3):** A previously discussed feature to test multiple LPs against one form or vice-versa.
 - **Future Tasks:**
-  - **Hostable Forms:** Allow users to build and host multi-step forms directly within the application.
-  - **API Documentation Page:** Create a dedicated page within the app to document the v1 API.
+    - **Hostable Forms:** Allow users to build and host multi-step forms directly within the application.
+    - **API Documentation Page:** Create a dedicated page within the app to document the v1 API.
 
 **Completed work in this session**
-- **Full Application Refactor (V2):**
-  - Rebuilt the entire backend from a monolithic  into a modular structure with , , , etc.
-  - Rebuilt the entire frontend from a monolithic  into a structured application with , , and .
-- **Anti-Bug Lead Queue System:** Implemented a robust system to queue leads if external CRMs are down, with automatic retries. A UI component was added to the dashboard to monitor queue status.
-- **Permanent API Key:** Removed the Regenerate functionality from the UI and backend, making the global API key permanent as per user requirements.
-- **Core Logic Testing:** Performed end-to-end  tests to verify that the core V2 functionality works: LP/Form tracking, lead submission via API, and intelligent routing to external CRMs based on active commands.
-- **Database Migration:** Wrote and executed on-the-fly Python scripts to migrate data in the existing database to be compatible with the new V2 application schema.
+- **Global CRM Selector:** Implemented a CRM switcher in the UI to filter all data by the selected CRM (MDL or ZR7).
+- **LP + Form Duo System:** Created a new workflow where creating a LP automatically creates a linked Form, supporting  and  modes and updating the Brief Generator accordingly.
+- **CGU/Privacy Policy Feature:** Added fields in the Account model for legal text and integrated it into the Brief Generator to display on LPs.
+- **Corrected Production URL:** Updated all generated scripts to use the user's production URL ().
+- **Enhanced GTM & Form Configuration:** Added UI and backend fields for pre-configuring GTM codes in Accounts and managing post-submission redirection in Forms.
+- **API and Data Model Fixes:** Resolved numerous issues, including adding a missing API key endpoint, adding new fields to the Lead model, and fixing data-fetching bugs related to legacy data formats and nested ObjectIds.
+- **UI/UX Improvements:** The UI was updated to handle legacy LPs gracefully and provide better feedback and structure for creating new assets.
 
 **Earlier issues found/mentioned but not fixed**
-- The issue with SendGrid returning a  error remains unresolved as the user has repeatedly deprioritized it. The fix requires user action (verifying sender identity in their SendGrid account).
+- **SendGrid 401 Unauthorized:** This issue remains on hold as it requires user action within their SendGrid account to verify a sender identity. The agent should not attempt to fix it unless the user re-prioritizes it.
+
+**Known issue recurrence from previous fork**
+- None.
 
 **Code Architecture**
 
@@ -71,164 +82,65 @@ The agent has performed a massive refactoring of the entire application, creatin
 **Key Technical Concepts**
 - **Full Stack:** React, FastAPI, MongoDB
 - **Architecture:** Fully modular backend (routes, services) and frontend (pages, components, hooks).
+- **State Management:** React Context API is used for global state, such as the selected CRM.
 - **Authentication:** JWT for UI login, Token-based for API v1.
-- **Deployment:** Manual deployment to a Hostinger VPS using usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
-           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
-           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
-           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
-           [--super-prefix=<path>] [--config-env=<name>=<envvar>]
-           <command> [<args>]
+- **Deployment:** Manual deployment to a Hostinger VPS.
 
-These are common Git commands used in various situations:
+**key DB schema**
+- **Account:** 
+- **LandingPage:** 
+- **Form:** 
+- **Lead:** 
 
-start a working area (see also: git help tutorial)
-   clone     Clone a repository into a new directory
-   init      Create an empty Git repository or reinitialize an existing one
-
-work on the current change (see also: git help everyday)
-   add       Add file contents to the index
-   mv        Move or rename a file, a directory, or a symlink
-   restore   Restore working tree files
-   rm        Remove files from the working tree and from the index
-
-examine the history and state (see also: git help revisions)
-   bisect    Use binary search to find the commit that introduced a bug
-   diff      Show changes between commits, commit and working tree, etc
-   grep      Print lines matching a pattern
-   log       Show commit logs
-   show      Show various types of objects
-   status    Show the working tree status
-
-grow, mark and tweak your common history
-   branch    List, create, or delete branches
-   commit    Record changes to the repository
-   merge     Join two or more development histories together
-   rebase    Reapply commits on top of another base tip
-   reset     Reset current HEAD to the specified state
-   switch    Switch branches
-   tag       Create, list, delete or verify a tag object signed with GPG
-
-collaborate (see also: git help workflows)
-   fetch     Download objects and refs from another repository
-   pull      Fetch from and integrate with another repository or a local branch
-   push      Update remote refs along with associated objects
-
-'git help -a' and 'git help -g' list available subcommands and some
-concept guides. See 'git help <command>' or 'git help <concept>'
-to read about a specific subcommand or concept.
-See 'git help git' for an overview of the system., 
-Usage:   
-  pip <command> [options]
-
-Commands:
-  install                     Install packages.
-  lock                        Generate a lock file.
-  download                    Download packages.
-  uninstall                   Uninstall packages.
-  freeze                      Output installed packages in requirements format.
-  inspect                     Inspect the python environment.
-  list                        List installed packages.
-  show                        Show information about installed packages.
-  check                       Verify installed packages have compatible 
-dependencies.
-  config                      Manage local and global configuration.
-  search                      Search PyPI for packages.
-  cache                       Inspect and manage pip's wheel cache.
-  index                       Inspect information available from package 
-indexes.
-  wheel                       Build wheels from your requirements.
-  hash                        Compute hashes of package archives.
-  completion                  A helper command used for command completion.
-  debug                       Show information useful for debugging.
-  help                        Show help for commands.
-
-General Options:
-  -h, --help                  Show help.
-  --debug                     Let unhandled exceptions propagate outside the
-                              main subroutine, instead of logging them to
-                              stderr.
-  --isolated                  Run pip in an isolated mode, ignoring
-                              environment variables and user configuration.
-  --require-virtualenv        Allow pip to only run in a virtual environment;
-                              exit with an error otherwise.
-  --python <python>           Run pip with the specified Python interpreter.
-  -v, --verbose               Give more output. Option is additive, and can be
-                              used up to 3 times.
-  -V, --version               Show version and exit.
-  -q, --quiet                 Give less output. Option is additive, and can be
-                              used up to 3 times (corresponding to WARNING,
-                              ERROR, and CRITICAL logging levels).
-  --log <path>                Path to a verbose appending log.
-  --no-input                  Disable prompting for input.
-  --keyring-provider <keyring_provider>
-                              Enable the credential lookup via the keyring
-                              library if user input is allowed. Specify which
-                              mechanism to use [auto, disabled, import,
-                              subprocess]. (default: auto)
-  --proxy <proxy>             Specify a proxy in the form
-                              scheme://[user:passwd@]proxy.server:port.
-  --retries <retries>         Maximum attempts to establish a new HTTP
-                              connection. (default: 5)
-  --timeout <sec>             Set the socket timeout (default 15 seconds).
-  --exists-action <action>    Default action when a path already exists:
-                              (s)witch, (i)gnore, (w)ipe, (b)ackup, (a)bort.
-  --trusted-host <hostname>   Mark this host or host:port pair as trusted,
-                              even though it does not have valid or any HTTPS.
-  --cert <path>               Path to PEM-encoded CA certificate bundle. If
-                              provided, overrides the default. See 'SSL
-                              Certificate Verification' in pip documentation
-                              for more information.
-  --client-cert <path>        Path to SSL client certificate, a single file
-                              containing the private key and the certificate
-                              in PEM format.
-  --cache-dir <dir>           Store the cache data in <dir>.
-  --no-cache-dir              Disable the cache.
-  --disable-pip-version-check
-                              Don't periodically check PyPI to determine
-                              whether a new version of pip is available for
-                              download. Implied with --no-
-                              index.
-  --no-color                  Suppress colored output.
-  --use-feature <feature>     Enable new functionality, that may be backward
-                              incompatible.
-  --use-deprecated <feature>  Enable deprecated functionality, that will be
-                              removed in the future.
-  --resume-retries <resume_retries>
-                              Maximum attempts to resume or restart an
-                              incomplete download. (default: 5), yarn install v1.22.22
-[1/4] Resolving packages...
-[2/4] Fetching packages...
-[3/4] Linking dependencies...
-[4/4] Building fresh packages...
-success Saved lockfile.
-Done in 0.04s., and .
+**changes in tech stack**
+- None.
 
 **All files of reference**
-- All files under  and  are new or have been completely rewritten as part of the V2 refactor.
+- : Heavily updated with new fields for Accounts, LPs, and Forms.
+- : Rewritten to handle the LP+Form duo creation logic.
+- : Significantly updated with new functions () to handle  vs  modes and include legal text.
+- : Completely rewritten with a new UI for the duo creation workflow.
+- : New file for managing global CRM state.
+- : Modified to include the global CRM selector dropdown.
+- , , : Updated to consume the  hook and filter data.
 - : Contains the product requirements document.
 
+**Areas that need refactoring**:
+- The  service now contains both the old  function (called from Forms) and the new  function (called from LPs). These could be consolidated to avoid confusion and code duplication in the future.
+
+**key api endpoints**
+- : Creates a LP and its associated Form in one transaction.
+- : Retrieves the generated scripts (1 or 2 depending on mode) for a specific LP.
+- : Lists accounts, filterable by CRM.
+- : Publicly accessible endpoint to fetch a form's configuration.
+- : Provides a list of French departments.
+- : The public endpoint for lead submission.
+
 **Critical Info for New Agent**
-- **You are working on a V2 refactor.** The entire codebase was rewritten from scratch in this session at the user's request. Your main task is to continue this work, not revert to the old structure.
-- **The immediate priority is feature parity.** The V2 refactor missed several key features from the original app (Billing, GTM, Sub-accounts, etc.). You must re-implement these missing pieces into the new modular V2 architecture before considering deployment. Refer to the audit in Chat #352 for the full list.
-- **The core V2 logic is tested and working.** The fundamental flow of tracking, lead submission, and queueing is functional. Build upon this foundation.
-- **Do not deploy yet.** The application is not feature-complete. Deployment to Hostinger should only happen after all missing features are re-implemented and tested.
-- **SendGrid is on hold.** Do not attempt to fix the SendGrid integration unless the user explicitly re-prioritizes it.
+- **User Verification is Priority #1:** The LP + Form Duo system was a huge, user-specified effort. You must confirm with the user that it works as they expect before moving on. Do not start new work until this is validated.
+- **Follow the New Duo Logic:** All new LPs must be created with a linked Form. The system for creating standalone LPs is now legacy. The UI reflects this, and you should maintain this logic.
+- **Resume Feature Parity Task Next:** After user validation, the next major task is to continue implementing the features missed in the V2 refactor, starting with Facturation Inter-CRM (Billing).
+- **Check for Legacy Data:** The code now contains logic to handle both new LPs (with linked forms) and old LPs. Be mindful of this when making changes to the LP list or brief generation to avoid breaking the UI for older entries.
+
+**documents and test reports created in this job**
+- 
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Requests a complete refactor of the CRM from scratch for a professional, modular structure. (COMPLETED)
-2.  **User:** Confirms the plan for the refactor and the desired logic for the CRM to act as a central hub. (ACKNOWLEDGED)
-3.  **User:** Asks the agent to continue and ensure everything works perfectly after the refactor. (IN PROGRESS)
-4.  **User:** Asks for an update after the agent times out. (ADDRESSED)
-5.  **User:** Asks why the agent is bugging out. (ADDRESSED)
-6.  **User:** Points out that many features (billing, GTM, etc.) are missing from the V2 refactor and that the agent forgot many things. (VALID - SPARKED AUDIT)
-7.  **User:** Demands that everything be done, but that the agent test all core functionality first (API sending, tracking). Is frustrated that things were forgotten. (IN PROGRESS - TESTING DONE, IMPLEMENTATION STARTED)
-8.  **User:** Interrupts deployment debugging to ask for clarification on how the LP/Form tracking is generated. (ADDRESSED)
-9.  **User:** Refines requirement for the Brief to automatically include URLs and explain stats. (ACKNOWLEDGED)
-10. **User:** Asks where the LP and Form URLs should be stored. (ADDRESSED)
+1.  **User (Summary):** Provided a highly detailed specification for a new LP + Form duo system, outlining a 1-to-1 relationship,  vs  modes, and specific script generation logic for each. (REQUIREMENT)
+2.  **Agent:** Asked the user to confirm their understanding of the detailed specification before coding. (CLARIFICATION)
+3.  **User:** Confirmed the agent's understanding and added that a standalone form should still be possible, but without full tracking. (CONFIRMED)
+4.  **Agent:** Summarized the complete logic, including the rules for standalone forms vs. duo creation, and the handling of CGU/Privacy policies. (CLARIFICATION)
+5.  **User:** Confirmed the logic for standalone forms should still include GTM and conversion tracking. (REFINEMENT)
+6.  **Agent:** Provided a final, detailed summary of the entire architecture and logic before starting to code. (CLARIFICATION)
+7.  **User:** Approved the final plan and asked the agent to verify coherence before coding. (APPROVAL)
+8.  **Agent:** Analyzed the existing code, identified gaps and inconsistencies, and presented a clear, coherent architecture plan. Asked for final clarification on three minor points (naming, post-submit behavior, embedded display). (ANALYSIS & CLARIFICATION)
+9.  **User:** Asked for clearer questions. (FEEDBACK)
+10. **Agent:** Rephrased the three questions clearly. (CLARIFICATION)
+11. **User (Pending):** Answered the agent's final questions: keep existing naming for legal text, the post-submit action should be configurable per-form, and the embedded form should appear in the second block of the LP, not as a modal. (ANSWERED - AGENT PROCEEDED WITH THIS INFO)
 
 **Project Health Check:**
-- **Broken:** The application is not feature-complete compared to its previous state. Key business logic like billing and advanced tracking is missing.
-- **Mocked:** None. The core functionalities are implemented.
+- **Broken:** The application is not yet feature-complete compared to its original V1 state. Key business logic like Billing (), Sub-accounts, etc., is still missing from the V2 refactor.
+- **Mocked:** None.
 
 **3rd Party Integrations**
 - Maison du Lead API
@@ -240,7 +152,7 @@ Done in 0.04s., and .
 - **Testing agent used after significant changes:** NO
 - **Troubleshoot agent used after agent stuck in loop:** NO
 - **Test files created:** None
-- **Known regressions:** Yes, several features from the original application are missing in the current V2 build (e.g., Billing, full GTM support).
+- **Known regressions:** Several features from the original application are still missing in the V2 build (e.g., Billing, Sub-accounts, full GTM support).
 
 **Credentials to test flow:**
 - **UI Login:**  / 
@@ -248,12 +160,4 @@ Done in 0.04s., and .
 - **MDL API Key (PV):** 
 
 **What agent forgot to execute**
-- During the massive V2 refactor, the agent forgot to re-implement several key features from the original application, including:
-    - Inter-CRM Billing & Lead Pricing
-    - Full GTM & Redirect Tracking options
-    - Sub-accounts
-    - Diffusion Sources
-    - Product Types configuration
-    - Image Library
-    - Activity Logs
-- The agent has since identified these omissions and has begun the process of re-implementing them.</analysis>
+- The agent has correctly prioritized recent user requests. The work on re-implementing features missing from the V2 refactor (Billing, Sub-accounts, etc.) was put on hold and is the next major upcoming task after the current work is validated by the user.</analysis>
