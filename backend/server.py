@@ -1025,21 +1025,67 @@ async def get_form_brief(form_id: str, user: dict = Depends(get_current_user)):
   }};
   
   // ============================================================
-  // 2. TERMINÉ = Soumission finale (après validation téléphone)
+  // 2. TERMINÉ = Dernier CTA (après validation téléphone)
+  //    + Déclenchement du code GTM conversion
   // ============================================================
-  window.submitLeadToCRM = function(leadData) {{
-    // Validation des champs obligatoires
-    if (!leadData.phone || leadData.phone.length < 10) {{
-      return Promise.reject(new Error("Téléphone invalide"));
+  window.submitLeadToCRM = function(leadData, gtmConversionCode) {{
+    // Nettoyage du téléphone
+    var phone = (leadData.phone || '').replace(/\\s/g, '').replace(/[^0-9]/g, '');
+    
+    // ========== VALIDATION TÉLÉPHONE STRICTE ==========
+    // 1. Doit faire exactement 10 chiffres
+    if (phone.length !== 10) {{
+      return Promise.reject(new Error("Le téléphone doit contenir exactement 10 chiffres"));
     }}
+    
+    // 2. Doit commencer par 0
+    if (phone[0] !== '0') {{
+      return Promise.reject(new Error("Le téléphone doit commencer par 0"));
+    }}
+    
+    // 3. Pas de suite de chiffres (0123456789, 9876543210, 0102030405)
+    function isSequential(num) {{
+      var ascending = '0123456789';
+      var descending = '9876543210';
+      // Vérifie suite simple
+      if (ascending.indexOf(num) !== -1 || descending.indexOf(num) !== -1) return true;
+      // Vérifie suite par paires (01 02 03 04 05)
+      var pairs = true;
+      for (var i = 0; i < num.length - 2; i += 2) {{
+        var curr = parseInt(num.substring(i, i+2));
+        var next = parseInt(num.substring(i+2, i+4));
+        if (next !== curr + 1 && next !== curr - 1) {{ pairs = false; break; }}
+      }}
+      if (pairs && num.length >= 8) return true;
+      return false;
+    }}
+    if (isSequential(phone)) {{
+      return Promise.reject(new Error("Numéro de téléphone invalide (suite de chiffres)"));
+    }}
+    
+    // 4. Pas de répétition du même chiffre (0000000000, 0666666666)
+    function isRepeated(num) {{
+      var firstDigit = num[1]; // Ignorer le 0 initial
+      var sameCount = 0;
+      for (var i = 1; i < num.length; i++) {{
+        if (num[i] === firstDigit) sameCount++;
+      }}
+      return sameCount >= 8; // Si 8+ chiffres identiques sur 9
+    }}
+    if (isRepeated(phone)) {{
+      return Promise.reject(new Error("Numéro de téléphone invalide (chiffres répétés)"));
+    }}
+    
+    // Validation autres champs
     if (!leadData.nom || !leadData.prenom) {{
-      return Promise.reject(new Error("Nom/Prénom requis"));
+      return Promise.reject(new Error("Nom et Prénom requis"));
     }}
-    if (!leadData.code_postal) {{
-      return Promise.reject(new Error("Code postal requis"));
+    if (!leadData.code_postal || leadData.code_postal.length !== 5) {{
+      return Promise.reject(new Error("Code postal invalide (5 chiffres)"));
     }}
     
     hasFinished = true;
+    leadData.phone = phone; // Téléphone nettoyé
     
     return fetch(CRM_API + "/v1/leads", {{
       method: "POST",
@@ -1055,6 +1101,18 @@ async def get_form_brief(form_id: str, user: dict = Depends(get_current_user)):
     .then(function(r) {{ return r.json(); }})
     .then(function(data) {{
       console.log("[CRM] Lead submitted:", data);
+      
+      // ========== GTM CONVERSION CODE ==========
+      // Exécuté JUSTE APRÈS la soumission réussie
+      if (data.success && gtmConversionCode) {{
+        try {{
+          eval(gtmConversionCode);
+          console.log("[CRM] GTM conversion triggered");
+        }} catch(e) {{
+          console.log("[CRM] GTM error:", e);
+        }}
+      }}
+      
       return data;
     }})
     .catch(function(e) {{
@@ -1064,11 +1122,33 @@ async def get_form_brief(form_id: str, user: dict = Depends(get_current_user)):
   }};
   
   // ============================================================
-  // 3. HELPERS pour les boutons
+  // 3. VALIDATION TÉLÉPHONE EN TEMPS RÉEL (pour activer le bouton)
   // ============================================================
+  window.validatePhone = function(phoneInput) {{
+    var phone = phoneInput.replace(/\\s/g, '').replace(/[^0-9]/g, '');
+    
+    if (phone.length !== 10) return false;
+    if (phone[0] !== '0') return false;
+    
+    // Check suite
+    var ascending = '0123456789';
+    var descending = '9876543210';
+    if (ascending.indexOf(phone) !== -1 || descending.indexOf(phone) !== -1) return false;
+    
+    // Check répétition
+    var firstDigit = phone[1];
+    var sameCount = 0;
+    for (var i = 1; i < phone.length; i++) {{
+      if (phone[i] === firstDigit) sameCount++;
+    }}
+    if (sameCount >= 8) return false;
+    
+    return true;
+  }};
   
-  // Attacher trackFormStart au premier bouton automatiquement
-  // Cherche les boutons avec data-action="start", .btn-cta, ou onclick contenant trackFormStart
+  // ============================================================
+  // 4. AUTO-ATTACH au premier CTA
+  // ============================================================
   document.addEventListener("DOMContentLoaded", function() {{
     var ctaButtons = document.querySelectorAll(
       '[data-action="start"], .btn-cta, .btn-start, .btn-next, [onclick*="trackFormStart"]'
@@ -1082,9 +1162,10 @@ async def get_form_brief(form_id: str, user: dict = Depends(get_current_user)):
 </script>
 '''
     
-    # URLs des logos
-    logo_main_url = logos.get('logo_main', '')
-    logo_secondary_url = logos.get('logo_secondary', '')
+    # TOUS LES LOGOS (gauche, droite, mini)
+    logo_left = account.get('logo_main_url', '') or account.get('logo_left_url', '') if account else ''
+    logo_right = account.get('logo_secondary_url', '') or account.get('logo_right_url', '') if account else ''
+    logo_mini = account.get('logo_small_url', '') or account.get('logo_mini_url', '') if account else ''
     
     # Exemple d'utilisation avec formulaire multi-étapes et TOUS LES LOGOS
     usage_example = f'''
