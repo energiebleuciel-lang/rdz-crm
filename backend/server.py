@@ -1736,11 +1736,48 @@ async def regenerate_form_api_key(form_id: str, user: dict = Depends(get_current
     return {"success": True, "internal_api_key": new_key}
 
 @api_router.post("/forms/{form_id}/duplicate")
-async def duplicate_form(form_id: str, new_code: str, new_name: str, new_crm_api_key: str, user: dict = Depends(get_current_user)):
-    """Duplicate a Form with a new code, name, and CRM API key"""
+async def duplicate_form(form_id: str, new_code: str = "", new_name: str = "", new_crm_api_key: str = "", user: dict = Depends(get_current_user)):
+    """
+    Dupliquer un formulaire avec génération automatique du code.
+    - new_code: Si vide, auto-génère un nouveau code
+    - new_name: Si vide, utilise le nom original + " (copie)"
+    """
     form = await db.forms.find_one({"id": form_id}, {"_id": 0})
     if not form:
         raise HTTPException(status_code=404, detail="Formulaire non trouvé")
+    
+    # Auto-générer le code si non fourni
+    if not new_code or new_code.strip() == "":
+        # Mapping type produit -> préfixe
+        prefix_map = {
+            'panneaux': 'PV',
+            'pompes': 'PAC', 
+            'isolation': 'ITE',
+            'PV': 'PV',
+            'PAC': 'PAC',
+            'ITE': 'ITE'
+        }
+        prefix = prefix_map.get(form.get("product_type", ""), 'FORM')
+        
+        # Compter les formulaires existants avec ce préfixe
+        existing_count = await db.forms.count_documents({
+            "code": {"$regex": f"^{prefix}-"}
+        })
+        
+        # Générer le code: PREFIXE-XXX
+        new_number = existing_count + 1
+        auto_code = f"{prefix}-{new_number:03d}"
+        
+        # Vérifier unicité
+        while await db.forms.find_one({"code": auto_code}):
+            new_number += 1
+            auto_code = f"{prefix}-{new_number:03d}"
+        
+        new_code = auto_code
+    
+    # Nom par défaut
+    if not new_name or new_name.strip() == "":
+        new_name = f"{form.get('name', 'Sans nom')} (copie)"
     
     # Générer une nouvelle clé API interne pour le formulaire dupliqué
     new_internal_api_key = str(uuid.uuid4())
@@ -1763,7 +1800,7 @@ async def duplicate_form(form_id: str, new_code: str, new_name: str, new_crm_api
     
     await db.forms.insert_one(new_form)
     await log_activity(user["id"], user["email"], "duplicate", "form", new_form["id"], f"Formulaire dupliqué: {form['code']} -> {new_code}")
-    return {"success": True, "form": {k: v for k, v in new_form.items() if k != "_id"}}
+    return {"success": True, "form": {k: v for k, v in new_form.items() if k != "_id"}, "generated_code": new_code}
 
 # ==================== TRACKING ENDPOINTS (PUBLIC) ====================
 
