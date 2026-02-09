@@ -10,6 +10,17 @@ from datetime import datetime
 
 # ==================== AUTH ====================
 
+class UserPermissions(BaseModel):
+    """Permissions par section"""
+    dashboard: bool = True
+    accounts: bool = True
+    lps: bool = True
+    forms: bool = True
+    leads: bool = True
+    commandes: bool = False  # Réservé admin par défaut
+    settings: bool = False   # Réservé admin par défaut
+    users: bool = False      # Réservé admin par défaut
+
 class UserLogin(BaseModel):
     email: str
     password: str
@@ -19,12 +30,34 @@ class UserCreate(BaseModel):
     password: str
     nom: str
     role: str = "viewer"  # admin, editor, viewer
+    permissions: Optional[UserPermissions] = None
+
+class UserUpdate(BaseModel):
+    nom: Optional[str] = None
+    role: Optional[str] = None
+    permissions: Optional[UserPermissions] = None
+    active: Optional[bool] = None
 
 class UserResponse(BaseModel):
     id: str
     email: str
     nom: str
     role: str
+    permissions: Optional[dict] = None
+
+
+# ==================== JOURNAL D'ACTIVITÉ ====================
+
+class ActivityLog(BaseModel):
+    """Log d'activité utilisateur"""
+    user_id: str
+    user_email: str
+    action: str  # create, update, delete, login, logout
+    entity_type: str  # account, lp, form, lead, commande, user
+    entity_id: Optional[str] = None
+    entity_name: Optional[str] = None
+    details: Optional[Dict[str, Any]] = None
+    ip_address: Optional[str] = None
 
 
 # ==================== COMPTES ====================
