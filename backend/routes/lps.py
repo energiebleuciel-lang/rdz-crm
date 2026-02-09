@@ -29,7 +29,18 @@ async def list_lps(
             {"status": {"$exists": False}}
         ]
     
-    lps = await db.lps.find(query, {"_id": 0}).sort("created_at", -1).to_list(200)
+    # Exclure _id dans la projection
+    cursor = db.lps.find(query)
+    lps_raw = await cursor.to_list(200)
+    
+    # Convertir et trier
+    lps = []
+    for l in lps_raw:
+        l.pop("_id", None)  # Supprimer _id
+        lps.append(l)
+    
+    # Trier par created_at desc
+    lps.sort(key=lambda x: x.get("created_at", ""), reverse=True)
     
     # Enrichir avec stats
     for lp in lps:
