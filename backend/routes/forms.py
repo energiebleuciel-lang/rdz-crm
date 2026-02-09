@@ -266,12 +266,12 @@ async def list_forms(
         }
         
         # Nom du compte
-        account = await db.accounts.find_one({"id": form.get("account_id")}, {"name": 1})
+        account = await db.accounts.find_one({"id": form.get("account_id")}, {"_id": 0, "name": 1})
         form["account_name"] = account.get("name") if account else "N/A"
         
         # LP liée
         if form.get("lp_id"):
-            lp = await db.lps.find_one({"id": form["lp_id"]}, {"code": 1, "name": 1, "url": 1})
+            lp = await db.lps.find_one({"id": form["lp_id"]}, {"_id": 0, "code": 1, "name": 1, "url": 1})
             form["lp"] = lp if lp else None
         else:
             form["lp"] = None
