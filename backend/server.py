@@ -3866,6 +3866,11 @@ async def generate_lp_script(lp_id: str, user: dict = Depends(get_current_user))
     account_id = lp.get("account_id") or lp.get("sub_account_id")
     account = await db.accounts.find_one({"id": account_id}, {"_id": 0}) if account_id else None
     
+    # Get all logos from account
+    logo_main = account.get('logo_main_url', '') or account.get('logo_left_url', '') if account else ''
+    logo_secondary = account.get('logo_secondary_url', '') or account.get('logo_right_url', '') if account else ''
+    logo_small = account.get('logo_small_url', '') if account else ''
+    
     # Build text brief
     brief = f"""=== BRIEF LP : {lp.get('code', 'Non défini')} ===
 
@@ -3877,10 +3882,25 @@ SOURCE : {lp.get('source_name', 'Non défini')} ({lp.get('source_type', 'native'
 Nom du compte : {account.get('name', 'Non défini') if account else 'Non défini'}
 Domaine : {account.get('domain', 'Non défini') if account else 'Non défini'}
 
---- LOGOS ---
-Logo principal (gauche) : {account.get('logo_left_url', 'Non défini') if account else 'Non défini'}
-Logo secondaire (droite) : {account.get('logo_right_url', 'Non défini') if account else 'Non défini'}
-Petit logo (favicon) : {account.get('logo_small_url', 'Non défini') if account else 'Non défini'}
+--- TOUS LES LOGOS ---
+Logo Principal (gauche) : {logo_main or 'Non défini'}
+Logo Secondaire (droite) : {logo_secondary or 'Non défini'}
+Favicon / Petit logo : {logo_small or 'Non défini'}
+
+<!-- Code HTML pour les logos -->
+<div class="header-logos">
+  {f'<img src="{logo_main}" alt="Logo principal" class="logo-main" />' if logo_main else '<!-- Logo principal manquant -->'}
+  {f'<img src="{logo_secondary}" alt="Logo secondaire" class="logo-secondary" />' if logo_secondary else '<!-- Logo secondaire optionnel -->'}
+</div>
+
+--- TRACKING CRM ---
+⚠️ IMPORTANT: Le script de tracking doit être intégré dans la LP.
+Utilisez trackFormStart() sur le PREMIER bouton CTA cliqué.
+
+Exemple:
+<button onclick="trackFormStart(); window.location.href='{lp.get('form_url', '#')}';" class="btn-cta" data-action="start">
+  Demander mon devis gratuit
+</button>
 
 --- TRACKING GTM ---
 Pixel Header (dans <head>) : 
@@ -3890,7 +3910,7 @@ Code GTM Body :
 {account.get('gtm_body', 'Non configuré') if account else 'Non configuré'}
 
 --- CTA ---
-Sélecteur CSS des boutons CTA : {lp.get('cta_selector', '.cta-btn')}
+Sélecteur CSS des boutons CTA : {lp.get('cta_selector', '.cta-btn, .btn-cta, [data-action="start"]')}
 URL de redirection CTA : {lp.get('form_url', 'Non défini')}
 
 --- LÉGAL ---
@@ -3906,7 +3926,16 @@ Couleur secondaire : {account.get('secondary_color', '#1e40af') if account else 
 {lp.get('generation_notes', 'Aucune note')}
 """
     
-    return {"brief": brief, "lp": lp, "account": account}
+    return {
+        "brief": brief, 
+        "lp": lp, 
+        "account": account,
+        "logos": {
+            "logo_main": logo_main,
+            "logo_secondary": logo_secondary,
+            "logo_small": logo_small
+        }
+    }
 
 @api_router.get("/generate-script/form/{form_id}")
 async def generate_form_script(form_id: str, user: dict = Depends(get_current_user)):
