@@ -1,0 +1,268 @@
+<analysis>**original_problem_statement:**
+The user wants to build a multi-tenant CRM and lead management dashboard for their solar panel company. The application centralizes asset management, stores landing pages (LPs) and forms, generates briefs for developers, and routes leads to external CRMs like ZR7 Digital and Maison du Lead (MDL).
+
+**PRODUCT REQUIREMENTS:**
+The system has evolved significantly. The core goal is now to emulate the Landbot.io API and UI model.
+- **Central Asset Hub:** A Compte (Account) entity stores logos, images, and other assets.
+- **API Model (Landbot Style):**
+    - A single, permanent global API key for authentication.
+    - Each form has a unique, auto-generated .
+    - Lead submission is done via , authenticating with the global API key in the  header and passing the  in the request body. No API keys should be exposed in public-facing HTML/JS.
+- **Form Management:**
+    - A card-based UI (like Landbot) to display forms with key stats (Started, Finished, Conversion %).
+    - Ability to duplicate a form, which generates a new  but copies all other settings.
+- **Brief Generator:** Generate instructions for developers that include the , endpoint, and dynamically configured financial Aides (e.g., MaPrimeRenov) based on the product type.
+- **Lead Routing & Persistence:**
+    - Route leads to ZR7/MDL based on rules.
+    - Leads must NEVER be deleted, only archived, to ensure data integrity.
+- **Monitoring & Alerting:**
+    - Implement a robust system to ensure uptime and data flow.
+    - Send daily and weekly summary emails with lead statistics.
+    - Send immediate critical alerts for failures (e.g., lead submission failure, API downtime).
+- **Security:**
+    - The GitHub repository must be private.
+    - Backend must enforce multi-tenancy, restricting user data access to their .
+
+**User's preferred language**: French
+
+**what currently exists?**
+A full-stack React/FastAPI/MongoDB application is successfully deployed on the user's Hostinger VPS. The previous session involved a major architectural refactor to align with the user's Landbot-style vision.
+
+The application now features:
+- A new secure API endpoint () that uses a permanent, global API key for authentication via headers.
+- A settings page where the user can view and copy their global API key.
+- A system for versioning (v2.0.0) and database backups ().
+- System health endpoints (, ).
+- The critical P0 security flaw (lack of multi-tenant data filtering) has been fixed.
+- Enhanced form protection (archiving instead of deleting, non-editable  and ).
+- All changes from the session have been successfully deployed and verified on the live server.
+
+**Last working item**:
+- **Last item agent was working:** Finalizing a comprehensive plan for the next phase of development based on the user's detailed requirements for email alerting, UI changes, and system robustness. The user gave their explicit approval to begin coding this plan.
+- **Status:** NOT STARTED (The planning is complete, but implementation has not begun).
+- **Agent Testing Done:** N/A
+- **Which testing method agent to use?** The agent will need to implement a large set of features. After implementation, the  should be used to validate the new email integration, UI changes, and API logic.
+- **User Testing Done:** N/A
+
+**All Pending/In progress Issue list**:
+There are no pending bugs or issues from the previous session. The work consists of a large, user-approved feature development plan.
+
+**In progress Task List**:
+None. The last session concluded with a successful deployment and the creation of a new plan.
+
+**Upcoming and Future Tasks**
+
+- **Upcoming Tasks (User Approved Plan - P0):**
+    - **Task 1: Secure GitHub Repository (P0)**: Remind the user to change their GitHub repository () from Public to **Private** in the repository settings. This is a prerequisite for security.
+    - **Task 2: Implement Email Alerting & Reporting (P0)**:
+        - Integrate **SendGrid** using the  subagent.
+        - Create a background job scheduler.
+        - Implement **critical alerts** via email to  for lead submission failures and API downtime.
+        - Implement a **daily summary email** (sent at 10 AM) with statistics from the previous day.
+        - Implement a **weekly summary email** (sent Fridays at 10 AM) with statistics from the past week.
+    - **Task 3: Implement Robust Anti-Bug System (P1)**:
+        - Create a **lead queue** to hold leads if ZR7/MDL APIs are down.
+        - Implement an **automatic retry mechanism** for failed lead submissions from the queue.
+        - Enhance the monitoring system to detect and alert if an active form stops receiving leads.
+    - **Task 4: Refactor Forms Page UI & Logic (P1)**:
+        - In , transform the forms table into a **card-based layout** (as per the Landbot screenshot).
+        - Each card must display: account logo, form name, product, dates, and stats (Started/Finished/% Transfo).
+        - Implement a **Duplicate** action on each card. This will call a new backend endpoint to create a copy of the form with a new, unique .
+        - After duplication, display a toast notification reminding the user to check the redirect URL and GTM codes.
+    - **Task 5: Enhance Form Configuration & Brief Generator (P2)**:
+        - In the form creation modal, add a section to configure financial Aides and their amounts (MaPrimeRenov, CEE, Prime Autoconsommation, TVA 5.5%).
+        - Update the brief generator in  to include these Aides in the generated output.
+    - **Task 6: Finalize API Security (P2)**:
+        - In  and , remove the Regenerate button and corresponding API endpoint for the global API key to make it permanent.
+
+- **Future Tasks (Backlog):**
+    - Refactor the monolithic  and  files into a modular structure.
+    - Create a dedicated API Documentation page within the application.
+    - Build a full HTML embed generator that outputs a complete, ready-to-use form script, moving beyond the current brief generator.
+
+**Completed work in this session**
+- **Major API Refactor (Landbot Style):** Implemented a new secure API () using a permanent, global API key for header-based authentication, deprecating the old per-form key system.
+- **P0 Security Vulnerability Fixed:** Implemented multi-tenant data filtering across all backend endpoints to ensure users can only see data from their assigned accounts.
+- **System Health & Backup:** Created API endpoints for health checks (), versioning (), and database backups.
+- **Form & Lead Protection:** Changed delete operations to archive to prevent data loss. Made critical form fields (code, product) non-editable after creation.
+- **UI Enhancements:** Added conversion statistics to the forms table and detailed status/platform information to the leads table.
+- **Successful Deployment:** Guided the user through deploying all the new features to their live Hostinger VPS, resolving several usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           [--super-prefix=<path>] [--config-env=<name>=<envvar>]
+           <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone     Clone a repository into a new directory
+   init      Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add       Add file contents to the index
+   mv        Move or rename a file, a directory, or a symlink
+   restore   Restore working tree files
+   rm        Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect    Use binary search to find the commit that introduced a bug
+   diff      Show changes between commits, commit and working tree, etc
+   grep      Print lines matching a pattern
+   log       Show commit logs
+   show      Show various types of objects
+   status    Show the working tree status
+
+grow, mark and tweak your common history
+   branch    List, create, or delete branches
+   commit    Record changes to the repository
+   merge     Join two or more development histories together
+   rebase    Reapply commits on top of another base tip
+   reset     Reset current HEAD to the specified state
+   switch    Switch branches
+   tag       Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch     Download objects and refs from another repository
+   pull      Fetch from and integrate with another repository or a local branch
+   push      Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system. and dependency issues in the process.
+
+**Earlier issues found/mentioned but not fixed**
+- None.
+
+**Known issue recurrence from previous fork**
+- None.
+
+**Code Architecture**
+
+
+**Key Technical Concepts**
+- **Full Stack:** React, FastAPI, MongoDB
+- **Authentication:** JWT for UI login, Token-based () for API v1.
+- **Deployment:** Manual deployment to a Hostinger VPS via , managed by Nginx and Supervisor.
+- **Upcoming Tech:** SendGrid for emails, a background job scheduler (e.g., ).
+
+**key DB schema**
+- ****: 
+- ****: 
+- ****: 
+- ****: 
+- ****: 
+- ****: 
+
+**changes in tech stack**
+- **SendGrid** will be introduced for handling all email communications (alerts and reports).
+
+**All files of reference**
+-  (Contains all backend logic, including the new API v1).
+-  (Contains all frontend components and logic).
+-  (Contains the product requirements and history).
+
+**Areas that need refactoring**:
+- **CRITICAL:**  is over 5000 lines and must be broken down into a proper React component structure (, ).
+- **CRITICAL:**  is over 3000 lines and must be modularized into a proper FastAPI structure (, , ).
+
+**key api endpoints**
+- : **(New/Primary)** Secure lead submission with global API key in header.
+- : Retrieve the global API key.
+- : System health check.
+- : System version information.
+- : Create a database backup.
+- : Archives a form.
+- : To be created for duplicating a form.
+
+**Critical Info for New Agent**
+- **Start with the User-Approved Plan:** The user has approved a detailed, multi-step plan. Your first action should be to present this plan for final confirmation and then begin implementation, starting with reminding the user to make the GitHub repo private.
+- **New API Model is Standard:** The Landbot-style API () is the new standard. All new features (like the brief generator) must use this model.
+- **Deployment is Manual:** Be prepared to guide the user through the deployment process on their Hostinger VPS. This involves , dependency installation, frontend build, and service restarts. Anticipate and handle potential usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
+           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
+           [--super-prefix=<path>] [--config-env=<name>=<envvar>]
+           <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone     Clone a repository into a new directory
+   init      Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add       Add file contents to the index
+   mv        Move or rename a file, a directory, or a symlink
+   restore   Restore working tree files
+   rm        Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect    Use binary search to find the commit that introduced a bug
+   diff      Show changes between commits, commit and working tree, etc
+   grep      Print lines matching a pattern
+   log       Show commit logs
+   show      Show various types of objects
+   status    Show the working tree status
+
+grow, mark and tweak your common history
+   branch    List, create, or delete branches
+   commit    Record changes to the repository
+   merge     Join two or more development histories together
+   rebase    Reapply commits on top of another base tip
+   reset     Reset current HEAD to the specified state
+   switch    Switch branches
+   tag       Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch     Download objects and refs from another repository
+   pull      Fetch from and integrate with another repository or a local branch
+   push      Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system. conflicts or package issues.
+- **Tech Debt is Significant:** The frontend () and backend () are massive monolithic files. While refactoring is on the backlog, be mindful of this when adding new code and try not to increase the complexity further.
+
+**documents and test reports created in this job**
+- 
+- 
+
+**Last 10 User Messages and any pending HUMAN messages**
+1.  **User approved the plan:** go.
+2.  **User confirmed email/aides details:** Specified 10 AM for summaries, added more financial Aides, and chose SendGrid.
+3.  **User wants a full plan:** Asked for a complete summary of all updates before coding begins.
+4.  **User specifies email requirements:** Wants daily/weekly summaries and critical alerts sent to .
+5.  **User expresses concern for stability:** Emphasized that their business depends on the CRM and wants guarantees against bugs after updates, requesting monitoring and alerts.
+6.  **User clarifies domain usage:** Confirmed forms will be on various external domains, so no domain restriction should be implemented, just  authentication.
+7.  **User confirms workflow:** The agent will act as the developer who receives a script/design and generates the final HTML with the correct .
+8.  **User wants HTML generation:** in short, yes, in the script you must put all the info so that during HTML design it matches up.
+9.  **User confirms card UI and duplication:** Wants a card layout like Landbot, with a duplication feature that creates a new .
+10. **User confirms field mapping and dynamic aides:** Wants form fields to match ZR7/MDL API and wants the brief to include financial Aides that are configured per-product.
+
+**Project Health Check:**
+- **Broken:** None. The application is deployed and functional.
+- **Mocked:**
+    - Email sending (pending SendGrid integration).
+    - Lead queuing and retry logic.
+
+**3rd Party Integrations**
+- Maison du Lead API
+- ZR7 Digital API
+- **To be added:** SendGrid
+
+**Testing status**
+- **Testing agent used after significant changes:** YES (for security fix).
+- **Troubleshoot agent used after agent stuck in loop:** NO
+- **Test files created:** None
+- **Known regressions:** None.
+
+**Credentials to test flow:**
+- **Live Dashboard Login:**  / 
+- **ZR7 API Key (PV):** 
+- **MDL API Key (PV):** 
+
+**What agent forgot to execute**
+- The approved plan is captured in Upcoming Tasks and nothing has been forgotten. The next agent's job is to execute this plan.</analysis>
