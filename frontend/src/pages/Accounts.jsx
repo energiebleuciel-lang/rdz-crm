@@ -408,6 +408,77 @@ dataLayer.push({'event': 'formSubmit'});"
             )}
           </div>
 
+          {/* Section Textes Légaux (CGU, Privacy) */}
+          <div className="border-t pt-4 mt-4">
+            <button
+              type="button"
+              onClick={() => setShowLegalSection(!showLegalSection)}
+              className="w-full flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
+            >
+              <span className="font-medium text-slate-700 flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                Textes Légaux (CGU, Confidentialité)
+              </span>
+              {showLegalSection ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+
+            {showLegalSection && (
+              <div className="mt-4 space-y-4 p-4 bg-slate-50 rounded-lg">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Conditions Générales d'Utilisation (CGU)
+                  </label>
+                  <textarea
+                    value={form.cgu_text}
+                    onChange={e => setForm({...form, cgu_text: e.target.value})}
+                    placeholder="Entrez vos CGU ici...
+
+Article 1 - Objet
+Ces conditions générales régissent...
+
+Article 2 - Services
+..."
+                    className="w-full h-32 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Politique de Confidentialité
+                  </label>
+                  <textarea
+                    value={form.privacy_policy_text}
+                    onChange={e => setForm({...form, privacy_policy_text: e.target.value})}
+                    placeholder="Entrez votre politique de confidentialité ici...
+
+Nous collectons les données suivantes :
+- Nom et prénom
+- Numéro de téléphone
+- Adresse email
+..."
+                    className="w-full h-32 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Mentions Légales (optionnel)
+                  </label>
+                  <textarea
+                    value={form.legal_mentions_text}
+                    onChange={e => setForm({...form, legal_mentions_text: e.target.value})}
+                    placeholder="Raison sociale, SIRET, adresse..."
+                    className="w-full h-24 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  />
+                </div>
+
+                <p className="text-xs text-slate-500">
+                  💡 Ces textes seront automatiquement inclus dans le Brief et affichés en bas de page via des boutons cliquables.
+                </p>
+              </div>
+            )}
+          </div>
+
           <div className="flex justify-end gap-3 pt-4">
             <Button variant="secondary" type="button" onClick={() => setShowModal(false)}>
               Annuler
