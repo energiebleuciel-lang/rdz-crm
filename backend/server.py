@@ -138,37 +138,12 @@ async def root():
         "name": "EnerSolar CRM API",
         "version": "2.0.0",
         "status": "running",
-        "docs": "/docs"
+        "docs": "/docs",
+        "features": {
+            "nightly_verification": "03:00 UTC",
+            "queue_processing": "every 5 minutes"
+        }
     }
-
-
-# ==================== STARTUP ====================
-
-@app.on_event("startup")
-async def startup():
-    logger.info("🚀 EnerSolar CRM v2.0 démarré")
-    
-    # Créer les index MongoDB (ignorer si existent déjà)
-    from config import db
-    
-    try:
-        # Index sur les collections (background=True pour ne pas bloquer)
-        await db.users.create_index("email", unique=True, background=True)
-        await db.sessions.create_index("token", background=True)
-        await db.sessions.create_index("expires_at", background=True)
-        await db.accounts.create_index("name", background=True)
-        await db.lps.create_index("code", background=True)
-        await db.forms.create_index("code", background=True)
-        await db.leads.create_index("phone", background=True)
-        await db.leads.create_index("form_code", background=True)
-        await db.leads.create_index("created_at", background=True)
-        await db.tracking.create_index("lp_code", background=True)
-        await db.tracking.create_index("form_code", background=True)
-        await db.lead_queue.create_index("status", background=True)
-        await db.lead_queue.create_index("next_retry_at", background=True)
-        logger.info("✅ Index MongoDB créés/vérifiés")
-    except Exception as e:
-        logger.warning(f"⚠️ Index MongoDB: {str(e)}")
 
 
 if __name__ == "__main__":
