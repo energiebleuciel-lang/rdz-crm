@@ -565,12 +565,20 @@ export default function LandingPages() {
       {/* Modal Brief */}
       <Modal 
         isOpen={showBriefModal} 
-        onClose={() => setShowBriefModal(false)}
+        onClose={() => { setShowBriefModal(false); setCopySuccess(null); }}
         title={`Brief - ${briefData?.lp?.code || ''}`}
         size="xl"
       >
         {briefData && (
           <div className="space-y-6">
+            {/* Success Toast */}
+            {copySuccess && (
+              <div className="fixed top-4 right-4 z-[100] bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-pulse">
+                <Check className="w-5 h-5" />
+                {copySuccess}
+              </div>
+            )}
+            
             {/* Info */}
             <div className="bg-slate-50 p-4 rounded-lg">
               <div className="grid grid-cols-2 gap-4 text-sm">
@@ -607,21 +615,23 @@ export default function LandingPages() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="font-semibold text-slate-800">🟢 Script Unique (LP + Form)</h3>
-                  <Button 
-                    size="sm" 
-                    variant="secondary"
+                  <button
                     onClick={() => copyScript(briefData.scripts.combined)}
+                    className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium transition-colors"
                   >
-                    <Copy className="w-4 h-4" />
-                    Copier
-                  </Button>
+                    <Clipboard className="w-4 h-4" />
+                    Copier le script
+                  </button>
                 </div>
                 <p className="text-sm text-slate-600 mb-2">
                   À coller sur: <code className="bg-slate-100 px-2 py-0.5 rounded">{briefData.lp.url}</code>
                 </p>
-                <pre className="bg-slate-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto max-h-96">
-                  {briefData.scripts.combined}
-                </pre>
+                <div className="relative">
+                  <pre className="bg-slate-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto max-h-96 select-all">
+                    {briefData.scripts.combined}
+                  </pre>
+                  <p className="text-xs text-slate-500 mt-1">💡 Triple-clic pour sélectionner tout le script</p>
+                </div>
               </div>
             ) : (
               // Mode Redirect : 2 scripts
