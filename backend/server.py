@@ -1167,31 +1167,36 @@ async def get_form_brief(form_id: str, user: dict = Depends(get_current_user)):
     logo_right = account.get('logo_secondary_url', '') or account.get('logo_right_url', '') if account else ''
     logo_mini = account.get('logo_small_url', '') or account.get('logo_mini_url', '') if account else ''
     
+    # Code GTM du compte (pour conversion)
+    gtm_conversion = account.get('gtm_conversion_code', '') if account else ''
+    
     # Exemple d'utilisation avec formulaire multi-étapes et TOUS LES LOGOS
     usage_example = f'''
 <!-- ============================================================ -->
 <!-- EXEMPLE: Formulaire multi-étapes avec tracking               -->
 <!-- ============================================================ -->
 
-<!-- HEADER AVEC TOUS LES LOGOS DU COMPTE -->
+<!-- HEADER AVEC LES 3 LOGOS DU COMPTE -->
 <div class="form-header">
   <div class="logos">
-    <!-- Logo Principal (gauche) -->
-    {"<img src='" + logo_main_url + "' alt='" + account_name + "' class='logo logo-main' />" if logo_main_url else "<!-- Logo principal non défini -->"}
+    <!-- LOGO GAUCHE (principal) -->
+    {f"<img src='{logo_left}' alt='{account_name}' class='logo logo-left' />" if logo_left else "<!-- Logo gauche: Non défini -->"}
     
-    <!-- Logo Secondaire (droite) - si disponible -->
-    {"<img src='" + logo_secondary_url + "' alt='" + account_name + " partenaire' class='logo logo-secondary' />" if logo_secondary_url else "<!-- Logo secondaire non défini -->"}
+    <!-- LOGO DROITE (secondaire/partenaire) -->
+    {f"<img src='{logo_right}' alt='{account_name} partenaire' class='logo logo-right' />" if logo_right else "<!-- Logo droite: Non défini -->"}
   </div>
+  
+  <!-- MINI LOGO (favicon - pour onglet navigateur) -->
+  {f"<link rel='icon' href='{logo_mini}' type='image/png'>" if logo_mini else "<!-- Mini logo/favicon: Non défini -->"}
   
   <!-- Badges de confiance -->
   <div class="badges">
     <span class="badge badge-rge">✓ Certification RGE</span>
     <span class="badge badge-garantie">✓ Garantie 25 ans</span>
-    <span class="badge badge-france">🇫🇷 Made in France</span>
   </div>
 </div>
 
-<!-- ÉTAPE 1: Premier contact -->
+<!-- ÉTAPE 1: Premier contact (PREMIER CTA = Démarré) -->
 <div id="step1" class="form-step active">
   <h3>🏠 Votre projet</h3>
   <select name="type_logement" required>
