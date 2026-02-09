@@ -1235,18 +1235,23 @@ async def get_form_brief(form_id: str, user: dict = Depends(get_current_user)):
   <button type="button" onclick="showStep(3);" class="btn-next">Suivant →</button>
 </div>
 
-<!-- ÉTAPE 3: Téléphone + Validation (DÉCLENCHE "Terminé") -->
+<!-- ÉTAPE 3: Téléphone + DERNIER CTA (Terminé + GTM Conversion) -->
 <div id="step3" class="form-step">
   <h3>📞 Dernière étape</h3>
-  <input type="text" name="code_postal" placeholder="Code postal *" required pattern="[0-9]{{5}}" />
+  <input type="text" name="code_postal" placeholder="Code postal * (5 chiffres)" required pattern="[0-9]{{5}}" maxlength="5" />
   <input type="text" name="ville" placeholder="Ville *" required />
-  <input type="tel" name="phone" placeholder="Téléphone *" required pattern="0[0-9]{{9}}" />
+  <input type="tel" name="phone" id="phoneInput" placeholder="Téléphone * (10 chiffres)" required maxlength="14" />
+  
+  <!-- Message d'erreur téléphone -->
+  <p id="phoneError" class="error-msg" style="display:none; color:red; font-size:12px;">
+    Numéro invalide (10 chiffres, pas de suite comme 0123456789)
+  </p>
   
   <p class="info">
     En cliquant sur "Recevoir mon devis", vous acceptez d'être contacté par un conseiller.
   </p>
   
-  <!-- BOUTON FINAL = Déclenche submitLeadToCRM() -->
+  <!-- DERNIER CTA = Déclenche submitLeadToCRM() + GTM Conversion -->
   <button type="button" onclick="submitForm();" class="btn-submit" id="submitBtn" disabled>
     ✓ Recevoir mon devis gratuit
   </button>
@@ -1261,14 +1266,17 @@ function showStep(n) {{
   document.getElementById('step' + n).classList.add('active');
 }}
 
-// Validation du téléphone pour activer le bouton final
-document.querySelector('input[name="phone"]').addEventListener('input', function(e) {{
-  var phone = e.target.value.replace(/\\s/g, '');
-  var isValid = /^0[0-9]{{9}}$/.test(phone);
+// ========== VALIDATION TÉLÉPHONE EN TEMPS RÉEL ==========
+// Utilise la fonction validatePhone() du script CRM
+document.getElementById('phoneInput').addEventListener('input', function(e) {{
+  var phone = e.target.value.replace(/\\s/g, '').replace(/[^0-9]/g, '');
+  var isValid = validatePhone(phone);
+  
   document.getElementById('submitBtn').disabled = !isValid;
+  document.getElementById('phoneError').style.display = isValid ? 'none' : 'block';
 }});
 
-// Soumission finale
+// ========== SOUMISSION FINALE + GTM CONVERSION ==========
 function submitForm() {{
   var form = document.querySelector('form') || document;
   var data = {{
@@ -1276,16 +1284,20 @@ function submitForm() {{
     nom: form.querySelector('[name="nom"]').value,
     prenom: form.querySelector('[name="prenom"]').value,
     email: form.querySelector('[name="email"]').value,
-    phone: form.querySelector('[name="phone"]').value.replace(/\\s/g, ''),
+    phone: form.querySelector('[name="phone"]').value,
     code_postal: form.querySelector('[name="code_postal"]').value,
     ville: form.querySelector('[name="ville"]').value,
     type_logement: form.querySelector('[name="type_logement"]')?.value || '',
     statut_occupant: form.querySelector('[name="statut_occupant"]')?.value || ''
   }};
   
-  submitLeadToCRM(data)
+  // CODE GTM CONVERSION (sera exécuté APRÈS soumission réussie)
+  var gtmConversionCode = `{gtm_conversion}`;
+  
+  submitLeadToCRM(data, gtmConversionCode)
     .then(function(result) {{
       if (result.success) {{
+        // GTM déjà déclenché dans submitLeadToCRM
         // Redirection vers page de remerciement
         window.location.href = "{form.get('redirect_url_name', '/merci')}";
       }} else {{
