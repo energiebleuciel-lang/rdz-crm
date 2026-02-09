@@ -936,13 +936,20 @@ async def get_form_brief(form_id: str, user: dict = Depends(get_current_user)):
     """
     Génère le brief complet pour les développeurs avec:
     - form_id et endpoint API
-    - Script de tracking (form_start + lead submission)
+    - Script de tracking (form_start au premier clic, lead submission à la fin)
+    - Support logo/badge
     - Aides financières configurées
-    - Code d'exemple prêt à copier
     """
     form = await db.forms.find_one({"id": form_id}, {"_id": 0})
     if not form:
         raise HTTPException(status_code=404, detail="Formulaire non trouvé")
+    
+    # Récupérer le compte pour le logo
+    account = None
+    if form.get('account_id'):
+        account = await db.accounts.find_one({"id": form['account_id']}, {"_id": 0})
+    if not account and form.get('sub_account_id'):
+        account = await db.accounts.find_one({"id": form['sub_account_id']}, {"_id": 0})
     
     # Récupérer la clé API globale
     api_key = await get_or_create_global_api_key()
@@ -952,57 +959,84 @@ async def get_form_brief(form_id: str, user: dict = Depends(get_current_user)):
     product_labels = {'panneaux': 'Panneaux Solaires (PV)', 'pompes': 'Pompes à Chaleur (PAC)', 'isolation': 'Isolation (ITE)', 'PV': 'Panneaux Solaires (PV)', 'PAC': 'Pompes à Chaleur (PAC)', 'ITE': 'Isolation (ITE)'}
     product_label = product_labels.get(form.get('product_type', ''), 'Non défini')
     
-    # Aides financières par produit (si configurées)
+    # Aides financières par produit
     aides_config = form.get('aides', {})
     if not aides_config:
-        # Valeurs par défaut selon le produit
         if form.get('product_type') in ['panneaux', 'PV']:
             aides_config = {
-                "prime_autoconsommation": True,
-                "tva_reduite": True,
-                "revente_edf": True
+                "prime_autoconsommation": "Jusqu'à 2 520€",
+                "tva_reduite": "TVA 10% au lieu de 20%",
+                "revente_edf": "Revente surplus EDF OA"
             }
         elif form.get('product_type') in ['pompes', 'PAC']:
             aides_config = {
-                "maprimereno": True,
-                "cee": True,
-                "tva_reduite": True,
-                "eco_ptz": True
+                "maprimereno": "Jusqu'à 11 000€",
+                "cee": "Prime CEE variable",
+                "tva_reduite": "TVA 5.5%",
+                "eco_ptz": "Éco-PTZ jusqu'à 50 000€"
             }
         elif form.get('product_type') in ['isolation', 'ITE']:
             aides_config = {
-                "maprimereno": True,
-                "cee": True,
-                "tva_reduite": True
+                "maprimereno": "Jusqu'à 75€/m²",
+                "cee": "Prime CEE variable",
+                "tva_reduite": "TVA 5.5%"
             }
     
-    # Script JavaScript de tracking
+    # Logo du compte
+    logo_url = account.get('logo_main_url', '') if account else ''
+    account_name = account.get('name', 'EnerSolar') if account else 'EnerSolar'
+    
+    # Script JavaScript de tracking AMÉLIORÉ
     tracking_script = f'''
-<!-- EnerSolar CRM - Script de Tracking (à placer dans le <head>) -->
+<!-- ============================================================ -->
+<!-- EnerSolar CRM - Script de Tracking v2.0                      -->
+<!-- Placer dans le <head> de votre page                          -->
+<!-- ============================================================ -->
 <script>
 (function() {{
+  // Configuration
   var CRM_API = "{backend_url}/api";
   var FORM_ID = "{form_id}";
   var FORM_CODE = "{form.get('code', '')}";
+  var LP_CODE = ""; // À personnaliser si vous avez une Landing Page
   
-  // 1. Track form start (quand le formulaire se charge)
-  function trackFormStart() {{
+  // État du tracking
+  var hasStarted = false;
+  var hasFinished = false;
+  
+  // ============================================================
+  // 1. DÉMARRÉ = Premier clic sur un bouton "Suivant" ou "Commencer"
+  // ============================================================
+  window.trackFormStart = function() {{
+    if (hasStarted) return; // Ne tracker qu'une seule fois
+    hasStarted = true;
+    
     fetch(CRM_API + "/track/form-start", {{
       method: "POST",
       headers: {{ "Content-Type": "application/json" }},
-      body: JSON.stringify({{ form_code: FORM_CODE, lp_code: "" }})
-    }}).catch(function(e) {{ console.log("Tracking error:", e); }});
-  }}
+      body: JSON.stringify({{ form_code: FORM_CODE, lp_code: LP_CODE }})
+    }})
+    .then(function() {{ console.log("[CRM] Form started"); }})
+    .catch(function(e) {{ console.log("[CRM] Start error:", e); }});
+  }};
   
-  // Tracker au chargement
-  if (document.readyState === "complete") {{
-    trackFormStart();
-  }} else {{
-    window.addEventListener("load", trackFormStart);
-  }}
-  
-  // 2. Fonction pour soumettre un lead
+  // ============================================================
+  // 2. TERMINÉ = Soumission finale (après validation téléphone)
+  // ============================================================
   window.submitLeadToCRM = function(leadData) {{
+    // Validation des champs obligatoires
+    if (!leadData.phone || leadData.phone.length < 10) {{
+      return Promise.reject(new Error("Téléphone invalide"));
+    }}
+    if (!leadData.nom || !leadData.prenom) {{
+      return Promise.reject(new Error("Nom/Prénom requis"));
+    }}
+    if (!leadData.code_postal) {{
+      return Promise.reject(new Error("Code postal requis"));
+    }}
+    
+    hasFinished = true;
+    
     return fetch(CRM_API + "/v1/leads", {{
       method: "POST",
       headers: {{
@@ -1016,38 +1050,185 @@ async def get_form_brief(form_id: str, user: dict = Depends(get_current_user)):
     }})
     .then(function(r) {{ return r.json(); }})
     .then(function(data) {{
-      console.log("Lead soumis:", data);
+      console.log("[CRM] Lead submitted:", data);
       return data;
     }})
     .catch(function(e) {{
-      console.error("Erreur soumission:", e);
+      console.error("[CRM] Submit error:", e);
       throw e;
     }});
   }};
+  
+  // ============================================================
+  // 3. HELPERS pour les boutons
+  // ============================================================
+  
+  // Attacher trackFormStart au premier bouton automatiquement
+  document.addEventListener("DOMContentLoaded", function() {{
+    // Chercher les boutons "Suivant", "Commencer", "Démarrer", etc.
+    var startButtons = document.querySelectorAll(
+      '[data-action="start"], .btn-start, .btn-next, [onclick*="trackFormStart"]'
+    );
+    startButtons.forEach(function(btn) {{
+      btn.addEventListener("click", trackFormStart, {{ once: true }});
+    }});
+  }});
+  
 }})();
 </script>
 '''
     
-    # Exemple d'utilisation
+    # Exemple d'utilisation avec formulaire multi-étapes
     usage_example = f'''
-<!-- Exemple d'utilisation dans votre formulaire -->
-<form id="leadForm" onsubmit="handleSubmit(event)">
-  <input type="text" name="civilite" placeholder="M. / Mme" required />
-  <input type="text" name="nom" placeholder="Nom" required />
-  <input type="text" name="prenom" placeholder="Prénom" required />
-  <input type="tel" name="phone" placeholder="Téléphone" required />
-  <input type="email" name="email" placeholder="Email" required />
-  <input type="text" name="code_postal" placeholder="Code postal" required />
-  <input type="text" name="ville" placeholder="Ville" required />
-  <button type="submit">Envoyer</button>
-</form>
+<!-- ============================================================ -->
+<!-- EXEMPLE: Formulaire multi-étapes avec tracking               -->
+<!-- ============================================================ -->
+
+<!-- LOGO / BADGE (à personnaliser) -->
+<div class="form-header">
+  <img src="{logo_url}" alt="{account_name}" class="logo" style="max-height: 60px;" />
+  <div class="badges">
+    <span class="badge">✓ Certification RGE</span>
+    <span class="badge">✓ Garantie 25 ans</span>
+  </div>
+</div>
+
+<!-- ÉTAPE 1: Premier contact (DÉCLENCHE "Démarré") -->
+<div id="step1" class="form-step active">
+  <h3>🏠 Votre projet</h3>
+  <select name="type_logement" required>
+    <option value="">Type de logement</option>
+    <option value="maison">Maison</option>
+    <option value="appartement">Appartement</option>
+  </select>
+  <select name="statut_occupant" required>
+    <option value="">Vous êtes...</option>
+    <option value="proprietaire">Propriétaire</option>
+    <option value="locataire">Locataire</option>
+  </select>
+  
+  <!-- BOUTON SUIVANT = Déclenche trackFormStart() -->
+  <button type="button" onclick="trackFormStart(); showStep(2);" class="btn-next" data-action="start">
+    Suivant →
+  </button>
+</div>
+
+<!-- ÉTAPE 2: Coordonnées -->
+<div id="step2" class="form-step">
+  <h3>👤 Vos coordonnées</h3>
+  <div class="row">
+    <select name="civilite" required>
+      <option value="">Civilité</option>
+      <option value="M.">M.</option>
+      <option value="Mme">Mme</option>
+    </select>
+  </div>
+  <input type="text" name="nom" placeholder="Nom *" required />
+  <input type="text" name="prenom" placeholder="Prénom *" required />
+  <input type="email" name="email" placeholder="Email *" required />
+  
+  <button type="button" onclick="showStep(1);">← Retour</button>
+  <button type="button" onclick="showStep(3);" class="btn-next">Suivant →</button>
+</div>
+
+<!-- ÉTAPE 3: Téléphone + Validation (DÉCLENCHE "Terminé") -->
+<div id="step3" class="form-step">
+  <h3>📞 Dernière étape</h3>
+  <input type="text" name="code_postal" placeholder="Code postal *" required pattern="[0-9]{{5}}" />
+  <input type="text" name="ville" placeholder="Ville *" required />
+  <input type="tel" name="phone" placeholder="Téléphone *" required pattern="0[0-9]{{9}}" />
+  
+  <p class="info">
+    En cliquant sur "Recevoir mon devis", vous acceptez d'être contacté par un conseiller.
+  </p>
+  
+  <!-- BOUTON FINAL = Déclenche submitLeadToCRM() -->
+  <button type="button" onclick="submitForm();" class="btn-submit" id="submitBtn" disabled>
+    ✓ Recevoir mon devis gratuit
+  </button>
+</div>
 
 <script>
-function handleSubmit(e) {{
-  e.preventDefault();
-  var form = e.target;
+// Navigation entre étapes
+function showStep(n) {{
+  document.querySelectorAll('.form-step').forEach(function(el) {{
+    el.classList.remove('active');
+  }});
+  document.getElementById('step' + n).classList.add('active');
+}}
+
+// Validation du téléphone pour activer le bouton final
+document.querySelector('input[name="phone"]').addEventListener('input', function(e) {{
+  var phone = e.target.value.replace(/\\s/g, '');
+  var isValid = /^0[0-9]{{9}}$/.test(phone);
+  document.getElementById('submitBtn').disabled = !isValid;
+}});
+
+// Soumission finale
+function submitForm() {{
+  var form = document.querySelector('form') || document;
   var data = {{
-    civilite: form.civilite.value,
+    civilite: form.querySelector('[name="civilite"]').value,
+    nom: form.querySelector('[name="nom"]').value,
+    prenom: form.querySelector('[name="prenom"]').value,
+    email: form.querySelector('[name="email"]').value,
+    phone: form.querySelector('[name="phone"]').value.replace(/\\s/g, ''),
+    code_postal: form.querySelector('[name="code_postal"]').value,
+    ville: form.querySelector('[name="ville"]').value,
+    type_logement: form.querySelector('[name="type_logement"]')?.value || '',
+    statut_occupant: form.querySelector('[name="statut_occupant"]')?.value || ''
+  }};
+  
+  submitLeadToCRM(data)
+    .then(function(result) {{
+      if (result.success) {{
+        // Redirection vers page de remerciement
+        window.location.href = "{form.get('redirect_url_name', '/merci')}";
+      }} else {{
+        alert("Erreur: " + (result.detail || "Veuillez réessayer"));
+      }}
+    }})
+    .catch(function(err) {{
+      alert("Erreur de connexion: " + err.message);
+    }});
+}}
+</script>
+
+<style>
+.form-step {{ display: none; }}
+.form-step.active {{ display: block; }}
+.form-header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }}
+.badge {{ background: #10B981; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; margin-left: 8px; }}
+.btn-next {{ background: #3B82F6; color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; }}
+.btn-submit {{ background: #10B981; color: white; padding: 16px 32px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; width: 100%; }}
+.btn-submit:disabled {{ background: #9CA3AF; cursor: not-allowed; }}
+input, select {{ width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #E5E7EB; border-radius: 8px; }}
+</style>
+'''
+    
+    return {
+        "form_id": form_id,
+        "form_code": form.get('code', ''),
+        "form_name": form.get('name', ''),
+        "product_type": form.get('product_type', ''),
+        "product_label": product_label,
+        "api_endpoint": f"{backend_url}/api/v1/leads",
+        "api_key": api_key,
+        "api_key_warning": "⚠️ NE PAS exposer cette clé dans le HTML public. Utilisez un backend proxy si nécessaire.",
+        "tracking_script": tracking_script,
+        "usage_example": usage_example,
+        "aides_financieres": aides_config,
+        "logo": {
+            "url": logo_url,
+            "account_name": account_name
+        },
+        "tracking_logic": {
+            "started": "Premier clic sur bouton 'Suivant' ou 'Commencer' (trackFormStart())",
+            "finished": "Clic sur bouton final après validation téléphone (submitLeadToCRM())"
+        },
+        "required_fields": ["civilite", "nom", "prenom", "phone", "email", "code_postal", "ville"],
+        "optional_fields": ["type_logement", "statut_occupant", "revenu_fiscal", "surface_habitable"]
+    }
     nom: form.nom.value,
     prenom: form.prenom.value,
     phone: form.phone.value,
