@@ -88,18 +88,35 @@ class CRMUpdate(BaseModel):
 # ==================== LANDING PAGES ====================
 
 class LPCreate(BaseModel):
+    """Création LP + Form en duo"""
     account_id: str
     name: str
     url: str  # OBLIGATOIRE - URL de la LP
+    # Produit et mode
+    product_type: str  # PV, PAC, ITE
+    form_mode: str = "redirect"  # embedded (même page) ou redirect (page séparée)
+    form_url: Optional[str] = ""  # URL du form (si redirect) ou vide (si embedded = même URL)
+    # Tracking post-submit
+    tracking_type: str = "redirect"  # gtm, redirect, both, none
+    redirect_url: Optional[str] = "/merci"  # URL après soumission
+    # Source
     source_type: str = "native"  # native, google, facebook
     source_name: Optional[str] = ""  # Taboola, Outbrain, etc.
+    # CRM
+    crm_api_key: Optional[str] = ""  # Clé API ZR7/MDL pour ce form
     notes: Optional[str] = ""
 
 class LPUpdate(BaseModel):
     name: Optional[str] = None
     url: Optional[str] = None
+    product_type: Optional[str] = None
+    form_mode: Optional[str] = None
+    form_url: Optional[str] = None
+    tracking_type: Optional[str] = None
+    redirect_url: Optional[str] = None
     source_type: Optional[str] = None
     source_name: Optional[str] = None
+    crm_api_key: Optional[str] = None
     notes: Optional[str] = None
     status: Optional[str] = None
 
