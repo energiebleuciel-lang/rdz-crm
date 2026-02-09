@@ -144,7 +144,12 @@ export default function Leads() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-800">Leads</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Leads</h1>
+          <p className="text-sm text-slate-500">
+            CRM: <span className="font-medium text-slate-700">{currentCRM?.name}</span>
+          </p>
+        </div>
         
         <div className="flex items-center gap-3">
           {/* Filtres */}
