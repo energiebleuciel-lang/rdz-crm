@@ -17,6 +17,41 @@ from routes.auth import get_current_user, require_admin
 router = APIRouter(prefix="/config", tags=["Configuration"])
 
 
+# ==================== CLÉ API GLOBALE ====================
+
+@router.get("/api-key")
+async def get_global_api_key(user: dict = Depends(require_admin)):
+    """Récupère la clé API globale pour l'API v1"""
+    config = await db.system_config.find_one({"type": "global_api_key"})
+    if not config:
+        # Créer une clé par défaut
+        import secrets
+        new_key = secrets.token_urlsafe(32)
+        await db.system_config.insert_one({
+            "type": "global_api_key",
+            "api_key": new_key,
+            "created_at": now_iso()
+        })
+        return {"api_key": new_key, "created": True}
+    
+    return {"api_key": config.get("api_key"), "created": False}
+
+
+@router.post("/api-key/regenerate")
+async def regenerate_api_key(user: dict = Depends(require_admin)):
+    """Régénère la clé API globale"""
+    import secrets
+    new_key = secrets.token_urlsafe(32)
+    
+    await db.system_config.update_one(
+        {"type": "global_api_key"},
+        {"$set": {"api_key": new_key, "updated_at": now_iso()}},
+        upsert=True
+    )
+    
+    return {"api_key": new_key, "regenerated": True}
+
+
 # ==================== MODELS ====================
 
 class DiffusionSourceCreate(BaseModel):
