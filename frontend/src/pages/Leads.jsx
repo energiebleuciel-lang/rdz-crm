@@ -162,6 +162,7 @@ export default function Leads() {
               { value: 'all', label: 'Tous' },
               { value: 'success', label: 'Envoyés' },
               { value: 'failed', label: 'Échoués' },
+              { value: 'no_crm', label: 'Sans CRM' },
               { value: 'queued', label: 'En queue' }
             ].map(f => (
               <button
