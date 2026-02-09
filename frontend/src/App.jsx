@@ -16,6 +16,7 @@ import Forms from './pages/Forms';
 import Leads from './pages/Leads';
 import Commandes from './pages/Commandes';
 import Departements from './pages/Departements';
+import Billing from './pages/Billing';
 import Settings from './pages/Settings';
 import UsersPage from './pages/UsersPage';
 
