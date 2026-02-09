@@ -56,21 +56,6 @@ export default function Settings() {
     }
   };
 
-  const regenerateKey = async () => {
-    if (!window.confirm('Régénérer la clé API ? Les anciens scripts ne fonctionneront plus.')) return;
-    
-    try {
-      const res = await authFetch(`${API}/api/config/api-key/regenerate`, { method: 'POST' });
-      if (res.ok) {
-        const data = await res.json();
-        setApiKey(data.api_key);
-        alert('Nouvelle clé générée !');
-      }
-    } catch (e) {
-      alert('Erreur: ' + e.message);
-    }
-  };
-
   const copyApiKey = async () => {
     try {
       await navigator.clipboard.writeText(apiKey);
