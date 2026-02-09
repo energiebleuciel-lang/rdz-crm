@@ -390,27 +390,39 @@ export default function Forms() {
           </div>
 
           <div className="border-t pt-4 mt-4">
-            <h4 className="font-medium text-slate-700 mb-3">Tracking conversion</h4>
+            <h4 className="font-medium text-slate-700 mb-3">Tracking & Redirection après soumission</h4>
             
             <Select
-              label="Méthode de tracking"
+              label="Que faire après la soumission du lead ?"
               value={form.tracking_type}
               onChange={e => setForm({...form, tracking_type: e.target.value})}
               options={[
-                { value: 'redirect', label: 'Redirection vers page merci' },
-                { value: 'gtm', label: 'GTM (Google Tag Manager)' },
-                { value: 'both', label: 'Les deux' }
+                { value: 'redirect', label: 'Redirection vers page merci (sans GTM)' },
+                { value: 'gtm', label: 'Déclencher GTM uniquement (pas de redirection)' },
+                { value: 'both', label: 'GTM + Redirection' },
+                { value: 'none', label: 'Rien (le formulaire gère lui-même)' }
               ]}
             />
+
+            <p className="text-xs text-slate-500 mt-2">
+              {form.tracking_type === 'redirect' && '→ Le visiteur sera redirigé vers la page merci après soumission'}
+              {form.tracking_type === 'gtm' && '→ Le code GTM conversion du compte sera déclenché (config GTM dans les Comptes)'}
+              {form.tracking_type === 'both' && '→ GTM sera déclenché PUIS redirection vers la page merci'}
+              {form.tracking_type === 'none' && '→ Le script ne fera rien, votre formulaire doit gérer la suite'}
+            </p>
             
             {(form.tracking_type === 'redirect' || form.tracking_type === 'both') && (
-              <Input
-                label="URL de redirection"
-                value={form.redirect_url}
-                onChange={e => setForm({...form, redirect_url: e.target.value})}
-                placeholder="/merci"
-                className="mt-3"
-              />
+              <div className="mt-3 p-3 bg-slate-50 rounded-lg">
+                <Input
+                  label="URL de redirection après soumission"
+                  value={form.redirect_url}
+                  onChange={e => setForm({...form, redirect_url: e.target.value})}
+                  placeholder="/merci ou https://monsite.com/merci"
+                />
+                <p className="text-xs text-slate-400 mt-1">
+                  Exemple: /merci (relatif) ou https://monsite.com/merci (absolu)
+                </p>
+              </div>
             )}
           </div>
 
