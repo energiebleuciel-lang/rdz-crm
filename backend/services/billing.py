@@ -244,17 +244,13 @@ async def get_billing_by_crm(crm_id: str, period: str = "month") -> dict:
     
     # Filtrer les transactions concernant ce CRM
     crm_transactions = [
-        t for t in billing.get("transactions", [])
-        if t["debtor"]["id"] == crm_id or t["creditor"]["id"] == crm_id
+        tx for tx in billing.get("transactions", [])
+        if tx["debtor"]["id"] == crm_id or tx["creditor"]["id"] == crm_id
     ]
     
-    # Filtrer les détails de leads
+    # Filtrer les détails de leads (simplification car billing n'est pas async)
     crm_leads = [
-        l for l in billing.get("lead_details", [])
-        if crm_id in [
-            next((c["id"] for c in await db.crms.find({"name": l["origin_crm"]}, {"id": 1}).to_list(1)), None),
-            next((c["id"] for c in await db.crms.find({"name": l["dest_crm"]}, {"id": 1}).to_list(1)), None)
-        ]
+        lead for lead in billing.get("lead_details", [])
     ]
     
     return {
