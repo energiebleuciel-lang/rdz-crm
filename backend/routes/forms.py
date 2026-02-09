@@ -231,12 +231,25 @@ async def list_forms(
         query["product_type"] = product_type.upper()
     if status:
         # Inclure les documents qui ont status=active OU qui n'ont pas de champ status
+        if "$or" not in query:
+            query["$or"] = []
         query["$or"] = [
             {"status": status},
             {"status": {"$exists": False}}
         ]
     
-    forms = await db.forms.find(query, {"_id": 0}).sort("created_at", -1).to_list(200)
+    # Exclure _id dans la projection
+    cursor = db.forms.find(query)
+    forms_raw = await cursor.to_list(200)
+    
+    # Convertir et trier
+    forms = []
+    for f in forms_raw:
+        f.pop("_id", None)  # Supprimer _id
+        forms.append(f)
+    
+    # Trier par created_at desc
+    forms.sort(key=lambda x: x.get("created_at", ""), reverse=True)
     
     # Enrichir avec stats et infos liées
     for form in forms:
