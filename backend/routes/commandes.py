@@ -20,7 +20,7 @@ PRODUCT_TYPES = ["PV", "PAC", "ITE"]
 
 
 @router.get("")
-async def list_commandes(crm_id: str = None, user: dict = Depends(require_auth)):
+async def list_commandes(crm_id: str = None, user: dict = Depends(get_current_user)):
     """Liste toutes les commandes, optionnellement filtrées par CRM"""
     query = {}
     if crm_id:
