@@ -536,21 +536,29 @@ window.__LOGOS__ = {{
 </script>
 '''
 
+    # Escape les textes légaux pour JavaScript
+    cgu_escaped = legal.get("cgu", "").replace("`", "'").replace("\\", "\\\\").replace("\n", "\\n") if legal.get("cgu") else ""
+    privacy_escaped = legal.get("privacy", "").replace("`", "'").replace("\\", "\\\\").replace("\n", "\\n") if legal.get("privacy") else ""
+    
     # ==================== BOUTONS CGU/PRIVACY (popup/accordion) ====================
     legal_buttons_html = ""
     if legal.get("cgu") or legal.get("privacy"):
+        cgu_button = f'''<button onclick="openLegalPopup('cgu')" 
+            style="background:none;border:none;color:#007bff;cursor:pointer;padding:5px 10px;font-size:12px;text-decoration:underline;">
+      Conditions Générales d'Utilisation
+    </button>''' if legal.get("cgu") else ""
+        
+        privacy_button = f'''<button onclick="openLegalPopup('privacy')" 
+            style="background:none;border:none;color:#007bff;cursor:pointer;padding:5px 10px;font-size:12px;text-decoration:underline;">
+      Politique de Confidentialité
+    </button>''' if legal.get("privacy") else ""
+
         legal_buttons_html = f'''
 <!-- ========== BOUTONS CGU/PRIVACY (à placer en bas de page) ========== -->
 <div id="legal-buttons" style="position:fixed;bottom:0;left:0;right:0;background:#f8f9fa;border-top:1px solid #e9ecef;padding:10px 20px;font-size:12px;z-index:9999;">
   <div style="max-width:1200px;margin:0 auto;display:flex;justify-content:center;gap:30px;align-items:center;">
-    {f"""<button onclick="openLegalPopup('cgu')" 
-            style="background:none;border:none;color:#007bff;cursor:pointer;padding:5px 10px;font-size:12px;text-decoration:underline;">
-      Conditions Générales d'Utilisation
-    </button>""" if legal.get("cgu") else ""}
-    {f"""<button onclick="openLegalPopup('privacy')" 
-            style="background:none;border:none;color:#007bff;cursor:pointer;padding:5px 10px;font-size:12px;text-decoration:underline;">
-      Politique de Confidentialité
-    </button>""" if legal.get("privacy") else ""}
+    {cgu_button}
+    {privacy_button}
     <span style="color:#6c757d;">© {account_name}</span>
   </div>
 </div>
@@ -569,8 +577,8 @@ window.__LOGOS__ = {{
 <script>
 // Textes légaux
 var __LEGAL_TEXTS__ = {{
-  cgu: `{legal.get("cgu", "").replace("`", "\\`").replace("${", "\\${") if legal.get("cgu") else ""}`,
-  privacy: `{legal.get("privacy", "").replace("`", "\\`").replace("${", "\\${") if legal.get("privacy") else ""}`
+  cgu: `{cgu_escaped}`,
+  privacy: `{privacy_escaped}`
 }};
 
 function openLegalPopup(type) {{
@@ -579,7 +587,7 @@ function openLegalPopup(type) {{
   var content = document.getElementById('legal-popup-content');
   
   title.textContent = type === 'cgu' ? "Conditions Générales d'Utilisation" : "Politique de Confidentialité";
-  content.innerHTML = __LEGAL_TEXTS__[type].replace(/\\n/g, '<br>');
+  content.innerHTML = __LEGAL_TEXTS__[type].split('\\\\n').join('<br>');
   popup.style.display = 'flex';
 }}
 
