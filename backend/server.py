@@ -572,6 +572,51 @@ async def resolve_alert(alert_id: str, user: dict = Depends(get_current_user)):
     
     return {"success": True}
 
+# ==================== CLÉ API GLOBALE ENDPOINTS ====================
+
+@api_router.get("/settings/api-key")
+async def get_global_api_key(user: dict = Depends(get_current_user)):
+    """
+    Récupère la clé API globale du CRM.
+    Comme Landbot: 1 clé globale pour tout le compte.
+    """
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Seul l'admin peut voir la clé API")
+    
+    api_key = await get_or_create_global_api_key()
+    return {
+        "api_key": api_key,
+        "usage": "Header: Authorization: Token VOTRE_CLE_API",
+        "endpoint": "POST /api/v1/leads"
+    }
+
+@api_router.post("/settings/api-key/regenerate")
+async def regenerate_global_api_key(user: dict = Depends(get_current_user)):
+    """
+    Régénère la clé API globale. ATTENTION: Invalide l'ancienne clé!
+    """
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Seul l'admin peut régénérer la clé API")
+    
+    # Supprimer l'ancienne clé
+    await db.system_config.delete_one({"type": "global_api_key"})
+    
+    # Créer une nouvelle clé
+    new_api_key = f"crm_{secrets.token_urlsafe(32)}"
+    await db.system_config.insert_one({
+        "type": "global_api_key",
+        "api_key": new_api_key,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    await log_alert("WARNING", "API_KEY_REGENERATED", f"Clé API globale régénérée par {user['email']}")
+    
+    return {
+        "success": True,
+        "api_key": new_api_key,
+        "message": "Nouvelle clé API générée. L'ancienne clé ne fonctionne plus."
+    }
+
 # ==================== AUTH ENDPOINTS ====================
 
 @api_router.post("/auth/register")
