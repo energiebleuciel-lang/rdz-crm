@@ -65,7 +65,11 @@ export default function Leads() {
       });
       if (res.ok) {
         const data = await res.json();
-        alert(`Retry: ${data.status}`);
+        if (data.success) {
+          alert(`✅ Lead relancé avec succès (${data.status})`);
+        } else {
+          alert(`❌ Échec: ${data.error || data.status}`);
+        }
         loadData();
       }
     } catch (e) {
