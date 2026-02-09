@@ -1,17 +1,18 @@
 /**
- * Page Comptes - Avec configuration GTM
+ * Page Comptes - Filtrée par CRM sélectionné
  */
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useCRM } from '../hooks/useCRM';
 import { API } from '../hooks/useApi';
 import { Card, Modal, Button, Input, Select, Loading, EmptyState, Badge } from '../components/UI';
 import { Building, Plus, Edit, Trash2, Image, Code, ChevronDown, ChevronUp } from 'lucide-react';
 
 export default function Accounts() {
   const { authFetch } = useAuth();
+  const { selectedCRM, currentCRM } = useCRM();
   const [accounts, setAccounts] = useState([]);
-  const [crms, setCrms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingAccount, setEditingAccount] = useState(null);
@@ -25,7 +26,6 @@ export default function Accounts() {
     logo_mini_url: '',
     primary_color: '#3B82F6',
     secondary_color: '#1E40AF',
-    // GTM Configuration
     gtm_head: '',
     gtm_body: '',
     gtm_conversion: '',
@@ -33,24 +33,19 @@ export default function Accounts() {
   });
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (selectedCRM) {
+      loadData();
+    }
+  }, [selectedCRM]);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [accountsRes, crmsRes] = await Promise.all([
-        authFetch(`${API}/api/accounts`),
-        authFetch(`${API}/api/crms`)
-      ]);
-      
-      if (accountsRes.ok) {
-        const data = await accountsRes.json();
+      // Filtrer les comptes par CRM sélectionné
+      const res = await authFetch(`${API}/api/accounts?crm_id=${selectedCRM}`);
+      if (res.ok) {
+        const data = await res.json();
         setAccounts(data.accounts || []);
-      }
-      if (crmsRes.ok) {
-        const data = await crmsRes.json();
-        setCrms(data.crms || []);
       }
     } catch (e) {
       console.error('Load error:', e);
@@ -64,7 +59,7 @@ export default function Accounts() {
     setShowGtmSection(false);
     setForm({
       name: '',
-      crm_id: crms[0]?.id || '',
+      crm_id: selectedCRM, // Utiliser le CRM sélectionné par défaut
       domain: '',
       logo_main_url: '',
       logo_secondary_url: '',
@@ -143,11 +138,6 @@ export default function Accounts() {
     }
   };
 
-  const getCrmName = (crmId) => {
-    const crm = crms.find(c => c.id === crmId);
-    return crm?.name || 'N/A';
-  };
-
   const getTrackingLabel = (type) => {
     switch(type) {
       case 'gtm': return 'GTM';
@@ -162,7 +152,12 @@ export default function Accounts() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-800">Comptes</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Comptes</h1>
+          <p className="text-sm text-slate-500">
+            CRM: <span className="font-medium text-slate-700">{currentCRM?.name}</span>
+          </p>
+        </div>
         <Button onClick={openCreate}>
           <Plus className="w-4 h-4" />
           Nouveau compte
@@ -174,7 +169,7 @@ export default function Accounts() {
           <EmptyState 
             icon={Building}
             title="Aucun compte"
-            description="Créez votre premier compte pour commencer"
+            description={`Créez votre premier compte pour ${currentCRM?.name || 'ce CRM'}`}
             action={<Button onClick={openCreate}>Créer un compte</Button>}
           />
         </Card>
@@ -199,7 +194,6 @@ export default function Accounts() {
                     <h3 className="font-semibold text-slate-800">{account.name}</h3>
                     <p className="text-sm text-slate-500">{account.domain || 'Pas de domaine'}</p>
                     <div className="flex gap-2 mt-1">
-                      <Badge variant="info">{getCrmName(account.crm_id)}</Badge>
                       {(account.gtm_head || account.gtm_body) && (
                         <Badge variant="success">GTM configuré</Badge>
                       )}
@@ -254,7 +248,7 @@ export default function Accounts() {
       <Modal 
         isOpen={showModal} 
         onClose={() => setShowModal(false)}
-        title={editingAccount ? 'Modifier le compte' : 'Nouveau compte'}
+        title={editingAccount ? 'Modifier le compte' : `Nouveau compte (${currentCRM?.name})`}
         size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -262,14 +256,6 @@ export default function Accounts() {
             label="Nom du compte"
             value={form.name}
             onChange={e => setForm({...form, name: e.target.value})}
-            required
-          />
-          
-          <Select
-            label="CRM cible"
-            value={form.crm_id}
-            onChange={e => setForm({...form, crm_id: e.target.value})}
-            options={crms.map(c => ({ value: c.id, label: c.name }))}
             required
           />
           
