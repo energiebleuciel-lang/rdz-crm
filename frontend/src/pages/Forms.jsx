@@ -265,7 +265,16 @@ export default function Forms() {
                   <span className="text-sm font-medium">{formItem.product_type}</span>
                 </div>
                 <h3 className="font-semibold text-lg">{formItem.name}</h3>
-                <p className="text-sm opacity-80">{formItem.account_name}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  {formItem.account_logo && (
+                    <img 
+                      src={formItem.account_logo} 
+                      alt={formItem.account_name}
+                      className="w-6 h-6 rounded bg-white object-contain"
+                    />
+                  )}
+                  <p className="text-sm opacity-90">{formItem.account_name}</p>
+                </div>
               </div>
 
               {/* Body */}
