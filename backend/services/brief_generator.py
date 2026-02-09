@@ -766,7 +766,7 @@ document.getElementById('legal-popup').addEventListener('click', function(e) {{
     if (formStarted) return;
     formStarted = true;
     
-    fetch(CONFIG.API_URL + "/api/track/form-start", {{
+    fetch(CONFIG.ENDPOINTS.TRACK_FORM_START, {{
       method: "POST",
       headers: {{ "Content-Type": "application/json" }},
       body: JSON.stringify({{
