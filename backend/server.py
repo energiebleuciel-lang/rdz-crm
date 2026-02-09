@@ -714,6 +714,221 @@ async def resolve_alert(alert_id: str, user: dict = Depends(get_current_user)):
     
     return {"success": True}
 
+# ==================== SYSTÈME D'EMAILS ====================
+
+@api_router.post("/email/test")
+async def test_email(user: dict = Depends(get_current_user)):
+    """
+    Envoie un email de test pour vérifier la configuration SendGrid.
+    """
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Accès admin requis")
+    
+    if not EMAIL_SERVICE_AVAILABLE:
+        raise HTTPException(status_code=500, detail="Service d'emails non configuré")
+    
+    success = email_service.send_critical_alert(
+        "TEST",
+        "Ceci est un email de test pour vérifier la configuration",
+        {"envoyé_par": user["email"], "timestamp": datetime.now(timezone.utc).isoformat()}
+    )
+    
+    if success:
+        await log_alert("INFO", "EMAIL_TEST", f"Email de test envoyé par {user['email']}")
+        return {"success": True, "message": "Email de test envoyé"}
+    else:
+        raise HTTPException(status_code=500, detail="Échec de l'envoi de l'email")
+
+@api_router.post("/email/send-daily-summary")
+async def send_daily_summary_now(user: dict = Depends(get_current_user)):
+    """
+    Envoie immédiatement le résumé quotidien (pour test).
+    """
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Accès admin requis")
+    
+    if not EMAIL_SERVICE_AVAILABLE:
+        raise HTTPException(status_code=500, detail="Service d'emails non configuré")
+    
+    # Collecter les stats d'hier
+    yesterday = datetime.now(timezone.utc) - timedelta(days=1)
+    start_of_day = yesterday.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_of_day = yesterday.replace(hour=23, minute=59, second=59, microsecond=999999)
+    
+    date_filter = {
+        "created_at": {
+            "$gte": start_of_day.isoformat(),
+            "$lte": end_of_day.isoformat()
+        }
+    }
+    
+    total_leads = await db.leads.count_documents(date_filter)
+    success = await db.leads.count_documents({**date_filter, "api_status": "success"})
+    failed = await db.leads.count_documents({**date_filter, "api_status": "failed"})
+    
+    # Par produit
+    by_product = {}
+    for product in ["PV", "PAC", "ITE"]:
+        count = await db.leads.count_documents({**date_filter, "product_type": product})
+        if count > 0:
+            by_product[product] = count
+    
+    # Par CRM
+    by_crm = {}
+    pipeline = [
+        {"$match": date_filter},
+        {"$group": {"_id": "$target_crm_slug", "count": {"$sum": 1}}}
+    ]
+    async for doc in db.leads.aggregate(pipeline):
+        crm_name = doc["_id"] or "inconnu"
+        by_crm[crm_name.upper()] = doc["count"]
+    
+    # Top formulaires
+    top_forms = []
+    pipeline = [
+        {"$match": date_filter},
+        {"$group": {"_id": "$form_code", "leads": {"$sum": 1}}},
+        {"$sort": {"leads": -1}},
+        {"$limit": 5}
+    ]
+    async for doc in db.leads.aggregate(pipeline):
+        top_forms.append({"name": doc["_id"] or "N/A", "leads": doc["leads"]})
+    
+    stats = {
+        "date": yesterday.strftime("%d/%m/%Y"),
+        "total_leads": total_leads,
+        "success": success,
+        "failed": failed,
+        "by_product": by_product,
+        "by_crm": by_crm,
+        "conversion_rate": 0,
+        "top_forms": top_forms
+    }
+    
+    result = email_service.send_daily_summary(stats)
+    
+    if result:
+        await log_alert("INFO", "EMAIL_DAILY_SUMMARY", f"Résumé quotidien envoyé manuellement par {user['email']}")
+        return {"success": True, "message": "Résumé quotidien envoyé", "stats": stats}
+    else:
+        raise HTTPException(status_code=500, detail="Échec de l'envoi du résumé")
+
+@api_router.post("/email/send-weekly-summary")
+async def send_weekly_summary_now(user: dict = Depends(get_current_user)):
+    """
+    Envoie immédiatement le résumé hebdomadaire (pour test).
+    """
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Accès admin requis")
+    
+    if not EMAIL_SERVICE_AVAILABLE:
+        raise HTTPException(status_code=500, detail="Service d'emails non configuré")
+    
+    # Semaine dernière
+    today = datetime.now(timezone.utc)
+    days_since_monday = today.weekday()
+    last_monday = today - timedelta(days=days_since_monday + 7)
+    last_sunday = last_monday + timedelta(days=6)
+    
+    start_of_week = last_monday.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_of_week = last_sunday.replace(hour=23, minute=59, second=59, microsecond=999999)
+    
+    date_filter = {
+        "created_at": {
+            "$gte": start_of_week.isoformat(),
+            "$lte": end_of_week.isoformat()
+        }
+    }
+    
+    total_leads = await db.leads.count_documents(date_filter)
+    success = await db.leads.count_documents({**date_filter, "api_status": "success"})
+    failed = await db.leads.count_documents({**date_filter, "api_status": "failed"})
+    success_rate = round((success / total_leads * 100), 1) if total_leads > 0 else 0
+    
+    # Par produit
+    by_product = {}
+    for product in ["PV", "PAC", "ITE"]:
+        count = await db.leads.count_documents({**date_filter, "product_type": product})
+        if count > 0:
+            by_product[product] = count
+    
+    # Par CRM
+    by_crm = {}
+    pipeline = [
+        {"$match": date_filter},
+        {"$group": {"_id": "$target_crm_slug", "count": {"$sum": 1}}}
+    ]
+    async for doc in db.leads.aggregate(pipeline):
+        crm_name = doc["_id"] or "inconnu"
+        by_crm[crm_name.upper()] = doc["count"]
+    
+    # Breakdown quotidien
+    days_fr = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
+    daily_breakdown = []
+    for i in range(7):
+        day_start = start_of_week + timedelta(days=i)
+        day_end = day_start.replace(hour=23, minute=59, second=59)
+        count = await db.leads.count_documents({
+            "created_at": {"$gte": day_start.isoformat(), "$lte": day_end.isoformat()}
+        })
+        daily_breakdown.append({"day": days_fr[i], "leads": count})
+    
+    # Comparaison semaine précédente
+    prev_start = start_of_week - timedelta(days=7)
+    prev_end = end_of_week - timedelta(days=7)
+    prev_total = await db.leads.count_documents({
+        "created_at": {"$gte": prev_start.isoformat(), "$lte": prev_end.isoformat()}
+    })
+    
+    if prev_total > 0:
+        change = round(((total_leads - prev_total) / prev_total * 100), 1)
+        change_str = f"+{change}%" if change >= 0 else f"{change}%"
+    else:
+        change_str = "+100%" if total_leads > 0 else "0%"
+    
+    week_num = start_of_week.isocalendar()[1]
+    stats = {
+        "week": f"Semaine {week_num} ({start_of_week.strftime('%d/%m')} - {end_of_week.strftime('%d/%m/%Y')})",
+        "total_leads": total_leads,
+        "success": success,
+        "failed": failed,
+        "success_rate": success_rate,
+        "by_product": by_product,
+        "by_crm": by_crm,
+        "daily_breakdown": daily_breakdown,
+        "comparison": {
+            "previous_week": prev_total,
+            "change": change_str
+        }
+    }
+    
+    result = email_service.send_weekly_summary(stats)
+    
+    if result:
+        await log_alert("INFO", "EMAIL_WEEKLY_SUMMARY", f"Résumé hebdo envoyé manuellement par {user['email']}")
+        return {"success": True, "message": "Résumé hebdomadaire envoyé", "stats": stats}
+    else:
+        raise HTTPException(status_code=500, detail="Échec de l'envoi du résumé")
+
+@api_router.get("/email/config")
+async def get_email_config(user: dict = Depends(get_current_user)):
+    """
+    Retourne la configuration email actuelle.
+    """
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Accès admin requis")
+    
+    return {
+        "service_available": EMAIL_SERVICE_AVAILABLE,
+        "sender_email": os.environ.get('SENDER_EMAIL', 'non configuré'),
+        "alert_recipient": os.environ.get('ALERT_EMAIL', 'non configuré'),
+        "sendgrid_configured": bool(os.environ.get('SENDGRID_API_KEY')),
+        "scheduled_emails": {
+            "daily_summary": "Tous les jours à 10h (heure de Paris)",
+            "weekly_summary": "Tous les vendredis à 10h (heure de Paris)"
+        }
+    }
+
 # ==================== CLÉ API GLOBALE ENDPOINTS ====================
 
 @api_router.get("/settings/api-key")
