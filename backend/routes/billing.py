@@ -14,7 +14,14 @@ import uuid
 
 from config import db, now_iso
 from routes.auth import get_current_user, require_admin
-from services.billing import get_cross_crm_billing
+from services.billing import (
+    get_cross_crm_billing, 
+    get_week_billing, 
+    mark_week_as_invoiced,
+    get_week_invoice_status,
+    list_invoiced_weeks,
+    get_current_week
+)
 
 router = APIRouter(prefix="/billing", tags=["Facturation"])
 
