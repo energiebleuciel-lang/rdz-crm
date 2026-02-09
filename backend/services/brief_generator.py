@@ -999,7 +999,7 @@ Placez votre formulaire dans un conteneur avec cet ID :
 
   // ========== TRACKING CTA + REDIRECT ==========
   window.trackCTAClick = function(ctaId, ctaText) {{
-    fetch(CONFIG.API_URL + "/api/track/cta-click", {{
+    fetch(CONFIG.ENDPOINTS.TRACK_CTA_CLICK, {{
       method: "POST",
       headers: {{ "Content-Type": "application/json" }},
       body: JSON.stringify({{
@@ -1038,12 +1038,20 @@ Placez votre formulaire dans un conteneur avec cet ID :
   }}
   
   console.log("[EnerSolar] Script LP initialisé (redirect)");
-  console.log("[EnerSolar] LP:", CONFIG.LP_CODE, "| Form URL:", CONFIG.FORM_URL);
+  console.log("[EnerSolar] Endpoints:", CONFIG.ENDPOINTS);
 }})();
 </script>
 
 {f"""<!-- GTM Body (à placer juste après <body>) -->
 {gtm.get("body", "")}""" if gtm.get("body") else ""}
+
+<!-- ========== ENDPOINTS DISPONIBLES ========== -->
+<!--
+GET  {api_url}/api/forms/public/{form_code}       -> Config du formulaire
+GET  {api_url}/api/forms/public/by-lp/{lp_code}   -> Tous les forms liés à cette LP
+POST {api_url}/api/track/lp-visit                  -> Tracker visite LP
+POST {api_url}/api/track/cta-click                 -> Tracker clic CTA
+-->
 
 <!-- ========== UTILISATION DES CTA ========== -->
 <!--
