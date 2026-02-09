@@ -1123,7 +1123,14 @@ Les visiteurs seront redirigés vers : {form_url}?lp={lp_code}&liaison={liaison_
     LP_CODE: "",
     LIAISON_CODE: "",
     PRODUCT_TYPE: "{product_type}",
-    MODE: "redirect"
+    MODE: "redirect",
+    
+    // ========== ENDPOINTS API ==========
+    ENDPOINTS: {{
+      GET_FORM_CONFIG: "{api_url}/api/forms/public/{form_code}",
+      SUBMIT_LEAD: "{api_url}/api/v1/leads",
+      TRACK_FORM_START: "{api_url}/api/track/form-start"
+    }}
   }};
 
   // ========== LIRE PARAMS URL (venant de la LP) ==========
@@ -1139,6 +1146,17 @@ Les visiteurs seront redirigés vers : {form_url}?lp={lp_code}&liaison={liaison_
 
   // Exposer le contexte
   window.__EnerSolar_CONTEXT__ = CONFIG;
+
+  // ========== RÉCUPÉRER CONFIG FORMULAIRE (optionnel) ==========
+  window.getFormConfig = async function() {{
+    try {{
+      var response = await fetch(CONFIG.ENDPOINTS.GET_FORM_CONFIG);
+      return await response.json();
+    }} catch(e) {{
+      console.error("Erreur récupération config:", e);
+      return null;
+    }}
+  }};
 
   // ========== TRACKING FORM VIEW ==========
   function trackFormView() {{
@@ -1157,7 +1175,7 @@ Les visiteurs seront redirigés vers : {form_url}?lp={lp_code}&liaison={liaison_
     if (formStarted) return;
     formStarted = true;
     
-    fetch(CONFIG.API_URL + "/api/track/form-start", {{
+    fetch(CONFIG.ENDPOINTS.TRACK_FORM_START, {{
       method: "POST",
       headers: {{ "Content-Type": "application/json" }},
       body: JSON.stringify({{
