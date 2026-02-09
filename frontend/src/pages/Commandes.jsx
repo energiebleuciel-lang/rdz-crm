@@ -393,6 +393,25 @@ export default function Commandes() {
             </p>
           </div>
 
+          {/* Prix unitaire */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Prix par lead (€)
+            </label>
+            <input
+              type="number"
+              value={formData.prix_unitaire}
+              onChange={e => setFormData({...formData, prix_unitaire: parseFloat(e.target.value) || 0})}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+              min="0"
+              step="0.5"
+              placeholder="0.00"
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              Prix utilisé pour la facturation inter-CRM
+            </p>
+          </div>
+
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button type="button" variant="secondary" onClick={() => setShowModal(false)}>
               Annuler
