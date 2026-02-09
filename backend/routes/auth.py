@@ -138,3 +138,22 @@ async def list_users():
     """Liste tous les utilisateurs (admin only)"""
     users = await db.users.find({}, {"_id": 0, "password": 0}).to_list(100)
     return {"users": users}
+
+
+@router.get("/api-key")
+async def get_api_key(user: dict = Depends(get_current_user)):
+    """Récupère la clé API globale pour l'API v1"""
+    config = await db.system_config.find_one({"type": "global_api_key"})
+    
+    if not config:
+        # Créer la clé si elle n'existe pas
+        from config import generate_api_key
+        api_key = generate_api_key()
+        await db.system_config.insert_one({
+            "type": "global_api_key",
+            "api_key": api_key,
+            "created_at": now_iso()
+        })
+        return {"api_key": api_key}
+    
+    return {"api_key": config.get("api_key")}
