@@ -257,12 +257,14 @@ async def list_forms(
         
         # Stats
         started = await db.tracking.count_documents({"form_code": code, "event": "form_start"})
-        finished = await db.leads.count_documents({"form_code": code, "api_status": {"$in": ["success", "duplicate"]}})
+        leads_total = await db.leads.count_documents({"form_code": code})
+        leads_sent = await db.leads.count_documents({"form_code": code, "sent_to_crm": True})
         
         form["stats"] = {
             "started": started,
-            "finished": finished,
-            "conversion": round((finished / started * 100), 1) if started > 0 else 0
+            "leads": leads_total,
+            "sent": leads_sent,
+            "conversion": round((leads_total / started * 100), 1) if started > 0 else 0
         }
         
         # Nom du compte
