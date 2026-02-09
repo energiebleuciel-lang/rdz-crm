@@ -1800,22 +1800,31 @@ const FormsPage = () => {
                   {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Code formulaire * {editingForm && <span className="text-xs text-orange-600 ml-1">🔒 Non modifiable</span>}
-                </label>
-                <input 
-                  type="text" 
-                  value={formData.code} 
-                  onChange={e => !editingForm && setFormData({ ...formData, code: e.target.value })} 
-                  className={`w-full px-3 py-2 border rounded-lg ${editingForm ? 'bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed' : 'border-slate-300'}`}
-                  placeholder="PV-TAB-001" 
-                  required 
-                  readOnly={!!editingForm}
-                  title={editingForm ? "Le code formulaire ne peut pas être modifié (utilisé par les formulaires web externes)" : ""}
-                />
-                {editingForm && <p className="text-xs text-slate-500 mt-1">Ce code est utilisé par les formulaires web. Il ne peut pas être modifié.</p>}
-              </div>
+              {editingForm ? (
+                /* Afficher le code en mode édition (lecture seule) */
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Code formulaire <span className="text-xs text-orange-600 ml-1">🔒 Auto-généré</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    value={formData.code} 
+                    className="w-full px-3 py-2 border rounded-lg bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed font-mono"
+                    readOnly
+                  />
+                  <p className="text-xs text-slate-500 mt-1">Ce code est utilisé par les formulaires web. Il ne peut pas être modifié.</p>
+                </div>
+              ) : (
+                /* En création: info que le code sera auto-généré */
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Code formulaire <span className="text-xs text-blue-600 ml-1">✨ Auto-généré</span>
+                  </label>
+                  <div className="w-full px-3 py-2 border border-dashed border-blue-300 rounded-lg bg-blue-50 text-blue-600 text-sm">
+                    Le code sera généré automatiquement selon le type de produit (ex: PV-001, PAC-002, ITE-003)
+                  </div>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Nom *</label>
                 <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg" required />
