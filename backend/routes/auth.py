@@ -71,7 +71,7 @@ async def require_admin(user: dict = Depends(get_current_user)):
 # ==================== ROUTES ====================
 
 @router.post("/login")
-async def login(data: UserLogin):
+async def login(data: UserLogin, request: Request):
     """Connexion utilisateur"""
     user = await db.users.find_one(
         {"email": data.email.lower().strip()},
@@ -84,6 +84,9 @@ async def login(data: UserLogin):
     if user.get("password") != hash_password(data.password):
         raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
     
+    if user.get("active") == False:
+        raise HTTPException(status_code=403, detail="Compte désactivé")
+    
     # Créer session
     token = generate_token()
     expires_at = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
@@ -95,13 +98,26 @@ async def login(data: UserLogin):
         "expires_at": expires_at
     })
     
+    # Log activité
+    await log_activity(
+        user=user,
+        action="login",
+        entity_type="user",
+        entity_id=user["id"],
+        ip_address=request.client.host if request.client else None
+    )
+    
+    # Récupérer ou définir les permissions
+    permissions = user.get("permissions") or DEFAULT_PERMISSIONS.get(user.get("role", "viewer"), {})
+    
     return {
         "token": token,
         "user": {
             "id": user["id"],
             "email": user["email"],
             "nom": user["nom"],
-            "role": user["role"]
+            "role": user["role"],
+            "permissions": permissions
         }
     }
 
