@@ -230,7 +230,11 @@ async def list_forms(
     if product_type:
         query["product_type"] = product_type.upper()
     if status:
-        query["status"] = status
+        # Inclure les documents qui ont status=active OU qui n'ont pas de champ status
+        query["$or"] = [
+            {"status": status},
+            {"status": {"$exists": False}}
+        ]
     
     forms = await db.forms.find(query, {"_id": 0}).sort("created_at", -1).to_list(200)
     
