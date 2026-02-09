@@ -3268,7 +3268,7 @@ async def retry_failed_leads(hours: int = 24, user: dict = Depends(get_current_u
         "phone": {"$exists": True, "$ne": ""}
     }, {"_id": 0}).to_list(1000)
     
-    results = {"total": len(failed_leads), "success": 0, "failed": 0, "skipped": 0}
+    results = {"total": len(failed_leads), "success": 0, "failed": 0, "skipped": 0, "queued": 0}
     
     for lead in failed_leads:
         # Get form config
@@ -3290,7 +3290,13 @@ async def retry_failed_leads(hours: int = 24, user: dict = Depends(get_current_u
             continue
         
         # Retry send
-        api_status, api_response = await send_lead_to_crm(lead, api_url, api_key)
+        api_status, api_response, should_queue = await send_lead_to_crm(lead, api_url, api_key)
+        
+        # Si CRM toujours down, mettre en queue
+        if should_queue and QUEUE_SERVICE_AVAILABLE:
+            await add_to_queue(db, lead, api_url, api_key, reason="retry_crm_down")
+            api_status = "queued"
+            results["queued"] += 1
         
         await db.leads.update_one(
             {"id": lead["id"]},
@@ -3305,7 +3311,7 @@ async def retry_failed_leads(hours: int = 24, user: dict = Depends(get_current_u
         
         if api_status in ["success", "duplicate"]:
             results["success"] += 1
-        else:
+        elif api_status != "queued":
             results["failed"] += 1
     
     await log_activity(user["id"], user["email"], "retry_batch", "leads", "", 
