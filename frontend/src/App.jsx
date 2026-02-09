@@ -16,6 +16,7 @@ import Forms from './pages/Forms';
 import Leads from './pages/Leads';
 import Commandes from './pages/Commandes';
 import Settings from './pages/Settings';
+import UsersPage from './pages/UsersPage';
 
 // Components
 import Layout from './components/Layout';
