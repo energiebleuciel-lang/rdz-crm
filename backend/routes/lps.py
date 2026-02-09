@@ -49,7 +49,7 @@ async def list_lps(
             "cta_clicks": await db.tracking.count_documents({"lp_code": lp.get("code"), "event": "cta_click"})
         }
         # Récupérer le nom du compte
-        account = await db.accounts.find_one({"id": lp.get("account_id")}, {"name": 1})
+        account = await db.accounts.find_one({"id": lp.get("account_id")}, {"_id": 0, "name": 1})
         lp["account_name"] = account.get("name") if account else "N/A"
     
     return {"lps": lps, "count": len(lps)}
