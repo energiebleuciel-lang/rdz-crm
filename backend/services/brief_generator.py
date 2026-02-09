@@ -204,10 +204,18 @@ Ou avec un lien:
         {gtm.get("conversion", "")}'''
     
     redirect_trigger = ""
-    if tracking_type in ["redirect", "both"]:
+    if tracking_type in ["redirect", "both"] and redirect_url:
         redirect_trigger = f'''
         // Rediriger vers page merci
         window.location.href = "{redirect_url}";'''
+    
+    # Si tracking_type = "none", pas de trigger automatique
+    if tracking_type == "none":
+        gtm_trigger = ""
+        redirect_trigger = ""
+        after_submit_comment = "// Pas d'action automatique - le formulaire gère lui-même la suite"
+    else:
+        after_submit_comment = ""
 
     script_form = f'''<!-- ========================================== -->
 <!-- SCRIPT FORMULAIRE - À coller sur : {form_url} -->
