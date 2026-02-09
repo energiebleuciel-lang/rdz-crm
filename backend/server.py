@@ -1068,12 +1068,12 @@ async def get_form_brief(form_id: str, user: dict = Depends(get_current_user)):
   // ============================================================
   
   // Attacher trackFormStart au premier bouton automatiquement
+  // Cherche les boutons avec data-action="start", .btn-cta, ou onclick contenant trackFormStart
   document.addEventListener("DOMContentLoaded", function() {{
-    // Chercher les boutons "Suivant", "Commencer", "Démarrer", etc.
-    var startButtons = document.querySelectorAll(
-      '[data-action="start"], .btn-start, .btn-next, [onclick*="trackFormStart"]'
+    var ctaButtons = document.querySelectorAll(
+      '[data-action="start"], .btn-cta, .btn-start, .btn-next, [onclick*="trackFormStart"]'
     );
-    startButtons.forEach(function(btn) {{
+    ctaButtons.forEach(function(btn) {{
       btn.addEventListener("click", trackFormStart, {{ once: true }});
     }});
   }});
@@ -1082,22 +1082,35 @@ async def get_form_brief(form_id: str, user: dict = Depends(get_current_user)):
 </script>
 '''
     
-    # Exemple d'utilisation avec formulaire multi-étapes
+    # URLs des logos
+    logo_main_url = logos.get('logo_main', '')
+    logo_secondary_url = logos.get('logo_secondary', '')
+    
+    # Exemple d'utilisation avec formulaire multi-étapes et TOUS LES LOGOS
     usage_example = f'''
 <!-- ============================================================ -->
 <!-- EXEMPLE: Formulaire multi-étapes avec tracking               -->
 <!-- ============================================================ -->
 
-<!-- LOGO / BADGE (à personnaliser) -->
+<!-- HEADER AVEC TOUS LES LOGOS DU COMPTE -->
 <div class="form-header">
-  <img src="{logo_url}" alt="{account_name}" class="logo" style="max-height: 60px;" />
+  <div class="logos">
+    <!-- Logo Principal (gauche) -->
+    {"<img src='" + logo_main_url + "' alt='" + account_name + "' class='logo logo-main' />" if logo_main_url else "<!-- Logo principal non défini -->"}
+    
+    <!-- Logo Secondaire (droite) - si disponible -->
+    {"<img src='" + logo_secondary_url + "' alt='" + account_name + " partenaire' class='logo logo-secondary' />" if logo_secondary_url else "<!-- Logo secondaire non défini -->"}
+  </div>
+  
+  <!-- Badges de confiance -->
   <div class="badges">
-    <span class="badge">✓ Certification RGE</span>
-    <span class="badge">✓ Garantie 25 ans</span>
+    <span class="badge badge-rge">✓ Certification RGE</span>
+    <span class="badge badge-garantie">✓ Garantie 25 ans</span>
+    <span class="badge badge-france">🇫🇷 Made in France</span>
   </div>
 </div>
 
-<!-- ÉTAPE 1: Premier contact (DÉCLENCHE "Démarré") -->
+<!-- ÉTAPE 1: Premier contact -->
 <div id="step1" class="form-step active">
   <h3>🏠 Votre projet</h3>
   <select name="type_logement" required>
@@ -1111,9 +1124,10 @@ async def get_form_brief(form_id: str, user: dict = Depends(get_current_user)):
     <option value="locataire">Locataire</option>
   </select>
   
-  <!-- BOUTON SUIVANT = Déclenche trackFormStart() -->
-  <button type="button" onclick="trackFormStart(); showStep(2);" class="btn-next" data-action="start">
-    Suivant →
+  <!-- PREMIER CTA = Déclenche trackFormStart() -->
+  <!-- Ajoutez data-action="start" ou onclick="trackFormStart();" sur votre premier bouton -->
+  <button type="button" onclick="trackFormStart(); showStep(2);" class="btn-cta" data-action="start">
+    Je démarre mon projet →
   </button>
 </div>
 
