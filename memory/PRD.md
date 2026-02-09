@@ -9,71 +9,79 @@ CRM multi-tenant pour centraliser et redistribuer les leads solaires (PAC, PV, I
 
 ## Fonctionnalités Implémentées
 
-### ✅ Endpoint Public pour Récupérer les Formulaires (09/02/2026)
-- **GET /api/forms/public/{form_code}**: Récupérer un formulaire par son code sans authentification
-- **GET /api/forms/public/by-lp/{lp_code}**: Récupérer les formulaires liés à une LP
-- Retourne: infos form, LP liée, compte (logos, couleurs)
+### ✅ Facturation Inter-CRM & Vérification Nocturne (09/02/2026)
+- **Page Facturation** (`/billing`): Vue complète des leads cross-CRM
+  - Statistiques par période (7 jours, 30 jours)
+  - Balances par CRM (à recevoir vs à payer)
+  - Transactions détaillées
+  - Détail des leads cross-CRM
+- **API `/api/billing/cross-crm`**: Calcul automatique des montants
+  - Si ZR7 envoie un lead à MDL → MDL doit payer ZR7
+  - Prix basé sur `prix_unitaire` des commandes
+- **Vérification Nocturne (3h UTC)**: Tâche planifiée APScheduler
+  - Vérifie tous les leads des 24 dernières heures
+  - Relance automatique des leads échoués (sauf doublons CRM)
+  - Génère un rapport de réconciliation
+  - API `/api/verification/run` pour exécution manuelle
+  - API `/api/verification/status` pour statut
 
-### ✅ Endpoint Départements France Métropolitaine (09/02/2026)
-- **GET /api/forms/config/departements**: Liste des 96 départements (01-95 + 2A, 2B)
-- Format: `{"code": "75", "nom": "Paris"}`
+### ✅ Système de Commandes & Routage Cross-CRM
+- Routage intelligent des leads basé sur les commandes actives
+- Fallback cross-CRM si le CRM principal n'a pas de commande active
+- Configurable par formulaire (`allow_cross_crm`)
 
-### ✅ Champs de Récupération de Lead Étendus (09/02/2026)
-Nouveaux champs disponibles dans l'API v1/leads:
-- **Identité**: phone (obligatoire), nom, prenom, civilite, email
-- **Localisation**: code_postal, departement, ville, adresse
-- **Logement**: type_logement, statut_occupant, surface_habitable, annee_construction, type_chauffage
-- **Énergie**: facture_electricite, facture_chauffage
-- **Projet**: type_projet, delai_projet, budget
-- **Tracking**: lp_code, liaison_code, source, utm_source, utm_medium, utm_campaign
-- **Consentement**: rgpd_consent, newsletter
+### ✅ Gestion des Utilisateurs & Permissions
+- CRUD complet des utilisateurs
+- Rôles: Admin, Editor, Viewer
+- Permissions par section
 
-### ✅ Scripts LP/Form Synchronisés (09/02/2026)
-- Scripts générés dans le Brief avec code de liaison automatique
-- Format: `{LP_CODE}_{FORM_CODE}`
-- UTM tracking transmis de LP vers Form
-- URL de production: https://rdz-group-ltd.online
+### ✅ Dashboard Départements
+- Statistiques par département, produit, source
+- Filtres avancés par période et CRM
 
-### ✅ Navigation par CRM (09/02/2026)
-- Sélecteur de CRM dans la sidebar
-- Dropdown avec couleurs distinctes (MDL=bleu, ZR7=vert)
-- Filtrage automatique de toutes les pages par CRM sélectionné:
-  - Comptes
-  - Landing Pages  
-  - Formulaires
-  - Leads
-- Persistance de la sélection (localStorage)
+### ✅ Gestion des Leads Rejetés
+- Affichage des raisons d'échec
+- Bouton "Relancer" pour les leads échoués
 
-### ✅ Configuration GTM dans les Comptes (09/02/2026)
-- Champs GTM HEAD, BODY et Conversion
-- Type de tracking par défaut configurable
-- Options: Redirection, GTM, Les deux
+### ✅ Journal d'Activité
+- Suivi des actions utilisateurs
 
-### ✅ Configuration Redirection dans les Formulaires (09/02/2026)
-- Option "Que faire après la soumission du lead ?"
-- Choix: Redirection, GTM, Les deux, Rien (le form gère)
-- URL de redirection configurable
+### ✅ Autres Fonctionnalités
+- Endpoint Public pour Récupérer les Formulaires
+- Départements France Métropolitaine (01-95)
+- Champs de Récupération de Lead Étendus
+- Scripts LP/Form Synchronisés
+- Navigation par CRM
+- Configuration GTM dans les Comptes
+- Configuration Redirection dans les Formulaires
 
 ## Architecture Technique
 
 ### Backend (V2 - Modulaire)
 ```
 /app/backend/
-├── server.py           # Point d'entrée FastAPI
-├── config.py           # Configuration, DB, helpers
-├── models.py           # Modèles Pydantic
+├── server.py              # Point d'entrée FastAPI + APScheduler
+├── config.py              # Configuration, DB, helpers
+├── models.py              # Modèles Pydantic
 ├── routes/
-│   ├── auth.py         # Login, sessions, API key
-│   ├── accounts.py     # Comptes clients
-│   ├── crms.py         # CRMs externes (ZR7, MDL)
-│   ├── lps.py          # Landing Pages
-│   ├── forms.py        # Formulaires + endpoints publics
-│   ├── leads.py        # API v1 + gestion leads
-│   ├── tracking.py     # Events LP/Form
-│   └── queue.py        # File d'attente
+│   ├── auth.py            # Login, sessions, users, permissions
+│   ├── accounts.py        # Comptes clients
+│   ├── crms.py            # CRMs externes (ZR7, MDL)
+│   ├── lps.py             # Landing Pages
+│   ├── forms.py           # Formulaires + endpoints publics
+│   ├── leads.py           # API v1 + gestion leads
+│   ├── tracking.py        # Events LP/Form
+│   ├── queue.py           # File d'attente
+│   ├── commandes.py       # Gestion des commandes de leads
+│   ├── stats.py           # Statistiques par département
+│   ├── billing.py         # Facturation inter-CRM
+│   └── verification.py    # Vérification nocturne
 └── services/
-    ├── brief_generator.py  # Génération scripts
-    └── lead_sender.py      # Envoi CRM externe
+    ├── brief_generator.py      # Génération scripts
+    ├── lead_sender.py          # Envoi CRM externe
+    ├── activity_logger.py      # Journal d'activité
+    ├── billing.py              # Calcul facturation
+    └── nightly_verification.py # Vérification nocturne
 ```
 
 ### Frontend (V2 - Modulaire)
@@ -86,13 +94,18 @@ Nouveaux champs disponibles dans l'API v1/leads:
 │   ├── LandingPages.jsx
 │   ├── Forms.jsx
 │   ├── Leads.jsx
+│   ├── Departements.jsx
+│   ├── Commandes.jsx
+│   ├── Billing.jsx     # Facturation inter-CRM
+│   ├── UsersPage.jsx
 │   └── Settings.jsx
 ├── components/
 │   ├── Layout.jsx
 │   └── UI.jsx
 └── hooks/
     ├── useAuth.js
-    └── useApi.js
+    ├── useApi.js
+    └── useCRM.js
 ```
 
 ### Collections MongoDB
@@ -104,17 +117,26 @@ Nouveaux champs disponibles dans l'API v1/leads:
 - `leads` - Leads reçus
 - `tracking` - Events de tracking
 - `lead_queue` - File d'attente
+- `commandes` - Commandes de leads
+- `activity_logs` - Journal d'activité
+- `billing_history` - Historique facturation
+- `lead_prices` - Prix des leads
+- `verification_reports` - Rapports de vérification nocturne
 - `system_config` - Config (API key globale)
 
 ## Endpoints API Clés
+
+### Facturation & Vérification
+- `GET /api/billing/cross-crm` - Facturation inter-CRM
+- `GET /api/billing/cross-crm/summary` - Résumé facturation
+- `GET /api/verification/status` - Statut vérification nocturne
+- `POST /api/verification/run` - Lancer vérification manuellement
+- `GET /api/verification/reports` - Liste des rapports
 
 ### Publics (sans auth)
 - `GET /api/forms/public/{form_code}` - Récupérer config form
 - `GET /api/forms/public/by-lp/{lp_code}` - Forms liés à une LP
 - `GET /api/forms/config/departements` - Liste départements FR
-- `POST /api/track/lp-visit` - Track visite LP
-- `POST /api/track/cta-click` - Track clic CTA
-- `POST /api/track/form-start` - Track début form
 
 ### API v1 (Token auth)
 - `POST /api/v1/leads` - Soumettre un lead
@@ -123,7 +145,7 @@ Nouveaux champs disponibles dans l'API v1/leads:
 - `GET /api/forms` - Liste formulaires
 - `GET /api/forms/brief/{form_id}` - Brief développeur
 - `GET /api/leads` - Liste leads
-- `GET /api/auth/api-key` - Récupérer clé API globale
+- `POST /api/leads/{lead_id}/retry` - Relancer un lead
 
 ## Credentials Test
 - **Email**: energiebleuciel@gmail.com
@@ -138,7 +160,9 @@ Nouveaux champs disponibles dans l'API v1/leads:
 - [x] Champs de récupération de lead complets
 - [x] Départements France métropolitaine (01-95)
 - [x] Scripts LP/Form synchronisés
-- [ ] Facturation Inter-CRM & Prix des leads
+- [x] Facturation Inter-CRM & Prix des leads
+- [x] Vérification nocturne (rollback 3h du matin)
+- [ ] **Déploiement sur Hostinger** (en attente validation utilisateur)
 
 ### P1 - Important
 - [ ] Support complet GTM & Redirect tracking
@@ -148,7 +172,6 @@ Nouveaux champs disponibles dans l'API v1/leads:
 
 ### P2 - Nice to have
 - [ ] Bibliothèque d'images
-- [ ] Logs d'activité
 - [ ] Alertes système
 - [ ] Mode Campagne A/B Testing
 
