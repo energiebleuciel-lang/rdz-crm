@@ -1,32 +1,50 @@
 /**
- * Page Leads - Affichage complet des données lead
+ * Page Leads - Filtrée par CRM sélectionné
  */
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useCRM } from '../hooks/useCRM';
 import { API } from '../hooks/useApi';
 import { Card, Loading, Badge, Button, Modal } from '../components/UI';
 import { Users, RefreshCw, Download, Eye, X } from 'lucide-react';
 
 export default function Leads() {
   const { authFetch } = useAuth();
+  const { selectedCRM, currentCRM } = useCRM();
   const [leads, setLeads] = useState([]);
+  const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [selectedLead, setSelectedLead] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (selectedCRM) {
+      loadData();
+    }
+  }, [selectedCRM]);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const res = await authFetch(`${API}/api/leads?limit=200`);
+      
+      // Charger les comptes filtrés par CRM
+      const accountsRes = await authFetch(`${API}/api/accounts?crm_id=${selectedCRM}`);
+      let accountIds = [];
+      if (accountsRes.ok) {
+        const data = await accountsRes.json();
+        const accountsList = data.accounts || [];
+        setAccounts(accountsList);
+        accountIds = accountsList.map(a => a.id);
+      }
+      
+      // Charger les leads et filtrer par comptes du CRM
+      const res = await authFetch(`${API}/api/leads?limit=500`);
       if (res.ok) {
         const data = await res.json();
-        setLeads(data.leads || []);
+        const filteredLeads = (data.leads || []).filter(l => accountIds.includes(l.account_id));
+        setLeads(filteredLeads);
       }
     } catch (e) {
       console.error('Load error:', e);
