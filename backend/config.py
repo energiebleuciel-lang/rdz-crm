@@ -16,10 +16,12 @@ load_dotenv(ROOT_DIR / '.env')
 
 # MongoDB
 MONGO_URL = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
-DB_NAME = os.environ.get('DB_NAME', 'enersolar_crm')
+DB_NAME = os.environ.get('DB_NAME', 'test_database')  # Default to test_database
 
 client = AsyncIOMotorClient(MONGO_URL)
 db = client[DB_NAME]
+
+print(f"[CONFIG] Using database: {DB_NAME}")
 
 # Backend URL (pour les scripts de tracking)
 BACKEND_URL = os.environ.get('BACKEND_URL', 'https://rdz-group-ltd.online')
