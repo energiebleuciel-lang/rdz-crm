@@ -42,7 +42,7 @@ export default function UsersPage() {
     role: 'viewer',
     permissions: {
       dashboard: true, accounts: false, lps: true, forms: true,
-      leads: true, commandes: false, settings: false, users: false
+      leads: true, departements: true, commandes: false, settings: false, users: false
     }
   });
 
