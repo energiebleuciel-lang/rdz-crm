@@ -1229,49 +1229,6 @@ input, select {{ width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #E
         "required_fields": ["civilite", "nom", "prenom", "phone", "email", "code_postal", "ville"],
         "optional_fields": ["type_logement", "statut_occupant", "revenu_fiscal", "surface_habitable"]
     }
-    nom: form.nom.value,
-    prenom: form.prenom.value,
-    phone: form.phone.value,
-    email: form.email.value,
-    code_postal: form.code_postal.value,
-    ville: form.ville.value,
-    // Champs optionnels
-    type_logement: "",
-    statut_occupant: "",
-    revenu_fiscal: ""
-  }};
-  
-  submitLeadToCRM(data)
-    .then(function(result) {{
-      if (result.success) {{
-        // Rediriger vers page de remerciement
-        window.location.href = "{form.get('redirect_url_name', '/merci')}";
-      }} else {{
-        alert("Erreur: " + (result.detail || "Impossible d\\'envoyer le formulaire"));
-      }}
-    }})
-    .catch(function() {{
-      alert("Erreur de connexion. Veuillez réessayer.");
-    }});
-}}
-</script>
-'''
-    
-    return {
-        "form_id": form_id,
-        "form_code": form.get('code', ''),
-        "form_name": form.get('name', ''),
-        "product_type": form.get('product_type', ''),
-        "product_label": product_label,
-        "api_endpoint": f"{backend_url}/api/v1/leads",
-        "api_key": api_key,
-        "api_key_warning": "⚠️ NE PAS exposer cette clé dans le HTML public. Utilisez un backend proxy si nécessaire.",
-        "tracking_script": tracking_script,
-        "usage_example": usage_example,
-        "aides_financieres": aides_config,
-        "required_fields": ["civilite", "nom", "prenom", "phone", "email", "code_postal", "ville"],
-        "optional_fields": ["type_logement", "statut_occupant", "revenu_fiscal", "surface_habitable"]
-    }
 
 # ==================== CLÉ API GLOBALE ENDPOINTS ====================
 
