@@ -5,6 +5,7 @@
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
+import { CRMProvider } from './hooks/useCRM';
 
 // Pages
 import Login from './pages/Login';
@@ -19,7 +20,7 @@ import Settings from './pages/Settings';
 import Layout from './components/Layout';
 import { Loading } from './components/UI';
 
-// Route protégée
+// Route protégée avec CRM Provider
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
   
@@ -35,7 +36,11 @@ function PrivateRoute({ children }) {
     return <Navigate to="/login" replace />;
   }
   
-  return <Layout>{children}</Layout>;
+  return (
+    <CRMProvider>
+      <Layout>{children}</Layout>
+    </CRMProvider>
+  );
 }
 
 // Routes
