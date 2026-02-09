@@ -33,6 +33,21 @@ except ImportError:
     EMAIL_SERVICE_AVAILABLE = False
     logger.warning("Service d'emails non disponible")
 
+# Import du service de file d'attente
+try:
+    from lead_queue_service import (
+        add_to_queue, 
+        run_queue_processor, 
+        is_crm_healthy, 
+        update_crm_health,
+        crm_health_status,
+        MAX_RETRY_ATTEMPTS
+    )
+    QUEUE_SERVICE_AVAILABLE = True
+except ImportError:
+    QUEUE_SERVICE_AVAILABLE = False
+    logger.warning("Service de file d'attente non disponible")
+
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
