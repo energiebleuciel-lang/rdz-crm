@@ -1960,10 +1960,6 @@ const FormsPage = () => {
                   ))}
                 </div>
               </div>
-            </>
-          )}
-        </div>
-      </Modal>
 
               {/* Exemple d'utilisation */}
               <div>
