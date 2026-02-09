@@ -1630,6 +1630,7 @@ const FormsPage = () => {
   const [showDuplicateModal, setShowDuplicateModal] = useState(null);
   const [showBriefModal, setShowBriefModal] = useState(false);
   const [briefData, setBriefData] = useState(null);
+  const [briefTab, setBriefTab] = useState('guide');  // guide, script, lp, html
   const [editingForm, setEditingForm] = useState(null);
   const [duplicateData, setDuplicateData] = useState({ new_code: '', new_name: '', new_crm_api_key: '' });
   const [error, setError] = useState('');
