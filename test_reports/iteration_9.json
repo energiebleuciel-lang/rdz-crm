@@ -1,0 +1,108 @@
+{
+  "summary": "Completed testing of new billing and CRM features. All 21 backend API tests passed (100%). Frontend UI testing verified: 1) Billing page with week navigation (< Précédent | Suivant >), 2) Commandes page with editable prix_unitaire field, 3) Accounts page with CGU/Privacy section, 4) Brief generator includes logos_html and legal_html. Fixed missing cgu_text field in account creation.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_new_billing_features.py",
+    "/app/test_reports/pytest/pytest_new_billing_features.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Fixed: cgu_text field was missing from create_account function in /app/backend/routes/accounts.py - now included",
+    "All new features working correctly: week navigation, prix_unitaire editing, CGU/Privacy fields, Brief logos/legal HTML"
+  ],
+  "updated_files": [
+    "/app/backend/routes/accounts.py",
+    "/app/backend/tests/test_new_billing_features.py"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "email": "energiebleuciel@gmail.com",
+    "password": "92Ruemarxdormoy"
+  },
+  "seed_data_creation": "Test accounts and commandes created and cleaned up during tests",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All new features tested and working: 1) Billing page - week navigation with dates (DD/MM/YYYY → DD/MM/YYYY), 'Marquer comme facturé' button toggles invoice status, 2) Commandes page - Prix: input field with € symbol, editable inline, 3) Accounts page - 'Textes Légaux (CGU, Confidentialité)' collapsible section with CGU and Privacy textareas, 4) Brief API - returns logos_html and legal_html in scripts object, 5) Leads API - crm_id filter works correctly, 6) Departements stats API - crm_id filter works correctly",
+  "features_tested": [
+    {
+      "feature": "Billing Week Navigation",
+      "status": "PASS",
+      "details": "< Semaine précédente | Semaine suivante > buttons work, dates displayed (29/12/2025 → 04/01/2026), week number shown (Semaine 7 / 2026)"
+    },
+    {
+      "feature": "Billing Invoice Status",
+      "status": "PASS",
+      "details": "'Marquer comme facturé' button toggles status, API /api/billing/weeks/{year}/{week}/invoice works"
+    },
+    {
+      "feature": "Billing Week Info API",
+      "status": "PASS",
+      "details": "API /api/billing/weeks/2026/7 returns week_info with year, week, start, end dates"
+    },
+    {
+      "feature": "Commandes Prix Unitaire",
+      "status": "PASS",
+      "details": "Prix: input field editable inline, updates via API /api/commandes/{id}"
+    },
+    {
+      "feature": "Accounts CGU/Privacy Section",
+      "status": "PASS",
+      "details": "'Textes Légaux (CGU, Confidentialité)' collapsible section with CGU and Privacy textareas"
+    },
+    {
+      "feature": "Accounts API CGU Fields",
+      "status": "PASS",
+      "details": "API /api/accounts supports cgu_text, privacy_policy_text fields (fixed missing cgu_text in create)"
+    },
+    {
+      "feature": "Leads CRM Filter",
+      "status": "PASS",
+      "details": "API /api/leads?crm_id={uuid} correctly filters leads by CRM"
+    },
+    {
+      "feature": "Departements Stats CRM Filter",
+      "status": "PASS",
+      "details": "API /api/stats/departements?crm_id={uuid} returns by_departement, by_product, by_source, by_status"
+    },
+    {
+      "feature": "Brief Generator Logos HTML",
+      "status": "PASS",
+      "details": "Brief API returns logos_html in scripts object"
+    },
+    {
+      "feature": "Brief Generator Legal HTML",
+      "status": "PASS",
+      "details": "Brief API returns legal_html (CGU/Privacy buttons) in scripts object"
+    }
+  ],
+  "backend_tests_summary": {
+    "total": 21,
+    "passed": 21,
+    "failed": 0,
+    "test_classes": [
+      "TestBillingWeekNavigation (6 tests)",
+      "TestCommandesPrixUnitaire (3 tests)",
+      "TestAccountsCguPrivacy (3 tests)",
+      "TestLeadsCrmFilter (2 tests)",
+      "TestDepartementsStatsCrmFilter (2 tests)",
+      "TestBriefGenerator (3 tests)",
+      "TestBillingCrossCrm (2 tests)"
+    ]
+  },
+  "bug_fix_applied": {
+    "file": "/app/backend/routes/accounts.py",
+    "issue": "cgu_text field was missing from create_account function",
+    "fix": "Added 'cgu_text': data.cgu_text or '' to the account dictionary in create_account"
+  }
+}
