@@ -80,48 +80,50 @@ async def submit_lead_v1(data: LeadSubmit, request: Request, api_key: str = Depe
     form_code = form.get("code", "")
     product_type = form.get("product_type", "PV")
     account_id = form.get("account_id", "")
+    allow_cross_crm = form.get("allow_cross_crm", True)  # Cross-CRM par défaut
     
-    # Récupérer le compte
+    # Récupérer le compte et son CRM principal
     account = await db.accounts.find_one({"id": account_id})
-    crm_id = account.get("crm_id") if account else None
+    primary_crm_id = account.get("crm_id") if account else None
     
-    # 3. Router vers le bon CRM selon commandes
+    # Import de la fonction has_commande
+    from routes.commandes import has_commande
+    
+    # 3. Router vers le bon CRM selon les commandes
     target_crm = None
-    routing_reason = "no_order"
+    routing_reason = "no_crm"
     api_url = ""
-    api_key_crm = ""
+    api_key_crm = form.get("crm_api_key", "")
     
-    # D'abord vérifier la clé API du formulaire
-    if form.get("crm_api_key"):
-        # Utiliser le CRM du compte
-        crm = await db.crms.find_one({"id": crm_id})
-        if crm:
-            # Vérifier les commandes
-            commandes = crm.get("commandes", {})
-            if product_type in commandes and dept in commandes[product_type]:
-                target_crm = crm
-                routing_reason = f"commande_{crm.get('slug')}"
-                api_url = crm.get("api_url", "")
-                api_key_crm = form.get("crm_api_key")
+    # Récupérer tous les CRMs
+    all_crms = await db.crms.find({}, {"_id": 0}).to_list(10)
+    crm_map = {c["id"]: c for c in all_crms}
     
-    # Sinon, chercher dans tous les CRMs qui ont une commande pour ce dept/produit
-    if not target_crm:
-        crms = await db.crms.find({}).to_list(100)
-        for crm in crms:
-            commandes = crm.get("commandes", {})
-            if product_type in commandes and dept in commandes[product_type]:
-                # Trouver un formulaire avec une clé API pour ce CRM
-                form_with_key = await db.forms.find_one({
-                    "account_id": account_id,
-                    "product_type": product_type,
-                    "crm_api_key": {"$exists": True, "$ne": ""}
-                })
-                if form_with_key:
+    # Étape 3a: Vérifier le CRM principal (celui du compte)
+    if primary_crm_id and api_key_crm:
+        if await has_commande(primary_crm_id, product_type, dept):
+            target_crm = crm_map.get(primary_crm_id)
+            routing_reason = f"commande_{target_crm.get('slug')}" if target_crm else "primary_crm"
+    
+    # Étape 3b: Si pas de commande sur CRM principal ET cross_crm autorisé
+    if not target_crm and allow_cross_crm and api_key_crm:
+        # Chercher un autre CRM qui a une commande
+        for crm_id, crm in crm_map.items():
+            if crm_id != primary_crm_id:
+                if await has_commande(crm_id, product_type, dept):
                     target_crm = crm
-                    routing_reason = f"commande_{crm.get('slug')}"
-                    api_url = crm.get("api_url", "")
-                    api_key_crm = form_with_key.get("crm_api_key")
+                    routing_reason = f"cross_crm_{crm.get('slug')}"
+                    # Note: On utilise la même clé API du formulaire
+                    # car c'est la clé qui permet d'envoyer au CRM
                     break
+    
+    # Étape 3c: Si toujours pas de CRM, stocker localement
+    if not target_crm:
+        routing_reason = "no_commande"
+        api_status = "no_crm"
+    else:
+        api_url = target_crm.get("api_url", "")
+        api_status = "pending"
     
     # 4. Créer le document lead
     lead_doc = {
