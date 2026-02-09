@@ -130,20 +130,40 @@ async def submit_lead_v1(data: LeadSubmit, request: Request, api_key: str = Depe
         "form_code": form_code,
         "account_id": account_id,
         "product_type": product_type,
-        # Données lead
+        # Identité
         "phone": phone,
         "nom": data.nom or "",
         "prenom": data.prenom or "",
         "civilite": data.civilite or "",
         "email": data.email or "",
+        # Localisation
         "code_postal": code_postal,
         "departement": dept,
+        "ville": data.ville or "",
+        "adresse": data.adresse or "",
+        # Logement
         "type_logement": data.type_logement or "",
         "statut_occupant": data.statut_occupant or "",
+        "surface_habitable": data.surface_habitable or "",
+        "annee_construction": data.annee_construction or "",
+        "type_chauffage": data.type_chauffage or "",
+        # Énergie
         "facture_electricite": data.facture_electricite or "",
+        "facture_chauffage": data.facture_chauffage or "",
+        # Projet
+        "type_projet": data.type_projet or "",
+        "delai_projet": data.delai_projet or "",
+        "budget": data.budget or "",
         # Tracking
         "lp_code": data.lp_code or "",
         "liaison_code": data.liaison_code or "",
+        "source": data.source or "",
+        "utm_source": data.utm_source or "",
+        "utm_medium": data.utm_medium or "",
+        "utm_campaign": data.utm_campaign or "",
+        # Consentement
+        "rgpd_consent": data.rgpd_consent if data.rgpd_consent is not None else True,
+        "newsletter": data.newsletter or False,
         # Metadata
         "ip": request.headers.get("x-forwarded-for", request.client.host if request.client else ""),
         "register_date": timestamp(),
