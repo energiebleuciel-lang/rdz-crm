@@ -9,198 +9,120 @@ CRM multi-tenant pour centraliser et redistribuer les leads solaires (PAC, PV, I
 - **Frontend**: React 18 + Tailwind CSS + React Router
 - **Backend**: FastAPI (Python)
 - **Base de données**: MongoDB
-- **Authentification**: JWT
+- **Authentification**: JWT (UI) + Token-based (API v1)
+- **Emails**: SendGrid (en attente de vérification expéditeur)
+- **Scheduler**: APScheduler (résumés quotidiens/hebdomadaires)
 
-### Flux des Leads
+### Structure Modulaire (Nouveau)
 ```
-[Formulaire Web] → POST /api/submit-lead
-     ↓
-[Anti-doublon] → Même téléphone + même produit/jour ?
-     ↓ (non)
-[Routage intelligent] → Si commandes configurées + formulaire non exclu + limite non atteinte
-     → CRM origine a commande ? → Envoi vers origine
-     → Sinon, autre CRM a commande + limite OK ? → Reroutage
-     → Aucun ou limite atteinte ? → Fallback vers origine
-     ↓
-[ZR7 ou MDL] → Via API externe
-     ↓
-[Facturation] → Si reroutage, montants calculés
+/app/
+├── backend/
+│   ├── server.py           # API principale (3700+ lignes)
+│   ├── email_service.py    # Service d'emails isolé et indépendant
+│   ├── scheduler_service.py # Tâches planifiées isolées
+│   └── .env
+├── frontend/
+│   └── src/
+│       ├── App.js          # App principale
+│       └── components/
+│           ├── FormCard.jsx    # Carte formulaire individuelle (NOUVEAU)
+│           ├── FormsGrid.jsx   # Grille de formulaires (NOUVEAU)
+│           └── ui/             # Composants Shadcn
+└── memory/
+    └── PRD.md
 ```
 
 ## Fonctionnalités Implémentées
 
+### Phase 13 - UI Cartes & Emails (09/02/2026)
+- [x] **Nouvelle UI Formulaires (Style Landbot)** :
+  - Vue cartes avec stats visuelles (Démarrés, Terminés, % Conversion)
+  - Vue liste (tableau) en alternative
+  - Filtres par produit (PV/PAC/ITE), statut, recherche
+  - Toggle grille/liste
+  - Badges produits colorés
+  - Barres de progression visuelles
+- [x] **Composants modulaires indépendants** :
+  - `FormCard.jsx` - Carte individuelle isolée
+  - `FormsGrid.jsx` - Grille avec filtres et actions
+  - Gestion d'erreurs isolée (try-catch partout)
+- [x] **Système d'emails SendGrid** (EN ATTENTE) :
+  - Service email isolé et non-bloquant
+  - Templates HTML pour alertes critiques
+  - Templates pour résumés quotidiens/hebdomadaires
+  - ⚠️ En attente de vérification Sender Identity
+
 ### Phase 12 - Protection & Traçabilité (08/02/2026)
-- [x] **Protection des formulaires** :
-  - DELETE archive au lieu de supprimer (leads conservés)
-  - Clé API CRM protégée (non modifiable après création)
-  - Product_type protégé (non modifiable)
-  - Suppression permanente uniquement avec code de confirmation
-- [x] **Traçabilité complète des leads** :
-  - `target_crm_name` / `target_crm_slug` : Plateforme cible
-  - `status_detail` : "envoyé/zr7" ou "envoyé/mdl"
-  - Colonnes Produit (PV/PAC/ITE) et Plateforme sur page Leads
-- [x] **Tests API réels réussis** :
-  - ZR7 Digital : ✅ Leads envoyés avec succès
-  - Maison du Lead : ✅ Leads envoyés avec succès
-
-### Phase 11 - Sécurité & Analytics (08/02/2026)
-- [x] **Sécurité multi-tenant** : Filtrage des données par `allowed_accounts` pour utilisateurs non-admin
-  - `/api/accounts` : filtre par comptes autorisés
-  - `/api/forms` : filtre par comptes autorisés
-  - `/api/leads` : filtre par formulaires des comptes autorisés
-  - `/api/lps` : filtre par comptes autorisés
-- [x] **Stats de transformation sur page Formulaires** :
-  - Colonne "Démarrés" (form_starts)
-  - Colonne "Complétés" (leads)
-  - Colonne "% Transfo" (conversion_rate avec couleurs)
-  - Colonne "Produit" (badges PV/PAC/ITE colorés)
-- [x] **Champ civilite** ajouté à l'envoi API vers ZR7/MDL
-
-### Phase 10 - Finalisation (08/02/2026)
-- [x] **Sélection produit visible** : Gros boutons jaunes PAC/PV/ITE dans le formulaire
-- [x] **Limites inter-CRM** : Nombre max de leads par produit par mois qu'un CRM peut recevoir
-- [x] **Nettoyage CTA** : Suppression des stats CTA non utilisées
-- [x] **Marquage facturation** : Bouton "Marquer ce mois comme facturé" avec historique
-- [x] **Exclusion routage** : Checkbox par formulaire pour éviter reroutage
-- [x] **Anti-doublon amélioré** : Même téléphone + même produit/jour
-- [x] **Guide refait** : 7 sections claires
+- [x] Protection des formulaires (archivage, champs non-modifiables)
+- [x] Traçabilité complète des leads
+- [x] Tests API réels réussis (ZR7 + MDL)
 
 ### Phases Précédentes
-- [x] Dashboard facturation avec stats par CRM
-- [x] Configuration prix par lead (PAC/PV/ITE en €)
-- [x] Archivage automatique (> 3 mois)
-- [x] Gestion Comptes, LPs, Formulaires
-- [x] Générateur de Briefs
-- [x] Routage intelligent basé sur commandes (départements 01-95)
-- [x] Rôles Admin/Éditeur/Lecteur
-- [x] Job nocturne retry leads échoués
-
-## Sécurité Multi-Tenant
-
-### Fonctions de filtrage (server.py)
-```python
-def get_account_filter(user: dict) -> dict:
-    """Filtre MongoDB pour comptes autorisés"""
-    if user.get("role") == "admin":
-        return {}
-    allowed = user.get("allowed_accounts", [])
-    return {"id": {"$in": allowed}} if allowed else {}
-
-def get_account_ids_filter(user: dict) -> dict:
-    """Filtre pour entités liées à un account_id"""
-    if user.get("role") == "admin":
-        return {}
-    allowed = user.get("allowed_accounts", [])
-    return {"account_id": {"$in": allowed}} if allowed else {}
-```
-
-### Comment assigner un utilisateur à des comptes
-1. Admin va dans "Utilisateurs"
-2. Édite l'utilisateur
-3. Définit `allowed_accounts` = liste des IDs de comptes autorisés
-4. Si vide, l'utilisateur voit tout (comme avant)
-
-## Configuration CRM (Paramètres)
-
-### Commandes
-- Départements par produit (PAC, PV, ITE) où ce CRM accepte des leads
-- Si un département n'est pas dans les commandes, le lead peut être rerouté
-
-### Prix par lead
-- Prix en € par produit pour calculer la facturation inter-CRM
-
-### Limites de routage
-- Nombre max de leads inter-CRM par produit par mois (0 = illimité)
-- Si limite atteinte, pas de reroutage vers ce CRM
-
-## Règles Métier Clés
-
-### Anti-Doublon
-- **Doublon** = même téléphone + même produit (PAC, PV ou ITE) par jour
-- Un client peut s'inscrire PAC et PV le même jour = 2 leads valides
-
-### Exclusion Routage Inter-CRM
-- Formulaires de redirection marqués "Exclure du routage"
-- Évite de livrer 2x le même client cross-CRM
-
-### Limites de Routage
-- Ex: ZR7 peut recevoir max 100 PAC/mois des autres CRMs
-- Si limite atteinte, les leads restent sur leur CRM d'origine
+- [x] API v1 style Landbot (clé globale)
+- [x] Sécurité multi-tenant
+- [x] Dashboard facturation
+- [x] Routage intelligent
+- [x] Backup/Restore
 
 ## Endpoints Principaux
 
-### Leads
+### API v1 (Nouveau)
 ```
-POST /api/submit-lead          # Soumettre un lead
-GET /api/leads                 # Liste des leads (filtré par allowed_accounts)
-POST /api/leads/archive        # Archiver > 3 mois
-```
-
-### Facturation
-```
-GET /api/billing/dashboard     # Stats par CRM et période
-POST /api/billing/mark-invoiced # Marquer période facturée
-GET /api/billing/history       # Historique facturations
+POST /api/v1/leads              # Soumission lead (clé globale en header)
+GET  /api/settings/api-key      # Récupérer clé API globale
 ```
 
-### CRM Configuration
+### Emails
 ```
-PUT /api/crms/{id}
-Body: {
-  "commandes": {"PAC": ["75", "92"], "PV": ["13"], "ITE": []},
-  "lead_prices": {"PAC": 25.0, "PV": 20.0, "ITE": 30.0},
-  "routing_limits": {"PAC": 100, "PV": 200, "ITE": 50}
-}
+POST /api/email/test            # Envoyer email de test
+POST /api/email/send-daily-summary    # Forcer envoi résumé quotidien
+POST /api/email/send-weekly-summary   # Forcer envoi résumé hebdomadaire
+GET  /api/email/config          # Configuration email
 ```
 
-## Schéma DB
-
-### users
-```json
-{
-  "email": "user@example.com",
-  "role": "editor",
-  "allowed_accounts": ["account-id-1", "account-id-2"]
-}
+### Formulaires
+```
+GET    /api/forms               # Liste formulaires
+POST   /api/forms               # Créer formulaire
+POST   /api/forms/{id}/duplicate # Dupliquer formulaire
+DELETE /api/forms/{id}          # Archiver formulaire
 ```
 
-### crms
-```json
-{
-  "name": "Maison du Lead",
-  "slug": "mdl",
-  "commandes": {"PAC": ["75", "92"], "PV": [], "ITE": []},
-  "lead_prices": {"PAC": 28.0, "PV": 22.0, "ITE": 35.0},
-  "routing_limits": {"PAC": 100, "PV": 200, "ITE": 0}
-}
-```
+## Configuration SendGrid (À FAIRE)
 
-### forms
-```json
-{
-  "code": "PV-TAB-001",
-  "product_type": "panneaux",
-  "exclude_from_routing": false
-}
-```
+L'utilisateur doit vérifier son adresse email d'expéditeur :
+1. Aller sur https://app.sendgrid.com
+2. Settings → Sender Authentication
+3. "Verify a Single Sender"
+4. Entrer : `factures.zr7digital@gmail.com`
+5. Cliquer le lien de confirmation dans l'email
 
 ## Credentials Test
 - **Email**: energiebleuciel@gmail.com
 - **Password**: 92Ruemarxdormoy
+- **ZR7 API Key (PV)**: 342b6515-7424-43a6-b5c9-142385fc6ef1
+- **MDL API Key (PV)**: 00f4e557-4903-47c6-87db-e3d41460ce45
 
 ## Backlog
 
 ### P0 - Complété ✅
-- [x] Backend filtrage par allowed_accounts
+- [x] UI Cartes style Landbot
+- [x] Duplication formulaires
+- [x] Service emails (code)
+- [x] Scheduler (code)
 
-### P1 - Améliorations
-- [ ] Graphiques visuels dashboard facturation
-- [ ] Export CSV des leads/facturations
+### P1 - En Attente
+- [ ] **Vérification SendGrid** - Utilisateur doit vérifier son email
+- [ ] Configuration des Aides financières (MaPrimeRenov, CEE, etc.)
+- [ ] File d'attente leads (si API down)
+- [ ] Retry automatique des leads échoués
 
 ### P2 - Technique
 - [ ] Refactoring App.js (5000+ lignes)
 - [ ] Refactoring server.py en modules
+- [ ] Supprimer bouton "Régénérer" clé API
 
 ## Déploiement
 - **Live**: https://rdz-group-ltd.online (Hostinger VPS)
 - **Preview**: https://leadflow-106.preview.emergentagent.com
+- **GitHub**: PRIVÉ ✅
