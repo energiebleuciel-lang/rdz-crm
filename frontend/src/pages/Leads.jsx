@@ -1,18 +1,20 @@
 /**
- * Page Leads
+ * Page Leads - Affichage complet des données lead
  */
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { API } from '../hooks/useApi';
-import { Card, Loading, Badge, Button } from '../components/UI';
-import { Users, RefreshCw, Download, Filter } from 'lucide-react';
+import { Card, Loading, Badge, Button, Modal } from '../components/UI';
+import { Users, RefreshCw, Download, Eye, X } from 'lucide-react';
 
 export default function Leads() {
   const { authFetch } = useAuth();
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const [selectedLead, setSelectedLead] = useState(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -33,6 +35,11 @@ export default function Leads() {
     }
   };
 
+  const viewLead = (lead) => {
+    setSelectedLead(lead);
+    setShowDetailModal(true);
+  };
+
   const retryLead = async (leadId) => {
     try {
       const res = await authFetch(`${API}/api/leads/${leadId}/retry`, {
@@ -50,21 +57,49 @@ export default function Leads() {
 
   const exportCSV = () => {
     const filtered = filteredLeads;
-    const headers = ['Téléphone', 'Nom', 'Prénom', 'Email', 'Code Postal', 'Formulaire', 'LP', 'Statut', 'Date'];
+    const headers = [
+      'Téléphone', 'Nom', 'Prénom', 'Civilité', 'Email', 
+      'Code Postal', 'Département', 'Ville', 'Adresse',
+      'Type Logement', 'Statut Occupant', 'Surface', 'Année Construction', 'Type Chauffage',
+      'Facture Électricité', 'Facture Chauffage',
+      'Type Projet', 'Délai', 'Budget',
+      'Formulaire', 'LP', 'Liaison', 'Source', 'UTM Source', 'UTM Medium', 'UTM Campaign',
+      'CRM', 'Statut', 'Date'
+    ];
     const rows = filtered.map(l => [
       l.phone,
       l.nom,
       l.prenom,
+      l.civilite,
       l.email,
       l.code_postal,
+      l.departement,
+      l.ville,
+      l.adresse,
+      l.type_logement,
+      l.statut_occupant,
+      l.surface_habitable,
+      l.annee_construction,
+      l.type_chauffage,
+      l.facture_electricite,
+      l.facture_chauffage,
+      l.type_projet,
+      l.delai_projet,
+      l.budget,
       l.form_code,
       l.lp_code,
+      l.liaison_code,
+      l.source,
+      l.utm_source,
+      l.utm_medium,
+      l.utm_campaign,
+      l.target_crm_slug,
       l.api_status,
       new Date(l.created_at).toLocaleDateString('fr-FR')
     ]);
     
-    const csv = [headers, ...rows].map(r => r.join(';')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const csv = [headers, ...rows].map(r => r.map(c => `"${c || ''}"`).join(';')).join('\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -135,9 +170,10 @@ export default function Leads() {
                 <th className="text-left p-4 text-sm font-medium text-slate-600">Téléphone</th>
                 <th className="text-left p-4 text-sm font-medium text-slate-600">Nom</th>
                 <th className="text-left p-4 text-sm font-medium text-slate-600">Email</th>
-                <th className="text-left p-4 text-sm font-medium text-slate-600">CP</th>
+                <th className="text-left p-4 text-sm font-medium text-slate-600">CP / Dept</th>
                 <th className="text-left p-4 text-sm font-medium text-slate-600">Form</th>
                 <th className="text-left p-4 text-sm font-medium text-slate-600">LP</th>
+                <th className="text-left p-4 text-sm font-medium text-slate-600">Source</th>
                 <th className="text-left p-4 text-sm font-medium text-slate-600">CRM</th>
                 <th className="text-left p-4 text-sm font-medium text-slate-600">Statut</th>
                 <th className="text-left p-4 text-sm font-medium text-slate-600">Date</th>
@@ -148,14 +184,23 @@ export default function Leads() {
               {filteredLeads.map(lead => (
                 <tr key={lead.id} className="border-t hover:bg-slate-50">
                   <td className="p-4 font-mono text-sm">{lead.phone}</td>
-                  <td className="p-4">{lead.nom} {lead.prenom}</td>
-                  <td className="p-4 text-sm text-slate-600">{lead.email}</td>
-                  <td className="p-4">{lead.code_postal}</td>
+                  <td className="p-4">
+                    <span className="text-slate-500 text-xs">{lead.civilite}</span>{' '}
+                    {lead.nom} {lead.prenom}
+                  </td>
+                  <td className="p-4 text-sm text-slate-600 truncate max-w-[150px]">{lead.email}</td>
+                  <td className="p-4">
+                    <span className="font-mono text-sm">{lead.code_postal}</span>
+                    <span className="text-slate-400 text-xs ml-1">({lead.departement})</span>
+                  </td>
                   <td className="p-4">
                     <Badge variant="info">{lead.form_code}</Badge>
                   </td>
                   <td className="p-4 text-sm text-slate-500">
                     {lead.lp_code || '-'}
+                  </td>
+                  <td className="p-4 text-sm text-slate-500">
+                    {lead.source || lead.utm_source || '-'}
                   </td>
                   <td className="p-4 text-sm">
                     {lead.target_crm_slug?.toUpperCase() || '-'}
@@ -169,20 +214,29 @@ export default function Leads() {
                     {new Date(lead.created_at).toLocaleDateString('fr-FR')}
                   </td>
                   <td className="p-4">
-                    {lead.api_status === 'failed' && (
+                    <div className="flex gap-1">
                       <button
-                        onClick={() => retryLead(lead.id)}
-                        className="text-sm text-blue-600 hover:text-blue-800"
+                        onClick={() => viewLead(lead)}
+                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                        title="Voir détails"
                       >
-                        Retry
+                        <Eye className="w-4 h-4" />
                       </button>
-                    )}
+                      {lead.api_status === 'failed' && (
+                        <button
+                          onClick={() => retryLead(lead.id)}
+                          className="text-sm text-blue-600 hover:text-blue-800"
+                        >
+                          Retry
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
               {filteredLeads.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="p-8 text-center text-slate-500">
+                  <td colSpan={11} className="p-8 text-center text-slate-500">
                     Aucun lead trouvé
                   </td>
                 </tr>
@@ -195,6 +249,131 @@ export default function Leads() {
       <p className="text-sm text-slate-500 text-center">
         {filteredLeads.length} lead(s) affiché(s) sur {leads.length} total
       </p>
+
+      {/* Modal Détail Lead */}
+      <Modal
+        isOpen={showDetailModal}
+        onClose={() => setShowDetailModal(false)}
+        title={`Lead ${selectedLead?.phone || ''}`}
+        size="lg"
+      >
+        {selectedLead && (
+          <div className="space-y-6">
+            {/* Identité */}
+            <div>
+              <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                Identité
+              </h3>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div><span className="text-slate-500">Civilité:</span> <span className="font-medium">{selectedLead.civilite || '-'}</span></div>
+                <div><span className="text-slate-500">Nom:</span> <span className="font-medium">{selectedLead.nom || '-'}</span></div>
+                <div><span className="text-slate-500">Prénom:</span> <span className="font-medium">{selectedLead.prenom || '-'}</span></div>
+                <div><span className="text-slate-500">Email:</span> <span className="font-medium">{selectedLead.email || '-'}</span></div>
+                <div><span className="text-slate-500">Téléphone:</span> <span className="font-medium font-mono">{selectedLead.phone}</span></div>
+              </div>
+            </div>
+
+            {/* Localisation */}
+            <div>
+              <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                Localisation
+              </h3>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div><span className="text-slate-500">Code postal:</span> <span className="font-medium font-mono">{selectedLead.code_postal || '-'}</span></div>
+                <div><span className="text-slate-500">Département:</span> <span className="font-medium">{selectedLead.departement || '-'}</span></div>
+                <div><span className="text-slate-500">Ville:</span> <span className="font-medium">{selectedLead.ville || '-'}</span></div>
+                <div className="col-span-2"><span className="text-slate-500">Adresse:</span> <span className="font-medium">{selectedLead.adresse || '-'}</span></div>
+              </div>
+            </div>
+
+            {/* Logement */}
+            <div>
+              <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
+                Logement
+              </h3>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div><span className="text-slate-500">Type:</span> <span className="font-medium">{selectedLead.type_logement || '-'}</span></div>
+                <div><span className="text-slate-500">Statut:</span> <span className="font-medium">{selectedLead.statut_occupant || '-'}</span></div>
+                <div><span className="text-slate-500">Surface:</span> <span className="font-medium">{selectedLead.surface_habitable ? `${selectedLead.surface_habitable} m²` : '-'}</span></div>
+                <div><span className="text-slate-500">Année construction:</span> <span className="font-medium">{selectedLead.annee_construction || '-'}</span></div>
+                <div><span className="text-slate-500">Chauffage:</span> <span className="font-medium">{selectedLead.type_chauffage || '-'}</span></div>
+              </div>
+            </div>
+
+            {/* Énergie */}
+            <div>
+              <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                Énergie
+              </h3>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div><span className="text-slate-500">Facture électricité:</span> <span className="font-medium">{selectedLead.facture_electricite || '-'}</span></div>
+                <div><span className="text-slate-500">Facture chauffage:</span> <span className="font-medium">{selectedLead.facture_chauffage || '-'}</span></div>
+              </div>
+            </div>
+
+            {/* Projet */}
+            <div>
+              <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                Projet
+              </h3>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div><span className="text-slate-500">Type projet:</span> <span className="font-medium">{selectedLead.type_projet || '-'}</span></div>
+                <div><span className="text-slate-500">Délai:</span> <span className="font-medium">{selectedLead.delai_projet || '-'}</span></div>
+                <div><span className="text-slate-500">Budget:</span> <span className="font-medium">{selectedLead.budget || '-'}</span></div>
+              </div>
+            </div>
+
+            {/* Tracking */}
+            <div>
+              <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
+                Tracking
+              </h3>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div><span className="text-slate-500">Formulaire:</span> <Badge variant="info">{selectedLead.form_code}</Badge></div>
+                <div><span className="text-slate-500">LP:</span> <span className="font-medium font-mono">{selectedLead.lp_code || '-'}</span></div>
+                <div><span className="text-slate-500">Code liaison:</span> <span className="font-medium font-mono text-xs">{selectedLead.liaison_code || '-'}</span></div>
+                <div><span className="text-slate-500">Source:</span> <span className="font-medium">{selectedLead.source || '-'}</span></div>
+                <div><span className="text-slate-500">UTM Source:</span> <span className="font-medium">{selectedLead.utm_source || '-'}</span></div>
+                <div><span className="text-slate-500">UTM Medium:</span> <span className="font-medium">{selectedLead.utm_medium || '-'}</span></div>
+                <div><span className="text-slate-500">UTM Campaign:</span> <span className="font-medium">{selectedLead.utm_campaign || '-'}</span></div>
+              </div>
+            </div>
+
+            {/* CRM */}
+            <div>
+              <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                CRM
+              </h3>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div><span className="text-slate-500">CRM cible:</span> <span className="font-medium">{selectedLead.target_crm_slug?.toUpperCase() || '-'}</span></div>
+                <div><span className="text-slate-500">Statut:</span> <Badge variant={statusVariant(selectedLead.api_status)}>{selectedLead.api_status}</Badge></div>
+                <div><span className="text-slate-500">Raison routing:</span> <span className="font-medium">{selectedLead.routing_reason || '-'}</span></div>
+                <div><span className="text-slate-500">Envoyé:</span> <span className="font-medium">{selectedLead.sent_to_crm ? 'Oui' : 'Non'}</span></div>
+              </div>
+              {selectedLead.api_response && (
+                <div className="mt-2 p-2 bg-slate-50 rounded text-xs font-mono">
+                  {selectedLead.api_response}
+                </div>
+              )}
+            </div>
+
+            {/* Metadata */}
+            <div className="pt-3 border-t text-xs text-slate-500">
+              <p>ID: {selectedLead.id}</p>
+              <p>Créé le: {new Date(selectedLead.created_at).toLocaleString('fr-FR')}</p>
+              <p>IP: {selectedLead.ip}</p>
+              <p>RGPD: {selectedLead.rgpd_consent ? '✓' : '✗'} | Newsletter: {selectedLead.newsletter ? '✓' : '✗'}</p>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
