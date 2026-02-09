@@ -229,7 +229,26 @@ Ou avec un lien:
     API_URL: "{api_url}",
     FORM_CODE: "{form_code}",       // Code unique de ce formulaire
     LP_CODE: "{lp_code}",           // Code LP par défaut (si liée)
-    LIAISON_CODE: "{liaison_code}"  // Code de liaison LP_FORM
+    LIAISON_CODE: "{liaison_code}", // Code de liaison LP_FORM
+    
+    // ========== ENDPOINTS API ==========
+    ENDPOINTS: {{
+      GET_FORM_CONFIG: "{api_url}/api/forms/public/{form_code}",
+      SUBMIT_LEAD: "{api_url}/api/v1/leads",
+      TRACK_FORM_START: "{api_url}/api/track/form-start"
+    }}
+  }};
+
+  // ========== RÉCUPÉRER CONFIG FORMULAIRE (optionnel) ==========
+  // Exemple: récupérer les départements actifs, product_type, etc.
+  window.getFormConfig = async function() {{
+    try {{
+      var response = await fetch(CONFIG.ENDPOINTS.GET_FORM_CONFIG);
+      return await response.json();
+    }} catch(e) {{
+      console.error("Erreur récupération config:", e);
+      return null;
+    }}
   }};
 
   // ========== RÉCUPÉRER PARAMÈTRES URL ==========
@@ -252,7 +271,7 @@ Ou avec un lien:
     if (formStarted) return; // Éviter les doublons
     formStarted = true;
     
-    fetch(CONFIG.API_URL + "/api/track/form-start", {{
+    fetch(CONFIG.ENDPOINTS.TRACK_FORM_START, {{
       method: "POST",
       headers: {{ "Content-Type": "application/json" }},
       body: JSON.stringify({{
