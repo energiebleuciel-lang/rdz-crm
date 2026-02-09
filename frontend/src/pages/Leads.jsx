@@ -247,9 +247,28 @@ export default function Leads() {
                     {lead.target_crm_slug?.toUpperCase() || '-'}
                   </td>
                   <td className="p-4">
-                    <Badge variant={statusVariant(lead.api_status)}>
-                      {statusLabel(lead.api_status)}
-                    </Badge>
+                    <div className="flex flex-col">
+                      <Badge variant={statusVariant(lead.api_status)}>
+                        {statusLabel(lead.api_status)}
+                      </Badge>
+                      {['failed', 'no_crm'].includes(lead.api_status) && lead.api_response && (
+                        <span className="text-xs text-red-500 mt-1 max-w-[150px] truncate" title={lead.api_response}>
+                          {(() => {
+                            try {
+                              const resp = typeof lead.api_response === 'string' 
+                                ? JSON.parse(lead.api_response.replace(/'/g, '"'))
+                                : lead.api_response;
+                              return resp?.error || resp?.message || lead.api_response;
+                            } catch {
+                              return lead.api_response?.substring?.(0, 50) || 'Erreur';
+                            }
+                          })()}
+                        </span>
+                      )}
+                      {lead.api_status === 'no_crm' && !lead.api_response && (
+                        <span className="text-xs text-slate-500 mt-1">Pas de commande active</span>
+                      )}
+                    </div>
                   </td>
                   <td className="p-4 text-sm text-slate-500">
                     {new Date(lead.created_at).toLocaleDateString('fr-FR')}
