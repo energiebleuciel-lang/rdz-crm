@@ -994,7 +994,9 @@ Tous vos boutons CTA doivent utiliser cette fonction :
 Les visiteurs seront redirigés vers : {form_url}?lp={lp_code}&liaison={liaison_code}
 -->
 
-{legal_banner_html}
+{logos_html}
+
+{legal_buttons_html}
 '''
 
         # Script Form (page séparée)
