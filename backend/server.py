@@ -1237,11 +1237,12 @@ input, select {{ width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #E
         "usage_example": usage_example,
         "aides_financieres": aides_config,
         "logo": {
-            "url": logo_url,
+            "logo_main": logos.get('logo_main', ''),
+            "logo_secondary": logos.get('logo_secondary', ''),
             "account_name": account_name
         },
         "tracking_logic": {
-            "started": "Premier clic sur bouton 'Suivant' ou 'Commencer' (trackFormStart())",
+            "started": "Premier clic sur N'IMPORTE QUEL CTA (trackFormStart()) - ajoutez data-action='start' ou onclick='trackFormStart();'",
             "finished": "Clic sur bouton final après validation téléphone (submitLeadToCRM())"
         },
         "required_fields": ["civilite", "nom", "prenom", "phone", "email", "code_postal", "ville"],
