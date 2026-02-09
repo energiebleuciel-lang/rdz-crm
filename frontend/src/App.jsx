@@ -70,6 +70,7 @@ function AppRoutes() {
       <Route path="/forms" element={<PrivateRoute><Forms /></PrivateRoute>} />
       <Route path="/leads" element={<PrivateRoute><Leads /></PrivateRoute>} />
       <Route path="/commandes" element={<PrivateRoute><Commandes /></PrivateRoute>} />
+      <Route path="/users" element={<PrivateRoute><UsersPage /></PrivateRoute>} />
       <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
       
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
