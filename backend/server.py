@@ -3685,6 +3685,30 @@ app.add_middleware(
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# Scheduler pour les tâches automatiques (emails quotidiens/hebdomadaires)
+try:
+    from scheduler_service import task_scheduler
+    SCHEDULER_AVAILABLE = True
+except ImportError:
+    SCHEDULER_AVAILABLE = False
+    logger.warning("Service de scheduler non disponible")
+
+@app.on_event("startup")
+async def startup_event():
+    """Démarre le scheduler au lancement de l'application"""
+    if SCHEDULER_AVAILABLE:
+        try:
+            task_scheduler.start()
+            logger.info("Scheduler démarré: résumés quotidiens à 10h, hebdomadaires le vendredi")
+        except Exception as e:
+            logger.error(f"Erreur démarrage scheduler: {str(e)}")
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
+    """Arrête le scheduler et ferme la connexion DB"""
+    if SCHEDULER_AVAILABLE:
+        try:
+            task_scheduler.stop()
+        except Exception as e:
+            logger.error(f"Erreur arrêt scheduler: {str(e)}")
     client.close()
