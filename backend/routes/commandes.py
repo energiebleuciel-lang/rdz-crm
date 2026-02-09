@@ -5,7 +5,8 @@ Routes pour les Commandes
 """
 
 from fastapi import APIRouter, Depends, HTTPException
-from config import db, now_iso, require_auth
+from config import db, now_iso
+from routes.auth import get_current_user
 from models import CommandeCreate, CommandeUpdate
 import uuid
 
