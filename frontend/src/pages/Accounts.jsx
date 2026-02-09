@@ -61,6 +61,7 @@ export default function Accounts() {
   const openCreate = () => {
     setEditingAccount(null);
     setShowGtmSection(false);
+    setShowLegalSection(false);
     setForm({
       name: '',
       crm_id: selectedCRM, // Utiliser le CRM sélectionné par défaut
@@ -70,6 +71,9 @@ export default function Accounts() {
       logo_mini_url: '',
       primary_color: '#3B82F6',
       secondary_color: '#1E40AF',
+      cgu_text: '',
+      privacy_policy_text: '',
+      legal_mentions_text: '',
       gtm_head: '',
       gtm_body: '',
       gtm_conversion: '',
@@ -81,6 +85,7 @@ export default function Accounts() {
   const openEdit = (account) => {
     setEditingAccount(account);
     setShowGtmSection(!!account.gtm_head || !!account.gtm_body || !!account.gtm_conversion);
+    setShowLegalSection(!!account.cgu_text || !!account.privacy_policy_text || !!account.legal_mentions_text);
     setForm({
       name: account.name,
       crm_id: account.crm_id,
@@ -90,6 +95,9 @@ export default function Accounts() {
       logo_mini_url: account.logo_mini_url || '',
       primary_color: account.primary_color || '#3B82F6',
       secondary_color: account.secondary_color || '#1E40AF',
+      cgu_text: account.cgu_text || '',
+      privacy_policy_text: account.privacy_policy_text || '',
+      legal_mentions_text: account.legal_mentions_text || '',
       gtm_head: account.gtm_head || '',
       gtm_body: account.gtm_body || '',
       gtm_conversion: account.gtm_conversion || '',
