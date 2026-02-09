@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { Edit, Copy, Trash2, Key, ExternalLink, BarChart3 } from 'lucide-react';
+import { Edit, Copy, Trash2, Key, Code } from 'lucide-react';
 
 // Mapping des types de produits
 const PRODUCT_CONFIG = {
@@ -23,7 +23,8 @@ const FormCard = ({
   onEdit, 
   onDuplicate, 
   onDelete, 
-  onCopyKey 
+  onCopyKey,
+  onViewBrief
 }) => {
   // Protection contre les erreurs - valeurs par défaut
   const stats = form?.stats || { started: 0, completed: 0, conversion_rate: 0 };
