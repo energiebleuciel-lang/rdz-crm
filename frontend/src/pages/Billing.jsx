@@ -1,8 +1,8 @@
 /**
  * Page Facturation Inter-CRM
- * - Vue des leads cross-CRM
+ * - Navigation par semaine (ex: 05/01/2026 → 12/01/2026)
+ * - Bouton "Marquer comme facturé"
  * - Calcul des montants dus entre CRMs
- * - Période: 7 jours ou 1 mois
  */
 
 import { useState, useEffect } from 'react';
@@ -11,7 +11,7 @@ import { useCRM } from '../hooks/useCRM';
 import { 
   DollarSign, TrendingUp, TrendingDown, Calendar, 
   ArrowRight, RefreshCw, Clock, AlertCircle, CheckCircle,
-  FileText, Filter
+  FileText, ChevronLeft, ChevronRight, Check
 } from 'lucide-react';
 import { Card, Badge, Loading, Button } from '../components/UI';
 
@@ -20,21 +20,49 @@ export default function Billing() {
   const { crms } = useCRM();
   const [loading, setLoading] = useState(true);
   const [billing, setBilling] = useState(null);
-  const [period, setPeriod] = useState('month');
   const [verificationStatus, setVerificationStatus] = useState(null);
   const [runningVerification, setRunningVerification] = useState(false);
+  
+  // Navigation par semaine
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const [currentWeek, setCurrentWeek] = useState(1);
+  const [invoiceStatus, setInvoiceStatus] = useState(null);
+  const [savingInvoice, setSavingInvoice] = useState(false);
 
-  // Charger les données de facturation
+  // Initialiser à la semaine actuelle
   useEffect(() => {
-    loadBilling();
-    loadVerificationStatus();
-  }, [period]);
+    loadCurrentWeek();
+  }, []);
 
-  const loadBilling = async () => {
+  useEffect(() => {
+    if (currentYear && currentWeek) {
+      loadWeekBilling();
+    }
+  }, [currentYear, currentWeek]);
+
+  const loadCurrentWeek = async () => {
+    try {
+      const data = await api.get('/api/billing/weeks/current');
+      setCurrentYear(data.year);
+      setCurrentWeek(data.week);
+    } catch (err) {
+      console.error('Erreur chargement semaine:', err);
+      // Fallback: calculer manuellement
+      const now = new Date();
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
+      const days = Math.floor((now - startOfYear) / (24 * 60 * 60 * 1000));
+      setCurrentWeek(Math.ceil((days + startOfYear.getDay() + 1) / 7));
+      setCurrentYear(now.getFullYear());
+    }
+    loadVerificationStatus();
+  };
+
+  const loadWeekBilling = async () => {
     setLoading(true);
     try {
-      const data = await api.get(`/api/billing/cross-crm?period=${period}`);
+      const data = await api.get(`/api/billing/weeks/${currentYear}/${currentWeek}`);
       setBilling(data);
+      setInvoiceStatus(data.invoice_status);
     } catch (err) {
       console.error('Erreur chargement facturation:', err);
     }
@@ -62,6 +90,39 @@ export default function Billing() {
     setRunningVerification(false);
   };
 
+  // Navigation semaines
+  const prevWeek = () => {
+    if (currentWeek > 1) {
+      setCurrentWeek(currentWeek - 1);
+    } else {
+      setCurrentYear(currentYear - 1);
+      setCurrentWeek(52);
+    }
+  };
+
+  const nextWeek = () => {
+    if (currentWeek < 52) {
+      setCurrentWeek(currentWeek + 1);
+    } else {
+      setCurrentYear(currentYear + 1);
+      setCurrentWeek(1);
+    }
+  };
+
+  // Marquer comme facturé
+  const toggleInvoiced = async () => {
+    setSavingInvoice(true);
+    try {
+      const newStatus = !invoiceStatus?.invoiced;
+      await api.post(`/api/billing/weeks/${currentYear}/${currentWeek}/invoice?invoiced=${newStatus}`);
+      setInvoiceStatus({ ...invoiceStatus, invoiced: newStatus });
+      alert(newStatus ? 'Semaine marquée comme facturée ✓' : 'Statut facturé retiré');
+    } catch (err) {
+      alert('Erreur: ' + err.message);
+    }
+    setSavingInvoice(false);
+  };
+
   // Couleur selon le solde
   const getBalanceColor = (net) => {
     if (net > 0) return 'text-green-600';
@@ -75,7 +136,7 @@ export default function Billing() {
     return 'bg-slate-50 border-slate-200';
   };
 
-  if (loading) {
+  if (loading && !billing) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loading text="Chargement de la facturation..." />
@@ -89,42 +150,76 @@ export default function Billing() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Facturation Inter-CRM</h1>
-          <p className="text-slate-500">Vue des leads cross-CRM et des montants</p>
+          <p className="text-slate-500">Vue par semaine - Calcul des montants dus</p>
         </div>
         
-        <div className="flex items-center gap-3">
-          {/* Sélecteur de période */}
-          <div className="flex items-center gap-2 bg-white rounded-lg border border-slate-200 p-1">
-            <button
-              onClick={() => setPeriod('week')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                period === 'week' 
-                  ? 'bg-amber-500 text-white' 
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              7 jours
-            </button>
-            <button
-              onClick={() => setPeriod('month')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                period === 'month' 
-                  ? 'bg-amber-500 text-white' 
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              30 jours
-            </button>
-          </div>
-          
-          <Button onClick={loadBilling} variant="secondary">
-            <RefreshCw className="w-4 h-4" />
-            Actualiser
-          </Button>
-        </div>
+        <Button onClick={loadWeekBilling} variant="secondary">
+          <RefreshCw className="w-4 h-4" />
+          Actualiser
+        </Button>
       </div>
 
-      {/* Stats générales */}
+      {/* Navigation par semaine */}
+      <Card className="p-4">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={prevWeek}
+            className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            <ChevronLeft className="w-5 h-5" />
+            Semaine précédente
+          </button>
+          
+          <div className="text-center">
+            <p className="text-sm text-slate-500">Semaine {currentWeek} / {currentYear}</p>
+            <p className="text-xl font-bold text-slate-800">
+              {billing?.week_info ? (
+                `${billing.week_info.start} → ${billing.week_info.end}`
+              ) : (
+                `Semaine ${currentWeek}`
+              )}
+            </p>
+          </div>
+          
+          <button
+            onClick={nextWeek}
+            className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            Semaine suivante
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
+        
+        {/* Bouton Facturé */}
+        <div className="mt-4 pt-4 border-t flex items-center justify-center gap-4">
+          <button
+            onClick={toggleInvoiced}
+            disabled={savingInvoice}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-colors ${
+              invoiceStatus?.invoiced
+                ? 'bg-green-500 text-white hover:bg-green-600'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            {savingInvoice ? (
+              <RefreshCw className="w-5 h-5 animate-spin" />
+            ) : invoiceStatus?.invoiced ? (
+              <Check className="w-5 h-5" />
+            ) : (
+              <DollarSign className="w-5 h-5" />
+            )}
+            {invoiceStatus?.invoiced ? 'Facturé ✓' : 'Marquer comme facturé'}
+          </button>
+          
+          {invoiceStatus?.invoiced && invoiceStatus?.invoiced_at && (
+            <span className="text-sm text-green-600">
+              Facturé le {new Date(invoiceStatus.invoiced_at).toLocaleDateString('fr-FR')}
+            </span>
+          )}
+        </div>
+      </Card>
+
+      {/* Stats de la semaine */}
       <div className="grid grid-cols-4 gap-4">
         <Card className="p-5">
           <div className="flex items-center justify-between">
@@ -168,16 +263,22 @@ export default function Billing() {
           </div>
         </Card>
 
-        <Card className="p-5">
+        <Card className={`p-5 ${invoiceStatus?.invoiced ? 'bg-green-50 border-green-200' : ''}`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-500">Période</p>
-              <p className="text-lg font-medium text-slate-600">
-                {period === 'week' ? '7 derniers jours' : '30 derniers jours'}
+              <p className="text-sm text-slate-500">Statut</p>
+              <p className={`text-lg font-bold ${invoiceStatus?.invoiced ? 'text-green-600' : 'text-slate-600'}`}>
+                {invoiceStatus?.invoiced ? 'Facturé' : 'Non facturé'}
               </p>
             </div>
-            <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center">
-              <Calendar className="w-6 h-6 text-slate-600" />
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+              invoiceStatus?.invoiced ? 'bg-green-100' : 'bg-slate-100'
+            }`}>
+              {invoiceStatus?.invoiced ? (
+                <Check className="w-6 h-6 text-green-600" />
+              ) : (
+                <Calendar className="w-6 h-6 text-slate-600" />
+              )}
             </div>
           </div>
         </Card>
@@ -237,7 +338,7 @@ export default function Billing() {
           ) : (
             <div className="text-center py-8 text-slate-500">
               <ArrowRight className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p>Aucun lead cross-CRM sur cette période</p>
+              <p>Aucun lead cross-CRM cette semaine</p>
             </div>
           )}
         </div>
