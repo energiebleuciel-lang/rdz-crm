@@ -45,6 +45,7 @@ async def create_account(data: AccountCreate, user: dict = Depends(get_current_u
         "logo_mini_url": data.logo_mini_url or "",
         "primary_color": data.primary_color or "#3B82F6",
         "secondary_color": data.secondary_color or "#1E40AF",
+        "cgu_text": data.cgu_text or "",
         "privacy_policy_text": data.privacy_policy_text or "",
         "legal_mentions_text": data.legal_mentions_text or "",
         "gtm_head": data.gtm_head or "",
