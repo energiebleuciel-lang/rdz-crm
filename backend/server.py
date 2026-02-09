@@ -34,6 +34,46 @@ app = FastAPI(title="CRM Leads System")
 api_router = APIRouter(prefix="/api")
 security = HTTPBearer(auto_error=False)
 
+# ==================== CLÉ API GLOBALE ====================
+# Système d'authentification style Landbot:
+# - 1 clé API globale par compte CRM
+# - Chaque formulaire a un form_id unique
+# - Header: Authorization: Token VOTRE_CLE_GLOBALE
+
+async def get_or_create_global_api_key():
+    """Récupère ou crée la clé API globale du CRM."""
+    config = await db.system_config.find_one({"type": "global_api_key"})
+    if not config:
+        # Créer une nouvelle clé globale
+        api_key = f"crm_{secrets.token_urlsafe(32)}"
+        await db.system_config.insert_one({
+            "type": "global_api_key",
+            "api_key": api_key,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        return api_key
+    return config.get("api_key")
+
+async def verify_global_api_key(authorization: str) -> bool:
+    """Vérifie la clé API globale dans le header Authorization."""
+    if not authorization:
+        return False
+    
+    # Format: "Token abc123..." ou "Bearer abc123..."
+    parts = authorization.split(" ")
+    if len(parts) != 2:
+        return False
+    
+    token_type, token = parts
+    if token_type.lower() not in ["token", "bearer"]:
+        return False
+    
+    config = await db.system_config.find_one({"type": "global_api_key"})
+    if not config:
+        return False
+    
+    return config.get("api_key") == token
+
 # ==================== MODELS ====================
 
 class UserCreate(BaseModel):
