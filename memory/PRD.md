@@ -34,6 +34,16 @@ Nouveaux champs disponibles dans l'API v1/leads:
 - UTM tracking transmis de LP vers Form
 - URL de production: https://rdz-group-ltd.online
 
+### ✅ Navigation par CRM (09/02/2026)
+- Sélecteur de CRM dans la sidebar
+- Dropdown avec couleurs distinctes (MDL=bleu, ZR7=vert)
+- Filtrage automatique de toutes les pages par CRM sélectionné:
+  - Comptes
+  - Landing Pages  
+  - Formulaires
+  - Leads
+- Persistance de la sélection (localStorage)
+
 ### ✅ Configuration GTM dans les Comptes (09/02/2026)
 - Champs GTM HEAD, BODY et Conversion
 - Type de tracking par défaut configurable
