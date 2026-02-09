@@ -85,6 +85,14 @@ const FormCard = ({
           {/* Actions - visibles au hover */}
           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <button 
+              onClick={() => onViewBrief?.(form)}
+              className="p-1.5 hover:bg-purple-50 rounded-lg transition-colors" 
+              title="Voir le brief développeur"
+              data-testid={`brief-form-${form?.id}`}
+            >
+              <Code className="w-4 h-4 text-purple-600" />
+            </button>
+            <button 
               onClick={() => onCopyKey?.(form)}
               className="p-1.5 hover:bg-amber-50 rounded-lg transition-colors" 
               title="Copier form_id"
