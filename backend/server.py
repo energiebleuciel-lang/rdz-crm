@@ -1461,6 +1461,205 @@ async def send_lead_to_crm(lead_doc: dict, api_url: str, api_key: str) -> tuple:
     
     return api_status, api_response
 
+# ==================== NOUVEAU SYSTÈME API v1 (Style Landbot) ====================
+
+class LeadDataV1(BaseModel):
+    """
+    Modèle pour le nouveau système API v1 avec clé globale.
+    L'authentification se fait via le header Authorization.
+    """
+    form_id: str  # Identifiant unique du formulaire
+    phone: str  # Obligatoire
+    nom: Optional[str] = ""
+    prenom: Optional[str] = ""
+    civilite: Optional[str] = ""  # M., Mme
+    email: Optional[str] = ""
+    departement: Optional[str] = ""
+    code_postal: Optional[str] = ""
+    superficie_logement: Optional[str] = ""
+    chauffage_actuel: Optional[str] = ""
+    type_logement: Optional[str] = ""
+    statut_occupant: Optional[str] = ""
+    facture_electricite: Optional[str] = ""
+
+from fastapi import Header
+
+@api_router.post("/v1/leads")
+async def submit_lead_v1(
+    lead: LeadDataV1,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    🚀 NOUVEAU ENDPOINT API v1 - Style Landbot
+    
+    Authentification via header (pas dans le body):
+    - Header: Authorization: Token VOTRE_CLE_API_GLOBALE
+    - Body: { "form_id": "abc123", "phone": "0612345678", ... }
+    
+    La clé API globale est visible dans: Paramètres > Clé API
+    Chaque formulaire a un form_id unique visible dans: Formulaires
+    """
+    # Vérifier l'authentification par header
+    if not authorization:
+        raise HTTPException(
+            status_code=401, 
+            detail={
+                "error": "Clé API manquante",
+                "help": "Ajoutez le header: Authorization: Token VOTRE_CLE_API",
+                "get_key": "Paramètres > Clé API dans le dashboard"
+            }
+        )
+    
+    # Vérifier la clé API globale
+    is_valid = await verify_global_api_key(authorization)
+    if not is_valid:
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "error": "Clé API invalide",
+                "help": "Vérifiez votre clé dans: Paramètres > Clé API"
+            }
+        )
+    
+    # Valider les données
+    phone = lead.phone.strip() if lead.phone else ""
+    if not phone:
+        raise HTTPException(status_code=400, detail="Le numéro de téléphone est requis")
+    
+    form_id = lead.form_id.strip() if lead.form_id else ""
+    if not form_id:
+        raise HTTPException(status_code=400, detail="Le form_id est requis")
+    
+    # Chercher le formulaire par son ID unique
+    form_config = await db.forms.find_one({"id": form_id})
+    if not form_config:
+        # Essayer aussi par code (rétrocompatibilité)
+        form_config = await db.forms.find_one({"code": form_id})
+    
+    if not form_config:
+        raise HTTPException(
+            status_code=404, 
+            detail={
+                "error": "Formulaire non trouvé",
+                "form_id": form_id,
+                "help": "Vérifiez le form_id dans: Formulaires"
+            }
+        )
+    
+    # Vérifier que le formulaire n'est pas archivé
+    if form_config.get("status") == "archived":
+        raise HTTPException(status_code=403, detail="Ce formulaire est archivé et n'accepte plus de leads.")
+    
+    # Le reste du traitement est identique à l'ancien endpoint
+    timestamp = int(datetime.now(timezone.utc).timestamp())
+    
+    account_id = form_config.get("account_id") or form_config.get("sub_account_id")
+    account = await db.accounts.find_one({"id": account_id}) if account_id else None
+    origin_crm = await db.crms.find_one({"id": account.get("crm_id")}) if account else None
+    
+    # Type de produit du formulaire
+    product_type = form_config.get("product_type", "PV").upper()
+    product_map = {"PANNEAUX": "PV", "POMPES": "PAC", "ISOLATION": "ITE", "SOLAIRE": "PV"}
+    product_type = product_map.get(product_type, product_type)
+    
+    departement = lead.departement or ""
+    
+    # Vérifier si ce formulaire est exclu du routage inter-CRM
+    exclude_from_routing = form_config.get("exclude_from_routing", False)
+    
+    # Variables pour le routage
+    target_crm = origin_crm
+    routing_reason = "direct_to_origin"
+    api_url = form_config.get("crm_api_url") or (origin_crm.get("api_url") if origin_crm else None)
+    api_key = form_config.get("crm_api_key") or (origin_crm.get("api_key") if origin_crm else None)
+    can_send = bool(api_url and api_key)
+    
+    # Anti-doublon amélioré
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    existing_lead = await db.leads.find_one({
+        "phone": phone,
+        "product_type": product_type,
+        "created_at": {"$gte": today_start}
+    })
+    
+    if existing_lead:
+        return {
+            "success": False,
+            "status": "duplicate_today",
+            "message": f"Ce numéro a déjà soumis un lead {product_type} aujourd'hui"
+        }
+    
+    # Stocker le lead
+    lead_doc = {
+        "id": str(uuid.uuid4()),
+        "form_id": form_config.get("id", ""),
+        "form_code": form_config.get("code", ""),
+        "lp_code": "",
+        "account_id": account_id or "",
+        "product_type": product_type,
+        "origin_crm_id": origin_crm.get("id") if origin_crm else "",
+        "origin_crm_name": origin_crm.get("name") if origin_crm else "",
+        "origin_crm_slug": origin_crm.get("slug") if origin_crm else "",
+        "target_crm_id": target_crm.get("id") if target_crm else "",
+        "target_crm_name": target_crm.get("name") if target_crm else "",
+        "target_crm_slug": target_crm.get("slug") if target_crm else "",
+        "routing_reason": routing_reason,
+        "phone": phone,
+        "nom": (lead.nom or "").strip(),
+        "prenom": (lead.prenom or "").strip(),
+        "civilite": lead.civilite or "",
+        "email": lead.email or "",
+        "departement": departement,
+        "code_postal": lead.code_postal or "",
+        "superficie_logement": lead.superficie_logement or "",
+        "chauffage_actuel": lead.chauffage_actuel or "",
+        "type_logement": lead.type_logement or "",
+        "statut_occupant": lead.statut_occupant or "",
+        "facture_electricite": lead.facture_electricite or "",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "register_date": timestamp,
+        "api_status": "pending" if can_send else "no_config",
+        "api_url": api_url,
+        "sent_to_crm": False,
+        "retry_count": 0,
+        "api_version": "v1"  # Marqueur pour savoir que c'est via la nouvelle API
+    }
+    
+    await db.leads.insert_one(lead_doc)
+    
+    api_status = "no_config"
+    
+    if can_send:
+        api_status, api_response = await send_lead_to_crm(lead_doc, api_url, api_key)
+        
+        status_detail = f"{api_status}"
+        if api_status == "success":
+            status_detail = f"envoyé/{target_crm.get('slug', 'crm')}"
+        elif api_status == "duplicate":
+            status_detail = f"doublon/{target_crm.get('slug', 'crm')}"
+        
+        await db.leads.update_one(
+            {"id": lead_doc["id"]},
+            {"$set": {
+                "api_status": api_status,
+                "status_detail": status_detail,
+                "api_response": api_response,
+                "sent_to_crm": api_status in ["success", "duplicate"],
+                "sent_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+    
+    return {
+        "success": True if api_status in ["success", "duplicate", "no_config"] else False,
+        "lead_id": lead_doc["id"],
+        "status": api_status,
+        "product_type": product_type,
+        "target_crm": target_crm.get("name") if target_crm else None,
+        "message": "Lead enregistré et envoyé" if api_status == "success" else "Lead enregistré"
+    }
+
+# ==================== ANCIEN ENDPOINT (rétrocompatibilité) ====================
+
 @api_router.post("/submit-lead")
 async def submit_lead(lead: LeadData):
     """
