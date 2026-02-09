@@ -293,8 +293,8 @@ export default function Forms() {
                     <p className="text-xs text-slate-500">Démarrés</p>
                   </div>
                   <div className="text-center p-2 bg-slate-50 rounded-lg">
-                    <p className="text-lg font-bold text-slate-800">{formItem.stats?.finished || 0}</p>
-                    <p className="text-xs text-slate-500">Terminés</p>
+                    <p className="text-lg font-bold text-slate-800">{formItem.stats?.leads || formItem.stats?.finished || 0}</p>
+                    <p className="text-xs text-slate-500">Leads</p>
                   </div>
                   <div className="text-center p-2 bg-slate-50 rounded-lg">
                     <p className="text-lg font-bold text-green-600">{formItem.stats?.conversion || 0}%</p>
