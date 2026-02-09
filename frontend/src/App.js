@@ -1784,70 +1784,181 @@ const FormsPage = () => {
         }}
       />
 
-      {/* Modal Brief Développeur */}
-      <Modal isOpen={showBriefModal} onClose={() => setShowBriefModal(false)} title="📋 Brief Développeur">
-        <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+      {/* Modal Brief Développeur - Version Complète */}
+      <Modal isOpen={showBriefModal} onClose={() => setShowBriefModal(false)} title="📋 Brief Développeur - LP ↔ Formulaire">
+        <div className="space-y-6 max-h-[75vh] overflow-y-auto pr-2">
           {briefData && (
             <>
               {/* Header info */}
-              <div className="bg-blue-50 p-4 rounded-lg">
+              <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-4 rounded-lg text-white">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="font-bold text-blue-800">{briefData.form_name}</h3>
-                    <p className="text-sm text-blue-600">Code: <code className="bg-blue-100 px-2 py-0.5 rounded">{briefData.form_code}</code></p>
-                    <p className="text-sm text-blue-600">Produit: {briefData.product_label}</p>
+                    <h3 className="font-bold text-xl">{briefData.form_name}</h3>
+                    <p className="text-blue-100 mt-1">Code: <code className="bg-blue-700 px-2 py-0.5 rounded">{briefData.form_code}</code></p>
+                    <p className="text-blue-100">Produit: {briefData.product_label}</p>
                   </div>
-                  <span className="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg">{briefData.product_type}</span>
+                  <span className="px-3 py-1 bg-white text-blue-600 text-sm rounded-lg font-bold">{briefData.product_type}</span>
                 </div>
               </div>
 
-              {/* API Info */}
+              {/* Codes de liaison */}
+              <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg">
+                <h4 className="font-bold text-amber-800 mb-2">🔗 Code de Liaison LP ↔ Formulaire</h4>
+                <div className="grid grid-cols-3 gap-2 text-sm">
+                  <div className="bg-white p-2 rounded border">
+                    <span className="text-slate-500">LP Code:</span>
+                    <code className="block font-mono text-amber-700">{briefData.codes?.lp_code || 'LP-XXX'}</code>
+                  </div>
+                  <div className="bg-white p-2 rounded border">
+                    <span className="text-slate-500">Form Code:</span>
+                    <code className="block font-mono text-blue-700">{briefData.codes?.form_code}</code>
+                  </div>
+                  <div className="bg-white p-2 rounded border">
+                    <span className="text-slate-500">Liaison:</span>
+                    <code className="block font-mono text-green-700">{briefData.codes?.liaison_code}</code>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tabs pour les différentes sections */}
+              <div className="border rounded-lg overflow-hidden">
+                <div className="flex border-b bg-slate-50">
+                  <button 
+                    onClick={() => setBriefTab('guide')} 
+                    className={`flex-1 px-4 py-2 text-sm font-medium ${briefTab === 'guide' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-slate-600'}`}
+                  >
+                    📖 Guide
+                  </button>
+                  <button 
+                    onClick={() => setBriefTab('script')} 
+                    className={`flex-1 px-4 py-2 text-sm font-medium ${briefTab === 'script' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-slate-600'}`}
+                  >
+                    📜 Script Complet
+                  </button>
+                  <button 
+                    onClick={() => setBriefTab('lp')} 
+                    className={`flex-1 px-4 py-2 text-sm font-medium ${briefTab === 'lp' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-slate-600'}`}
+                  >
+                    🏠 Script LP Seul
+                  </button>
+                  <button 
+                    onClick={() => setBriefTab('html')} 
+                    className={`flex-1 px-4 py-2 text-sm font-medium ${briefTab === 'html' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-slate-600'}`}
+                  >
+                    💻 Exemple HTML
+                  </button>
+                </div>
+                
+                <div className="p-4 bg-white">
+                  {/* Guide d'utilisation */}
+                  {briefTab === 'guide' && (
+                    <div>
+                      <pre className="bg-slate-900 text-green-400 p-4 rounded text-xs overflow-x-auto whitespace-pre-wrap max-h-96 font-mono">
+                        {briefData.guide_utilisation}
+                      </pre>
+                      <button
+                        onClick={() => { navigator.clipboard.writeText(briefData.guide_utilisation); alert('✅ Guide copié !'); }}
+                        className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                      >
+                        📋 Copier le guide
+                      </button>
+                    </div>
+                  )}
+                  
+                  {/* Script complet */}
+                  {briefTab === 'script' && (
+                    <div>
+                      <p className="text-sm text-slate-600 mb-2">Script à placer dans le &lt;head&gt; de votre page formulaire</p>
+                      <pre className="bg-slate-900 text-green-400 p-4 rounded text-xs overflow-x-auto whitespace-pre-wrap max-h-96 font-mono">
+                        {briefData.script_complet}
+                      </pre>
+                      <button
+                        onClick={() => { navigator.clipboard.writeText(briefData.script_complet); alert('✅ Script copié !'); }}
+                        className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                      >
+                        📋 Copier le script
+                      </button>
+                    </div>
+                  )}
+                  
+                  {/* Script LP seul */}
+                  {briefTab === 'lp' && (
+                    <div>
+                      <p className="text-sm text-slate-600 mb-2">Script pour la LP seule (si LP et Formulaire sur pages différentes)</p>
+                      <pre className="bg-slate-900 text-green-400 p-4 rounded text-xs overflow-x-auto whitespace-pre-wrap max-h-96 font-mono">
+                        {briefData.script_lp_seul}
+                      </pre>
+                      <button
+                        onClick={() => { navigator.clipboard.writeText(briefData.script_lp_seul); alert('✅ Script LP copié !'); }}
+                        className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                      >
+                        📋 Copier le script LP
+                      </button>
+                    </div>
+                  )}
+                  
+                  {/* Exemple HTML */}
+                  {briefTab === 'html' && (
+                    <div>
+                      <p className="text-sm text-slate-600 mb-2">Exemple de page HTML complète avec formulaire multi-étapes</p>
+                      <pre className="bg-slate-900 text-green-400 p-4 rounded text-xs overflow-x-auto whitespace-pre-wrap max-h-96 font-mono">
+                        {briefData.exemple_html}
+                      </pre>
+                      <button
+                        onClick={() => { navigator.clipboard.writeText(briefData.exemple_html); alert('✅ HTML copié !'); }}
+                        className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                      >
+                        📋 Copier le HTML
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Logos */}
               <div className="bg-slate-50 p-4 rounded-lg">
-                <h4 className="font-bold text-slate-800 mb-2">🔗 Endpoint API</h4>
-                <code className="block bg-slate-800 text-green-400 p-3 rounded text-sm overflow-x-auto">
-                  POST {briefData.api_endpoint}
-                </code>
-                <p className="text-xs text-slate-500 mt-2">Header: <code>Authorization: Token {briefData.api_key?.substring(0, 20)}...</code></p>
-                <p className="text-xs text-red-500 mt-1">⚠️ {briefData.api_key_warning}</p>
-              </div>
-
-              {/* Champs requis */}
-              <div>
-                <h4 className="font-bold text-slate-800 mb-2">📝 Champs requis</h4>
-                <div className="flex flex-wrap gap-2">
-                  {briefData.required_fields?.map(f => (
-                    <span key={f} className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded">{f} *</span>
-                  ))}
+                <h4 className="font-bold text-slate-800 mb-3">🖼️ Les 3 Logos</h4>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="text-center">
+                    <p className="text-xs text-slate-500 mb-1">Logo Gauche</p>
+                    {briefData.logos?.logo_left ? (
+                      <img src={briefData.logos.logo_left} alt="Logo gauche" className="h-12 mx-auto rounded" />
+                    ) : (
+                      <div className="h-12 bg-slate-200 rounded flex items-center justify-center text-xs text-slate-400">Non défini</div>
+                    )}
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs text-slate-500 mb-1">Logo Droite</p>
+                    {briefData.logos?.logo_right ? (
+                      <img src={briefData.logos.logo_right} alt="Logo droite" className="h-12 mx-auto rounded" />
+                    ) : (
+                      <div className="h-12 bg-slate-200 rounded flex items-center justify-center text-xs text-slate-400">Non défini</div>
+                    )}
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs text-slate-500 mb-1">Mini Logo</p>
+                    {briefData.logos?.logo_mini ? (
+                      <img src={briefData.logos.logo_mini} alt="Mini logo" className="h-12 mx-auto rounded" />
+                    ) : (
+                      <div className="h-12 bg-slate-200 rounded flex items-center justify-center text-xs text-slate-400">Non défini</div>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Champs optionnels */}
-              <div>
-                <h4 className="font-bold text-slate-800 mb-2">📝 Champs optionnels</h4>
+              {/* Validation téléphone */}
+              <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
+                <h4 className="font-bold text-green-800 mb-2">📞 Validation Téléphone</h4>
                 <div className="flex flex-wrap gap-2">
-                  {briefData.optional_fields?.map(f => (
-                    <span key={f} className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded">{f}</span>
+                  {briefData.phone_validation?.rules?.map((rule, i) => (
+                    <span key={i} className="px-2 py-1 bg-white text-green-700 text-xs rounded border border-green-200">✓ {rule}</span>
                   ))}
                 </div>
               </div>
-
-              {/* Script de tracking */}
-              <div>
-                <h4 className="font-bold text-slate-800 mb-2">📜 Script de Tracking</h4>
-                <p className="text-xs text-slate-500 mb-2">Copiez ce script dans le &lt;head&gt; de votre page HTML</p>
-                <pre className="bg-slate-800 text-green-400 p-3 rounded text-xs overflow-x-auto whitespace-pre-wrap max-h-48">
-                  {briefData.tracking_script}
-                </pre>
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(briefData.tracking_script);
-                    alert('✅ Script copié !');
-                  }}
-                  className="mt-2 px-3 py-1 bg-slate-600 text-white text-sm rounded hover:bg-slate-700"
-                >
-                  📋 Copier le script
-                </button>
-              </div>
+            </>
+          )}
+        </div>
+      </Modal>
 
               {/* Exemple d'utilisation */}
               <div>
