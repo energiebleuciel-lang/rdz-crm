@@ -225,15 +225,23 @@ async def submit_lead_v1(data: LeadSubmit, request: Request, api_key: str = Depe
 async def list_leads(
     form_code: str = None,
     status: str = None,
+    crm_id: str = None,
     limit: int = 100,
     user: dict = Depends(get_current_user)
 ):
-    """Liste les leads avec filtres"""
+    """Liste les leads avec filtres, y compris par CRM"""
     query = {}
     if form_code:
         query["form_code"] = form_code
     if status:
         query["api_status"] = status
+    
+    # Filtrer par CRM via les accounts
+    if crm_id:
+        # Récupérer les IDs des accounts de ce CRM
+        accounts = await db.accounts.find({"crm_id": crm_id}, {"id": 1}).to_list(1000)
+        account_ids = [a["id"] for a in accounts]
+        query["account_id"] = {"$in": account_ids}
     
     leads = await db.leads.find(query, {"_id": 0}).sort("created_at", -1).to_list(limit)
     total = await db.leads.count_documents(query)
