@@ -24,6 +24,7 @@ const FormsGrid = ({
   onDuplicateForm,
   onDeleteForm,
   onCopyFormId,
+  onViewBrief,
   isLoading = false,
 }) => {
   // États locaux - isolés du reste de l'app
