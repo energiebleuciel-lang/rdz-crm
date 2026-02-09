@@ -2883,13 +2883,20 @@ async def submit_lead_v1(
     api_status = "no_config"
     
     if can_send:
-        api_status, api_response = await send_lead_to_crm(lead_doc, api_url, api_key)
+        api_status, api_response, should_queue = await send_lead_to_crm(lead_doc, api_url, api_key)
+        
+        # Si erreur temporaire (CRM down), mettre en file d'attente
+        if should_queue and QUEUE_SERVICE_AVAILABLE:
+            await add_to_queue(db, lead_doc, api_url, api_key, reason="crm_error")
+            api_status = "queued"
         
         status_detail = f"{api_status}"
         if api_status == "success":
             status_detail = f"envoyé/{target_crm.get('slug', 'crm')}"
         elif api_status == "duplicate":
             status_detail = f"doublon/{target_crm.get('slug', 'crm')}"
+        elif api_status == "queued":
+            status_detail = f"en attente/{target_crm.get('slug', 'crm')}"
         
         await db.leads.update_one(
             {"id": lead_doc["id"]},
@@ -2898,17 +2905,17 @@ async def submit_lead_v1(
                 "status_detail": status_detail,
                 "api_response": api_response,
                 "sent_to_crm": api_status in ["success", "duplicate"],
-                "sent_at": datetime.now(timezone.utc).isoformat()
+                "sent_at": datetime.now(timezone.utc).isoformat() if api_status in ["success", "duplicate"] else None
             }}
         )
     
     return {
-        "success": True if api_status in ["success", "duplicate", "no_config"] else False,
+        "success": True if api_status in ["success", "duplicate", "no_config", "queued"] else False,
         "lead_id": lead_doc["id"],
         "status": api_status,
         "product_type": product_type,
         "target_crm": target_crm.get("name") if target_crm else None,
-        "message": "Lead enregistré et envoyé" if api_status == "success" else "Lead enregistré"
+        "message": "Lead enregistré et envoyé" if api_status == "success" else ("Lead mis en file d'attente" if api_status == "queued" else "Lead enregistré")
     }
 
 # ==================== ANCIEN ENDPOINT (rétrocompatibilité) ====================
