@@ -2581,8 +2581,13 @@ async def track_form_start(data: FormStartTrack):
 # ==================== LEAD SUBMISSION ====================
 
 async def send_lead_to_crm(lead_doc: dict, api_url: str, api_key: str) -> tuple:
-    """Helper function to send a lead to external CRM (ZR7/MDL)
-    Format conforme à la doc API ZR7/MDL
+    """
+    Envoie un lead vers un CRM externe (ZR7/MDL).
+    
+    Retourne un tuple (api_status, api_response, should_queue):
+    - api_status: "success", "duplicate", "failed", "timeout", "connection_error"
+    - api_response: Réponse de l'API ou message d'erreur
+    - should_queue: True si le lead doit être mis en file d'attente (erreur temporaire)
     """
     # Build custom_fields avec tous les champs de la doc
     custom_fields = {}
@@ -2621,6 +2626,7 @@ async def send_lead_to_crm(lead_doc: dict, api_url: str, api_key: str) -> tuple:
     
     api_status = "failed"
     api_response = None
+    should_queue = False  # Indique si on doit mettre en queue (erreur temporaire)
     
     try:
         async with httpx.AsyncClient(timeout=30.0) as http_client:
@@ -2634,11 +2640,25 @@ async def send_lead_to_crm(lead_doc: dict, api_url: str, api_key: str) -> tuple:
             
             if response.status_code == 201:
                 api_status = "success"
+                # Mettre à jour la santé du CRM
+                if QUEUE_SERVICE_AVAILABLE:
+                    crm_slug = lead_doc.get("target_crm_slug", "")
+                    if crm_slug:
+                        update_crm_health(crm_slug, True)
             elif "doublon" in str(data.get("message", "")).lower():
                 api_status = "duplicate"
+            elif response.status_code >= 500:
+                # Erreur serveur = CRM down = mettre en queue
+                api_status = "server_error"
+                should_queue = True
+                logger.warning(f"CRM server error {response.status_code}: {api_url}")
+                if QUEUE_SERVICE_AVAILABLE:
+                    crm_slug = lead_doc.get("target_crm_slug", "")
+                    if crm_slug:
+                        update_crm_health(crm_slug, False)
             else:
                 api_status = "failed"
-                # Envoi d'alerte email isolé et non-bloquant
+                # Erreur 4xx = erreur de données, pas besoin de queue
                 try:
                     if EMAIL_SERVICE_AVAILABLE:
                         email_service.send_critical_alert(
@@ -2652,10 +2672,31 @@ async def send_lead_to_crm(lead_doc: dict, api_url: str, api_key: str) -> tuple:
                         )
                 except Exception as email_err:
                     logger.warning(f"Email alert silently failed: {email_err}")
+                    
+    except httpx.TimeoutException as e:
+        api_status = "timeout"
+        api_response = f"Timeout après 30s: {str(e)}"
+        should_queue = True  # Timeout = problème temporaire = queue
+        logger.warning(f"CRM timeout: {api_url}")
+        if QUEUE_SERVICE_AVAILABLE:
+            crm_slug = lead_doc.get("target_crm_slug", "")
+            if crm_slug:
+                update_crm_health(crm_slug, False)
+                
+    except httpx.ConnectError as e:
+        api_status = "connection_error"
+        api_response = f"Erreur de connexion: {str(e)}"
+        should_queue = True  # Erreur connexion = CRM down = queue
+        logger.warning(f"CRM connection error: {api_url}")
+        if QUEUE_SERVICE_AVAILABLE:
+            crm_slug = lead_doc.get("target_crm_slug", "")
+            if crm_slug:
+                update_crm_health(crm_slug, False)
+                
     except Exception as e:
         api_status = "failed"
         api_response = str(e)
-        # Alerte email isolée et non-bloquante
+        should_queue = True  # Erreur inconnue = on tente quand même la queue
         try:
             if EMAIL_SERVICE_AVAILABLE:
                 email_service.send_critical_alert(
@@ -2668,6 +2709,8 @@ async def send_lead_to_crm(lead_doc: dict, api_url: str, api_key: str) -> tuple:
                 )
         except Exception as email_err:
             logger.warning(f"Email alert silently failed: {email_err}")
+    
+    return api_status, api_response, should_queue
     
     return api_status, api_response
 
