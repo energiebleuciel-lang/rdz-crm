@@ -282,6 +282,7 @@ const FormsGrid = ({
               onDuplicate={handleDuplicate}
               onDelete={handleDelete}
               onCopyKey={handleCopyKey}
+              onViewBrief={handleViewBrief}
             />
           ))}
         </div>
