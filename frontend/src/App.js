@@ -4548,13 +4548,44 @@ const SettingsPage = () => {
   const [commandesData, setCommandesData] = useState({ PAC: [], PV: [], ITE: [] });
   const [leadPrices, setLeadPrices] = useState({ PAC: 0, PV: 0, ITE: 0 });
   const [routingLimits, setRoutingLimits] = useState({ PAC: 0, PV: 0, ITE: 0 });
+  const [globalApiKey, setGlobalApiKey] = useState(null);
+  const [showApiKey, setShowApiKey] = useState(false);
 
   // Liste des départements 01-95
   const DEPARTMENTS = Array.from({ length: 95 }, (_, i) => String(i + 1).padStart(2, '0'));
 
   useEffect(() => {
     loadCRMs();
+    loadGlobalApiKey();
   }, []);
+
+  const loadGlobalApiKey = async () => {
+    try {
+      const res = await authFetch(`${API}/api/settings/api-key`);
+      if (res.ok) {
+        const data = await res.json();
+        setGlobalApiKey(data.api_key);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const regenerateApiKey = async () => {
+    if (!window.confirm('⚠️ ATTENTION: Régénérer la clé va INVALIDER l\'ancienne clé.\n\nTous vos formulaires existants utilisant l\'ancienne clé cesseront de fonctionner.\n\nÊtes-vous sûr?')) return;
+    
+    try {
+      const res = await authFetch(`${API}/api/settings/api-key/regenerate`, { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        setGlobalApiKey(data.api_key);
+        alert('✅ Nouvelle clé API générée. Mettez à jour vos formulaires!');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Erreur lors de la régénération');
+    }
+  };
 
   const loadCRMs = async () => {
     try {
