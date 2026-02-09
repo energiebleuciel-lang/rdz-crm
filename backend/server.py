@@ -3430,6 +3430,159 @@ async def get_archived_leads(
     
     return {"leads": leads, "count": len(leads), "total": total}
 
+# ==================== FILE D'ATTENTE DES LEADS ====================
+
+@api_router.get("/queue/stats")
+async def get_queue_stats(user: dict = Depends(get_current_user)):
+    """
+    Statistiques de la file d'attente des leads.
+    Affiche le nombre de leads en attente, traités, échoués, etc.
+    """
+    stats = {
+        "pending": await db.lead_queue.count_documents({"status": "pending"}),
+        "processing": await db.lead_queue.count_documents({"status": "processing"}),
+        "success": await db.lead_queue.count_documents({"status": "success"}),
+        "failed": await db.lead_queue.count_documents({"status": "failed"}),
+        "exhausted": await db.lead_queue.count_documents({"status": "exhausted"}),
+        "total": await db.lead_queue.count_documents({})
+    }
+    
+    # Stats des dernières 24h
+    yesterday = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+    stats["last_24h"] = {
+        "added": await db.lead_queue.count_documents({"created_at": {"$gte": yesterday}}),
+        "completed": await db.lead_queue.count_documents({"completed_at": {"$gte": yesterday}, "status": "success"})
+    }
+    
+    # État de santé des CRM
+    if QUEUE_SERVICE_AVAILABLE:
+        stats["crm_health"] = crm_health_status
+    else:
+        stats["crm_health"] = {"service_unavailable": True}
+    
+    # Prochains retries
+    now = datetime.now(timezone.utc).isoformat()
+    stats["pending_retries"] = await db.lead_queue.count_documents({
+        "status": "pending",
+        "next_retry_at": {"$lte": now}
+    })
+    
+    return stats
+
+@api_router.get("/queue/items")
+async def get_queue_items(
+    status: Optional[str] = None,
+    limit: int = 50,
+    user: dict = Depends(get_current_user)
+):
+    """
+    Liste les éléments de la file d'attente.
+    """
+    query = {}
+    if status:
+        query["status"] = status
+    
+    items = await db.lead_queue.find(query, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    total = await db.lead_queue.count_documents(query)
+    
+    # Enrichir avec des infos du lead
+    for item in items:
+        lead_data = item.get("lead_data", {})
+        item["phone_last4"] = lead_data.get("phone", "")[-4:] if lead_data.get("phone") else "N/A"
+        item["form_code"] = lead_data.get("form_code", "N/A")
+        item["target_crm"] = lead_data.get("target_crm_slug", "N/A")
+        # Ne pas exposer la clé API complète
+        if "api_key" in item:
+            item["api_key"] = "****" + item["api_key"][-4:] if item["api_key"] else ""
+    
+    return {"items": items, "count": len(items), "total": total}
+
+@api_router.post("/queue/process")
+async def process_queue_now(user: dict = Depends(require_admin)):
+    """
+    Déclenche manuellement le traitement de la file d'attente.
+    Utile pour tester ou forcer le traitement après un incident résolu.
+    """
+    if not QUEUE_SERVICE_AVAILABLE:
+        raise HTTPException(status_code=500, detail="Service de file d'attente non disponible")
+    
+    results = await run_queue_processor(db)
+    
+    await log_activity(user["id"], user["email"], "process_queue", "queue", "", 
+                      f"Traitement manuel: {results['processed']} traités, {results['success']} réussis")
+    
+    return {
+        "success": True,
+        "message": "Traitement de la file d'attente effectué",
+        "results": results
+    }
+
+@api_router.post("/queue/clear-completed")
+async def clear_completed_queue(days: int = 7, user: dict = Depends(require_admin)):
+    """
+    Nettoie les éléments terminés (success/failed) de plus de X jours.
+    """
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    
+    result = await db.lead_queue.delete_many({
+        "status": {"$in": ["success", "failed"]},
+        "created_at": {"$lt": cutoff}
+    })
+    
+    await log_activity(user["id"], user["email"], "clear_queue", "queue", "", 
+                      f"{result.deleted_count} éléments supprimés (> {days} jours)")
+    
+    return {
+        "success": True,
+        "deleted_count": result.deleted_count,
+        "cutoff_date": cutoff
+    }
+
+@api_router.post("/queue/retry-exhausted")
+async def retry_exhausted_leads(user: dict = Depends(require_admin)):
+    """
+    Réinitialise les leads "exhausted" (qui ont épuisé leurs tentatives)
+    pour leur donner une nouvelle chance.
+    """
+    result = await db.lead_queue.update_many(
+        {"status": "exhausted"},
+        {"$set": {
+            "status": "pending",
+            "retry_count": 0,
+            "next_retry_at": datetime.now(timezone.utc).isoformat(),
+            "reset_at": datetime.now(timezone.utc).isoformat(),
+            "reset_by": user["email"]
+        }}
+    )
+    
+    await log_activity(user["id"], user["email"], "reset_exhausted", "queue", "", 
+                      f"{result.modified_count} leads réinitialisés")
+    
+    return {
+        "success": True,
+        "reset_count": result.modified_count
+    }
+
+@api_router.delete("/queue/item/{item_id}")
+async def delete_queue_item(item_id: str, user: dict = Depends(require_admin)):
+    """
+    Supprime un élément spécifique de la file d'attente.
+    Le lead original reste dans la base.
+    """
+    item = await db.lead_queue.find_one({"id": item_id})
+    if not item:
+        raise HTTPException(status_code=404, detail="Élément non trouvé dans la file d'attente")
+    
+    await db.lead_queue.delete_one({"id": item_id})
+    
+    # Mettre à jour le statut du lead
+    await db.leads.update_one(
+        {"id": item.get("lead_id")},
+        {"$set": {"api_status": "queue_removed", "queue_removed_by": user["email"]}}
+    )
+    
+    return {"success": True, "message": "Élément supprimé de la file d'attente"}
+
 # Modèle pour marquer une période comme facturée
 class BillingPeriodCreate(BaseModel):
     year: int
