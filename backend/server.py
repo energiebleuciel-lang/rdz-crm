@@ -369,6 +369,169 @@ async def log_activity(user_id: str, user_email: str, action: str, entity_type: 
         "created_at": datetime.now(timezone.utc).isoformat()
     })
 
+async def log_alert(level: str, category: str, message: str, details: dict = None):
+    """
+    Enregistre une alerte dans la base de données pour le monitoring.
+    Niveaux: INFO, WARNING, ERROR, CRITICAL
+    """
+    alert = {
+        "id": str(uuid.uuid4()),
+        "level": level,
+        "category": category,
+        "message": message,
+        "details": details or {},
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "resolved": False
+    }
+    await db.system_alerts.insert_one(alert)
+    
+    # Log aussi dans la console pour surveillance immédiate
+    if level in ["ERROR", "CRITICAL"]:
+        logger.error(f"[{category}] {message} - {details}")
+    elif level == "WARNING":
+        logger.warning(f"[{category}] {message}")
+    else:
+        logger.info(f"[{category}] {message}")
+
+# ==================== SYSTÈME DE SANTÉ & MONITORING ====================
+
+@api_router.get("/health")
+async def health_check():
+    """
+    Vérification de santé du système - À appeler après chaque mise à jour.
+    Retourne l'état de tous les composants critiques.
+    """
+    health = {
+        "status": "healthy",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "checks": {}
+    }
+    errors = []
+    
+    try:
+        # Test connexion MongoDB
+        await db.command("ping")
+        health["checks"]["database"] = {"status": "ok", "message": "MongoDB connecté"}
+    except Exception as e:
+        health["checks"]["database"] = {"status": "error", "message": str(e)}
+        errors.append("database")
+    
+    try:
+        # Vérifier les collections critiques
+        leads_count = await db.leads.count_documents({})
+        forms_count = await db.forms.count_documents({})
+        users_count = await db.users.count_documents({})
+        health["checks"]["collections"] = {
+            "status": "ok",
+            "leads": leads_count,
+            "forms": forms_count,
+            "users": users_count
+        }
+    except Exception as e:
+        health["checks"]["collections"] = {"status": "error", "message": str(e)}
+        errors.append("collections")
+    
+    try:
+        # Vérifier les stats de leads (cohérence)
+        leads_success = await db.leads.count_documents({"api_status": "success"})
+        leads_failed = await db.leads.count_documents({"api_status": "failed"})
+        leads_pending = await db.leads.count_documents({"api_status": "pending"})
+        leads_total = leads_success + leads_failed + leads_pending
+        health["checks"]["leads_stats"] = {
+            "status": "ok",
+            "total": leads_count,
+            "success": leads_success,
+            "failed": leads_failed,
+            "pending": leads_pending,
+            "coherent": leads_total <= leads_count
+        }
+    except Exception as e:
+        health["checks"]["leads_stats"] = {"status": "error", "message": str(e)}
+        errors.append("leads_stats")
+    
+    try:
+        # Vérifier les alertes non résolues
+        unresolved_alerts = await db.system_alerts.count_documents({"resolved": False, "level": {"$in": ["ERROR", "CRITICAL"]}})
+        health["checks"]["alerts"] = {
+            "status": "warning" if unresolved_alerts > 0 else "ok",
+            "unresolved_critical": unresolved_alerts
+        }
+    except Exception as e:
+        health["checks"]["alerts"] = {"status": "error", "message": str(e)}
+    
+    # Statut global
+    if errors:
+        health["status"] = "unhealthy"
+        health["errors"] = errors
+        await log_alert("CRITICAL", "HEALTH_CHECK", f"Système en erreur: {', '.join(errors)}")
+    
+    return health
+
+@api_router.get("/health/stats")
+async def health_stats(user: dict = Depends(get_current_user)):
+    """
+    Statistiques détaillées du système pour l'admin.
+    """
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Accès admin requis")
+    
+    stats = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "leads": {
+            "total": await db.leads.count_documents({}),
+            "today": await db.leads.count_documents({
+                "created_at": {"$gte": datetime.now(timezone.utc).replace(hour=0, minute=0, second=0).isoformat()}
+            }),
+            "success": await db.leads.count_documents({"api_status": "success"}),
+            "failed": await db.leads.count_documents({"api_status": "failed"}),
+            "by_product": {
+                "PV": await db.leads.count_documents({"product_type": "PV"}),
+                "PAC": await db.leads.count_documents({"product_type": "PAC"}),
+                "ITE": await db.leads.count_documents({"product_type": "ITE"})
+            }
+        },
+        "forms": {
+            "total": await db.forms.count_documents({}),
+            "active": await db.forms.count_documents({"status": "active"}),
+            "archived": await db.forms.count_documents({"status": "archived"})
+        },
+        "alerts": {
+            "unresolved": await db.system_alerts.count_documents({"resolved": False}),
+            "critical": await db.system_alerts.count_documents({"resolved": False, "level": "CRITICAL"}),
+            "errors": await db.system_alerts.count_documents({"resolved": False, "level": "ERROR"})
+        }
+    }
+    return stats
+
+@api_router.get("/alerts")
+async def get_alerts(resolved: bool = False, limit: int = 50, user: dict = Depends(get_current_user)):
+    """
+    Récupère les alertes système.
+    """
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Accès admin requis")
+    
+    query = {"resolved": resolved}
+    alerts = await db.system_alerts.find(query, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    return {"alerts": alerts, "count": len(alerts)}
+
+@api_router.put("/alerts/{alert_id}/resolve")
+async def resolve_alert(alert_id: str, user: dict = Depends(get_current_user)):
+    """
+    Marque une alerte comme résolue.
+    """
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Accès admin requis")
+    
+    result = await db.system_alerts.update_one(
+        {"id": alert_id},
+        {"$set": {"resolved": True, "resolved_at": datetime.now(timezone.utc).isoformat(), "resolved_by": user["id"]}}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Alerte non trouvée")
+    
+    return {"success": True}
+
 # ==================== AUTH ENDPOINTS ====================
 
 @api_router.post("/auth/register")
