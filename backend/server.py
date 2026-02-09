@@ -543,6 +543,140 @@ async def health_stats(user: dict = Depends(get_current_user)):
     }
     return stats
 
+# ==================== SYSTÈME DE BACKUP/VERSIONS ====================
+
+@api_router.post("/backup/create")
+async def create_backup(user: dict = Depends(get_current_user)):
+    """
+    Crée une sauvegarde de la base de données.
+    Sauvegarde: leads, forms, accounts, crms, users, lps
+    """
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Accès admin requis")
+    
+    backup_id = str(uuid.uuid4())[:8]
+    timestamp = datetime.now(timezone.utc).isoformat()
+    
+    # Collections à sauvegarder
+    collections_to_backup = ["leads", "forms", "accounts", "crms", "users", "lps", "system_config"]
+    
+    backup_data = {
+        "id": backup_id,
+        "created_at": timestamp,
+        "created_by": user["email"],
+        "version": "2.0.0",
+        "collections": {}
+    }
+    
+    for coll_name in collections_to_backup:
+        try:
+            coll = db[coll_name]
+            docs = await coll.find({}, {"_id": 0}).to_list(10000)
+            backup_data["collections"][coll_name] = {
+                "count": len(docs),
+                "data": docs
+            }
+        except Exception as e:
+            backup_data["collections"][coll_name] = {"error": str(e)}
+    
+    # Sauvegarder le backup
+    await db.backups.insert_one(backup_data)
+    
+    await log_alert("INFO", "BACKUP_CREATED", f"Backup {backup_id} créé par {user['email']}", {
+        "backup_id": backup_id,
+        "collections": list(backup_data["collections"].keys())
+    })
+    
+    return {
+        "success": True,
+        "backup_id": backup_id,
+        "timestamp": timestamp,
+        "collections_saved": {k: v.get("count", 0) for k, v in backup_data["collections"].items() if "count" in v}
+    }
+
+@api_router.get("/backup/list")
+async def list_backups(user: dict = Depends(get_current_user)):
+    """Liste tous les backups disponibles."""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Accès admin requis")
+    
+    backups = await db.backups.find({}, {"_id": 0, "collections": 0}).sort("created_at", -1).to_list(50)
+    return {"backups": backups}
+
+@api_router.post("/backup/restore/{backup_id}")
+async def restore_backup(backup_id: str, confirm: bool = False, user: dict = Depends(get_current_user)):
+    """
+    Restaure un backup. ATTENTION: Écrase les données actuelles!
+    Nécessite confirm=true pour exécuter.
+    """
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Accès admin requis")
+    
+    backup = await db.backups.find_one({"id": backup_id})
+    if not backup:
+        raise HTTPException(status_code=404, detail="Backup non trouvé")
+    
+    if not confirm:
+        # Afficher ce qui sera restauré
+        summary = {k: v.get("count", 0) for k, v in backup.get("collections", {}).items() if isinstance(v, dict) and "count" in v}
+        return {
+            "warning": "⚠️ ATTENTION: Cette action va REMPLACER toutes les données actuelles!",
+            "backup_id": backup_id,
+            "backup_date": backup.get("created_at"),
+            "will_restore": summary,
+            "to_confirm": f"Ajoutez ?confirm=true pour confirmer la restauration"
+        }
+    
+    # Créer un backup de sécurité avant restauration
+    safety_backup_id = f"pre_restore_{str(uuid.uuid4())[:8]}"
+    
+    # Restaurer chaque collection
+    restored = {}
+    for coll_name, coll_data in backup.get("collections", {}).items():
+        if not isinstance(coll_data, dict) or "data" not in coll_data:
+            continue
+        
+        try:
+            coll = db[coll_name]
+            # Supprimer les données actuelles
+            await coll.delete_many({})
+            # Insérer les données du backup
+            if coll_data["data"]:
+                await coll.insert_many(coll_data["data"])
+            restored[coll_name] = len(coll_data["data"])
+        except Exception as e:
+            restored[coll_name] = f"Erreur: {str(e)}"
+    
+    await log_alert("WARNING", "BACKUP_RESTORED", f"Backup {backup_id} restauré par {user['email']}", {
+        "backup_id": backup_id,
+        "restored_collections": restored
+    })
+    
+    return {
+        "success": True,
+        "message": "Backup restauré avec succès",
+        "backup_id": backup_id,
+        "restored": restored
+    }
+
+@api_router.get("/system/version")
+async def get_system_version():
+    """Retourne la version actuelle du système."""
+    return {
+        "version": "2.0.0",
+        "name": "CRM Leads - API v1",
+        "features": [
+            "Clé API globale (style Landbot)",
+            "Protection des leads (jamais supprimés)",
+            "Monitoring et alertes",
+            "Backup/Restore"
+        ],
+        "api_endpoints": {
+            "v1": "/api/v1/leads (nouveau, recommandé)",
+            "legacy": "/api/submit-lead (ancien, toujours supporté)"
+        }
+    }
+
 @api_router.get("/alerts")
 async def get_alerts(resolved: bool = False, limit: int = 50, user: dict = Depends(get_current_user)):
     """
