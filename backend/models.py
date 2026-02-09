@@ -43,10 +43,11 @@ class AccountCreate(BaseModel):
     # Textes légaux
     privacy_policy_text: Optional[str] = ""
     legal_mentions_text: Optional[str] = ""
-    # GTM
+    # GTM & Tracking
     gtm_head: Optional[str] = ""
     gtm_body: Optional[str] = ""
     gtm_conversion: Optional[str] = ""
+    default_tracking_type: Optional[str] = "redirect"  # redirect, gtm, both
     notes: Optional[str] = ""
 
 class AccountUpdate(BaseModel):
@@ -62,6 +63,7 @@ class AccountUpdate(BaseModel):
     gtm_head: Optional[str] = None
     gtm_body: Optional[str] = None
     gtm_conversion: Optional[str] = None
+    default_tracking_type: Optional[str] = None
     notes: Optional[str] = None
 
 
