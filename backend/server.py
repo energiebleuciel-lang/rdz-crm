@@ -13,9 +13,17 @@ from datetime import datetime, timezone, timedelta
 import httpx
 import hashlib
 import secrets
+import traceback
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
+
+# Configuration du logging pour les alertes
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger("crm_system")
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
