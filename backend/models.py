@@ -93,6 +93,7 @@ class AccountUpdate(BaseModel):
     logo_mini_url: Optional[str] = None
     primary_color: Optional[str] = None
     secondary_color: Optional[str] = None
+    cgu_text: Optional[str] = None
     privacy_policy_text: Optional[str] = None
     legal_mentions_text: Optional[str] = None
     gtm_head: Optional[str] = None
