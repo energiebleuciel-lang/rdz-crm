@@ -6,10 +6,214 @@ from fastapi import APIRouter, HTTPException, Depends
 import uuid
 
 from models import FormCreate, FormUpdate
-from config import db, now_iso, generate_form_code
+from config import db, now_iso, generate_form_code, FRANCE_METRO_DEPTS
 from routes.auth import get_current_user
 
 router = APIRouter(prefix="/forms", tags=["Formulaires"])
+
+
+# ==================== ENDPOINTS PUBLICS (sans auth) ====================
+
+@router.get("/public/{form_code}")
+async def get_form_public(form_code: str):
+    """
+    Endpoint PUBLIC pour récupérer un formulaire par son code.
+    Utilisé par les développeurs pour récupérer la config du form.
+    URL: /api/forms/public/{form_code}
+    """
+    form = await db.forms.find_one(
+        {"$or": [{"code": form_code}, {"id": form_code}]},
+        {"_id": 0}
+    )
+    if not form:
+        raise HTTPException(status_code=404, detail="Formulaire non trouvé")
+    
+    # Récupérer infos compte (logos, couleurs)
+    account = await db.accounts.find_one({"id": form.get("account_id")}, {"_id": 0})
+    
+    # Récupérer LP liée si présente
+    lp = None
+    if form.get("lp_id"):
+        lp = await db.lps.find_one({"id": form["lp_id"]}, {"_id": 0})
+    
+    return {
+        "form": {
+            "id": form.get("id"),
+            "code": form.get("code"),
+            "name": form.get("name"),
+            "url": form.get("url"),
+            "product_type": form.get("product_type"),
+            "tracking_type": form.get("tracking_type"),
+            "redirect_url": form.get("redirect_url")
+        },
+        "lp": {
+            "id": lp.get("id") if lp else None,
+            "code": lp.get("code") if lp else None,
+            "url": lp.get("url") if lp else None
+        } if lp else None,
+        "account": {
+            "name": account.get("name") if account else None,
+            "logos": {
+                "main": account.get("logo_main_url") if account else None,
+                "secondary": account.get("logo_secondary_url") if account else None,
+                "mini": account.get("logo_mini_url") if account else None
+            },
+            "colors": {
+                "primary": account.get("primary_color") if account else "#3B82F6",
+                "secondary": account.get("secondary_color") if account else "#1E40AF"
+            }
+        } if account else None
+    }
+
+
+@router.get("/public/by-lp/{lp_code}")
+async def get_forms_by_lp(lp_code: str):
+    """
+    Endpoint PUBLIC pour récupérer les formulaires liés à une LP.
+    URL: /api/forms/public/by-lp/{lp_code}
+    """
+    lp = await db.lps.find_one({"code": lp_code}, {"_id": 0})
+    if not lp:
+        raise HTTPException(status_code=404, detail="LP non trouvée")
+    
+    forms = await db.forms.find(
+        {"lp_id": lp.get("id"), "status": "active"},
+        {"_id": 0}
+    ).to_list(50)
+    
+    return {
+        "lp": {
+            "id": lp.get("id"),
+            "code": lp.get("code"),
+            "url": lp.get("url")
+        },
+        "forms": [{
+            "id": f.get("id"),
+            "code": f.get("code"),
+            "name": f.get("name"),
+            "url": f.get("url"),
+            "product_type": f.get("product_type")
+        } for f in forms]
+    }
+
+
+# ==================== ENDPOINTS CONFIG ====================
+
+@router.get("/config/departements")
+async def get_departements():
+    """
+    Retourne la liste des départements France métropolitaine (01-95 + 2A, 2B).
+    Utilisé pour les sélecteurs de départements dans les formulaires.
+    """
+    departements = [
+        {"code": "01", "nom": "Ain"},
+        {"code": "02", "nom": "Aisne"},
+        {"code": "03", "nom": "Allier"},
+        {"code": "04", "nom": "Alpes-de-Haute-Provence"},
+        {"code": "05", "nom": "Hautes-Alpes"},
+        {"code": "06", "nom": "Alpes-Maritimes"},
+        {"code": "07", "nom": "Ardèche"},
+        {"code": "08", "nom": "Ardennes"},
+        {"code": "09", "nom": "Ariège"},
+        {"code": "10", "nom": "Aube"},
+        {"code": "11", "nom": "Aude"},
+        {"code": "12", "nom": "Aveyron"},
+        {"code": "13", "nom": "Bouches-du-Rhône"},
+        {"code": "14", "nom": "Calvados"},
+        {"code": "15", "nom": "Cantal"},
+        {"code": "16", "nom": "Charente"},
+        {"code": "17", "nom": "Charente-Maritime"},
+        {"code": "18", "nom": "Cher"},
+        {"code": "19", "nom": "Corrèze"},
+        {"code": "2A", "nom": "Corse-du-Sud"},
+        {"code": "2B", "nom": "Haute-Corse"},
+        {"code": "21", "nom": "Côte-d'Or"},
+        {"code": "22", "nom": "Côtes-d'Armor"},
+        {"code": "23", "nom": "Creuse"},
+        {"code": "24", "nom": "Dordogne"},
+        {"code": "25", "nom": "Doubs"},
+        {"code": "26", "nom": "Drôme"},
+        {"code": "27", "nom": "Eure"},
+        {"code": "28", "nom": "Eure-et-Loir"},
+        {"code": "29", "nom": "Finistère"},
+        {"code": "30", "nom": "Gard"},
+        {"code": "31", "nom": "Haute-Garonne"},
+        {"code": "32", "nom": "Gers"},
+        {"code": "33", "nom": "Gironde"},
+        {"code": "34", "nom": "Hérault"},
+        {"code": "35", "nom": "Ille-et-Vilaine"},
+        {"code": "36", "nom": "Indre"},
+        {"code": "37", "nom": "Indre-et-Loire"},
+        {"code": "38", "nom": "Isère"},
+        {"code": "39", "nom": "Jura"},
+        {"code": "40", "nom": "Landes"},
+        {"code": "41", "nom": "Loir-et-Cher"},
+        {"code": "42", "nom": "Loire"},
+        {"code": "43", "nom": "Haute-Loire"},
+        {"code": "44", "nom": "Loire-Atlantique"},
+        {"code": "45", "nom": "Loiret"},
+        {"code": "46", "nom": "Lot"},
+        {"code": "47", "nom": "Lot-et-Garonne"},
+        {"code": "48", "nom": "Lozère"},
+        {"code": "49", "nom": "Maine-et-Loire"},
+        {"code": "50", "nom": "Manche"},
+        {"code": "51", "nom": "Marne"},
+        {"code": "52", "nom": "Haute-Marne"},
+        {"code": "53", "nom": "Mayenne"},
+        {"code": "54", "nom": "Meurthe-et-Moselle"},
+        {"code": "55", "nom": "Meuse"},
+        {"code": "56", "nom": "Morbihan"},
+        {"code": "57", "nom": "Moselle"},
+        {"code": "58", "nom": "Nièvre"},
+        {"code": "59", "nom": "Nord"},
+        {"code": "60", "nom": "Oise"},
+        {"code": "61", "nom": "Orne"},
+        {"code": "62", "nom": "Pas-de-Calais"},
+        {"code": "63", "nom": "Puy-de-Dôme"},
+        {"code": "64", "nom": "Pyrénées-Atlantiques"},
+        {"code": "65", "nom": "Hautes-Pyrénées"},
+        {"code": "66", "nom": "Pyrénées-Orientales"},
+        {"code": "67", "nom": "Bas-Rhin"},
+        {"code": "68", "nom": "Haut-Rhin"},
+        {"code": "69", "nom": "Rhône"},
+        {"code": "70", "nom": "Haute-Saône"},
+        {"code": "71", "nom": "Saône-et-Loire"},
+        {"code": "72", "nom": "Sarthe"},
+        {"code": "73", "nom": "Savoie"},
+        {"code": "74", "nom": "Haute-Savoie"},
+        {"code": "75", "nom": "Paris"},
+        {"code": "76", "nom": "Seine-Maritime"},
+        {"code": "77", "nom": "Seine-et-Marne"},
+        {"code": "78", "nom": "Yvelines"},
+        {"code": "79", "nom": "Deux-Sèvres"},
+        {"code": "80", "nom": "Somme"},
+        {"code": "81", "nom": "Tarn"},
+        {"code": "82", "nom": "Tarn-et-Garonne"},
+        {"code": "83", "nom": "Var"},
+        {"code": "84", "nom": "Vaucluse"},
+        {"code": "85", "nom": "Vendée"},
+        {"code": "86", "nom": "Vienne"},
+        {"code": "87", "nom": "Haute-Vienne"},
+        {"code": "88", "nom": "Vosges"},
+        {"code": "89", "nom": "Yonne"},
+        {"code": "90", "nom": "Territoire de Belfort"},
+        {"code": "91", "nom": "Essonne"},
+        {"code": "92", "nom": "Hauts-de-Seine"},
+        {"code": "93", "nom": "Seine-Saint-Denis"},
+        {"code": "94", "nom": "Val-de-Marne"},
+        {"code": "95", "nom": "Val-d'Oise"}
+    ]
+    return {"departements": departements}
+
+
+# ==================== ENDPOINTS AUTHENTIFIÉS ====================
+
+
+@router.get("/brief/{form_id}")
+async def get_form_brief(form_id: str, user: dict = Depends(get_current_user)):
+    """Génère le brief complet pour un formulaire"""
+    from services.brief_generator import generate_brief
+    return await generate_brief(form_id)
 
 
 @router.get("")
