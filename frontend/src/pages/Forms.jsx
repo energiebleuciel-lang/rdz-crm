@@ -443,25 +443,37 @@ export default function Forms() {
                 </div>
                 <div>
                   <span className="text-slate-500">URL:</span>
-                  <span className="ml-2 font-mono text-xs">{briefData.form.url}</span>
+                  <a href={briefData.form.url} target="_blank" rel="noopener noreferrer" className="ml-2 font-mono text-xs text-blue-600 hover:underline">{briefData.form.url}</a>
                 </div>
-                {briefData.lp.linked && (
+                {briefData.lp?.linked && (
                   <>
                     <div>
                       <span className="text-slate-500">LP liée:</span>
                       <span className="ml-2 font-medium">{briefData.lp.code}</span>
                     </div>
                     <div>
-                      <span className="text-slate-500">Code liaison:</span>
-                      <span className="ml-2 font-mono text-xs">{briefData.liaison_code}</span>
+                      <span className="text-slate-500">URL LP:</span>
+                      <a href={briefData.lp.url} target="_blank" rel="noopener noreferrer" className="ml-2 font-mono text-xs text-blue-600 hover:underline">{briefData.lp.url}</a>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="text-slate-500">Code liaison (synchronisé):</span>
+                      <code className="ml-2 bg-green-100 text-green-700 px-2 py-0.5 rounded font-mono text-xs">{briefData.liaison_code}</code>
                     </div>
                   </>
                 )}
               </div>
             </div>
 
+            {/* Endpoint public */}
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+              <h4 className="font-medium text-blue-800 mb-2">🔗 Endpoint public pour récupérer le formulaire</h4>
+              <code className="block bg-white p-2 rounded text-xs font-mono text-blue-700">
+                GET {briefData.api_url}/api/forms/public/{briefData.form.code}
+              </code>
+            </div>
+
             {/* Script LP */}
-            {briefData.scripts.lp && (
+            {briefData.scripts?.lp && (
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="font-semibold text-slate-800">🔵 Script LP</h3>
@@ -504,6 +516,30 @@ export default function Forms() {
               </pre>
             </div>
 
+            {/* Champs disponibles */}
+            {briefData.lead_fields && (
+              <div>
+                <h3 className="font-semibold text-slate-800 mb-3">📋 Champs de récupération disponibles</h3>
+                <div className="space-y-3">
+                  {Object.entries(briefData.lead_fields).map(([category, fields]) => (
+                    <div key={category} className="border rounded-lg p-3">
+                      <h4 className="font-medium text-slate-700 capitalize mb-2">{category}</h4>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+                        {fields.map(field => (
+                          <div key={field.key} className={`p-2 rounded ${field.required ? 'bg-red-50 border border-red-200' : 'bg-slate-50'}`}>
+                            <code className="font-mono font-medium">{field.key}</code>
+                            <span className="text-slate-500 block">{field.label}</span>
+                            {field.example && <span className="text-slate-400 text-xs">ex: {field.example}</span>}
+                            {field.required && <span className="text-red-600 text-xs block">* Obligatoire</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Stats expliquées */}
             <div>
               <h3 className="font-semibold text-slate-800 mb-2">📊 Statistiques trackées</h3>
@@ -522,6 +558,11 @@ export default function Forms() {
                   </span>
                 ))}
               </div>
+              {briefData.phone_validation?.auto_format && (
+                <p className="text-xs text-slate-500 mt-2">
+                  ℹ️ {briefData.phone_validation.auto_format}
+                </p>
+              )}
             </div>
           </div>
         )}
