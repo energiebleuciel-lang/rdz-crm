@@ -7,7 +7,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useCRM } from '../hooks/useCRM';
 import { API } from '../hooks/useApi';
 import { Card, Loading, Badge, Button, Modal } from '../components/UI';
-import { Users, RefreshCw, Download, Eye, X } from 'lucide-react';
+import { Users, RefreshCw, Download, Eye, RotateCcw } from 'lucide-react';
 
 export default function Leads() {
   const { authFetch } = useAuth();
