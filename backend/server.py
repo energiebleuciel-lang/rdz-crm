@@ -1812,30 +1812,36 @@ async def send_lead_to_crm(lead_doc: dict, api_url: str, api_key: str) -> tuple:
                 api_status = "duplicate"
             else:
                 api_status = "failed"
-                # Envoyer une alerte critique en cas d'échec
-                if EMAIL_SERVICE_AVAILABLE:
-                    email_service.send_critical_alert(
-                        "LEAD_FAILURE",
-                        f"Échec d'envoi de lead vers {api_url}",
-                        {
-                            "phone": lead_doc.get("phone", "N/A")[-4:],  # Derniers 4 chiffres seulement
-                            "form_code": lead_doc.get("form_code", "N/A"),
-                            "response": str(data)[:200]
-                        }
-                    )
+                # Envoi d'alerte email isolé et non-bloquant
+                try:
+                    if EMAIL_SERVICE_AVAILABLE:
+                        email_service.send_critical_alert(
+                            "LEAD_FAILURE",
+                            f"Échec d'envoi de lead vers {api_url}",
+                            {
+                                "phone": lead_doc.get("phone", "N/A")[-4:],
+                                "form_code": lead_doc.get("form_code", "N/A"),
+                                "response": str(data)[:200]
+                            }
+                        )
+                except Exception as email_err:
+                    logger.warning(f"Email alert silently failed: {email_err}")
     except Exception as e:
         api_status = "failed"
         api_response = str(e)
-        # Alerte critique pour les exceptions
-        if EMAIL_SERVICE_AVAILABLE:
-            email_service.send_critical_alert(
-                "API_ERROR",
-                f"Exception lors de l'envoi vers {api_url}",
-                {
-                    "error": str(e)[:200],
-                    "form_code": lead_doc.get("form_code", "N/A")
-                }
-            )
+        # Alerte email isolée et non-bloquante
+        try:
+            if EMAIL_SERVICE_AVAILABLE:
+                email_service.send_critical_alert(
+                    "API_ERROR",
+                    f"Exception lors de l'envoi vers {api_url}",
+                    {
+                        "error": str(e)[:200],
+                        "form_code": lead_doc.get("form_code", "N/A")
+                    }
+                )
+        except Exception as email_err:
+            logger.warning(f"Email alert silently failed: {email_err}")
     
     return api_status, api_response
 
