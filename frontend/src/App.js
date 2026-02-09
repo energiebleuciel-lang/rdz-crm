@@ -1620,7 +1620,7 @@ const LPsPage = () => {
 };
 
 const FormsPage = () => {
-  const { authFetch } = useAuth();
+  const { authFetch, authToken } = useAuth();
   const { selectedCRM } = useCRM();
   const [forms, setForms] = useState([]);
   const [accounts, setAccounts] = useState([]);
@@ -1628,6 +1628,8 @@ const FormsPage = () => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showDuplicateModal, setShowDuplicateModal] = useState(null);
+  const [showBriefModal, setShowBriefModal] = useState(false);
+  const [briefData, setBriefData] = useState(null);
   const [editingForm, setEditingForm] = useState(null);
   const [duplicateData, setDuplicateData] = useState({ new_code: '', new_name: '', new_crm_api_key: '' });
   const [error, setError] = useState('');
