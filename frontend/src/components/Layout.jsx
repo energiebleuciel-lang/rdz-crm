@@ -1,13 +1,15 @@
 /**
- * Layout principal avec sidebar
+ * Layout principal avec sidebar et sélecteur CRM
  */
 
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useCRM } from '../hooks/useCRM';
 import { 
   Home, Layers, FileText, Users, Settings, LogOut, 
-  Building, Globe, Zap
+  Building, Globe, Zap, ChevronDown, Database
 } from 'lucide-react';
+import { useState } from 'react';
 
 const menuItems = [
   { path: '/dashboard', icon: Home, label: 'Tableau de bord' },
@@ -20,12 +22,23 @@ const menuItems = [
 
 export default function Layout({ children }) {
   const { user, logout } = useAuth();
+  const { crms, selectedCRM, selectCRM, currentCRM } = useCRM();
   const location = useLocation();
   const navigate = useNavigate();
+  const [showCRMDropdown, setShowCRMDropdown] = useState(false);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  // Couleur du CRM
+  const getCRMColor = (slug) => {
+    switch(slug?.toLowerCase()) {
+      case 'mdl': return 'from-blue-500 to-blue-600';
+      case 'zr7': return 'from-green-500 to-green-600';
+      default: return 'from-slate-500 to-slate-600';
+    }
   };
 
   return (
@@ -42,6 +55,53 @@ export default function Layout({ children }) {
               <h1 className="font-bold text-lg">EnerSolar</h1>
               <p className="text-xs text-slate-400">CRM v2.0</p>
             </div>
+          </div>
+        </div>
+
+        {/* Sélecteur CRM */}
+        <div className="p-4 border-b border-slate-700">
+          <label className="text-xs text-slate-400 uppercase tracking-wider mb-2 block">
+            CRM Actif
+          </label>
+          <div className="relative">
+            <button
+              onClick={() => setShowCRMDropdown(!showCRMDropdown)}
+              className={`w-full flex items-center justify-between gap-2 px-4 py-3 rounded-lg bg-gradient-to-r ${getCRMColor(currentCRM?.slug)} text-white font-medium shadow-lg transition-all hover:shadow-xl`}
+            >
+              <div className="flex items-center gap-2">
+                <Database className="w-4 h-4" />
+                <span>{currentCRM?.name || 'Sélectionner'}</span>
+              </div>
+              <ChevronDown className={`w-4 h-4 transition-transform ${showCRMDropdown ? 'rotate-180' : ''}`} />
+            </button>
+            
+            {showCRMDropdown && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 rounded-lg shadow-xl border border-slate-700 overflow-hidden z-50">
+                {crms.map(crm => (
+                  <button
+                    key={crm.id}
+                    onClick={() => {
+                      selectCRM(crm.id);
+                      setShowCRMDropdown(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-700 transition-colors ${
+                      selectedCRM === crm.id ? 'bg-slate-700 text-amber-400' : 'text-slate-200'
+                    }`}
+                  >
+                    <div className={`w-3 h-3 rounded-full bg-gradient-to-r ${getCRMColor(crm.slug)}`} />
+                    <div>
+                      <p className="font-medium">{crm.name}</p>
+                      <p className="text-xs text-slate-400">{crm.slug?.toUpperCase()}</p>
+                    </div>
+                    {selectedCRM === crm.id && (
+                      <span className="ml-auto text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded">
+                        Actif
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
