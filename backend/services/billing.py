@@ -2,7 +2,8 @@
 Service de facturation inter-CRM
 - Calcule les leads envoyés entre CRMs
 - Si ZR7 envoie à MDL → MDL doit à ZR7
-- Vue par période (7 jours, 1 mois, personnalisé)
+- Vue par semaine avec navigation
+- Statut facturé/non facturé
 """
 
 import logging
@@ -13,41 +14,81 @@ from typing import Optional
 logger = logging.getLogger("billing")
 
 
+def get_week_bounds(year: int, week: int):
+    """
+    Retourne les dates de début et fin d'une semaine ISO.
+    """
+    # Premier jour de l'année
+    jan1 = datetime(year, 1, 1, tzinfo=timezone.utc)
+    
+    # Trouver le premier lundi de la semaine 1
+    # Semaine 1 contient le 4 janvier
+    jan4 = datetime(year, 1, 4, tzinfo=timezone.utc)
+    first_monday = jan4 - timedelta(days=jan4.weekday())
+    
+    # Calculer le lundi de la semaine demandée
+    week_start = first_monday + timedelta(weeks=week - 1)
+    week_end = week_start + timedelta(days=6, hours=23, minutes=59, seconds=59)
+    
+    return week_start, week_end
+
+
+def get_current_week():
+    """Retourne année et numéro de semaine ISO actuels."""
+    now = datetime.now(timezone.utc)
+    iso_cal = now.isocalendar()
+    return iso_cal.year, iso_cal.week
+
+
 async def get_cross_crm_billing(
-    period: str = "month",  # "week", "month", "custom"
+    period: str = "month",
     date_from: Optional[str] = None,
-    date_to: Optional[str] = None
+    date_to: Optional[str] = None,
+    year: Optional[int] = None,
+    week: Optional[int] = None
 ) -> dict:
     """
     Calcule la facturation inter-CRM.
     
-    Logique:
-    - Un lead est "cross-CRM" si routing_reason commence par "cross_crm_"
-    - Le CRM d'origine (celui du compte/form) doit recevoir le paiement
-    - Le CRM destination (celui qui a reçu le lead) doit payer
-    
     Args:
-        period: "week" (7 jours), "month" (30 jours), ou "custom"
-        date_from: Date de début (pour période custom)
-        date_to: Date de fin (pour période custom)
+        period: "week", "month", "custom", ou "specific_week"
+        date_from/date_to: Pour période custom
+        year/week: Pour semaine spécifique
     
     Returns:
-        dict: Rapport de facturation avec les montants par CRM
+        dict: Rapport de facturation
     """
-    # Calculer les dates
     now = datetime.now(timezone.utc)
+    week_info = None
     
-    if period == "week":
+    # Déterminer les dates selon la période
+    if period == "specific_week" and year and week:
+        week_start, week_end = get_week_bounds(year, week)
+        start_date = week_start.isoformat()
+        end_date = week_end.isoformat()
+        week_info = {
+            "year": year,
+            "week": week,
+            "start": week_start.strftime("%d/%m/%Y"),
+            "end": week_end.strftime("%d/%m/%Y")
+        }
+    elif period == "week":
         start_date = (now - timedelta(days=7)).isoformat()
         end_date = now.isoformat()
     elif period == "month":
         start_date = (now - timedelta(days=30)).isoformat()
         end_date = now.isoformat()
     elif period == "custom" and date_from and date_to:
-        start_date = date_from
-        end_date = date_to
+        # Convertir dates simples en ISO
+        if len(date_from) == 10:  # Format YYYY-MM-DD
+            start_date = f"{date_from}T00:00:00+00:00"
+        else:
+            start_date = date_from
+        if len(date_to) == 10:
+            end_date = f"{date_to}T23:59:59+00:00"
+        else:
+            end_date = date_to
     else:
-        # Par défaut: 30 jours
         start_date = (now - timedelta(days=30)).isoformat()
         end_date = now.isoformat()
     
@@ -59,45 +100,50 @@ async def get_cross_crm_billing(
     # Récupérer les commandes (pour les prix)
     commandes = await db.commandes.find({}, {"_id": 0}).to_list(100)
     
-    # Map crm_id -> prix moyen par lead
-    prix_par_crm = {}
+    # Map crm_id + product_type -> prix
+    prix_par_crm_product = {}
+    for cmd in commandes:
+        crm_id = cmd.get("crm_id")
+        product = cmd.get("product_type", "*")
+        prix = cmd.get("prix_unitaire", 0)
+        key = f"{crm_id}_{product}"
+        if prix > 0:
+            prix_par_crm_product[key] = prix
+    
+    # Prix moyen par CRM (fallback)
+    prix_moyen_crm = {}
     for cmd in commandes:
         crm_id = cmd.get("crm_id")
         prix = cmd.get("prix_unitaire", 0)
-        if crm_id not in prix_par_crm:
-            prix_par_crm[crm_id] = []
+        if crm_id not in prix_moyen_crm:
+            prix_moyen_crm[crm_id] = []
         if prix > 0:
-            prix_par_crm[crm_id].append(prix)
+            prix_moyen_crm[crm_id].append(prix)
     
-    # Calculer prix moyen par CRM
-    for crm_id in prix_par_crm:
-        prices = prix_par_crm[crm_id]
-        prix_par_crm[crm_id] = sum(prices) / len(prices) if prices else 0
+    for crm_id in prix_moyen_crm:
+        prices = prix_moyen_crm[crm_id]
+        prix_moyen_crm[crm_id] = sum(prices) / len(prices) if prices else 0
     
     # Récupérer les leads cross-CRM de la période
     cross_crm_leads = await db.leads.find({
         "created_at": {"$gte": start_date, "$lte": end_date},
         "routing_reason": {"$regex": "^cross_crm_"},
-        "api_status": {"$in": ["success", "duplicate"]}  # Seulement les leads intégrés
+        "api_status": {"$in": ["success", "duplicate"]}
     }, {"_id": 0}).to_list(10000)
     
-    # Récupérer aussi les leads normaux pour comparaison
+    # Récupérer tous les leads pour comparaison
     all_leads = await db.leads.find({
         "created_at": {"$gte": start_date, "$lte": end_date},
         "api_status": {"$in": ["success", "duplicate"]}
     }, {"_id": 0}).to_list(10000)
     
-    # Calculer les transactions inter-CRM
-    # Structure: {crm_qui_doit: {crm_a_qui_il_doit: {count, amount}}}
+    # Calculer les transactions
     transactions = {}
-    
-    # Détails par lead
     lead_details = []
     
     for lead in cross_crm_leads:
         routing = lead.get("routing_reason", "")
         
-        # Extraire le CRM destination du routing_reason (ex: "cross_crm_mdl" -> "mdl")
         if routing.startswith("cross_crm_"):
             dest_slug = routing.replace("cross_crm_", "")
             dest_crm = crm_by_slug.get(dest_slug)
@@ -108,7 +154,7 @@ async def get_cross_crm_billing(
             dest_crm_id = dest_crm.get("id")
             dest_crm_name = dest_crm.get("name")
             
-            # Trouver le CRM d'origine (celui du compte)
+            # Trouver le CRM d'origine
             form = await db.forms.find_one({"code": lead.get("form_code")})
             if not form:
                 continue
@@ -124,14 +170,13 @@ async def get_cross_crm_billing(
                 continue
             
             origin_crm_name = origin_crm.get("name")
+            product_type = lead.get("product_type") or form.get("product_type", "PV")
             
-            # Le CRM destination (qui a reçu le lead) doit payer au CRM d'origine
-            # Donc: dest_crm doit à origin_crm
+            # Chercher le prix spécifique produit, sinon prix moyen
+            prix_key = f"{origin_crm_id}_{product_type}"
+            prix = prix_par_crm_product.get(prix_key, prix_moyen_crm.get(origin_crm_id, 0))
             
-            # Utiliser le prix de la commande du CRM d'origine
-            prix = prix_par_crm.get(origin_crm_id, 0)
-            
-            # Initialiser si nécessaire
+            # Initialiser transactions
             if dest_crm_id not in transactions:
                 transactions[dest_crm_id] = {}
             
@@ -146,11 +191,10 @@ async def get_cross_crm_billing(
             transactions[dest_crm_id][origin_crm_id]["count"] += 1
             transactions[dest_crm_id][origin_crm_id]["amount"] += prix
             
-            # Détail du lead
             lead_details.append({
                 "lead_id": lead.get("id"),
-                "phone": lead.get("phone", "")[-4:],  # 4 derniers chiffres
-                "product_type": lead.get("product_type"),
+                "phone": lead.get("phone", "")[-4:],
+                "product_type": product_type,
                 "departement": lead.get("departement"),
                 "origin_crm": origin_crm_name,
                 "dest_crm": dest_crm_name,
@@ -165,6 +209,7 @@ async def get_cross_crm_billing(
             "from": start_date,
             "to": end_date
         },
+        "week_info": week_info,
         "total_leads_period": len(all_leads),
         "cross_crm_leads": len(cross_crm_leads),
         "cross_crm_percentage": round(len(cross_crm_leads) / len(all_leads) * 100, 1) if all_leads else 0,
@@ -172,7 +217,7 @@ async def get_cross_crm_billing(
         "balances": {}
     }
     
-    # Transformer les transactions en liste lisible
+    # Transformer les transactions en liste
     for debtor_crm_id, creditors in transactions.items():
         debtor_crm = crm_map.get(debtor_crm_id, {})
         
@@ -195,7 +240,7 @@ async def get_cross_crm_billing(
                 "description": f"{debtor_crm.get('name')} doit {round(data['amount'], 2)}€ à {creditor_crm.get('name')} ({data['count']} leads)"
             })
             
-            # Calculer les balances nettes
+            # Balances
             if debtor_crm_id not in summary["balances"]:
                 summary["balances"][debtor_crm_id] = {
                     "name": debtor_crm.get("name"),
@@ -224,39 +269,96 @@ async def get_cross_crm_billing(
         balance["owed"] = round(balance["owed"], 2)
         balance["net"] = round(balance["owed"] - balance["owes"], 2)
     
-    # Ajouter les détails des leads
     summary["lead_details"] = lead_details
     
     return summary
 
 
-async def get_billing_by_crm(crm_id: str, period: str = "month") -> dict:
+async def get_week_billing(year: int, week: int) -> dict:
     """
-    Récupère la facturation pour un CRM spécifique.
+    Récupère la facturation pour une semaine spécifique.
     """
-    billing = await get_cross_crm_billing(period=period)
+    return await get_cross_crm_billing(
+        period="specific_week",
+        year=year,
+        week=week
+    )
+
+
+async def mark_week_as_invoiced(year: int, week: int, invoiced: bool = True) -> dict:
+    """
+    Marque une semaine comme facturée ou non.
+    """
+    week_start, week_end = get_week_bounds(year, week)
+    week_key = f"{year}_W{week:02d}"
     
-    crm_balance = billing.get("balances", {}).get(crm_id, {
-        "owes": 0,
-        "owed": 0,
-        "net": 0
-    })
+    # Vérifier si existe déjà
+    existing = await db.billing_weeks.find_one({"week_key": week_key})
     
-    # Filtrer les transactions concernant ce CRM
-    crm_transactions = [
-        tx for tx in billing.get("transactions", [])
-        if tx["debtor"]["id"] == crm_id or tx["creditor"]["id"] == crm_id
-    ]
+    billing_data = await get_week_billing(year, week)
     
-    # Filtrer les détails de leads (simplification car billing n'est pas async)
-    crm_leads = [
-        lead for lead in billing.get("lead_details", [])
-    ]
+    doc = {
+        "week_key": week_key,
+        "year": year,
+        "week": week,
+        "start_date": week_start.isoformat(),
+        "end_date": week_end.isoformat(),
+        "invoiced": invoiced,
+        "invoiced_at": now_iso() if invoiced else None,
+        "total_leads": billing_data.get("total_leads_period", 0),
+        "cross_crm_leads": billing_data.get("cross_crm_leads", 0),
+        "transactions": billing_data.get("transactions", []),
+        "balances": billing_data.get("balances", {}),
+        "updated_at": now_iso()
+    }
+    
+    if existing:
+        await db.billing_weeks.update_one(
+            {"week_key": week_key},
+            {"$set": doc}
+        )
+    else:
+        doc["created_at"] = now_iso()
+        await db.billing_weeks.insert_one(doc)
     
     return {
-        "crm_id": crm_id,
-        "period": billing.get("period"),
-        "balance": crm_balance,
-        "transactions": crm_transactions,
-        "leads_count": len(crm_leads)
+        "success": True,
+        "week_key": week_key,
+        "invoiced": invoiced,
+        "message": f"Semaine {week}/{year} marquée comme {'facturée' if invoiced else 'non facturée'}"
     }
+
+
+async def get_week_invoice_status(year: int, week: int) -> dict:
+    """
+    Récupère le statut de facturation d'une semaine.
+    """
+    week_key = f"{year}_W{week:02d}"
+    doc = await db.billing_weeks.find_one({"week_key": week_key}, {"_id": 0})
+    
+    if doc:
+        return {
+            "exists": True,
+            "invoiced": doc.get("invoiced", False),
+            "invoiced_at": doc.get("invoiced_at"),
+            "data": doc
+        }
+    
+    return {
+        "exists": False,
+        "invoiced": False,
+        "invoiced_at": None,
+        "data": None
+    }
+
+
+async def list_invoiced_weeks(limit: int = 52) -> list:
+    """
+    Liste les semaines facturées.
+    """
+    weeks = await db.billing_weeks.find(
+        {},
+        {"_id": 0}
+    ).sort("week_key", -1).to_list(limit)
+    
+    return weeks
