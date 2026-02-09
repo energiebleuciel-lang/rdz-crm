@@ -929,6 +929,169 @@ async def get_email_config(user: dict = Depends(get_current_user)):
         }
     }
 
+# ==================== BRIEF DÉVELOPPEUR & SCRIPT TRACKING ====================
+
+@api_router.get("/forms/{form_id}/brief")
+async def get_form_brief(form_id: str, user: dict = Depends(get_current_user)):
+    """
+    Génère le brief complet pour les développeurs avec:
+    - form_id et endpoint API
+    - Script de tracking (form_start + lead submission)
+    - Aides financières configurées
+    - Code d'exemple prêt à copier
+    """
+    form = await db.forms.find_one({"id": form_id}, {"_id": 0})
+    if not form:
+        raise HTTPException(status_code=404, detail="Formulaire non trouvé")
+    
+    # Récupérer la clé API globale
+    api_key = await get_or_create_global_api_key()
+    backend_url = os.environ.get('BACKEND_URL', 'https://rdz-group-ltd.online')
+    
+    # Produit info
+    product_labels = {'panneaux': 'Panneaux Solaires (PV)', 'pompes': 'Pompes à Chaleur (PAC)', 'isolation': 'Isolation (ITE)', 'PV': 'Panneaux Solaires (PV)', 'PAC': 'Pompes à Chaleur (PAC)', 'ITE': 'Isolation (ITE)'}
+    product_label = product_labels.get(form.get('product_type', ''), 'Non défini')
+    
+    # Aides financières par produit (si configurées)
+    aides_config = form.get('aides', {})
+    if not aides_config:
+        # Valeurs par défaut selon le produit
+        if form.get('product_type') in ['panneaux', 'PV']:
+            aides_config = {
+                "prime_autoconsommation": True,
+                "tva_reduite": True,
+                "revente_edf": True
+            }
+        elif form.get('product_type') in ['pompes', 'PAC']:
+            aides_config = {
+                "maprimereno": True,
+                "cee": True,
+                "tva_reduite": True,
+                "eco_ptz": True
+            }
+        elif form.get('product_type') in ['isolation', 'ITE']:
+            aides_config = {
+                "maprimereno": True,
+                "cee": True,
+                "tva_reduite": True
+            }
+    
+    # Script JavaScript de tracking
+    tracking_script = f'''
+<!-- EnerSolar CRM - Script de Tracking (à placer dans le <head>) -->
+<script>
+(function() {{
+  var CRM_API = "{backend_url}/api";
+  var FORM_ID = "{form_id}";
+  var FORM_CODE = "{form.get('code', '')}";
+  
+  // 1. Track form start (quand le formulaire se charge)
+  function trackFormStart() {{
+    fetch(CRM_API + "/track/form-start", {{
+      method: "POST",
+      headers: {{ "Content-Type": "application/json" }},
+      body: JSON.stringify({{ form_code: FORM_CODE, lp_code: "" }})
+    }}).catch(function(e) {{ console.log("Tracking error:", e); }});
+  }}
+  
+  // Tracker au chargement
+  if (document.readyState === "complete") {{
+    trackFormStart();
+  }} else {{
+    window.addEventListener("load", trackFormStart);
+  }}
+  
+  // 2. Fonction pour soumettre un lead
+  window.submitLeadToCRM = function(leadData) {{
+    return fetch(CRM_API + "/v1/leads", {{
+      method: "POST",
+      headers: {{
+        "Content-Type": "application/json",
+        "Authorization": "Token {api_key}"
+      }},
+      body: JSON.stringify({{
+        form_id: FORM_ID,
+        ...leadData
+      }})
+    }})
+    .then(function(r) {{ return r.json(); }})
+    .then(function(data) {{
+      console.log("Lead soumis:", data);
+      return data;
+    }})
+    .catch(function(e) {{
+      console.error("Erreur soumission:", e);
+      throw e;
+    }});
+  }};
+}})();
+</script>
+'''
+    
+    # Exemple d'utilisation
+    usage_example = f'''
+<!-- Exemple d'utilisation dans votre formulaire -->
+<form id="leadForm" onsubmit="handleSubmit(event)">
+  <input type="text" name="civilite" placeholder="M. / Mme" required />
+  <input type="text" name="nom" placeholder="Nom" required />
+  <input type="text" name="prenom" placeholder="Prénom" required />
+  <input type="tel" name="phone" placeholder="Téléphone" required />
+  <input type="email" name="email" placeholder="Email" required />
+  <input type="text" name="code_postal" placeholder="Code postal" required />
+  <input type="text" name="ville" placeholder="Ville" required />
+  <button type="submit">Envoyer</button>
+</form>
+
+<script>
+function handleSubmit(e) {{
+  e.preventDefault();
+  var form = e.target;
+  var data = {{
+    civilite: form.civilite.value,
+    nom: form.nom.value,
+    prenom: form.prenom.value,
+    phone: form.phone.value,
+    email: form.email.value,
+    code_postal: form.code_postal.value,
+    ville: form.ville.value,
+    // Champs optionnels
+    type_logement: "",
+    statut_occupant: "",
+    revenu_fiscal: ""
+  }};
+  
+  submitLeadToCRM(data)
+    .then(function(result) {{
+      if (result.success) {{
+        // Rediriger vers page de remerciement
+        window.location.href = "{form.get('redirect_url_name', '/merci')}";
+      }} else {{
+        alert("Erreur: " + (result.detail || "Impossible d\\'envoyer le formulaire"));
+      }}
+    }})
+    .catch(function() {{
+      alert("Erreur de connexion. Veuillez réessayer.");
+    }});
+}}
+</script>
+'''
+    
+    return {
+        "form_id": form_id,
+        "form_code": form.get('code', ''),
+        "form_name": form.get('name', ''),
+        "product_type": form.get('product_type', ''),
+        "product_label": product_label,
+        "api_endpoint": f"{backend_url}/api/v1/leads",
+        "api_key": api_key,
+        "api_key_warning": "⚠️ NE PAS exposer cette clé dans le HTML public. Utilisez un backend proxy si nécessaire.",
+        "tracking_script": tracking_script,
+        "usage_example": usage_example,
+        "aides_financieres": aides_config,
+        "required_fields": ["civilite", "nom", "prenom", "phone", "email", "code_postal", "ville"],
+        "optional_fields": ["type_logement", "statut_occupant", "revenu_fiscal", "surface_habitable"]
+    }
+
 # ==================== CLÉ API GLOBALE ENDPOINTS ====================
 
 @api_router.get("/settings/api-key")
