@@ -131,6 +131,7 @@ class FormCreate(BaseModel):
     lp_id: Optional[str] = ""  # LP liée (optionnel)
     # Config CRM destination
     crm_api_key: Optional[str] = ""  # Clé API ZR7/MDL
+    allow_cross_crm: Optional[bool] = True  # Si True, fallback vers autre CRM si pas de commande
     # Tracking
     tracking_type: str = "redirect"  # gtm, redirect, both
     redirect_url: Optional[str] = "/merci"
@@ -142,10 +143,30 @@ class FormUpdate(BaseModel):
     product_type: Optional[str] = None
     lp_id: Optional[str] = None
     crm_api_key: Optional[str] = None
+    allow_cross_crm: Optional[bool] = None
     tracking_type: Optional[str] = None
     redirect_url: Optional[str] = None
     notes: Optional[str] = None
     status: Optional[str] = None
+
+
+# ==================== COMMANDES ====================
+
+class CommandeCreate(BaseModel):
+    """Commande de leads pour un CRM"""
+    crm_id: str  # ID du CRM (ZR7 ou MDL)
+    product_type: str  # PV, PAC, ITE ou * pour tous
+    departements: List[str]  # ["75", "92"] ou ["*"] pour tous
+    active: bool = True
+    prix_unitaire: Optional[float] = 0.0  # Prix par lead
+    notes: Optional[str] = ""
+
+class CommandeUpdate(BaseModel):
+    product_type: Optional[str] = None
+    departements: Optional[List[str]] = None
+    active: Optional[bool] = None
+    prix_unitaire: Optional[float] = None
+    notes: Optional[str] = None
 
 
 # ==================== LEADS ====================
