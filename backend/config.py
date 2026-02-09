@@ -157,18 +157,17 @@ async def generate_form_code(product_type: str) -> str:
     if prefix not in ["PV", "PAC", "ITE"]:
         prefix = "PV"
     
-    # Trouver le dernier code pour ce produit
-    last_form = await db.forms.find_one(
-        {"code": {"$regex": f"^{prefix}-"}},
-        sort=[("code", -1)]
-    )
+    # Compter tous les forms pour ce produit
+    all_forms = await db.forms.find({"code": {"$regex": f"^{prefix}-\\d+$"}}, {"code": 1}).to_list(1000)
     
-    if last_form and last_form.get("code"):
+    max_num = 0
+    for form in all_forms:
+        code = form.get("code", "")
         try:
-            num = int(last_form["code"].split("-")[1]) + 1
+            num = int(code.split("-")[1])
+            if num > max_num:
+                max_num = num
         except:
-            num = 1
-    else:
-        num = 1
+            pass
     
-    return f"{prefix}-{str(num).zfill(3)}"
+    return f"{prefix}-{str(max_num + 1).zfill(3)}"
