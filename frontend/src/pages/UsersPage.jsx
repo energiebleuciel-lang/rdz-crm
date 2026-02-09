@@ -14,6 +14,7 @@ const SECTIONS = [
   { key: 'lps', label: 'Landing Pages' },
   { key: 'forms', label: 'Formulaires' },
   { key: 'leads', label: 'Leads' },
+  { key: 'departements', label: 'Départements' },
   { key: 'commandes', label: 'Commandes' },
   { key: 'settings', label: 'Paramètres' },
   { key: 'users', label: 'Utilisateurs' }
