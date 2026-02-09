@@ -1242,7 +1242,7 @@ Les visiteurs seront redirigés vers : {form_url}?lp={lp_code}&liaison={liaison_
       newsletter: leadData.newsletter || false
     }};
 
-    return fetch(CONFIG.API_URL + "/api/v1/leads", {{
+    return fetch(CONFIG.ENDPOINTS.SUBMIT_LEAD, {{
       method: "POST",
       headers: {{ 
         "Content-Type": "application/json",
