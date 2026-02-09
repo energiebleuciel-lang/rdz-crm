@@ -4650,6 +4650,63 @@ const SettingsPage = () => {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-slate-800">Paramètres</h1>
 
+      {/* Section Clé API Globale - Style Landbot */}
+      <div className="bg-gradient-to-r from-orange-500 to-amber-500 rounded-xl p-6 shadow-lg text-white">
+        <div className="flex items-center gap-3 mb-4">
+          <Key className="w-8 h-8" />
+          <div>
+            <h3 className="text-xl font-bold">Clé API Globale</h3>
+            <p className="text-orange-100 text-sm">Utilisez cette clé pour tous vos formulaires</p>
+          </div>
+        </div>
+        
+        <div className="bg-white/10 backdrop-blur rounded-lg p-4 mb-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1">
+              <p className="text-xs text-orange-200 mb-1">Votre clé API :</p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 bg-black/20 rounded px-3 py-2 font-mono text-sm break-all">
+                  {showApiKey ? (globalApiKey || 'Chargement...') : '••••••••••••••••••••••••••••••••'}
+                </code>
+                <button 
+                  onClick={() => setShowApiKey(!showApiKey)}
+                  className="p-2 hover:bg-white/10 rounded transition-colors"
+                  title={showApiKey ? 'Masquer' : 'Afficher'}
+                >
+                  {showApiKey ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+                <button 
+                  onClick={() => { 
+                    if (globalApiKey) {
+                      navigator.clipboard.writeText(globalApiKey);
+                      alert('✅ Clé API copiée !');
+                    }
+                  }}
+                  className="p-2 hover:bg-white/10 rounded transition-colors"
+                  title="Copier"
+                >
+                  <Copy className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex items-center justify-between">
+          <div className="text-sm">
+            <p className="text-orange-100">Usage : <code className="bg-black/20 px-2 py-0.5 rounded">Authorization: Token VOTRE_CLE</code></p>
+          </div>
+          <button 
+            onClick={regenerateApiKey}
+            className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Régénérer la clé
+          </button>
+        </div>
+      </div>
+
+      {/* Section CRMs */}
       <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
         <h3 className="font-semibold text-slate-800 mb-4">CRMs configurés</h3>
         
