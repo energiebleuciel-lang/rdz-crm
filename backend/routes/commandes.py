@@ -38,7 +38,7 @@ async def list_commandes(crm_id: str = None, user: dict = Depends(get_current_us
 
 
 @router.get("/check")
-async def check_commande(crm_id: str, product_type: str, departement: str, user: dict = Depends(require_auth)):
+async def check_commande(crm_id: str, product_type: str, departement: str, user: dict = Depends(get_current_user)):
     """
     Vérifie si un CRM a une commande active pour un produit/département
     Retourne True/False
@@ -78,7 +78,7 @@ async def has_commande(crm_id: str, product_type: str, departement: str) -> bool
 
 
 @router.post("")
-async def create_commande(data: CommandeCreate, user: dict = Depends(require_auth)):
+async def create_commande(data: CommandeCreate, user: dict = Depends(get_current_user)):
     """Crée une nouvelle commande"""
     # Vérifier que le CRM existe
     crm = await db.crms.find_one({"id": data.crm_id})
@@ -114,7 +114,7 @@ async def create_commande(data: CommandeCreate, user: dict = Depends(require_aut
 
 
 @router.put("/{commande_id}")
-async def update_commande(commande_id: str, data: CommandeUpdate, user: dict = Depends(require_auth)):
+async def update_commande(commande_id: str, data: CommandeUpdate, user: dict = Depends(get_current_user)):
     """Met à jour une commande"""
     commande = await db.commandes.find_one({"id": commande_id})
     if not commande:
@@ -140,7 +140,7 @@ async def update_commande(commande_id: str, data: CommandeUpdate, user: dict = D
 
 
 @router.delete("/{commande_id}")
-async def delete_commande(commande_id: str, user: dict = Depends(require_auth)):
+async def delete_commande(commande_id: str, user: dict = Depends(get_current_user)):
     """Supprime une commande"""
     result = await db.commandes.delete_one({"id": commande_id})
     if result.deleted_count == 0:
@@ -150,7 +150,7 @@ async def delete_commande(commande_id: str, user: dict = Depends(require_auth)):
 
 
 @router.post("/init-defaults")
-async def init_default_commandes(user: dict = Depends(require_auth)):
+async def init_default_commandes(user: dict = Depends(get_current_user)):
     """
     Initialise les commandes par défaut : tous les produits et tous les départements métro
     pour les deux CRMs (MDL et ZR7)
@@ -191,7 +191,7 @@ async def init_default_commandes(user: dict = Depends(require_auth)):
 
 
 @router.get("/departements")
-async def list_departements(user: dict = Depends(require_auth)):
+async def list_departements(user: dict = Depends(get_current_user)):
     """Retourne la liste des départements métropole valides"""
     return {
         "departements": DEPARTEMENTS_METRO,
@@ -201,7 +201,7 @@ async def list_departements(user: dict = Depends(require_auth)):
 
 
 @router.get("/products")
-async def list_products(user: dict = Depends(require_auth)):
+async def list_products(user: dict = Depends(get_current_user)):
     """Retourne la liste des types de produits"""
     return {
         "products": PRODUCT_TYPES,
