@@ -228,6 +228,10 @@ export default function Forms() {
               </button>
             ))}
           </div>
+          </div>
+          <p className="text-sm text-slate-500 mt-1">
+            CRM: <span className="font-medium text-slate-700">{currentCRM?.name}</span>
+          </p>
         </div>
         
         <Button onClick={openCreate}>
@@ -241,7 +245,7 @@ export default function Forms() {
           <EmptyState 
             icon={FileText}
             title="Aucun formulaire"
-            description="Créez votre premier formulaire"
+            description={`Créez votre premier formulaire pour ${currentCRM?.name || 'ce CRM'}`}
             action={<Button onClick={openCreate}>Créer un formulaire</Button>}
           />
         </Card>
