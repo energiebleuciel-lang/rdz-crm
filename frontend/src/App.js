@@ -4756,22 +4756,6 @@ const SettingsPage = () => {
     }
   };
 
-  const regenerateApiKey = async () => {
-    if (!window.confirm('⚠️ ATTENTION: Régénérer la clé va INVALIDER l\'ancienne clé.\n\nTous vos formulaires existants utilisant l\'ancienne clé cesseront de fonctionner.\n\nÊtes-vous sûr?')) return;
-    
-    try {
-      const res = await authFetch(`${API}/api/settings/api-key/regenerate`, { method: 'POST' });
-      if (res.ok) {
-        const data = await res.json();
-        setGlobalApiKey(data.api_key);
-        alert('✅ Nouvelle clé API générée. Mettez à jour vos formulaires!');
-      }
-    } catch (e) {
-      console.error(e);
-      alert('Erreur lors de la régénération');
-    }
-  };
-
   const loadCRMs = async () => {
     try {
       const res = await authFetch(`${API}/api/crms`);
