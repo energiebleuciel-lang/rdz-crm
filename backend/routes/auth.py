@@ -133,16 +133,21 @@ async def logout(user: dict = Depends(get_current_user), credentials: HTTPAuthor
 @router.get("/me")
 async def get_me(user: dict = Depends(get_current_user)):
     """Retourne les infos de l'utilisateur connecté"""
+    permissions = user.get("permissions") or DEFAULT_PERMISSIONS.get(user.get("role", "viewer"), {})
+    user["permissions"] = permissions
     return user
 
 
 @router.post("/users", dependencies=[Depends(require_admin)])
-async def create_user(data: UserCreate):
+async def create_user(data: UserCreate, current_user: dict = Depends(get_current_user)):
     """Créer un nouvel utilisateur (admin only)"""
     # Vérifier si email existe
     existing = await db.users.find_one({"email": data.email.lower().strip()})
     if existing:
         raise HTTPException(status_code=400, detail="Cet email existe déjà")
+    
+    # Permissions par défaut selon le rôle ou personnalisées
+    permissions = data.permissions.dict() if data.permissions else DEFAULT_PERMISSIONS.get(data.role, {})
     
     user = {
         "id": str(uuid.uuid4()),
@@ -150,10 +155,23 @@ async def create_user(data: UserCreate):
         "password": hash_password(data.password),
         "nom": data.nom,
         "role": data.role,
-        "created_at": now_iso()
+        "permissions": permissions,
+        "active": True,
+        "created_at": now_iso(),
+        "created_by": current_user.get("id")
     }
     
     await db.users.insert_one(user)
+    
+    # Log activité
+    await log_activity(
+        user=current_user,
+        action="create",
+        entity_type="user",
+        entity_id=user["id"],
+        entity_name=user["email"],
+        details={"role": data.role}
+    )
     
     return {
         "success": True,
@@ -161,7 +179,8 @@ async def create_user(data: UserCreate):
             "id": user["id"],
             "email": user["email"],
             "nom": user["nom"],
-            "role": user["role"]
+            "role": user["role"],
+            "permissions": permissions
         }
     }
 
@@ -171,6 +190,76 @@ async def list_users():
     """Liste tous les utilisateurs (admin only)"""
     users = await db.users.find({}, {"_id": 0, "password": 0}).to_list(100)
     return {"users": users}
+
+
+@router.put("/users/{user_id}", dependencies=[Depends(require_admin)])
+async def update_user(user_id: str, data: UserUpdate, current_user: dict = Depends(get_current_user)):
+    """Mettre à jour un utilisateur (admin only)"""
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+    
+    update_data = {}
+    
+    if data.nom is not None:
+        update_data["nom"] = data.nom
+    if data.role is not None:
+        update_data["role"] = data.role
+        # Mettre à jour les permissions par défaut si le rôle change
+        if data.permissions is None:
+            update_data["permissions"] = DEFAULT_PERMISSIONS.get(data.role, {})
+    if data.permissions is not None:
+        update_data["permissions"] = data.permissions.dict()
+    if data.active is not None:
+        update_data["active"] = data.active
+    
+    update_data["updated_at"] = now_iso()
+    
+    await db.users.update_one({"id": user_id}, {"$set": update_data})
+    
+    # Log activité
+    await log_activity(
+        user=current_user,
+        action="update",
+        entity_type="user",
+        entity_id=user_id,
+        entity_name=user.get("email"),
+        details=update_data
+    )
+    
+    updated_user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+    return {"success": True, "user": updated_user}
+
+
+@router.delete("/users/{user_id}", dependencies=[Depends(require_admin)])
+async def delete_user(user_id: str, current_user: dict = Depends(get_current_user)):
+    """Désactiver un utilisateur (admin only)"""
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+    
+    if user_id == current_user.get("id"):
+        raise HTTPException(status_code=400, detail="Impossible de supprimer votre propre compte")
+    
+    # Soft delete - désactiver plutôt que supprimer
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"active": False, "deactivated_at": now_iso()}}
+    )
+    
+    # Invalider toutes les sessions
+    await db.sessions.delete_many({"user_id": user_id})
+    
+    # Log activité
+    await log_activity(
+        user=current_user,
+        action="delete",
+        entity_type="user",
+        entity_id=user_id,
+        entity_name=user.get("email")
+    )
+    
+    return {"success": True}
 
 
 @router.get("/api-key")
