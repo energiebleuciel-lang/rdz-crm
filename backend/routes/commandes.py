@@ -107,7 +107,7 @@ async def create_commande(data: CommandeCreate, user: dict = Depends(require_aut
     }
     
     await db.commandes.insert_one(commande)
-    del commande["_id"] if "_id" in commande else None
+    commande.pop("_id", None)
     
     return {"success": True, "commande": commande}
 
