@@ -1,12 +1,12 @@
 /**
- * Page Comptes
+ * Page Comptes - Avec configuration GTM
  */
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { API } from '../hooks/useApi';
 import { Card, Modal, Button, Input, Select, Loading, EmptyState, Badge } from '../components/UI';
-import { Building, Plus, Edit, Trash2, Image } from 'lucide-react';
+import { Building, Plus, Edit, Trash2, Image, Code, ChevronDown, ChevronUp } from 'lucide-react';
 
 export default function Accounts() {
   const { authFetch } = useAuth();
@@ -15,6 +15,7 @@ export default function Accounts() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingAccount, setEditingAccount] = useState(null);
+  const [showGtmSection, setShowGtmSection] = useState(false);
   const [form, setForm] = useState({
     name: '',
     crm_id: '',
@@ -23,7 +24,12 @@ export default function Accounts() {
     logo_secondary_url: '',
     logo_mini_url: '',
     primary_color: '#3B82F6',
-    secondary_color: '#1E40AF'
+    secondary_color: '#1E40AF',
+    // GTM Configuration
+    gtm_head: '',
+    gtm_body: '',
+    gtm_conversion: '',
+    default_tracking_type: 'redirect'
   });
 
   useEffect(() => {
@@ -55,6 +61,7 @@ export default function Accounts() {
 
   const openCreate = () => {
     setEditingAccount(null);
+    setShowGtmSection(false);
     setForm({
       name: '',
       crm_id: crms[0]?.id || '',
@@ -63,13 +70,18 @@ export default function Accounts() {
       logo_secondary_url: '',
       logo_mini_url: '',
       primary_color: '#3B82F6',
-      secondary_color: '#1E40AF'
+      secondary_color: '#1E40AF',
+      gtm_head: '',
+      gtm_body: '',
+      gtm_conversion: '',
+      default_tracking_type: 'redirect'
     });
     setShowModal(true);
   };
 
   const openEdit = (account) => {
     setEditingAccount(account);
+    setShowGtmSection(!!account.gtm_head || !!account.gtm_body || !!account.gtm_conversion);
     setForm({
       name: account.name,
       crm_id: account.crm_id,
@@ -78,7 +90,11 @@ export default function Accounts() {
       logo_secondary_url: account.logo_secondary_url || '',
       logo_mini_url: account.logo_mini_url || '',
       primary_color: account.primary_color || '#3B82F6',
-      secondary_color: account.secondary_color || '#1E40AF'
+      secondary_color: account.secondary_color || '#1E40AF',
+      gtm_head: account.gtm_head || '',
+      gtm_body: account.gtm_body || '',
+      gtm_conversion: account.gtm_conversion || '',
+      default_tracking_type: account.default_tracking_type || 'redirect'
     });
     setShowModal(true);
   };
@@ -132,6 +148,15 @@ export default function Accounts() {
     return crm?.name || 'N/A';
   };
 
+  const getTrackingLabel = (type) => {
+    switch(type) {
+      case 'gtm': return 'GTM';
+      case 'redirect': return 'Redirection';
+      case 'both': return 'GTM + Redirection';
+      default: return 'Redirection';
+    }
+  };
+
   if (loading) return <Loading />;
 
   return (
@@ -173,7 +198,13 @@ export default function Accounts() {
                   <div>
                     <h3 className="font-semibold text-slate-800">{account.name}</h3>
                     <p className="text-sm text-slate-500">{account.domain || 'Pas de domaine'}</p>
-                    <Badge variant="info">{getCrmName(account.crm_id)}</Badge>
+                    <div className="flex gap-2 mt-1">
+                      <Badge variant="info">{getCrmName(account.crm_id)}</Badge>
+                      {(account.gtm_head || account.gtm_body) && (
+                        <Badge variant="success">GTM configuré</Badge>
+                      )}
+                      <Badge variant="default">{getTrackingLabel(account.default_tracking_type)}</Badge>
+                    </div>
                   </div>
                 </div>
                 
@@ -224,6 +255,7 @@ export default function Accounts() {
         isOpen={showModal} 
         onClose={() => setShowModal(false)}
         title={editingAccount ? 'Modifier le compte' : 'Nouveau compte'}
+        size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
@@ -297,6 +329,85 @@ export default function Accounts() {
                 />
               </div>
             </div>
+          </div>
+
+          {/* Section GTM */}
+          <div className="border-t pt-4 mt-4">
+            <button
+              type="button"
+              onClick={() => setShowGtmSection(!showGtmSection)}
+              className="w-full flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
+            >
+              <span className="font-medium text-slate-700 flex items-center gap-2">
+                <Code className="w-4 h-4" />
+                Configuration GTM & Tracking
+              </span>
+              {showGtmSection ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+
+            {showGtmSection && (
+              <div className="mt-4 space-y-4 p-4 bg-slate-50 rounded-lg">
+                <Select
+                  label="Type de tracking par défaut"
+                  value={form.default_tracking_type}
+                  onChange={e => setForm({...form, default_tracking_type: e.target.value})}
+                  options={[
+                    { value: 'redirect', label: 'Redirection vers page merci' },
+                    { value: 'gtm', label: 'GTM uniquement (pas de redirection)' },
+                    { value: 'both', label: 'GTM + Redirection' }
+                  ]}
+                />
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Code GTM - HEAD
+                    <span className="text-slate-400 font-normal ml-2">(à coller dans &lt;head&gt;)</span>
+                  </label>
+                  <textarea
+                    value={form.gtm_head}
+                    onChange={e => setForm({...form, gtm_head: e.target.value})}
+                    placeholder="<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){...})</script>
+<!-- End Google Tag Manager -->"
+                    className="w-full h-24 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Code GTM - BODY
+                    <span className="text-slate-400 font-normal ml-2">(à coller après &lt;body&gt;)</span>
+                  </label>
+                  <textarea
+                    value={form.gtm_body}
+                    onChange={e => setForm({...form, gtm_body: e.target.value})}
+                    placeholder="<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src='...'></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->"
+                    className="w-full h-24 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Code GTM - Conversion
+                    <span className="text-slate-400 font-normal ml-2">(déclenché à la soumission du lead)</span>
+                  </label>
+                  <textarea
+                    value={form.gtm_conversion}
+                    onChange={e => setForm({...form, gtm_conversion: e.target.value})}
+                    placeholder="gtag('event', 'conversion', {'send_to': 'AW-XXXXXXXXX/XXXXXXXX'});
+// ou
+dataLayer.push({'event': 'formSubmit'});"
+                    className="w-full h-20 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-xs"
+                  />
+                </div>
+
+                <p className="text-xs text-slate-500">
+                  💡 Ces codes seront automatiquement inclus dans les scripts générés pour vos formulaires.
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 pt-4">
