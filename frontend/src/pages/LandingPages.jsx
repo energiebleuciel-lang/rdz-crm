@@ -1,15 +1,17 @@
 /**
- * Page Landing Pages
+ * Page Landing Pages - Filtrée par CRM sélectionné
  */
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useCRM } from '../hooks/useCRM';
 import { API } from '../hooks/useApi';
 import { Card, Modal, Button, Input, Select, Loading, EmptyState, Badge } from '../components/UI';
 import { Globe, Plus, Edit, Trash2, Copy, Eye, ExternalLink } from 'lucide-react';
 
 export default function LandingPages() {
   const { authFetch } = useAuth();
+  const { selectedCRM, currentCRM } = useCRM();
   const [lps, setLps] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,24 +27,31 @@ export default function LandingPages() {
   });
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (selectedCRM) {
+      loadData();
+    }
+  }, [selectedCRM]);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [lpsRes, accountsRes] = await Promise.all([
-        authFetch(`${API}/api/lps`),
-        authFetch(`${API}/api/accounts`)
-      ]);
+      // Charger les comptes filtrés par CRM
+      const accountsRes = await authFetch(`${API}/api/accounts?crm_id=${selectedCRM}`);
+      let accountsList = [];
+      if (accountsRes.ok) {
+        const data = await accountsRes.json();
+        accountsList = data.accounts || [];
+        setAccounts(accountsList);
+      }
+      
+      // Charger les LPs et filtrer par comptes du CRM
+      const accountIds = accountsList.map(a => a.id);
+      const lpsRes = await authFetch(`${API}/api/lps`);
       
       if (lpsRes.ok) {
         const data = await lpsRes.json();
-        setLps(data.lps || []);
-      }
-      if (accountsRes.ok) {
-        const data = await accountsRes.json();
-        setAccounts(data.accounts || []);
+        const filteredLps = (data.lps || []).filter(l => accountIds.includes(l.account_id));
+        setLps(filteredLps);
       }
     } catch (e) {
       console.error('Load error:', e);
