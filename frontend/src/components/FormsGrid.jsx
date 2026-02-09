@@ -131,6 +131,14 @@ const FormsGrid = ({
     }
   };
 
+  const handleViewBrief = (form) => {
+    try {
+      onViewBrief?.(form);
+    } catch (error) {
+      console.error('Erreur affichage brief:', error);
+    }
+  };
+
   return (
     <div className="space-y-6" data-testid="forms-grid-container">
       {/* Header avec titre et bouton nouveau */}
