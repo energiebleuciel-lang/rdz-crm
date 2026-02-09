@@ -499,18 +499,35 @@ async def health_check():
         leads_success = await db.leads.count_documents({"api_status": "success"})
         leads_failed = await db.leads.count_documents({"api_status": "failed"})
         leads_pending = await db.leads.count_documents({"api_status": "pending"})
-        leads_total = leads_success + leads_failed + leads_pending
+        leads_queued = await db.leads.count_documents({"api_status": "queued"})
+        leads_total = leads_success + leads_failed + leads_pending + leads_queued
         health["checks"]["leads_stats"] = {
             "status": "ok",
             "total": leads_count,
             "success": leads_success,
             "failed": leads_failed,
             "pending": leads_pending,
+            "queued": leads_queued,
             "coherent": leads_total <= leads_count
         }
     except Exception as e:
         health["checks"]["leads_stats"] = {"status": "error", "message": str(e)}
         errors.append("leads_stats")
+    
+    try:
+        # Vérifier la file d'attente
+        queue_pending = await db.lead_queue.count_documents({"status": "pending"})
+        queue_exhausted = await db.lead_queue.count_documents({"status": "exhausted"})
+        health["checks"]["queue"] = {
+            "status": "warning" if queue_pending > 10 or queue_exhausted > 0 else "ok",
+            "pending": queue_pending,
+            "exhausted": queue_exhausted,
+            "service_available": QUEUE_SERVICE_AVAILABLE
+        }
+        if QUEUE_SERVICE_AVAILABLE:
+            health["checks"]["queue"]["crm_health"] = crm_health_status
+    except Exception as e:
+        health["checks"]["queue"] = {"status": "error", "message": str(e)}
     
     try:
         # Vérifier les alertes non résolues
