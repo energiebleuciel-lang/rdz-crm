@@ -208,16 +208,17 @@ export default function Forms() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-bold text-slate-800">Formulaires</h1>
-          
-          {/* Filtres */}
-          <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
-            {['all', 'PV', 'PAC', 'ITE'].map(f => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+        <div>
+          <div className="flex items-center gap-4">
+            <h1 className="text-2xl font-bold text-slate-800">Formulaires</h1>
+            
+            {/* Filtres */}
+            <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
+              {['all', 'PV', 'PAC', 'ITE'].map(f => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
                   filter === f 
                     ? 'bg-white text-slate-800 shadow-sm' 
                     : 'text-slate-600 hover:text-slate-800'
