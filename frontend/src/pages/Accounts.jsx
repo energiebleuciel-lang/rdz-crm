@@ -7,7 +7,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useCRM } from '../hooks/useCRM';
 import { API } from '../hooks/useApi';
 import { Card, Modal, Button, Input, Select, Loading, EmptyState, Badge } from '../components/UI';
-import { Building, Plus, Edit, Trash2, Image, Code, ChevronDown, ChevronUp } from 'lucide-react';
+import { Building, Plus, Edit, Trash2, Image, Code, ChevronDown, ChevronUp, FileText } from 'lucide-react';
 
 export default function Accounts() {
   const { authFetch } = useAuth();
@@ -17,6 +17,7 @@ export default function Accounts() {
   const [showModal, setShowModal] = useState(false);
   const [editingAccount, setEditingAccount] = useState(null);
   const [showGtmSection, setShowGtmSection] = useState(false);
+  const [showLegalSection, setShowLegalSection] = useState(false);
   const [form, setForm] = useState({
     name: '',
     crm_id: '',
@@ -26,6 +27,9 @@ export default function Accounts() {
     logo_mini_url: '',
     primary_color: '#3B82F6',
     secondary_color: '#1E40AF',
+    cgu_text: '',
+    privacy_policy_text: '',
+    legal_mentions_text: '',
     gtm_head: '',
     gtm_body: '',
     gtm_conversion: '',
