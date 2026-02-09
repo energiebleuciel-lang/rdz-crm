@@ -21,35 +21,25 @@ router = APIRouter(prefix="/config", tags=["Configuration"])
 
 @router.get("/api-key")
 async def get_global_api_key(user: dict = Depends(require_admin)):
-    """Récupère la clé API globale pour l'API v1"""
+    """Récupère la clé API globale pour l'API v1 - UNIQUE et NON-REGENERABLE"""
     config = await db.system_config.find_one({"type": "global_api_key"})
     if not config:
-        # Créer une clé par défaut
+        # Créer une clé unique à la première demande
         import secrets
         new_key = secrets.token_urlsafe(32)
         await db.system_config.insert_one({
             "type": "global_api_key",
             "api_key": new_key,
-            "created_at": now_iso()
+            "created_at": now_iso(),
+            "note": "Clé unique - Ne peut pas être régénérée"
         })
         return {"api_key": new_key, "created": True}
     
     return {"api_key": config.get("api_key"), "created": False}
 
 
-@router.post("/api-key/regenerate")
-async def regenerate_api_key(user: dict = Depends(require_admin)):
-    """Régénère la clé API globale"""
-    import secrets
-    new_key = secrets.token_urlsafe(32)
-    
-    await db.system_config.update_one(
-        {"type": "global_api_key"},
-        {"$set": {"api_key": new_key, "updated_at": now_iso()}},
-        upsert=True
-    )
-    
-    return {"api_key": new_key, "regenerated": True}
+# NOTE: L'endpoint /regenerate a été supprimé intentionnellement
+# La clé API est UNIQUE et ne doit pas être régénérable (style Landbot)
 
 
 # ==================== MODELS ====================
