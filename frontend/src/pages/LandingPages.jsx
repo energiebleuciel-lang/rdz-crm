@@ -639,41 +639,45 @@ export default function LandingPages() {
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-semibold text-slate-800">🔵 Script LP</h3>
-                    <Button 
-                      size="sm" 
-                      variant="secondary"
+                    <button
                       onClick={() => copyScript(briefData.scripts.lp)}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
                     >
-                      <Copy className="w-4 h-4" />
-                      Copier
-                    </Button>
+                      <Clipboard className="w-4 h-4" />
+                      Copier Script LP
+                    </button>
                   </div>
                   <p className="text-sm text-slate-600 mb-2">
                     À coller sur: <code className="bg-slate-100 px-2 py-0.5 rounded">{briefData.lp.url}</code>
                   </p>
-                  <pre className="bg-slate-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto max-h-64">
-                    {briefData.scripts.lp}
-                  </pre>
+                  <div className="relative">
+                    <pre className="bg-slate-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto max-h-64 select-all">
+                      {briefData.scripts.lp}
+                    </pre>
+                    <p className="text-xs text-slate-500 mt-1">💡 Triple-clic pour sélectionner tout le script</p>
+                  </div>
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-semibold text-slate-800">🟠 Script Form</h3>
-                    <Button 
-                      size="sm" 
-                      variant="secondary"
+                    <button
                       onClick={() => copyScript(briefData.scripts.form)}
+                      className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium transition-colors"
                     >
-                      <Copy className="w-4 h-4" />
-                      Copier
-                    </Button>
+                      <Clipboard className="w-4 h-4" />
+                      Copier Script Form
+                    </button>
                   </div>
                   <p className="text-sm text-slate-600 mb-2">
                     À coller sur: <code className="bg-slate-100 px-2 py-0.5 rounded">{briefData.form.url}</code>
                   </p>
-                  <pre className="bg-slate-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto max-h-64">
-                    {briefData.scripts.form}
-                  </pre>
+                  <div className="relative">
+                    <pre className="bg-slate-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto max-h-64 select-all">
+                      {briefData.scripts.form}
+                    </pre>
+                    <p className="text-xs text-slate-500 mt-1">💡 Triple-clic pour sélectionner tout le script</p>
+                  </div>
                 </div>
               </>
             )}
