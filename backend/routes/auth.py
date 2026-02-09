@@ -2,19 +2,36 @@
 Routes d'authentification
 - Login / Logout
 - Session management
-- User info
+- User management avec permissions
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import datetime, timezone, timedelta
 import uuid
 
-from models import UserLogin, UserCreate, UserResponse
+from models import UserLogin, UserCreate, UserUpdate, UserResponse, UserPermissions
 from config import db, hash_password, generate_token, now_iso
+from services.activity_logger import log_activity
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 security = HTTPBearer(auto_error=False)
+
+# Permissions par défaut selon le rôle
+DEFAULT_PERMISSIONS = {
+    "admin": {
+        "dashboard": True, "accounts": True, "lps": True, "forms": True,
+        "leads": True, "commandes": True, "settings": True, "users": True
+    },
+    "editor": {
+        "dashboard": True, "accounts": True, "lps": True, "forms": True,
+        "leads": True, "commandes": False, "settings": False, "users": False
+    },
+    "viewer": {
+        "dashboard": True, "accounts": False, "lps": True, "forms": True,
+        "leads": True, "commandes": False, "settings": False, "users": False
+    }
+}
 
 
 # ==================== HELPERS ====================
