@@ -3124,7 +3124,12 @@ async def submit_lead(lead: LeadData):
     api_status = "no_config"
     
     if can_send:
-        api_status, api_response = await send_lead_to_crm(lead_doc, api_url, api_key)
+        api_status, api_response, should_queue = await send_lead_to_crm(lead_doc, api_url, api_key)
+        
+        # Si erreur temporaire (CRM down), mettre en file d'attente
+        if should_queue and QUEUE_SERVICE_AVAILABLE:
+            await add_to_queue(db, lead_doc, api_url, api_key, reason="crm_error")
+            api_status = "queued"
         
         # Construire le statut détaillé avec plateforme
         status_detail = f"{api_status}"
@@ -3132,6 +3137,8 @@ async def submit_lead(lead: LeadData):
             status_detail = f"envoyé/{target_crm.get('slug', 'crm')}"
         elif api_status == "duplicate":
             status_detail = f"doublon/{target_crm.get('slug', 'crm')}"
+        elif api_status == "queued":
+            status_detail = f"en attente/{target_crm.get('slug', 'crm')}"
         
         await db.leads.update_one(
             {"id": lead_doc["id"]},
@@ -3140,7 +3147,7 @@ async def submit_lead(lead: LeadData):
                 "status_detail": status_detail,
                 "api_response": api_response,
                 "sent_to_crm": api_status in ["success", "duplicate"],
-                "sent_at": datetime.now(timezone.utc).isoformat()
+                "sent_at": datetime.now(timezone.utc).isoformat() if api_status in ["success", "duplicate"] else None
             }}
         )
     
