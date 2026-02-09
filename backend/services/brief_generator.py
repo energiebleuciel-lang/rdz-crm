@@ -679,11 +679,32 @@ document.getElementById('legal-popup').addEventListener('click', function(e) {{
     FORM_CODE: "{form_code}",
     LIAISON_CODE: "{liaison_code}",
     PRODUCT_TYPE: "{product_type}",
-    MODE: "embedded"
+    MODE: "embedded",
+    
+    // ========== ENDPOINTS API ==========
+    ENDPOINTS: {{
+      GET_FORM_CONFIG: "{api_url}/api/forms/public/{form_code}",
+      GET_LP_FORMS: "{api_url}/api/forms/public/by-lp/{lp_code}",
+      SUBMIT_LEAD: "{api_url}/api/v1/leads",
+      TRACK_LP_VISIT: "{api_url}/api/track/lp-visit",
+      TRACK_CTA_CLICK: "{api_url}/api/track/cta-click",
+      TRACK_FORM_START: "{api_url}/api/track/form-start"
+    }}
   }};
 
   // Exposer le contexte pour le formulaire
   window.__EnerSolar_CONTEXT__ = CONFIG;
+
+  // ========== RÉCUPÉRER CONFIG FORMULAIRE (optionnel) ==========
+  window.getFormConfig = async function() {{
+    try {{
+      var response = await fetch(CONFIG.ENDPOINTS.GET_FORM_CONFIG);
+      return await response.json();
+    }} catch(e) {{
+      console.error("Erreur récupération config:", e);
+      return null;
+    }}
+  }};
 
   // ========== UTM PARAMS ==========
   var urlParams = new URLSearchParams(window.location.search);
@@ -695,7 +716,7 @@ document.getElementById('legal-popup').addEventListener('click', function(e) {{
 
   // ========== TRACKING LP ==========
   function trackLPView() {{
-    fetch(CONFIG.API_URL + "/api/track/lp-visit", {{
+    fetch(CONFIG.ENDPOINTS.TRACK_LP_VISIT, {{
       method: "POST",
       headers: {{ "Content-Type": "application/json" }},
       body: JSON.stringify({{
@@ -715,7 +736,7 @@ document.getElementById('legal-popup').addEventListener('click', function(e) {{
 
   // ========== TRACKING CTA (scroll vers form) ==========
   window.trackCTAClick = function(ctaId, ctaText) {{
-    fetch(CONFIG.API_URL + "/api/track/cta-click", {{
+    fetch(CONFIG.ENDPOINTS.TRACK_CTA_CLICK, {{
       method: "POST",
       headers: {{ "Content-Type": "application/json" }},
       body: JSON.stringify({{
