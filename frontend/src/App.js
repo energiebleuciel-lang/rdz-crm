@@ -1721,95 +1721,40 @@ const FormsPage = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-800">Formulaires</h1>
-        <button onClick={() => { setEditingForm(null); setFormData({ account_id: '', lp_ids: [], code: '', name: '', url: '', product_type: 'panneaux', source_type: 'native', source_name: '', tracking_type: 'redirect', redirect_url_name: '', notes: '', status: 'active', form_type: 'standalone', html_code: '', crm_api_key: '' }); setShowModal(true); }} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-          <Plus className="w-4 h-4" />
-          Nouveau formulaire
-        </button>
-      </div>
-
-      {/* Filtre par type de produit */}
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-slate-500">Filtrer par produit :</span>
-        <div className="flex gap-1">
-          {productTypes.map(pt => (
-            <button
-              key={pt.value}
-              onClick={() => setProductFilter(pt.value)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                productFilter === pt.value
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              {pt.icon} {pt.label}
-            </button>
-          ))}
-        </div>
-        <span className="text-xs text-slate-400 ml-2">({forms.length} formulaires)</span>
-      </div>
-
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-        <Table
-          columns={[
-            { key: 'code', label: 'Code', render: v => <span className="font-mono text-sm bg-slate-100 px-2 py-1 rounded">{v}</span> },
-            { key: 'name', label: 'Nom' },
-            { key: 'product_type', label: 'Produit', render: v => {
-              const productLabels = { 'panneaux': 'PV', 'pompes': 'PAC', 'isolation': 'ITE', 'PV': 'PV', 'PAC': 'PAC', 'ITE': 'ITE' };
-              const productColors = { 'panneaux': 'bg-yellow-100 text-yellow-700', 'pompes': 'bg-blue-100 text-blue-700', 'isolation': 'bg-green-100 text-green-700', 'PV': 'bg-yellow-100 text-yellow-700', 'PAC': 'bg-blue-100 text-blue-700', 'ITE': 'bg-green-100 text-green-700' };
-              return <span className={`text-xs font-bold px-2 py-1 rounded ${productColors[v] || 'bg-slate-100 text-slate-700'}`}>{productLabels[v] || v}</span>;
-            }},
-            { key: 'source_name', label: 'Source' },
-            { key: 'stats_started', label: 'Démarrés', render: (_, row) => <span className="text-blue-600 font-medium">{row.stats?.started || 0}</span> },
-            { key: 'stats_completed', label: 'Complétés', render: (_, row) => <span className="text-green-600 font-medium">{row.stats?.completed || 0}</span> },
-            { key: 'stats_transfo', label: '% Transfo', render: (_, row) => {
-              const v = row.stats;
-              const rate = v?.conversion_rate || 0;
-              const color = rate >= 50 ? 'bg-green-100 text-green-700' : rate >= 25 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700';
-              return <span className={`text-xs font-bold px-2 py-0.5 rounded ${color}`}>{rate}%</span>;
-            }},
-            { key: 'exclude_from_routing', label: 'Routage', render: (v, row) => 
-              v ? <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded" title="Ce formulaire est exclu du routage inter-CRM">🚫 Exclu</span> : 
-              <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded" title="Ce formulaire peut être rerouté vers l'autre CRM">✓ Actif</span>
-            },
-            { key: 'status', label: 'Statut', render: v => <StatusBadge status={v} /> },
-            { 
-              key: 'actions', 
-              label: '', 
-              render: (_, row) => (
-                <div className="flex gap-1">
-                  {/* Bouton copier clé API - SÉCURISÉ */}
-                  <button 
-                    onClick={() => { 
-                      if (row.internal_api_key) {
-                        navigator.clipboard.writeText(row.internal_api_key);
-                        alert('🔑 Clé API copiée ! NE LA PARTAGEZ PAS PUBLIQUEMENT.');
-                      } else {
-                        alert('Aucune clé API générée pour ce formulaire.');
-                      }
-                    }} 
-                    className="p-1 hover:bg-orange-100 rounded" 
-                    title="Copier la clé API (sécurisée)"
-                  >
-                    <Key className="w-4 h-4 text-orange-600" />
-                  </button>
-                  <button onClick={() => { setEditingForm(row); setFormData(row); setShowModal(true); }} className="p-1 hover:bg-slate-100 rounded" title="Modifier">
-                    <Edit className="w-4 h-4 text-slate-600" />
-                  </button>
-                  <button onClick={() => { setShowDuplicateModal(row); setDuplicateData({ new_code: row.code + '-COPY', new_name: row.name + ' (copie)', new_crm_api_key: '' }); }} className="p-1 hover:bg-slate-100 rounded" title="Dupliquer">
-                    <Copy className="w-4 h-4 text-blue-600" />
-                  </button>
-                  <button onClick={() => deleteForm(row.id)} className="p-1 hover:bg-slate-100 rounded" title="Archiver">
-                    <Trash2 className="w-4 h-4 text-red-600" />
-                  </button>
-                </div>
-              )
-            }
-          ]}
-          data={forms}
-        />
-      </div>
+      {/* Utilisation du nouveau composant FormsGrid (cartes style Landbot) */}
+      <FormsGrid
+        forms={forms}
+        accounts={accounts}
+        isLoading={loading}
+        onNewForm={() => {
+          setEditingForm(null);
+          setFormData({
+            account_id: '', lp_ids: [], code: '', name: '', url: '', product_type: 'panneaux',
+            source_type: 'native', source_name: '', tracking_type: 'redirect',
+            redirect_url_name: '', notes: '', status: 'active',
+            form_type: 'standalone', html_code: '', crm_api_key: '', exclude_from_routing: false
+          });
+          setShowModal(true);
+        }}
+        onEditForm={(form) => {
+          setEditingForm(form);
+          setFormData(form);
+          setShowModal(true);
+        }}
+        onDuplicateForm={(form) => {
+          setShowDuplicateModal(form);
+          setDuplicateData({
+            new_code: form.code + '-COPY',
+            new_name: form.name + ' (copie)',
+            new_crm_api_key: ''
+          });
+        }}
+        onDeleteForm={(form) => deleteForm(form.id)}
+        onCopyFormId={(form) => {
+          // Le composant FormsGrid gère déjà la copie du form_id
+          console.log('Form ID copié:', form.id);
+        }}
+      />
 
       {/* Modal Duplicate Form */}
       <Modal isOpen={!!showDuplicateModal} onClose={() => setShowDuplicateModal(null)} title="Dupliquer le formulaire">
