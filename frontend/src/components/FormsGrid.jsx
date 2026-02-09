@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import { Plus, Grid, List, Search, Filter } from 'lucide-react';
+import { Plus, Grid, List, Search, Filter, Key, Edit, Copy, Trash2 } from 'lucide-react';
 import FormCard from './FormCard';
 
 // Configuration des filtres produit
