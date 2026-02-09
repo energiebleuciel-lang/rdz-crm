@@ -251,7 +251,21 @@ export default function Commandes() {
                         </div>
                       </div>
                       
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-4">
+                        {/* Prix par lead */}
+                        <div className="flex items-center gap-2 bg-amber-50 px-3 py-1.5 rounded-lg">
+                          <span className="text-sm text-amber-700">Prix:</span>
+                          <input
+                            type="number"
+                            value={cmd.prix_unitaire || 0}
+                            onChange={(e) => updatePrice(cmd, parseFloat(e.target.value) || 0)}
+                            className="w-16 px-2 py-1 text-sm font-bold text-amber-800 bg-white border border-amber-200 rounded text-right"
+                            min="0"
+                            step="0.5"
+                          />
+                          <span className="text-sm text-amber-700">€</span>
+                        </div>
+                        
                         <Badge variant={cmd.active ? 'success' : 'secondary'}>
                           {cmd.active ? 'Active' : 'Inactive'}
                         </Badge>
