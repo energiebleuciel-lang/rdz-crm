@@ -3236,8 +3236,9 @@ async def retry_lead(lead_id: str, user: dict = Depends(get_current_user)):
         return {"success": False, "error": "Configuration API manquante (URL ou clé)"}
     
     # Use the helper function
-    api_status, api_response = await send_lead_to_crm(lead, api_url, api_key)
+    api_status, api_response, should_queue = await send_lead_to_crm(lead, api_url, api_key)
     
+    # Pour un retry manuel, on ne met pas en queue automatiquement
     await db.leads.update_one(
         {"id": lead_id},
         {"$set": {
@@ -3249,7 +3250,7 @@ async def retry_lead(lead_id: str, user: dict = Depends(get_current_user)):
         }}
     )
     
-    return {"success": True, "status": api_status}
+    return {"success": True, "status": api_status, "should_retry_later": should_queue}
 
 @api_router.post("/leads/retry-failed")
 async def retry_failed_leads(hours: int = 24, user: dict = Depends(get_current_user)):
