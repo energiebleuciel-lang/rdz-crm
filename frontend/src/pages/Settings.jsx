@@ -120,10 +120,7 @@ export default function Settings() {
           <p className="text-xs text-slate-500">
             Cette clé doit être incluse dans le header <code className="bg-slate-100 px-1 rounded">Authorization: Token [clé]</code>
           </p>
-          <Button variant="secondary" size="sm" onClick={regenerateKey}>
-            <RefreshCw className="w-4 h-4" />
-            Régénérer
-          </Button>
+          <Badge variant="info">Clé unique</Badge>
         </div>
       </Card>
 
