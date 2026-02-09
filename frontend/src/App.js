@@ -4865,13 +4865,10 @@ const SettingsPage = () => {
           <div className="text-sm">
             <p className="text-orange-100">Usage : <code className="bg-black/20 px-2 py-0.5 rounded">Authorization: Token VOTRE_CLE</code></p>
           </div>
-          <button 
-            onClick={regenerateApiKey}
-            className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Régénérer la clé
-          </button>
+          <div className="px-3 py-1.5 bg-green-500/30 rounded-lg text-sm font-medium flex items-center gap-2">
+            <Shield className="w-4 h-4" />
+            Clé permanente
+          </div>
         </div>
       </div>
 
