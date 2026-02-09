@@ -833,7 +833,7 @@ document.getElementById('legal-popup').addEventListener('click', function(e) {{
       newsletter: leadData.newsletter || false
     }};
 
-    return fetch(CONFIG.API_URL + "/api/v1/leads", {{
+    return fetch(CONFIG.ENDPOINTS.SUBMIT_LEAD, {{
       method: "POST",
       headers: {{ 
         "Content-Type": "application/json",
@@ -876,12 +876,22 @@ document.getElementById('legal-popup').addEventListener('click', function(e) {{
   }}
   
   console.log("[EnerSolar] Script LP+Form initialisé (embedded)");
-  console.log("[EnerSolar] LP:", CONFIG.LP_CODE, "| Form:", CONFIG.FORM_CODE, "| Liaison:", CONFIG.LIAISON_CODE);
+  console.log("[EnerSolar] Endpoints disponibles:", CONFIG.ENDPOINTS);
 }})();
 </script>
 
 {f"""<!-- GTM Body (à placer juste après <body>) -->
 {gtm.get("body", "")}""" if gtm.get("body") else ""}
+
+<!-- ========== ENDPOINTS DISPONIBLES ========== -->
+<!--
+GET  {api_url}/api/forms/public/{form_code}       -> Config du formulaire
+GET  {api_url}/api/forms/public/by-lp/{lp_code}   -> Tous les forms liés à cette LP
+POST {api_url}/api/v1/leads                        -> Soumettre un lead
+POST {api_url}/api/track/lp-visit                  -> Tracker visite LP
+POST {api_url}/api/track/cta-click                 -> Tracker clic CTA
+POST {api_url}/api/track/form-start                -> Tracker début formulaire
+-->
 
 <!-- ========== UTILISATION DES CTA ========== -->
 <!--
