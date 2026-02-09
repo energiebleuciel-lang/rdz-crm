@@ -132,21 +132,20 @@ async def generate_lp_code() -> str:
     """
     Génère un code LP unique (LP-001, LP-002, etc.)
     """
-    # Trouver le dernier code
-    last_lp = await db.lps.find_one(
-        {"code": {"$regex": "^LP-"}},
-        sort=[("code", -1)]
-    )
+    # Compter toutes les LPs pour obtenir le prochain numéro
+    all_lps = await db.lps.find({"code": {"$regex": "^LP-\\d+$"}}, {"code": 1}).to_list(1000)
     
-    if last_lp and last_lp.get("code"):
+    max_num = 0
+    for lp in all_lps:
+        code = lp.get("code", "")
         try:
-            num = int(last_lp["code"].split("-")[1]) + 1
+            num = int(code.split("-")[1])
+            if num > max_num:
+                max_num = num
         except:
-            num = 1
-    else:
-        num = 1
+            pass
     
-    return f"LP-{str(num).zfill(3)}"
+    return f"LP-{str(max_num + 1).zfill(3)}"
 
 
 async def generate_form_code(product_type: str) -> str:
