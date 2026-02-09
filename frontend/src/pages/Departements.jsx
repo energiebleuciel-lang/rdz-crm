@@ -40,7 +40,7 @@ const DEPT_NAMES = {
 
 export default function Departements() {
   const { authFetch } = useAuth();
-  const { selectedCRM } = useCRM();
+  const { selectedCRM, currentCRM } = useCRM();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   
@@ -53,7 +53,9 @@ export default function Departements() {
   const [showDeptSelector, setShowDeptSelector] = useState(false);
 
   useEffect(() => {
-    loadStats();
+    if (selectedCRM) {
+      loadStats();
+    }
   }, [selectedCRM, selectedDepts, selectedProduct, period, dateFrom, dateTo]);
 
   const loadStats = async () => {
@@ -62,7 +64,8 @@ export default function Departements() {
       
       let url = `${API}/api/stats/departements?`;
       
-      if (selectedCRM?.id) url += `crm_id=${selectedCRM.id}&`;
+      // Toujours envoyer le CRM sélectionné
+      if (selectedCRM) url += `crm_id=${selectedCRM}&`;
       if (selectedDepts.length > 0) url += `departements=${selectedDepts.join(',')}&`;
       if (selectedProduct) url += `product_type=${selectedProduct}&`;
       if (period !== 'custom') url += `period=${period}&`;
