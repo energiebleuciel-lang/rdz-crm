@@ -135,18 +135,39 @@ class LeadSubmit(BaseModel):
     """Lead soumis via API v1"""
     form_id: str
     phone: str
+    # Identité
     nom: Optional[str] = ""
     prenom: Optional[str] = ""
-    civilite: Optional[str] = ""
+    civilite: Optional[str] = ""  # M., Mme, Mlle
     email: Optional[str] = ""
+    # Localisation
     code_postal: Optional[str] = ""
     departement: Optional[str] = ""
-    type_logement: Optional[str] = ""
-    statut_occupant: Optional[str] = ""
-    facture_electricite: Optional[str] = ""
+    ville: Optional[str] = ""
+    adresse: Optional[str] = ""
+    # Logement
+    type_logement: Optional[str] = ""  # Maison, Appartement
+    statut_occupant: Optional[str] = ""  # Propriétaire, Locataire
+    surface_habitable: Optional[str] = ""  # m²
+    annee_construction: Optional[str] = ""
+    type_chauffage: Optional[str] = ""  # Électrique, Gaz, Fioul, Bois
+    # Énergie
+    facture_electricite: Optional[str] = ""  # Tranche: <100€, 100-150€, etc.
+    facture_chauffage: Optional[str] = ""
+    # Projet
+    type_projet: Optional[str] = ""  # Installation, Remplacement
+    delai_projet: Optional[str] = ""  # Immédiat, 3 mois, 6 mois, 1 an
+    budget: Optional[str] = ""
     # Tracking
     lp_code: Optional[str] = ""
     liaison_code: Optional[str] = ""
+    source: Optional[str] = ""  # google, facebook, native, etc.
+    utm_source: Optional[str] = ""
+    utm_medium: Optional[str] = ""
+    utm_campaign: Optional[str] = ""
+    # Consentement
+    rgpd_consent: Optional[bool] = True
+    newsletter: Optional[bool] = False
 
 
 # ==================== TRACKING ====================
