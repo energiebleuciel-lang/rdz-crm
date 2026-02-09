@@ -252,23 +252,60 @@ async def get_lead(lead_id: str, user: dict = Depends(get_current_user)):
 
 @router.post("/leads/{lead_id}/retry")
 async def retry_lead(lead_id: str, user: dict = Depends(get_current_user)):
-    """Retenter l'envoi d'un lead"""
+    """Retenter l'envoi d'un lead avec la logique de commandes"""
+    from routes.commandes import has_commande
+    
     lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
     if not lead:
         raise HTTPException(status_code=404, detail="Lead non trouvé")
     
     # Récupérer config
     form = await db.forms.find_one({"code": lead.get("form_code")})
-    if not form or not form.get("crm_api_key"):
-        return {"success": False, "error": "Config CRM manquante"}
+    if not form:
+        return {"success": False, "error": "Formulaire non trouvé"}
+    
+    api_key_crm = form.get("crm_api_key")
+    if not api_key_crm:
+        return {"success": False, "error": "Clé API CRM non configurée sur le formulaire"}
+    
+    allow_cross_crm = form.get("allow_cross_crm", True)
+    product_type = form.get("product_type", "PV")
+    dept = lead.get("departement", "")
     
     account = await db.accounts.find_one({"id": form.get("account_id")})
-    crm = await db.crms.find_one({"id": account.get("crm_id")}) if account else None
+    primary_crm_id = account.get("crm_id") if account else None
     
-    if not crm:
-        return {"success": False, "error": "CRM non trouvé"}
+    # Chercher un CRM avec commande active
+    all_crms = await db.crms.find({}, {"_id": 0}).to_list(10)
+    crm_map = {c["id"]: c for c in all_crms}
     
-    status, response, _ = await send_to_crm(lead, crm.get("api_url"), form.get("crm_api_key"))
+    target_crm = None
+    routing_reason = "no_commande"
+    
+    # Essayer le CRM principal
+    if primary_crm_id:
+        if await has_commande(primary_crm_id, product_type, dept):
+            target_crm = crm_map.get(primary_crm_id)
+            routing_reason = f"commande_{target_crm.get('slug')}" if target_crm else "primary"
+    
+    # Cross-CRM si autorisé
+    if not target_crm and allow_cross_crm:
+        for crm_id, crm in crm_map.items():
+            if crm_id != primary_crm_id:
+                if await has_commande(crm_id, product_type, dept):
+                    target_crm = crm
+                    routing_reason = f"cross_crm_{crm.get('slug')}"
+                    break
+    
+    if not target_crm:
+        await db.leads.update_one(
+            {"id": lead_id},
+            {"$set": {"api_status": "no_crm", "routing_reason": "no_commande", "retried_at": now_iso()}}
+        )
+        return {"success": False, "error": "Aucun CRM avec commande active pour ce département/produit"}
+    
+    # Envoyer au CRM
+    status, response, _ = await send_to_crm(lead, target_crm.get("api_url"), api_key_crm)
     
     await db.leads.update_one(
         {"id": lead_id},
@@ -276,8 +313,15 @@ async def retry_lead(lead_id: str, user: dict = Depends(get_current_user)):
             "api_status": status,
             "api_response": response,
             "sent_to_crm": status in ["success", "duplicate"],
+            "target_crm_id": target_crm.get("id"),
+            "target_crm_slug": target_crm.get("slug"),
+            "routing_reason": routing_reason,
             "retried_at": now_iso(),
             "retry_count": lead.get("retry_count", 0) + 1
+        }}
+    )
+    
+    return {"success": status in ["success", "duplicate"], "status": status, "crm": target_crm.get("slug")}
         }}
     )
     
