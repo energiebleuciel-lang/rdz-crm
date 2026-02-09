@@ -267,9 +267,10 @@ async def list_forms(
             "conversion": round((leads_total / started * 100), 1) if started > 0 else 0
         }
         
-        # Nom du compte
-        account = await db.accounts.find_one({"id": form.get("account_id")}, {"_id": 0, "name": 1})
+        # Nom et logo du compte
+        account = await db.accounts.find_one({"id": form.get("account_id")}, {"_id": 0, "name": 1, "logo": 1})
         form["account_name"] = account.get("name") if account else "N/A"
+        form["account_logo"] = account.get("logo") if account else None
         
         # LP liée
         if form.get("lp_id"):
