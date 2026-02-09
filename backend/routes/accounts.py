@@ -13,10 +13,14 @@ router = APIRouter(prefix="/accounts", tags=["Comptes"])
 
 
 @router.get("")
-async def list_accounts(user: dict = Depends(get_current_user)):
-    """Liste tous les comptes"""
-    accounts = await db.accounts.find({}, {"_id": 0}).sort("name", 1).to_list(100)
-    return {"accounts": accounts}
+async def list_accounts(crm_id: str = None, user: dict = Depends(get_current_user)):
+    """Liste les comptes, optionnellement filtrés par CRM"""
+    query = {}
+    if crm_id:
+        query["crm_id"] = crm_id
+    
+    accounts = await db.accounts.find(query, {"_id": 0}).sort("name", 1).to_list(100)
+    return {"accounts": accounts, "count": len(accounts)}
 
 
 @router.get("/{account_id}")
