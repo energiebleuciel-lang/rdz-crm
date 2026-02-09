@@ -498,3 +498,716 @@ Ou avec un lien:
         "phone_validation": phone_validation,
         "api_url": api_url
     }
+
+
+
+async def generate_brief_for_lp(lp_id: str) -> dict:
+    """
+    Génère un brief complet pour une LP + Form (duo)
+    - Mode EMBEDDED : 1 script unique (tout sur même page)
+    - Mode REDIRECT : 2 scripts séparés (LP + Form)
+    Inclut le bandeau CGU/Privacy pour la LP
+    """
+    # Récupérer la LP
+    lp = await db.lps.find_one({"id": lp_id}, {"_id": 0})
+    if not lp:
+        return {"error": "LP non trouvée"}
+    
+    lp_code = lp.get("code", "")
+    lp_url = lp.get("url", "")
+    lp_name = lp.get("name", "")
+    form_mode = lp.get("form_mode", "redirect")  # embedded ou redirect
+    form_id = lp.get("form_id")
+    product_type = lp.get("product_type", "")
+    tracking_type = lp.get("tracking_type", "redirect")
+    redirect_url = lp.get("redirect_url", "/merci")
+    
+    # Récupérer le Form lié
+    form = None
+    form_code = ""
+    form_url = ""
+    if form_id:
+        form = await db.forms.find_one({"id": form_id}, {"_id": 0})
+        if form:
+            form_code = form.get("code", "")
+            form_url = form.get("url", "")
+    
+    if not form:
+        return {"error": "Form lié non trouvé"}
+    
+    # Code de liaison
+    liaison_code = f"{lp_code}_{form_code}"
+    
+    # Récupérer le compte
+    account = await db.accounts.find_one({"id": lp.get("account_id")}, {"_id": 0})
+    if not account:
+        return {"error": "Compte non trouvé"}
+    
+    account_name = account.get("name", "")
+    
+    # Logos
+    logos = {
+        "main": account.get("logo_main_url", ""),
+        "secondary": account.get("logo_secondary_url", ""),
+        "mini": account.get("logo_mini_url", "")
+    }
+    
+    # GTM
+    gtm = {
+        "head": account.get("gtm_head", ""),
+        "body": account.get("gtm_body", ""),
+        "conversion": account.get("gtm_conversion", "")
+    }
+    
+    # Textes légaux
+    legal = {
+        "cgu": account.get("legal_mentions_text", ""),
+        "privacy": account.get("privacy_policy_text", "")
+    }
+    
+    api_url = BACKEND_URL
+    
+    # ==================== BANDEAU CGU/PRIVACY (accordion) ====================
+    legal_banner_html = ""
+    if legal.get("cgu") or legal.get("privacy"):
+        legal_banner_html = f'''
+<!-- ========== BANDEAU MENTIONS LÉGALES (à placer en bas de page) ========== -->
+<div id="legal-banner" style="background:#f8f9fa;border-top:1px solid #e9ecef;padding:15px;margin-top:40px;font-size:12px;color:#6c757d;">
+  <div style="max-width:1200px;margin:0 auto;">
+    <div style="display:flex;gap:20px;flex-wrap:wrap;">
+      {f"""<div>
+        <button onclick="document.getElementById('cgu-content').style.display=document.getElementById('cgu-content').style.display==='none'?'block':'none'" 
+                style="background:none;border:none;color:#007bff;cursor:pointer;padding:0;font-size:12px;">
+          📋 Conditions Générales d'Utilisation ▼
+        </button>
+        <div id="cgu-content" style="display:none;margin-top:10px;padding:10px;background:white;border-radius:4px;max-height:200px;overflow-y:auto;">
+          {legal.get("cgu", "").replace(chr(10), "<br>")}
+        </div>
+      </div>""" if legal.get("cgu") else ""}
+      {f"""<div>
+        <button onclick="document.getElementById('privacy-content').style.display=document.getElementById('privacy-content').style.display==='none'?'block':'none'" 
+                style="background:none;border:none;color:#007bff;cursor:pointer;padding:0;font-size:12px;">
+          🔒 Politique de Confidentialité ▼
+        </button>
+        <div id="privacy-content" style="display:none;margin-top:10px;padding:10px;background:white;border-radius:4px;max-height:200px;overflow-y:auto;">
+          {legal.get("privacy", "").replace(chr(10), "<br>")}
+        </div>
+      </div>""" if legal.get("privacy") else ""}
+    </div>
+    <p style="margin-top:10px;margin-bottom:0;">© {account_name} - Tous droits réservés</p>
+  </div>
+</div>
+'''
+
+    # ==================== GÉNÉRATION SCRIPTS ====================
+    
+    # GTM trigger après submit
+    gtm_trigger = ""
+    if tracking_type in ["gtm", "both"] and gtm.get("conversion"):
+        gtm_trigger = f'''
+        // Déclencher GTM conversion
+        {gtm.get("conversion", "")}'''
+    
+    redirect_trigger = ""
+    if tracking_type in ["redirect", "both"] and redirect_url:
+        redirect_trigger = f'''
+        // Rediriger vers page merci
+        window.location.href = "{redirect_url}";'''
+
+    if form_mode == "embedded":
+        # ==================== MODE EMBEDDED : 1 SCRIPT UNIQUE ====================
+        script_combined = f'''<!-- ================================================================ -->
+<!-- SCRIPT LP + FORM COMBINÉ (Mode Embedded - Même page)            -->
+<!-- LP: {lp_code} | Form: {form_code} | Liaison: {liaison_code}     -->
+<!-- À coller sur : {lp_url}                                          -->
+<!-- ================================================================ -->
+
+{f"""<!-- GTM Head -->
+{gtm.get("head", "")}""" if gtm.get("head") else ""}
+
+<script>
+(function() {{
+  // ========== CONFIGURATION ==========
+  var CONFIG = {{
+    API_URL: "{api_url}",
+    LP_CODE: "{lp_code}",
+    FORM_CODE: "{form_code}",
+    LIAISON_CODE: "{liaison_code}",
+    PRODUCT_TYPE: "{product_type}",
+    MODE: "embedded"
+  }};
+
+  // Exposer le contexte pour le formulaire
+  window.__EnerSolar_CONTEXT__ = CONFIG;
+
+  // ========== UTM PARAMS ==========
+  var urlParams = new URLSearchParams(window.location.search);
+  var UTM = {{
+    source: urlParams.get("utm_source") || "",
+    medium: urlParams.get("utm_medium") || "",
+    campaign: urlParams.get("utm_campaign") || ""
+  }};
+
+  // ========== TRACKING LP ==========
+  function trackLPView() {{
+    fetch(CONFIG.API_URL + "/api/track/lp-visit", {{
+      method: "POST",
+      headers: {{ "Content-Type": "application/json" }},
+      body: JSON.stringify({{
+        lp_code: CONFIG.LP_CODE,
+        referrer: document.referrer
+      }})
+    }}).catch(function(e) {{ console.log("[EnerSolar] LP view error:", e); }});
+    
+    // Push GTM dataLayer
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({{
+      event: "lp_view",
+      lp_code: CONFIG.LP_CODE,
+      product_type: CONFIG.PRODUCT_TYPE
+    }});
+  }}
+
+  // ========== TRACKING CTA (scroll vers form) ==========
+  window.trackCTAClick = function(ctaId, ctaText) {{
+    fetch(CONFIG.API_URL + "/api/track/cta-click", {{
+      method: "POST",
+      headers: {{ "Content-Type": "application/json" }},
+      body: JSON.stringify({{
+        lp_code: CONFIG.LP_CODE,
+        form_code: CONFIG.FORM_CODE
+      }})
+    }}).catch(function(e) {{ console.log("[EnerSolar] CTA click error:", e); }});
+    
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({{
+      event: "cta_click",
+      lp_code: CONFIG.LP_CODE,
+      cta_id: ctaId || "unknown",
+      cta_text: ctaText || "unknown"
+    }});
+    
+    // Scroll vers le formulaire
+    var formEl = document.getElementById("form-container") || document.getElementById("formulaire");
+    if (formEl) {{
+      formEl.scrollIntoView({{ behavior: "smooth", block: "start" }});
+    }}
+  }};
+
+  // ========== TRACKING FORM START ==========
+  var formStarted = false;
+  window.trackFormStart = function() {{
+    if (formStarted) return;
+    formStarted = true;
+    
+    fetch(CONFIG.API_URL + "/api/track/form-start", {{
+      method: "POST",
+      headers: {{ "Content-Type": "application/json" }},
+      body: JSON.stringify({{
+        form_code: CONFIG.FORM_CODE,
+        lp_code: CONFIG.LP_CODE,
+        liaison_code: CONFIG.LIAISON_CODE
+      }})
+    }}).catch(function(e) {{ console.log("[EnerSolar] Form start error:", e); }});
+    
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({{
+      event: "form_start",
+      form_code: CONFIG.FORM_CODE,
+      lp_code: CONFIG.LP_CODE
+    }});
+  }};
+
+  // ========== VALIDATION TÉLÉPHONE ==========
+  window.validatePhone = function(phone) {{
+    var digits = phone.replace(/\\D/g, "");
+    if (digits.length === 9 && digits[0] !== "0") digits = "0" + digits;
+    if (digits.length !== 10) return {{ valid: false, error: "Le numéro doit contenir 10 chiffres" }};
+    if (!digits.startsWith("0")) return {{ valid: false, error: "Le numéro doit commencer par 0" }};
+    if (digits === "0123456789" || /^0(\\d)\\1{{8}}$/.test(digits)) return {{ valid: false, error: "Numéro invalide" }};
+    return {{ valid: true, phone: digits }};
+  }};
+
+  // ========== SOUMISSION LEAD ==========
+  window.submitLead = function(leadData) {{
+    var phoneCheck = validatePhone(leadData.phone || "");
+    if (!phoneCheck.valid) {{
+      alert(phoneCheck.error);
+      return Promise.reject(phoneCheck.error);
+    }}
+
+    var payload = {{
+      form_id: CONFIG.FORM_CODE,
+      phone: phoneCheck.phone,
+      nom: leadData.nom || "",
+      prenom: leadData.prenom || "",
+      civilite: leadData.civilite || "",
+      email: leadData.email || "",
+      code_postal: leadData.code_postal || "",
+      departement: (leadData.code_postal || "").substring(0, 2),
+      ville: leadData.ville || "",
+      adresse: leadData.adresse || "",
+      type_logement: leadData.type_logement || "",
+      statut_occupant: leadData.statut_occupant || "",
+      surface_habitable: leadData.surface_habitable || "",
+      annee_construction: leadData.annee_construction || "",
+      type_chauffage: leadData.type_chauffage || "",
+      facture_electricite: leadData.facture_electricite || "",
+      facture_chauffage: leadData.facture_chauffage || "",
+      type_projet: leadData.type_projet || "",
+      delai_projet: leadData.delai_projet || "",
+      budget: leadData.budget || "",
+      lp_code: CONFIG.LP_CODE,
+      liaison_code: CONFIG.LIAISON_CODE,
+      source: leadData.source || UTM.source || "",
+      utm_source: UTM.source,
+      utm_medium: UTM.medium,
+      utm_campaign: UTM.campaign,
+      rgpd_consent: leadData.rgpd_consent !== false,
+      newsletter: leadData.newsletter || false
+    }};
+
+    return fetch(CONFIG.API_URL + "/api/v1/leads", {{
+      method: "POST",
+      headers: {{ 
+        "Content-Type": "application/json",
+        "Authorization": "Token VOTRE_CLE_API"
+      }},
+      body: JSON.stringify(payload)
+    }})
+    .then(function(response) {{ return response.json(); }})
+    .then(function(data) {{
+      if (data.success) {{
+        console.log("[EnerSolar] Lead envoyé:", data.lead_id);
+        
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({{
+          event: "form_submit",
+          form_code: CONFIG.FORM_CODE,
+          lp_code: CONFIG.LP_CODE,
+          lead_id: data.lead_id,
+          product_type: CONFIG.PRODUCT_TYPE,
+          department: payload.departement
+        }});{gtm_trigger}{redirect_trigger}
+      }} else {{
+        console.error("[EnerSolar] Erreur:", data.error || data.message);
+        alert("Erreur: " + (data.error || data.message || "Une erreur est survenue"));
+      }}
+      return data;
+    }})
+    .catch(function(error) {{
+      console.error("[EnerSolar] Erreur technique:", error);
+      alert("Une erreur technique est survenue. Veuillez réessayer.");
+      throw error;
+    }});
+  }};
+
+  // ========== INIT ==========
+  if (document.readyState === "loading") {{
+    document.addEventListener("DOMContentLoaded", trackLPView);
+  }} else {{
+    trackLPView();
+  }}
+  
+  console.log("[EnerSolar] Script LP+Form initialisé (embedded)");
+  console.log("[EnerSolar] LP:", CONFIG.LP_CODE, "| Form:", CONFIG.FORM_CODE, "| Liaison:", CONFIG.LIAISON_CODE);
+}})();
+</script>
+
+{f"""<!-- GTM Body (à placer juste après <body>) -->
+{gtm.get("body", "")}""" if gtm.get("body") else ""}
+
+<!-- ========== UTILISATION DES CTA ========== -->
+<!--
+Tous vos boutons CTA doivent utiliser cette fonction :
+
+<button onclick="trackCTAClick('hero-btn', 'Demander un devis')">
+  Demander un devis gratuit
+</button>
+
+<a href="javascript:void(0)" onclick="trackCTAClick('sidebar-btn', 'Estimation')">
+  Estimation gratuite
+</a>
+-->
+
+<!-- ========== CONTENEUR FORMULAIRE ========== -->
+<!--
+Placez votre formulaire dans un conteneur avec cet ID :
+
+<div id="form-container">
+  <!-- Votre formulaire ici -->
+  <input type="text" onfocus="trackFormStart()" placeholder="Votre nom">
+  ...
+  <button onclick="submitLead({{phone: '...', nom: '...', ...}})">Envoyer</button>
+</div>
+-->
+
+{legal_banner_html}
+'''
+        
+        return {
+            "mode": "embedded",
+            "lp": {
+                "id": lp_id,
+                "code": lp_code,
+                "name": lp_name,
+                "url": lp_url,
+                "product_type": product_type
+            },
+            "form": {
+                "id": form_id,
+                "code": form_code,
+                "name": form.get("name", ""),
+                "url": form_url
+            },
+            "liaison_code": liaison_code,
+            "account": {
+                "name": account_name,
+                "logos": logos,
+                "gtm": gtm,
+                "legal": legal
+            },
+            "scripts": {
+                "combined": script_combined,
+                "lp": None,
+                "form": None
+            },
+            "script_count": 1,
+            "lead_fields": LEAD_FIELDS,
+            "api_url": api_url,
+            "tracking_type": tracking_type,
+            "redirect_url": redirect_url
+        }
+    
+    else:
+        # ==================== MODE REDIRECT : 2 SCRIPTS SÉPARÉS ====================
+        
+        # Script LP
+        script_lp = f'''<!-- ================================================================ -->
+<!-- SCRIPT LP (Mode Redirect - Page séparée du Form)                -->
+<!-- LP: {lp_code} | Form: {form_code} | Liaison: {liaison_code}     -->
+<!-- À coller sur : {lp_url}                                          -->
+<!-- ================================================================ -->
+
+{f"""<!-- GTM Head -->
+{gtm.get("head", "")}""" if gtm.get("head") else ""}
+
+<script>
+(function() {{
+  // ========== CONFIGURATION LP ==========
+  var CONFIG = {{
+    API_URL: "{api_url}",
+    LP_CODE: "{lp_code}",
+    FORM_CODE: "{form_code}",
+    FORM_URL: "{form_url}",
+    LIAISON_CODE: "{liaison_code}",
+    PRODUCT_TYPE: "{product_type}",
+    MODE: "redirect"
+  }};
+
+  // ========== UTM PARAMS ==========
+  var urlParams = new URLSearchParams(window.location.search);
+  var UTM = {{
+    source: urlParams.get("utm_source") || "",
+    medium: urlParams.get("utm_medium") || "",
+    campaign: urlParams.get("utm_campaign") || ""
+  }};
+
+  // ========== TRACKING LP VIEW ==========
+  function trackLPView() {{
+    fetch(CONFIG.API_URL + "/api/track/lp-visit", {{
+      method: "POST",
+      headers: {{ "Content-Type": "application/json" }},
+      body: JSON.stringify({{
+        lp_code: CONFIG.LP_CODE,
+        referrer: document.referrer
+      }})
+    }}).catch(function(e) {{ console.log("[EnerSolar] LP view error:", e); }});
+    
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({{
+      event: "lp_view",
+      lp_code: CONFIG.LP_CODE,
+      product_type: CONFIG.PRODUCT_TYPE
+    }});
+  }}
+
+  // ========== TRACKING CTA + REDIRECT ==========
+  window.trackCTAClick = function(ctaId, ctaText) {{
+    fetch(CONFIG.API_URL + "/api/track/cta-click", {{
+      method: "POST",
+      headers: {{ "Content-Type": "application/json" }},
+      body: JSON.stringify({{
+        lp_code: CONFIG.LP_CODE,
+        form_code: CONFIG.FORM_CODE
+      }})
+    }}).catch(function(e) {{ console.log("[EnerSolar] CTA click error:", e); }});
+    
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({{
+      event: "cta_click",
+      lp_code: CONFIG.LP_CODE,
+      cta_id: ctaId || "unknown",
+      cta_text: ctaText || "unknown"
+    }});
+    
+    // Construire URL du form avec paramètres
+    var formUrl = CONFIG.FORM_URL;
+    var sep = formUrl.indexOf("?") === -1 ? "?" : "&";
+    formUrl += sep + "lp=" + CONFIG.LP_CODE + "&liaison=" + CONFIG.LIAISON_CODE;
+    
+    // Ajouter UTM
+    if (UTM.source) formUrl += "&utm_source=" + encodeURIComponent(UTM.source);
+    if (UTM.medium) formUrl += "&utm_medium=" + encodeURIComponent(UTM.medium);
+    if (UTM.campaign) formUrl += "&utm_campaign=" + encodeURIComponent(UTM.campaign);
+    
+    // Rediriger vers le formulaire
+    window.location.href = formUrl;
+  }};
+
+  // ========== INIT ==========
+  if (document.readyState === "loading") {{
+    document.addEventListener("DOMContentLoaded", trackLPView);
+  }} else {{
+    trackLPView();
+  }}
+  
+  console.log("[EnerSolar] Script LP initialisé (redirect)");
+  console.log("[EnerSolar] LP:", CONFIG.LP_CODE, "| Form URL:", CONFIG.FORM_URL);
+}})();
+</script>
+
+{f"""<!-- GTM Body (à placer juste après <body>) -->
+{gtm.get("body", "")}""" if gtm.get("body") else ""}
+
+<!-- ========== UTILISATION DES CTA ========== -->
+<!--
+Tous vos boutons CTA doivent utiliser cette fonction :
+
+<button onclick="trackCTAClick('hero-btn', 'Demander un devis')">
+  Demander un devis gratuit
+</button>
+
+<a href="javascript:void(0)" onclick="trackCTAClick('sidebar-btn', 'Estimation')">
+  Estimation gratuite
+</a>
+
+Les visiteurs seront redirigés vers : {form_url}?lp={lp_code}&liaison={liaison_code}
+-->
+
+{legal_banner_html}
+'''
+
+        # Script Form (page séparée)
+        script_form = f'''<!-- ================================================================ -->
+<!-- SCRIPT FORM (Mode Redirect - Page séparée de la LP)             -->
+<!-- Form: {form_code} | Reçoit les params de LP: {lp_code}          -->
+<!-- À coller sur : {form_url}                                        -->
+<!-- ================================================================ -->
+
+{f"""<!-- GTM Head -->
+{gtm.get("head", "")}""" if gtm.get("head") else ""}
+
+<script>
+(function() {{
+  // ========== CONFIGURATION FORM ==========
+  var CONFIG = {{
+    API_URL: "{api_url}",
+    FORM_CODE: "{form_code}",
+    LP_CODE: "",
+    LIAISON_CODE: "",
+    PRODUCT_TYPE: "{product_type}",
+    MODE: "redirect"
+  }};
+
+  // ========== LIRE PARAMS URL (venant de la LP) ==========
+  var urlParams = new URLSearchParams(window.location.search);
+  CONFIG.LP_CODE = urlParams.get("lp") || "";
+  CONFIG.LIAISON_CODE = urlParams.get("liaison") || "";
+  
+  var UTM = {{
+    source: urlParams.get("utm_source") || "",
+    medium: urlParams.get("utm_medium") || "",
+    campaign: urlParams.get("utm_campaign") || ""
+  }};
+
+  // Exposer le contexte
+  window.__EnerSolar_CONTEXT__ = CONFIG;
+
+  // ========== TRACKING FORM VIEW ==========
+  function trackFormView() {{
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({{
+      event: "form_view",
+      form_code: CONFIG.FORM_CODE,
+      lp_code: CONFIG.LP_CODE,
+      liaison_code: CONFIG.LIAISON_CODE
+    }});
+  }}
+
+  // ========== TRACKING FORM START ==========
+  var formStarted = false;
+  window.trackFormStart = function() {{
+    if (formStarted) return;
+    formStarted = true;
+    
+    fetch(CONFIG.API_URL + "/api/track/form-start", {{
+      method: "POST",
+      headers: {{ "Content-Type": "application/json" }},
+      body: JSON.stringify({{
+        form_code: CONFIG.FORM_CODE,
+        lp_code: CONFIG.LP_CODE,
+        liaison_code: CONFIG.LIAISON_CODE
+      }})
+    }}).catch(function(e) {{ console.log("[EnerSolar] Form start error:", e); }});
+    
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({{
+      event: "form_start",
+      form_code: CONFIG.FORM_CODE,
+      lp_code: CONFIG.LP_CODE
+    }});
+  }};
+
+  // ========== VALIDATION TÉLÉPHONE ==========
+  window.validatePhone = function(phone) {{
+    var digits = phone.replace(/\\D/g, "");
+    if (digits.length === 9 && digits[0] !== "0") digits = "0" + digits;
+    if (digits.length !== 10) return {{ valid: false, error: "Le numéro doit contenir 10 chiffres" }};
+    if (!digits.startsWith("0")) return {{ valid: false, error: "Le numéro doit commencer par 0" }};
+    if (digits === "0123456789" || /^0(\\d)\\1{{8}}$/.test(digits)) return {{ valid: false, error: "Numéro invalide" }};
+    return {{ valid: true, phone: digits }};
+  }};
+
+  // ========== SOUMISSION LEAD ==========
+  window.submitLead = function(leadData) {{
+    var phoneCheck = validatePhone(leadData.phone || "");
+    if (!phoneCheck.valid) {{
+      alert(phoneCheck.error);
+      return Promise.reject(phoneCheck.error);
+    }}
+
+    var payload = {{
+      form_id: CONFIG.FORM_CODE,
+      phone: phoneCheck.phone,
+      nom: leadData.nom || "",
+      prenom: leadData.prenom || "",
+      civilite: leadData.civilite || "",
+      email: leadData.email || "",
+      code_postal: leadData.code_postal || "",
+      departement: (leadData.code_postal || "").substring(0, 2),
+      ville: leadData.ville || "",
+      adresse: leadData.adresse || "",
+      type_logement: leadData.type_logement || "",
+      statut_occupant: leadData.statut_occupant || "",
+      surface_habitable: leadData.surface_habitable || "",
+      annee_construction: leadData.annee_construction || "",
+      type_chauffage: leadData.type_chauffage || "",
+      facture_electricite: leadData.facture_electricite || "",
+      facture_chauffage: leadData.facture_chauffage || "",
+      type_projet: leadData.type_projet || "",
+      delai_projet: leadData.delai_projet || "",
+      budget: leadData.budget || "",
+      lp_code: CONFIG.LP_CODE,
+      liaison_code: CONFIG.LIAISON_CODE,
+      source: leadData.source || UTM.source || "",
+      utm_source: UTM.source,
+      utm_medium: UTM.medium,
+      utm_campaign: UTM.campaign,
+      rgpd_consent: leadData.rgpd_consent !== false,
+      newsletter: leadData.newsletter || false
+    }};
+
+    return fetch(CONFIG.API_URL + "/api/v1/leads", {{
+      method: "POST",
+      headers: {{ 
+        "Content-Type": "application/json",
+        "Authorization": "Token VOTRE_CLE_API"
+      }},
+      body: JSON.stringify(payload)
+    }})
+    .then(function(response) {{ return response.json(); }})
+    .then(function(data) {{
+      if (data.success) {{
+        console.log("[EnerSolar] Lead envoyé:", data.lead_id);
+        
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({{
+          event: "form_submit",
+          form_code: CONFIG.FORM_CODE,
+          lp_code: CONFIG.LP_CODE,
+          lead_id: data.lead_id,
+          product_type: CONFIG.PRODUCT_TYPE,
+          department: payload.departement
+        }});{gtm_trigger}{redirect_trigger}
+      }} else {{
+        console.error("[EnerSolar] Erreur:", data.error || data.message);
+        alert("Erreur: " + (data.error || data.message || "Une erreur est survenue"));
+      }}
+      return data;
+    }})
+    .catch(function(error) {{
+      console.error("[EnerSolar] Erreur technique:", error);
+      alert("Une erreur technique est survenue. Veuillez réessayer.");
+      throw error;
+    }});
+  }};
+
+  // ========== INIT ==========
+  if (document.readyState === "loading") {{
+    document.addEventListener("DOMContentLoaded", trackFormView);
+  }} else {{
+    trackFormView();
+  }}
+  
+  console.log("[EnerSolar] Script Form initialisé (redirect)");
+  console.log("[EnerSolar] Form:", CONFIG.FORM_CODE, "| LP source:", CONFIG.LP_CODE, "| Liaison:", CONFIG.LIAISON_CODE);
+}})();
+</script>
+
+{f"""<!-- GTM Body (à placer juste après <body>) -->
+{gtm.get("body", "")}""" if gtm.get("body") else ""}
+
+<!-- ========== UTILISATION DANS LE FORMULAIRE ========== -->
+<!--
+1. Sur le premier champ ou bouton "Suivant" :
+   <input type="text" onfocus="trackFormStart()" placeholder="Votre nom">
+
+2. À la soumission finale :
+   <button onclick="submitLead({{phone: '...', nom: '...', ...}})">Envoyer</button>
+-->
+'''
+
+        return {
+            "mode": "redirect",
+            "lp": {
+                "id": lp_id,
+                "code": lp_code,
+                "name": lp_name,
+                "url": lp_url,
+                "product_type": product_type
+            },
+            "form": {
+                "id": form_id,
+                "code": form_code,
+                "name": form.get("name", ""),
+                "url": form_url
+            },
+            "liaison_code": liaison_code,
+            "account": {
+                "name": account_name,
+                "logos": logos,
+                "gtm": gtm,
+                "legal": legal
+            },
+            "scripts": {
+                "combined": None,
+                "lp": script_lp,
+                "form": script_form
+            },
+            "script_count": 2,
+            "lead_fields": LEAD_FIELDS,
+            "api_url": api_url,
+            "tracking_type": tracking_type,
+            "redirect_url": redirect_url
+        }
