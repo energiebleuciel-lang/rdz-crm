@@ -169,11 +169,24 @@ export default function LandingPages() {
 
   const openBrief = async (lp) => {
     try {
+      // Vérifier si la LP a le nouveau format (form_id)
+      if (!lp.form_id && !lp.form) {
+        alert('Cette LP a été créée avec l\'ancien format.\nPour avoir le Brief avec les scripts synchronisés, veuillez dupliquer cette LP ou en créer une nouvelle.');
+        return;
+      }
+      
       const res = await authFetch(`${API}/api/lps/${lp.id}/brief`);
       if (res.ok) {
         const data = await res.json();
+        if (data.error) {
+          alert('Erreur: ' + data.error);
+          return;
+        }
         setBriefData(data);
         setShowBriefModal(true);
+      } else {
+        const err = await res.json();
+        alert('Erreur: ' + (err.detail || err.error || 'Impossible de charger le Brief'));
       }
     } catch (e) {
       alert('Erreur: ' + e.message);
