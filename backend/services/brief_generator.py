@@ -1203,6 +1203,8 @@ Les visiteurs seront redirigés vers : {form_url}?lp={lp_code}&liaison={liaison_
             },
             "scripts": {
                 "combined": None,
+                "logos_html": logos_html,
+                "legal_html": legal_buttons_html,
                 "lp": script_lp,
                 "form": script_form
             },
