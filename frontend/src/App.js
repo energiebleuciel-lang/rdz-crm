@@ -1775,13 +1775,28 @@ const FormsPage = () => {
               label: '', 
               render: (_, row) => (
                 <div className="flex gap-1">
+                  {/* Bouton copier clé API - SÉCURISÉ */}
+                  <button 
+                    onClick={() => { 
+                      if (row.internal_api_key) {
+                        navigator.clipboard.writeText(row.internal_api_key);
+                        alert('🔑 Clé API copiée ! NE LA PARTAGEZ PAS PUBLIQUEMENT.');
+                      } else {
+                        alert('Aucune clé API générée pour ce formulaire.');
+                      }
+                    }} 
+                    className="p-1 hover:bg-orange-100 rounded" 
+                    title="Copier la clé API (sécurisée)"
+                  >
+                    <Key className="w-4 h-4 text-orange-600" />
+                  </button>
                   <button onClick={() => { setEditingForm(row); setFormData(row); setShowModal(true); }} className="p-1 hover:bg-slate-100 rounded" title="Modifier">
                     <Edit className="w-4 h-4 text-slate-600" />
                   </button>
                   <button onClick={() => { setShowDuplicateModal(row); setDuplicateData({ new_code: row.code + '-COPY', new_name: row.name + ' (copie)', new_crm_api_key: '' }); }} className="p-1 hover:bg-slate-100 rounded" title="Dupliquer">
                     <Copy className="w-4 h-4 text-blue-600" />
                   </button>
-                  <button onClick={() => deleteForm(row.id)} className="p-1 hover:bg-slate-100 rounded" title="Supprimer">
+                  <button onClick={() => deleteForm(row.id)} className="p-1 hover:bg-slate-100 rounded" title="Archiver">
                     <Trash2 className="w-4 h-4 text-red-600" />
                   </button>
                 </div>
