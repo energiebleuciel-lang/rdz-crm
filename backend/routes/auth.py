@@ -279,3 +279,19 @@ async def get_api_key(user: dict = Depends(get_current_user)):
         return {"api_key": api_key}
     
     return {"api_key": config.get("api_key")}
+
+
+
+# ==================== JOURNAL D'ACTIVITÉ ====================
+
+@router.get("/activity-logs", dependencies=[Depends(require_admin)])
+async def get_activity_logs(
+    user_id: str = None,
+    entity_type: str = None,
+    action: str = None,
+    limit: int = 100,
+    skip: int = 0
+):
+    """Récupère le journal d'activité (admin only)"""
+    from services.activity_logger import get_activity_logs as get_logs
+    return await get_logs(user_id, entity_type, action, limit, skip)
