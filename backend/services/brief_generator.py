@@ -890,7 +890,15 @@ Placez votre formulaire dans un conteneur avec cet ID :
             "lead_fields": LEAD_FIELDS,
             "api_url": api_url,
             "tracking_type": tracking_type,
-            "redirect_url": redirect_url
+            "redirect_url": redirect_url,
+            "endpoints": {
+                "submit_lead": f"{api_url}/api/v1/leads",
+                "get_form_config": f"{api_url}/api/forms/public/{form_code}",
+                "get_lp_forms": f"{api_url}/api/forms/public/by-lp/{lp_code}",
+                "track_lp_visit": f"{api_url}/api/track/lp-visit",
+                "track_cta_click": f"{api_url}/api/track/cta-click",
+                "track_form_start": f"{api_url}/api/track/form-start"
+            }
         }
     
     else:
