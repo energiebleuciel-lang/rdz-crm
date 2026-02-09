@@ -363,7 +363,7 @@ Ou avec un lien:
     }};
 
     // Envoi à l'API
-    return fetch(CONFIG.API_URL + "/api/v1/leads", {{
+    return fetch(CONFIG.ENDPOINTS.SUBMIT_LEAD, {{
       method: "POST",
       headers: {{ 
         "Content-Type": "application/json",
@@ -390,11 +390,19 @@ Ou avec un lien:
 
   // ========== AUTO-INIT ==========
   console.log("[EnerSolar] Script Form initialisé - Code:", CONFIG.FORM_CODE);
+  console.log("[EnerSolar] Endpoints disponibles:", CONFIG.ENDPOINTS);
   if (CONFIG.LP_CODE) {{
     console.log("[EnerSolar] LP liée:", CONFIG.LP_CODE, "| Liaison:", CONFIG.LIAISON_CODE);
   }}
 }})();
 </script>
+
+<!-- ========== ENDPOINTS DISPONIBLES ========== -->
+<!--
+GET  {api_url}/api/forms/public/{form_code}  -> Récupérer la config du formulaire
+POST {api_url}/api/v1/leads                  -> Soumettre un lead
+POST {api_url}/api/track/form-start          -> Tracker début formulaire
+-->
 
 <!-- ========== EXEMPLE D'UTILISATION ========== -->
 <!--
@@ -402,7 +410,15 @@ Ou avec un lien:
    <input type="text" onfocus="trackFormStart()" placeholder="Votre nom">
    <button type="button" onclick="trackFormStart()">Suivant</button>
 
-2. À la soumission finale:
+2. Récupérer la config du formulaire (optionnel):
+   <script>
+   getFormConfig().then(function(config) {{
+     console.log("Départements actifs:", config.departements);
+     console.log("Type produit:", config.product_type);
+   }});
+   </script>
+
+3. À la soumission finale:
    <button type="button" onclick="submitMyForm()">Valider</button>
 
    <script>
