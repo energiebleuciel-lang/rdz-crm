@@ -14,6 +14,7 @@ import Accounts from './pages/Accounts';
 import LandingPages from './pages/LandingPages';
 import Forms from './pages/Forms';
 import Leads from './pages/Leads';
+import Commandes from './pages/Commandes';
 import Settings from './pages/Settings';
 
 // Components
