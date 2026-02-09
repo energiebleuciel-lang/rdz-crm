@@ -248,14 +248,14 @@ export default function Leads() {
                   </td>
                   <td className="p-4">
                     <Badge variant={statusVariant(lead.api_status)}>
-                      {lead.api_status}
+                      {statusLabel(lead.api_status)}
                     </Badge>
                   </td>
                   <td className="p-4 text-sm text-slate-500">
                     {new Date(lead.created_at).toLocaleDateString('fr-FR')}
                   </td>
                   <td className="p-4">
-                    <div className="flex gap-1">
+                    <div className="flex gap-2">
                       <button
                         onClick={() => viewLead(lead)}
                         className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
@@ -263,12 +263,14 @@ export default function Leads() {
                       >
                         <Eye className="w-4 h-4" />
                       </button>
-                      {lead.api_status === 'failed' && (
+                      {['failed', 'no_crm', 'queued'].includes(lead.api_status) && (
                         <button
                           onClick={() => retryLead(lead.id)}
-                          className="text-sm text-blue-600 hover:text-blue-800"
+                          className="flex items-center gap-1 px-2 py-1 text-sm text-amber-600 hover:bg-amber-50 rounded font-medium"
+                          title="Relancer l'envoi"
                         >
-                          Retry
+                          <RotateCcw className="w-3 h-3" />
+                          Relancer
                         </button>
                       )}
                     </div>
