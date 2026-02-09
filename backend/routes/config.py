@@ -1,0 +1,271 @@
+"""
+Routes pour la configuration
+- Sources de diffusion
+- Types de produits
+- Aides financières
+- Bibliothèque d'images
+"""
+
+from fastapi import APIRouter, HTTPException, Depends
+from pydantic import BaseModel
+from typing import Optional, List, Dict
+import uuid
+
+from config import db, now_iso
+from routes.auth import get_current_user, require_admin
+
+router = APIRouter(prefix="/config", tags=["Configuration"])
+
+
+# ==================== MODELS ====================
+
+class DiffusionSourceCreate(BaseModel):
+    name: str           # Google Ads, Facebook, Taboola
+    slug: str           # google, facebook, taboola
+    icon: Optional[str] = ""
+    color: Optional[str] = "#3B82F6"
+
+class ProductTypeCreate(BaseModel):
+    code: str           # PV, PAC, ITE
+    name: str           # Panneaux solaires, Pompe à chaleur
+    color: str          # Couleur UI
+    aides: Optional[List[Dict]] = []  # Liste des aides financières
+
+class ImageCreate(BaseModel):
+    name: str
+    url: str
+    category: str       # logo, banner, icon, photo
+    tags: Optional[List[str]] = []
+
+
+# ==================== SOURCES DE DIFFUSION ====================
+
+@router.get("/sources")
+async def list_sources(user: dict = Depends(get_current_user)):
+    """Liste toutes les sources de diffusion"""
+    sources = await db.diffusion_sources.find({}, {"_id": 0}).to_list(100)
+    return {"sources": sources}
+
+
+@router.post("/sources")
+async def create_source(data: DiffusionSourceCreate, user: dict = Depends(require_admin)):
+    """Créer une source de diffusion"""
+    # Vérifier unicité du slug
+    existing = await db.diffusion_sources.find_one({"slug": data.slug})
+    if existing:
+        raise HTTPException(status_code=400, detail="Ce slug existe déjà")
+    
+    source = {
+        "id": str(uuid.uuid4()),
+        "name": data.name,
+        "slug": data.slug,
+        "icon": data.icon or "",
+        "color": data.color or "#3B82F6",
+        "created_at": now_iso()
+    }
+    
+    await db.diffusion_sources.insert_one(source)
+    return {"success": True, "source": {k: v for k, v in source.items() if k != "_id"}}
+
+
+@router.post("/sources/init")
+async def init_default_sources(user: dict = Depends(require_admin)):
+    """Initialise les sources par défaut"""
+    existing = await db.diffusion_sources.count_documents({})
+    if existing > 0:
+        return {"success": False, "message": "Sources déjà initialisées", "count": existing}
+    
+    default_sources = [
+        {"name": "Google Ads", "slug": "google", "color": "#4285F4", "icon": "google"},
+        {"name": "Facebook Ads", "slug": "facebook", "color": "#1877F2", "icon": "facebook"},
+        {"name": "Taboola", "slug": "taboola", "color": "#0052CC", "icon": "link"},
+        {"name": "Outbrain", "slug": "outbrain", "color": "#FF6600", "icon": "link"},
+        {"name": "Native", "slug": "native", "color": "#10B981", "icon": "globe"},
+        {"name": "Email", "slug": "email", "color": "#6366F1", "icon": "mail"},
+        {"name": "SMS", "slug": "sms", "color": "#F59E0B", "icon": "message"},
+        {"name": "Partenaire", "slug": "partner", "color": "#8B5CF6", "icon": "users"},
+    ]
+    
+    for source in default_sources:
+        source["id"] = str(uuid.uuid4())
+        source["created_at"] = now_iso()
+        await db.diffusion_sources.insert_one(source)
+    
+    return {"success": True, "count": len(default_sources)}
+
+
+@router.delete("/sources/{source_id}")
+async def delete_source(source_id: str, user: dict = Depends(require_admin)):
+    """Supprimer une source"""
+    result = await db.diffusion_sources.delete_one({"id": source_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Source non trouvée")
+    return {"success": True}
+
+
+# ==================== TYPES DE PRODUITS ====================
+
+@router.get("/products")
+async def list_products(user: dict = Depends(get_current_user)):
+    """Liste tous les types de produits avec leurs aides"""
+    products = await db.product_types.find({}, {"_id": 0}).to_list(100)
+    return {"products": products}
+
+
+@router.post("/products")
+async def create_product(data: ProductTypeCreate, user: dict = Depends(require_admin)):
+    """Créer un type de produit"""
+    existing = await db.product_types.find_one({"code": data.code})
+    if existing:
+        raise HTTPException(status_code=400, detail="Ce code existe déjà")
+    
+    product = {
+        "id": str(uuid.uuid4()),
+        "code": data.code.upper(),
+        "name": data.name,
+        "color": data.color,
+        "aides": data.aides or [],
+        "created_at": now_iso()
+    }
+    
+    await db.product_types.insert_one(product)
+    return {"success": True, "product": {k: v for k, v in product.items() if k != "_id"}}
+
+
+@router.post("/products/init")
+async def init_default_products(user: dict = Depends(require_admin)):
+    """Initialise les produits par défaut avec aides"""
+    existing = await db.product_types.count_documents({})
+    if existing > 0:
+        return {"success": False, "message": "Produits déjà initialisés", "count": existing}
+    
+    default_products = [
+        {
+            "code": "PV",
+            "name": "Panneaux Photovoltaïques",
+            "color": "#F59E0B",
+            "aides": [
+                {"name": "Prime autoconsommation", "amount": "380€/kWc", "conditions": "Installation ≤ 3kWc"},
+                {"name": "TVA réduite", "amount": "10%", "conditions": "Installation ≤ 3kWc"},
+                {"name": "Obligation d'achat EDF OA", "amount": "0.13€/kWh", "conditions": "Vente surplus"}
+            ]
+        },
+        {
+            "code": "PAC",
+            "name": "Pompe à Chaleur",
+            "color": "#3B82F6",
+            "aides": [
+                {"name": "MaPrimeRénov'", "amount": "Jusqu'à 5000€", "conditions": "Selon revenus"},
+                {"name": "CEE", "amount": "Jusqu'à 4000€", "conditions": "Prime énergie"},
+                {"name": "TVA réduite", "amount": "5.5%", "conditions": "Logement > 2 ans"},
+                {"name": "Éco-PTZ", "amount": "Jusqu'à 15000€", "conditions": "Prêt à taux zéro"}
+            ]
+        },
+        {
+            "code": "ITE",
+            "name": "Isolation Thermique Extérieure",
+            "color": "#10B981",
+            "aides": [
+                {"name": "MaPrimeRénov'", "amount": "Jusqu'à 75€/m²", "conditions": "Selon revenus"},
+                {"name": "CEE", "amount": "Variable", "conditions": "Prime énergie"},
+                {"name": "TVA réduite", "amount": "5.5%", "conditions": "Logement > 2 ans"}
+            ]
+        }
+    ]
+    
+    for product in default_products:
+        product["id"] = str(uuid.uuid4())
+        product["created_at"] = now_iso()
+        await db.product_types.insert_one(product)
+    
+    return {"success": True, "count": len(default_products)}
+
+
+@router.put("/products/{product_id}/aides")
+async def update_product_aides(product_id: str, aides: List[Dict], user: dict = Depends(require_admin)):
+    """Mettre à jour les aides d'un produit"""
+    result = await db.product_types.update_one(
+        {"id": product_id},
+        {"$set": {"aides": aides, "updated_at": now_iso()}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Produit non trouvé")
+    
+    return {"success": True}
+
+
+# ==================== BIBLIOTHÈQUE D'IMAGES ====================
+
+@router.get("/images")
+async def list_images(
+    category: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    """Liste toutes les images de la bibliothèque"""
+    query = {}
+    if category:
+        query["category"] = category
+    
+    images = await db.images.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return {"images": images}
+
+
+@router.post("/images")
+async def add_image(data: ImageCreate, user: dict = Depends(get_current_user)):
+    """Ajouter une image à la bibliothèque"""
+    image = {
+        "id": str(uuid.uuid4()),
+        "name": data.name,
+        "url": data.url,
+        "category": data.category,
+        "tags": data.tags or [],
+        "created_at": now_iso(),
+        "created_by": user["id"]
+    }
+    
+    await db.images.insert_one(image)
+    return {"success": True, "image": {k: v for k, v in image.items() if k != "_id"}}
+
+
+@router.delete("/images/{image_id}")
+async def delete_image(image_id: str, user: dict = Depends(get_current_user)):
+    """Supprimer une image"""
+    result = await db.images.delete_one({"id": image_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Image non trouvée")
+    return {"success": True}
+
+
+# ==================== LOGS D'ACTIVITÉ ====================
+
+@router.get("/activity-logs")
+async def get_activity_logs(
+    limit: int = 100,
+    user_id: Optional[str] = None,
+    action: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    """Historique des activités"""
+    query = {}
+    if user_id:
+        query["user_id"] = user_id
+    if action:
+        query["action"] = action
+    
+    logs = await db.activity_logs.find(query, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    return {"logs": logs, "count": len(logs)}
+
+
+async def log_activity(user_id: str, user_email: str, action: str, entity_type: str, entity_id: str, details: str = ""):
+    """Helper pour logger une activité"""
+    await db.activity_logs.insert_one({
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "user_email": user_email,
+        "action": action,
+        "entity_type": entity_type,
+        "entity_id": entity_id,
+        "details": details,
+        "created_at": now_iso()
+    })
