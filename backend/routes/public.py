@@ -293,12 +293,19 @@ async def submit_lead(data: LeadSubmit, request: Request):
     if not account:
         return {"success": False, "error": "Compte non trouvé"}
     
-    crm_id = account.get("crm_id", "")  # "zr7" ou "mdl"
+    crm_id = account.get("crm_id", "")
+    
+    # Récupérer le CRM pour avoir le slug
+    crm = await db.crms.find_one({"id": crm_id}, {"_id": 0})
+    if not crm:
+        return {"success": False, "error": f"CRM non trouvé: {crm_id}"}
+    
+    crm_slug = crm.get("slug", "").lower()  # "zr7" ou "mdl"
     
     # 3. Déterminer CRM destination et récupérer clé API
-    crm_config = CRM_CONFIG.get(crm_id.lower())
+    crm_config = CRM_CONFIG.get(crm_slug)
     if not crm_config:
-        return {"success": False, "error": f"CRM non configuré: {crm_id}"}
+        return {"success": False, "error": f"CRM non configuré: {crm_slug}"}
     
     api_url = crm_config["api_url"]
     api_key = crm_config["api_key"]
