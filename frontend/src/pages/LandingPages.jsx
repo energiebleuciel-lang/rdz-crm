@@ -566,7 +566,7 @@ export default function LandingPages() {
       <Modal 
         isOpen={showBriefModal} 
         onClose={() => { setShowBriefModal(false); setCopySuccess(null); }}
-        title={`Brief - ${briefData?.lp?.code || ''}`}
+        title={`Brief v2 - ${briefData?.lp?.code || ''}`}
         size="xl"
       >
         {briefData && (
@@ -576,6 +576,18 @@ export default function LandingPages() {
               <div className="fixed top-4 right-4 z-[100] bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-pulse">
                 <Check className="w-5 h-5" />
                 {copySuccess}
+              </div>
+            )}
+            
+            {/* Version Badge */}
+            {briefData.version === "2.0" && (
+              <div className="bg-green-50 border border-green-200 p-3 rounded-lg">
+                <p className="text-sm text-green-800">
+                  <strong>🚀 Script v2</strong> - Plus simple, plus sécurisé !
+                  <span className="block text-xs text-green-600 mt-1">
+                    • Pas de clé API visible • Cookie de session automatique • ~50 lignes
+                  </span>
+                </p>
               </div>
             )}
             
@@ -599,8 +611,9 @@ export default function LandingPages() {
                 <div>
                   <span className="text-slate-500">Mode:</span>
                   <Badge variant={briefData.mode === 'embedded' ? 'success' : 'info'} className="ml-2">
-                    {briefData.mode === 'embedded' ? 'Embedded (1 script)' : 'Redirect (2 scripts)'}
+                    {briefData.mode === 'embedded' ? 'Embedded' : 'Redirect'}
                   </Badge>
+                  <Badge variant="default" className="ml-2">1 script</Badge>
                 </div>
                 <div>
                   <span className="text-slate-500">Liaison:</span>
@@ -609,77 +622,56 @@ export default function LandingPages() {
               </div>
             </div>
 
-            {/* Scripts */}
-            {briefData.mode === 'embedded' ? (
-              // Mode Embedded : 1 script combiné
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-slate-800">🟢 Script Unique (LP + Form)</h3>
-                  <button
-                    onClick={() => copyScript(briefData.scripts.combined)}
-                    className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium transition-colors"
-                  >
-                    <Clipboard className="w-4 h-4" />
-                    Copier le script
-                  </button>
-                </div>
-                <p className="text-sm text-slate-600 mb-2">
-                  À coller sur: <code className="bg-slate-100 px-2 py-0.5 rounded">{briefData.lp.url}</code>
-                </p>
-                <div className="relative">
-                  <pre className="bg-slate-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto max-h-96 select-all">
-                    {briefData.scripts.combined}
-                  </pre>
-                  <p className="text-xs text-slate-500 mt-1">💡 Triple-clic pour sélectionner tout le script</p>
+            {/* Script Universel v2 */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-semibold text-slate-800">🟢 Script Universel</h3>
+                <button
+                  onClick={() => copyScript(briefData.scripts?.universal || briefData.scripts?.combined)}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors"
+                >
+                  <Clipboard className="w-4 h-4" />
+                  Copier le script
+                </button>
+              </div>
+              <p className="text-sm text-slate-600 mb-2">
+                À coller sur: <code className="bg-slate-100 px-2 py-0.5 rounded">{briefData.lp.url}</code>
+                {briefData.mode === 'redirect' && (
+                  <span className="ml-2">et <code className="bg-slate-100 px-2 py-0.5 rounded">{briefData.form.url}</code></span>
+                )}
+              </p>
+              <div className="relative">
+                <pre className="bg-slate-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto max-h-80 select-all">
+                  {briefData.scripts?.universal || briefData.scripts?.combined}
+                </pre>
+                <p className="text-xs text-slate-500 mt-1">💡 Triple-clic pour sélectionner tout le script</p>
+              </div>
+            </div>
+
+            {/* Instructions v2 */}
+            {briefData.instructions && (
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h3 className="font-semibold text-blue-800 mb-3">📖 Instructions d'intégration</h3>
+                <div className="space-y-2 text-sm text-blue-900">
+                  <p><strong>1. Installation:</strong> {briefData.instructions.installation}</p>
+                  <p><strong>2. Boutons CTA:</strong> <code className="bg-blue-100 px-1 rounded">{briefData.instructions.cta}</code></p>
+                  <p><strong>3. Début formulaire:</strong> <code className="bg-blue-100 px-1 rounded">{briefData.instructions.form_start}</code></p>
+                  <p><strong>4. Soumission:</strong> <code className="bg-blue-100 px-1 rounded">{briefData.instructions.submit}</code></p>
                 </div>
               </div>
-            ) : (
-              // Mode Redirect : 2 scripts
-              <>
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold text-slate-800">🔵 Script LP</h3>
-                    <button
-                      onClick={() => copyScript(briefData.scripts.lp)}
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
-                    >
-                      <Clipboard className="w-4 h-4" />
-                      Copier Script LP
-                    </button>
-                  </div>
-                  <p className="text-sm text-slate-600 mb-2">
-                    À coller sur: <code className="bg-slate-100 px-2 py-0.5 rounded">{briefData.lp.url}</code>
-                  </p>
-                  <div className="relative">
-                    <pre className="bg-slate-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto max-h-64 select-all">
-                      {briefData.scripts.lp}
-                    </pre>
-                    <p className="text-xs text-slate-500 mt-1">💡 Triple-clic pour sélectionner tout le script</p>
-                  </div>
-                </div>
+            )}
 
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold text-slate-800">🟠 Script Form</h3>
-                    <button
-                      onClick={() => copyScript(briefData.scripts.form)}
-                      className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium transition-colors"
-                    >
-                      <Clipboard className="w-4 h-4" />
-                      Copier Script Form
-                    </button>
-                  </div>
-                  <p className="text-sm text-slate-600 mb-2">
-                    À coller sur: <code className="bg-slate-100 px-2 py-0.5 rounded">{briefData.form.url}</code>
-                  </p>
-                  <div className="relative">
-                    <pre className="bg-slate-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto max-h-64 select-all">
-                      {briefData.scripts.form}
-                    </pre>
-                    <p className="text-xs text-slate-500 mt-1">💡 Triple-clic pour sélectionner tout le script</p>
-                  </div>
+            {/* Endpoints API */}
+            {briefData.endpoints && (
+              <div className="bg-slate-100 p-4 rounded-lg">
+                <h3 className="font-semibold text-slate-800 mb-2">🔗 Endpoints API</h3>
+                <div className="text-xs font-mono space-y-1 text-slate-600">
+                  <p>POST {briefData.endpoints.init_session}</p>
+                  <p>POST {briefData.endpoints.track_event}</p>
+                  <p>POST {briefData.endpoints.submit_lead}</p>
+                  <p>GET {briefData.endpoints.get_config}</p>
                 </div>
-              </>
+              </div>
             )}
 
             {/* Champs disponibles */}
