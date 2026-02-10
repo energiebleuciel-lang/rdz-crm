@@ -7,7 +7,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useCRM } from '../hooks/useCRM';
 import { API } from '../hooks/useApi';
 import { Card, Modal, Button, Input, Select, Loading, EmptyState, Badge } from '../components/UI';
-import { FileText, Plus, Edit, Trash2, Copy, Code, ExternalLink, Link2, Key, Eye, EyeOff } from 'lucide-react';
+import { FileText, Plus, Edit, Trash2, Copy, Code, ExternalLink, Link2, Key, Eye, EyeOff, Lock, Shield } from 'lucide-react';
 
 export default function Forms() {
   const { authFetch } = useAuth();
