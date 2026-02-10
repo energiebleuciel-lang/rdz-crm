@@ -8,7 +8,7 @@ from typing import Optional
 import uuid
 
 from models import LeadSubmit
-from config import db, now_iso, timestamp, validate_phone_fr, validate_postal_code_fr
+from config import db, now_iso, timestamp, validate_phone_fr
 from routes.auth import get_current_user, require_admin
 from services.lead_sender import send_to_crm, add_to_queue
 
@@ -99,12 +99,8 @@ async def submit_lead_v1(data: LeadSubmit, request: Request, api_key: str = Depe
         return {"success": False, "error": phone_result}
     phone = phone_result
     
-    # Valider code postal
-    is_valid, postal_result = validate_postal_code_fr(data.code_postal or "")
-    if not is_valid:
-        return {"success": False, "error": postal_result}
-    code_postal = postal_result
-    dept = code_postal[:2] if code_postal else data.departement or ""
+    # Récupérer département directement
+    dept = data.departement or ""
     
     # 2. Récupérer config formulaire (par code ou ID)
     form = await db.forms.find_one({
