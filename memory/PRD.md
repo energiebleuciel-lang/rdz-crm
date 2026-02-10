@@ -67,6 +67,18 @@ Fonctionnalité sur la page Comptes permettant de générer un brief personnalis
 - **Colonne "Distribution"** séparée de "CRM Origine"
 - **Modal de détail enrichi** : Section "CRM & Distribution" avec toutes les infos
 
+### ✅ Vérification de cohérence système (Décembre 2025)
+Audit complet avant déploiement :
+- **Ligne dupliquée corrigée** dans `public.py`
+- **Champs lead harmonisés** entre les deux APIs (public et v1) :
+  - `origin_crm` : CRM d'origine (compte)
+  - `target_crm` : CRM de destination (slug)
+  - `is_transferred` : Transfert inter-CRM (boolean)
+  - `routing_reason` : Raison du routing
+  - `allow_cross_crm` : Cross-CRM autorisé
+- **Test E2E complet** : Session → Tracking → Lead → Distribution
+- **Rétro-compatibilité** : Les anciens leads récupèrent `origin_crm` automatiquement
+
 ## À Faire
 
 ### 🔶 Priorité Haute
