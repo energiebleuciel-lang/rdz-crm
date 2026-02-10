@@ -368,6 +368,30 @@ export default function Forms() {
         size="md"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Code du formulaire (lecture seule en édition) */}
+          {editingForm && (
+            <div className="bg-slate-100 border border-slate-200 rounded-lg p-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                    <Lock className="w-4 h-4 text-slate-500" />
+                    Code du formulaire
+                  </label>
+                  <code className="mt-1 block text-lg font-mono font-bold text-slate-800">
+                    {editingForm.code}
+                  </code>
+                </div>
+                <div className="flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
+                  <Shield className="w-3 h-3" />
+                  Protégé
+                </div>
+              </div>
+              <p className="text-xs text-slate-500 mt-2">
+                Le code du formulaire ne peut pas être modifié pour garantir l'intégrité du tracking
+              </p>
+            </div>
+          )}
+
           <Select
             label="Compte"
             value={form.account_id}
