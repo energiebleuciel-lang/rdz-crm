@@ -36,7 +36,6 @@ async def send_to_crm_v2(lead_doc: dict, api_url: str, api_key: str) -> tuple:
         "civilite": "M.",
         "custom_fields": {
             "departement": {"value": "75"},
-            "code_postal": {"value": "75001"},
             "type_logement": {"value": "Maison"},
             ...
         }
@@ -51,7 +50,6 @@ async def send_to_crm_v2(lead_doc: dict, api_url: str, api_key: str) -> tuple:
     # Tous les champs qui vont dans custom_fields
     custom_field_mapping = {
         "departement": "departement",
-        "code_postal": "code_postal",
         "ville": "ville",
         "adresse": "adresse",
         "type_logement": "type_logement",
