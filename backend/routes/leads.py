@@ -381,7 +381,7 @@ async def retry_lead(lead_id: str, user: dict = Depends(get_current_user)):
         return {"success": False, "error": "Aucun CRM avec commande active pour ce département/produit"}
     
     # Envoyer au CRM
-    status, response, _ = await send_to_crm(lead, target_crm.get("api_url"), api_key_crm)
+    status, response, _ = await send_to_crm_v2(lead, target_crm.get("api_url"), api_key_crm)
     
     # Déterminer si c'est un transfert
     is_transferred = routing_reason.startswith("cross_crm_")
