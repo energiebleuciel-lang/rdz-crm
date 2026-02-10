@@ -27,17 +27,20 @@ async def get_crm_id(slug: str) -> str:
     return crm.get("id") if crm else None
 
 
-async def has_commande(crm_id: str, dept: str, product: str) -> bool:
-    """Vérifie si un CRM a une commande pour ce département/produit"""
+async def has_commande(crm_id: str, product_type: str, departement: str) -> bool:
+    """
+    Vérifie si un CRM a une commande pour ce produit/département.
+    ATTENTION: Signature alignée avec commandes.py -> (crm_id, product_type, departement)
+    """
     query = {
         "crm_id": crm_id,
         "active": True,
-        "$or": [{"product_type": product}, {"product_type": "*"}]
+        "$or": [{"product_type": product_type}, {"product_type": "*"}]
     }
     commandes = await db.commandes.find(query, {"_id": 0}).to_list(100)
     for cmd in commandes:
         depts = cmd.get("departements", [])
-        if "*" in depts or dept in depts:
+        if "*" in depts or departement in depts:
             return True
     return False
 
