@@ -101,7 +101,7 @@ export default function Leads() {
       'Facture Électricité', 'Facture Chauffage',
       'Type Projet', 'Délai', 'Budget',
       'Formulaire', 'LP', 'Liaison', 'Source', 'UTM Source', 'UTM Medium', 'UTM Campaign',
-      'CRM', 'Statut', 'Date'
+      'CRM Origine', 'CRM Cible', 'Transféré', 'Statut', 'Date'
     ];
     const rows = filtered.map(l => [
       l.phone,
