@@ -16,9 +16,30 @@ router = APIRouter(tags=["Queue & Brief"])
 # ==================== FILE D'ATTENTE ====================
 
 @router.get("/queue/stats")
-async def queue_stats(user: dict = Depends(get_current_user)):
-    """Stats de la file d'attente"""
-    stats = await get_queue_stats()
+async def queue_stats(crm_id: str = None, user: dict = Depends(get_current_user)):
+    """Stats de la file d'attente, optionnellement filtrées par CRM"""
+    
+    if crm_id:
+        # Filtrer par CRM via les accounts et leads
+        accounts = await db.accounts.find({"crm_id": crm_id}, {"id": 1}).to_list(1000)
+        account_ids = [a["id"] for a in accounts]
+        
+        # Récupérer les lead_ids des leads de ce CRM
+        leads = await db.leads.find({"account_id": {"$in": account_ids}}, {"id": 1}).to_list(100000)
+        lead_ids = [l["id"] for l in leads]
+        
+        query = {"lead_id": {"$in": lead_ids}}
+        
+        stats = {
+            "pending": await db.lead_queue.count_documents({**query, "status": "pending"}),
+            "processing": await db.lead_queue.count_documents({**query, "status": "processing"}),
+            "success": await db.lead_queue.count_documents({**query, "status": "success"}),
+            "failed": await db.lead_queue.count_documents({**query, "status": "failed"}),
+            "exhausted": await db.lead_queue.count_documents({**query, "status": "exhausted"}),
+            "total": await db.lead_queue.count_documents(query)
+        }
+    else:
+        stats = await get_queue_stats()
     
     # Stats 24h
     yesterday = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
