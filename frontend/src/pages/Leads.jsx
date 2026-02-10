@@ -296,8 +296,7 @@ export default function Leads() {
                   </td>
                   <td className="p-4 text-sm text-slate-600 truncate max-w-[150px]">{lead.email}</td>
                   <td className="p-4">
-                    <span className="font-mono text-sm">{lead.code_postal}</span>
-                    <span className="text-slate-400 text-xs ml-1">({lead.departement})</span>
+                    <span className="font-mono text-sm">{lead.departement}</span>
                   </td>
                   <td className="p-4">
                     <Badge variant="info">{lead.form_code}</Badge>
