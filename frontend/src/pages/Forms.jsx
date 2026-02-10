@@ -417,14 +417,51 @@ export default function Forms() {
           />
 
           <div className="border-t pt-4 mt-4">
-            <h4 className="font-medium text-slate-700 mb-3">Configuration API</h4>
+            <h4 className="font-medium text-slate-700 mb-3 flex items-center gap-2">
+              <Key className="w-4 h-4" />
+              Configuration CRM Cible
+            </h4>
             
-            <Input
-              label="Clé API CRM (ZR7/MDL)"
-              value={form.crm_api_key}
-              onChange={e => setForm({...form, crm_api_key: e.target.value})}
-              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            <Select
+              label="CRM de destination"
+              value={form.target_crm}
+              onChange={e => setForm({...form, target_crm: e.target.value})}
+              options={[
+                { value: '', label: '-- Sélectionner le CRM --' },
+                { value: 'zr7', label: 'ZR7 Digital' },
+                { value: 'mdl', label: 'Maison du Lead (MDL)' }
+              ]}
+              required
             />
+            <p className="text-xs text-slate-500 mt-1">
+              Le CRM vers lequel les leads de ce formulaire seront envoyés
+            </p>
+            
+            <div className="mt-3">
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Clé API pour ce formulaire
+              </label>
+              <div className="relative">
+                <input
+                  type={showApiKey ? "text" : "password"}
+                  value={form.crm_api_key}
+                  onChange={e => setForm({...form, crm_api_key: e.target.value})}
+                  placeholder="Token API du CRM"
+                  className="w-full px-3 py-2 pr-10 border rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowApiKey(!showApiKey)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600"
+                >
+                  {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                La clé API {form.target_crm?.toUpperCase() || 'du CRM'} pour authentifier l'envoi des leads
+              </p>
+            </div>
             
             <div className="mt-3">
               <label className="flex items-center gap-2 cursor-pointer">
