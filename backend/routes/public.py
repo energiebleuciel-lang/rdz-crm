@@ -9,6 +9,7 @@ from typing import Optional
 import uuid
 
 from config import db, now_iso, timestamp, validate_phone_fr
+from routes.commandes import has_commande
 
 router = APIRouter(prefix="/public", tags=["Public"])
 
@@ -25,21 +26,6 @@ async def get_crm_id(slug: str) -> str:
     """Récupère l'ID du CRM depuis son slug"""
     crm = await db.crms.find_one({"slug": slug}, {"_id": 0})
     return crm.get("id") if crm else None
-
-
-async def has_commande(crm_id: str, dept: str, product: str) -> bool:
-    """Vérifie si un CRM a une commande pour ce département/produit"""
-    query = {
-        "crm_id": crm_id,
-        "active": True,
-        "$or": [{"product_type": product}, {"product_type": "*"}]
-    }
-    commandes = await db.commandes.find(query, {"_id": 0}).to_list(100)
-    for cmd in commandes:
-        depts = cmd.get("departements", [])
-        if "*" in depts or dept in depts:
-            return True
-    return False
 
 
 # ==================== MODELS ====================
