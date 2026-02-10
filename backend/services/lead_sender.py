@@ -1,6 +1,11 @@
 """
 Service d'envoi de leads vers les CRMs externes (ZR7, MDL)
 Gère l'envoi, les erreurs, et la mise en file d'attente
+
+Format API ZR7/MDL:
+- Endpoint: POST /lead/api/create_lead/
+- Auth: Header Authorization: {token}
+- Body: JSON avec phone, register_date, nom, prenom, email, custom_fields
 """
 
 import httpx
@@ -14,6 +19,149 @@ logger = logging.getLogger("lead_sender")
 MAX_RETRY_ATTEMPTS = 5
 RETRY_DELAYS = [60, 300, 900, 3600, 7200]  # 1min, 5min, 15min, 1h, 2h
 
+
+# ==================== NOUVELLE FONCTION V2 ====================
+
+async def send_to_crm_v2(lead_doc: dict, api_url: str, api_key: str) -> tuple:
+    """
+    Envoie un lead vers ZR7 ou MDL avec le format API exact.
+    
+    Format requis par l'API:
+    {
+        "phone": "0706548485",
+        "register_date": 1734307200,
+        "nom": "Doe",
+        "prenom": "John",
+        "email": "john.doe@example.com",
+        "civilite": "M.",
+        "custom_fields": {
+            "departement": {"value": "75"},
+            "code_postal": {"value": "75001"},
+            "type_logement": {"value": "Maison"},
+            ...
+        }
+    }
+    
+    Returns:
+        (status, response, should_queue)
+    """
+    # Construire les custom_fields
+    custom_fields = {}
+    
+    # Tous les champs qui vont dans custom_fields
+    custom_field_mapping = {
+        "departement": "departement",
+        "code_postal": "code_postal",
+        "ville": "ville",
+        "adresse": "adresse",
+        "type_logement": "type_logement",
+        "statut_occupant": "statut_occupant",
+        "surface_habitable": "superficie_logement",  # Mapping vers nom ZR7
+        "annee_construction": "annee_construction",
+        "type_chauffage": "chauffage_actuel",  # Mapping vers nom ZR7
+        "facture_electricite": "facture_electricite",
+        "facture_chauffage": "facture_chauffage",
+        "type_projet": "type_projet",
+        "delai_projet": "delai_projet",
+        "budget": "budget",
+        "product_type": "product_type",
+        "lp_code": "lp_code",
+        "liaison_code": "liaison_code",
+        "utm_source": "utm_source",
+        "utm_medium": "utm_medium",
+        "utm_campaign": "utm_campaign"
+    }
+    
+    for lead_field, crm_field in custom_field_mapping.items():
+        value = lead_doc.get(lead_field)
+        if value:
+            custom_fields[crm_field] = {"value": str(value)}
+    
+    # Construire le payload principal
+    payload = {
+        "phone": lead_doc["phone"],
+        "register_date": lead_doc.get("register_date", int(datetime.now().timestamp())),
+        "nom": lead_doc.get("nom", ""),
+        "prenom": lead_doc.get("prenom", ""),
+        "email": lead_doc.get("email", "")
+    }
+    
+    # Ajouter civilité si présente
+    if lead_doc.get("civilite"):
+        payload["civilite"] = lead_doc["civilite"]
+    
+    # Ajouter custom_fields si non vide
+    if custom_fields:
+        payload["custom_fields"] = custom_fields
+    
+    # Envoi HTTP
+    status = "failed"
+    response = None
+    should_queue = False
+    
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(
+                api_url,
+                json=payload,
+                headers={
+                    "Authorization": api_key,
+                    "Content-Type": "application/json"
+                }
+            )
+            
+            try:
+                data = resp.json()
+                response = str(data)
+            except:
+                response = resp.text
+            
+            # Analyser la réponse selon la doc API
+            if resp.status_code == 201:
+                status = "success"
+                logger.info(f"Lead {lead_doc.get('id')} envoyé avec succès à {api_url}")
+            elif resp.status_code == 200 and "doublon" in str(response).lower():
+                status = "duplicate"
+                logger.info(f"Lead {lead_doc.get('id')} est un doublon")
+            elif resp.status_code == 403:
+                # Erreur d'auth - ne pas retry
+                status = "auth_error"
+                logger.error(f"Erreur auth CRM: {response}")
+            elif resp.status_code == 400:
+                # Erreur de validation - ne pas retry
+                status = "validation_error"
+                logger.warning(f"Erreur validation CRM: {response}")
+            elif resp.status_code >= 500:
+                # Erreur serveur - retry
+                status = "server_error"
+                should_queue = True
+                logger.warning(f"Erreur serveur CRM {resp.status_code}: {api_url}")
+            else:
+                status = "failed"
+                logger.warning(f"CRM rejected lead: {response}")
+                
+    except httpx.TimeoutException as e:
+        status = "timeout"
+        response = f"Timeout après 30s: {str(e)}"
+        should_queue = True
+        logger.warning(f"CRM timeout: {api_url}")
+        
+    except httpx.ConnectError as e:
+        status = "connection_error"
+        response = f"Erreur connexion: {str(e)}"
+        should_queue = True
+        logger.warning(f"CRM connection error: {api_url}")
+        
+    except Exception as e:
+        status = "failed"
+        response = str(e)
+        should_queue = True
+        logger.error(f"CRM error: {str(e)}")
+    
+    return status, response, should_queue
+
+
+# ==================== ANCIENNE FONCTION (compatibilité) ====================
 
 async def send_to_crm(lead_doc: dict, api_url: str, api_key: str) -> tuple:
     """
