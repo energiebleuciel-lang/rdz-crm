@@ -322,6 +322,14 @@ export default function Accounts() {
                 
                 <div className="flex gap-2">
                   <button
+                    onClick={() => openMiniBrief(account)}
+                    className="px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 text-sm font-medium flex items-center gap-1"
+                    title="Générer Mini Brief"
+                  >
+                    <FileDown className="w-4 h-4" />
+                    Brief
+                  </button>
+                  <button
                     onClick={() => openEdit(account)}
                     className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg"
                   >
