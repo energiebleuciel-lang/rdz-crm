@@ -7,22 +7,54 @@ import { useAuth } from '../hooks/useAuth';
 import { useCRM } from '../hooks/useCRM';
 import { 
   Home, Layers, FileText, Users, Settings, LogOut, 
-  Building, Globe, Zap, ChevronDown, Database, Package, UserCog, MapPin, DollarSign, Image
+  Building, Globe, Zap, ChevronDown, Database, Package, UserCog, MapPin, DollarSign, Image,
+  TrendingUp, GitBranch, FolderOpen, Wallet, Shield
 } from 'lucide-react';
 import { useState } from 'react';
 
-const menuItems = [
-  { path: '/dashboard', icon: Home, label: 'Tableau de bord' },
-  { path: '/accounts', icon: Building, label: 'Comptes' },
-  { path: '/lps', icon: Globe, label: 'Landing Pages' },
-  { path: '/forms', icon: FileText, label: 'Formulaires' },
-  { path: '/leads', icon: Users, label: 'Leads' },
-  { path: '/departements', icon: MapPin, label: 'Départements' },
-  { path: '/commandes', icon: Package, label: 'Commandes' },
-  { path: '/billing', icon: DollarSign, label: 'Facturation' },
-  { path: '/media', icon: Image, label: 'Médias' },
-  { path: '/users', icon: UserCog, label: 'Utilisateurs' },
-  { path: '/settings', icon: Settings, label: 'Paramètres' },
+// Menu organisé par catégories
+const menuSections = [
+  {
+    title: null, // Pas de titre pour la section principale
+    items: [
+      { path: '/dashboard', icon: Home, label: 'Tableau de bord' },
+    ]
+  },
+  {
+    title: 'Acquisition',
+    items: [
+      { path: '/accounts', icon: Building, label: 'Comptes' },
+      { path: '/lps', icon: Globe, label: 'Landing Pages' },
+      { path: '/forms', icon: FileText, label: 'Formulaires' },
+      { path: '/leads', icon: Users, label: 'Leads' },
+    ]
+  },
+  {
+    title: 'Distribution',
+    items: [
+      { path: '/commandes', icon: Package, label: 'Commandes' },
+      { path: '/departements', icon: MapPin, label: 'Départements' },
+    ]
+  },
+  {
+    title: 'Ressources',
+    items: [
+      { path: '/media', icon: Image, label: 'Médias' },
+    ]
+  },
+  {
+    title: 'Finance',
+    items: [
+      { path: '/billing', icon: DollarSign, label: 'Facturation' },
+    ]
+  },
+  {
+    title: 'Administration',
+    items: [
+      { path: '/users', icon: UserCog, label: 'Utilisateurs' },
+      { path: '/settings', icon: Settings, label: 'Paramètres' },
+    ]
+  }
 ];
 
 export default function Layout({ children }) {
