@@ -88,7 +88,7 @@ export default function Settings() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-slate-800">Paramètres</h1>
 
-      {/* Nouveau système v2 - Clés API Serveur */}
+      {/* Nouveau système v2 - Clés API par Formulaire */}
       <Card className="p-6 border-2 border-green-200 bg-green-50/30">
         <div className="flex items-center gap-3 mb-4">
           <div className="p-3 bg-green-100 rounded-xl">
@@ -96,7 +96,7 @@ export default function Settings() {
           </div>
           <div>
             <h2 className="text-lg font-semibold text-slate-800">Clés API CRM (v2)</h2>
-            <p className="text-sm text-slate-500">Stockées côté serveur - Non visibles dans les scripts</p>
+            <p className="text-sm text-slate-500">Chaque formulaire a sa propre clé API</p>
           </div>
           <Badge variant="success" className="ml-auto">Sécurisé</Badge>
         </div>
@@ -113,19 +113,7 @@ export default function Settings() {
                 <p className="text-xs text-slate-500">app.zr7-digital.fr</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              {crmApiStatus.zr7 ? (
-                <Badge variant="success" className="flex items-center gap-1">
-                  <CheckCircle className="w-3 h-3" />
-                  Configurée
-                </Badge>
-              ) : (
-                <Badge variant="danger" className="flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3" />
-                  Non configurée
-                </Badge>
-              )}
-            </div>
+            <Badge variant="info">Par formulaire</Badge>
           </div>
           
           {/* MDL */}
@@ -139,27 +127,18 @@ export default function Settings() {
                 <p className="text-xs text-slate-500">maison-du-lead.com</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              {crmApiStatus.mdl ? (
-                <Badge variant="success" className="flex items-center gap-1">
-                  <CheckCircle className="w-3 h-3" />
-                  Configurée
-                </Badge>
-              ) : (
-                <Badge variant="danger" className="flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3" />
-                  Non configurée
-                </Badge>
-              )}
-            </div>
+            <Badge variant="info">Par formulaire</Badge>
           </div>
         </div>
         
         <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
           <p className="text-sm text-blue-800">
             <Shield className="w-4 h-4 inline mr-1" />
-            <strong>Configuration serveur uniquement</strong> - Les clés API sont configurées dans le fichier <code className="bg-blue-100 px-1 rounded">.env</code> du serveur.
-            Elles ne sont jamais exposées dans les scripts client.
+            <strong>Configuration par formulaire</strong> - Chaque formulaire a son propre <code className="bg-blue-100 px-1 rounded">target_crm</code> et <code className="bg-blue-100 px-1 rounded">crm_api_key</code>.
+            Les clés ne sont jamais exposées dans les scripts client.
+          </p>
+          <p className="text-sm text-blue-700 mt-2">
+            → Configurez les clés API dans <a href="/forms" className="underline font-medium">Formulaires</a>
           </p>
         </div>
       </Card>
