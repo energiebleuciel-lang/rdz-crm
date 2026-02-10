@@ -29,6 +29,8 @@ Avant d'envoyer un lead :
 - `POST /api/public/leads` - Soumettre lead
 - `GET /api/accounts/{id}/brief-options` - Options disponibles pour mini brief
 - `POST /api/accounts/{id}/mini-brief` - Générer mini brief sélectif
+- `GET /api/leads/stats/global?crm_id=...` - Stats leads filtrées par CRM
+- `GET /api/queue/stats?crm_id=...` - Stats queue filtrées par CRM
 
 ### ✅ Tracking Events
 - `lp_visit` - Visite de la LP (automatique)
@@ -41,7 +43,7 @@ Avant d'envoyer un lead :
 - Page Formulaires : target_crm + crm_api_key par formulaire
 - Brief LP/Form : Scripts de tracking séparés (LP + Form)
 
-### ✅ Mini Brief Sélectif (Nouveau - Décembre 2025)
+### ✅ Mini Brief Sélectif (Décembre 2025)
 Fonctionnalité sur la page Comptes permettant de générer un brief personnalisé avec sélection des éléments :
 - **Logos** : Logo Principal, Logo Secondaire
 - **GTM & Tracking** : Code GTM (Head), Code GTM (Body), Code de Tracking Conversion
@@ -49,6 +51,12 @@ Fonctionnalité sur la page Comptes permettant de générer un brief personnalis
 - **Autres** : URL de Redirection
 - Boutons "Copier" individuels + "Copier tout"
 - Éléments non configurés affichés en grisé avec badge "Non configuré"
+- Bouton d'accès rapide dans le modal Brief LP
+
+### ✅ Dashboard filtré par CRM (Décembre 2025)
+- Le Tableau de bord affiche maintenant les stats filtrées par CRM sélectionné
+- Indication du CRM actif sous le titre
+- Stats leads et queue filtrées automatiquement
 
 ## À Faire
 
@@ -73,4 +81,4 @@ Fonctionnalité sur la page Comptes permettant de générer un brief personnalis
 - **MDL** : `https://maison-du-lead.com/lead/api/create_lead/`
 
 ## Dernière Mise à Jour
-Décembre 2025 - Ajout du Mini Brief Sélectif sur la page Comptes
+Décembre 2025 - Dashboard filtré par CRM + Bouton Mini Brief dans Brief LP
