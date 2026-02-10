@@ -23,9 +23,7 @@ export default function Leads() {
   const [showDetailModal, setShowDetailModal] = useState(false);
 
   useEffect(() => {
-    if (selectedCRM) {
-      loadData();
-    }
+    // Ce useEffect est maintenant géré par celui avec les filtres
   }, [selectedCRM]);
 
   const loadData = async () => {
