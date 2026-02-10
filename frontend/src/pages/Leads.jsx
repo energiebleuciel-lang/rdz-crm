@@ -130,7 +130,9 @@ export default function Leads() {
       l.utm_source,
       l.utm_medium,
       l.utm_campaign,
-      l.target_crm_slug,
+      l.origin_crm,
+      l.target_crm,
+      l.is_transferred ? 'Oui' : 'Non',
       l.api_status,
       new Date(l.created_at).toLocaleDateString('fr-FR')
     ]);
