@@ -167,7 +167,7 @@ async def retry_lead_internal(lead: dict) -> dict:
         return {"success": False, "error": "Aucun CRM avec commande active"}
     
     # Envoyer au CRM
-    status, response, _ = await send_to_crm(lead, target_crm.get("api_url"), api_key_crm)
+    status, response, _ = await send_to_crm_v2(lead, target_crm.get("api_url"), api_key_crm)
     
     await db.leads.update_one(
         {"id": lead_id},
