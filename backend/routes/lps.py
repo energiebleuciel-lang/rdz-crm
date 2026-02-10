@@ -178,12 +178,12 @@ async def create_lp(data: LPCreate, user: dict = Depends(get_current_user)):
 @router.get("/{lp_id}/brief")
 async def get_lp_brief(lp_id: str, user: dict = Depends(get_current_user)):
     """
-    Génère le brief v2 avec script simplifié
+    Génère le brief avec script simplifié
     - 1 seul script universel (~50 lignes)
     - Pas de clé API visible
     - Cookie de session automatique
     """
-    from services.brief_generator_v2 import generate_brief_v2
+    from services.brief_generator import generate_brief_v2
     return await generate_brief_v2(lp_id)
 
 
