@@ -238,6 +238,7 @@ async def submit_lead(data: LeadData, request: Request):
     # Vérifier commandes et trouver le bon CRM
     final_crm = None
     final_key = None
+    is_transferred = False  # Le lead sera-t-il transféré vers un autre CRM ?
     
     crm_id = await get_crm_id(target_crm)
     if crm_id and await has_commande(crm_id, dept, product_type):
@@ -255,6 +256,7 @@ async def submit_lead(data: LeadData, request: Request):
             if other_form:
                 final_crm = other
                 final_key = other_form.get("crm_api_key")
+                is_transferred = True  # Transfert inter-CRM !
     
     # Récupérer session
     session = await db.visitor_sessions.find_one({"id": data.session_id}, {"_id": 0})
