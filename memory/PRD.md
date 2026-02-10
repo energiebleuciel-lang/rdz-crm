@@ -67,17 +67,35 @@ Fonctionnalité sur la page Comptes permettant de générer un brief personnalis
 - **Colonne "Distribution"** séparée de "CRM Origine"
 - **Modal de détail enrichi** : Section "CRM & Distribution" avec toutes les infos
 
-### ✅ Vérification de cohérence système (Décembre 2025)
-Audit complet avant déploiement :
-- **Ligne dupliquée corrigée** dans `public.py`
-- **Champs lead harmonisés** entre les deux APIs (public et v1) :
-  - `origin_crm` : CRM d'origine (compte)
-  - `target_crm` : CRM de destination (slug)
-  - `is_transferred` : Transfert inter-CRM (boolean)
-  - `routing_reason` : Raison du routing
-  - `allow_cross_crm` : Cross-CRM autorisé
-- **Test E2E complet** : Session → Tracking → Lead → Distribution
-- **Rétro-compatibilité** : Les anciens leads récupèrent `origin_crm` automatiquement
+### ✅ Audit Technique Complet (Décembre 2025)
+Audit exhaustif du système avant déploiement :
+
+**Corrections effectuées :**
+- Ligne dupliquée dans `public.py` supprimée
+- Champs lead harmonisés entre toutes les APIs
+- Champs obsolètes (`target_crm_id`, `target_crm_slug`) supprimés
+- 26+ leads existants normalisés en base
+- Export CSV mis à jour avec nouveaux champs
+- Billing.py adapté au nouveau schéma
+- Corrections lint dans auth.py, lps.py, billing.py, lead_sender.py
+
+**Schéma Lead Normalisé :**
+```
+origin_crm      : slug CRM d'origine (compte)
+target_crm      : slug CRM de destination
+is_transferred  : boolean (transfert inter-CRM)
+routing_reason  : raison du routing
+allow_cross_crm : boolean
+api_status      : pending|success|failed|duplicate|no_crm
+sent_to_crm     : boolean
+```
+
+**Tests passés :**
+- ✅ Lint Python backend (routes, services)
+- ✅ Lint JavaScript frontend (pages)
+- ✅ Import tous les modules
+- ✅ Démarrage serveur FastAPI (102 routes)
+- ✅ Test E2E complet (Session → Tracking → Lead → Routage → Validation)
 
 ## À Faire
 
