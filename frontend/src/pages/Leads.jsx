@@ -165,7 +165,7 @@ export default function Leads() {
       case 'duplicate': return 'Doublon';
       case 'queued': return 'En queue';
       case 'failed': return 'Échoué';
-      case 'no_crm': return 'Sans CRM';
+      case 'no_crm': return 'Pas de distrib.';
       case 'pending': return 'En attente';
       default: return status;
     }
