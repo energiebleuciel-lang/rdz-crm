@@ -1,0 +1,96 @@
+{
+  "summary": "Backend testing completed for lead schema changes - suppression of code_postal field and use of departement only. All 12 tests passed (100%). Verified session creation, event tracking (lp_visit, cta_click), and lead submission without code_postal.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_lead_schema_no_code_postal.py",
+    "/app/test_reports/pytest/pytest_lead_schema.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "LeadData model in public.py correctly has 'departement' field without 'code_postal'",
+    "LeadSubmit model in models.py correctly has 'departement' field without 'code_postal'",
+    "lead_sender.py send_to_crm_v2 correctly maps 'departement' to CRM custom_fields without code_postal",
+    "No code_postal references found in current backend source files (only in backend_old/ backup)"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_lead_schema_no_code_postal.py"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "N/A - backend only testing"
+  },
+  "test_credentials": {
+    "form_code": "TEST-FORM-001",
+    "api_url": "https://tracksync-12.preview.emergentagent.com"
+  },
+  "seed_data_creation": "None - used existing TEST-FORM-001 form",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Schema change verified: code_postal field removed from all models (LeadData, LeadSubmit). Only departement is used. CRM external (ZR7) returns 'Token invalide' which is expected since TEST-API-KEY is not valid. All tracking APIs (session, event) and lead submission work correctly.",
+  "features_tested": [
+    {
+      "feature": "Session Creation API",
+      "endpoint": "/api/public/track/session",
+      "status": "PASS",
+      "tests": ["test_create_session_success", "test_create_session_minimal"]
+    },
+    {
+      "feature": "Event Tracking API",
+      "endpoint": "/api/public/track/event",
+      "status": "PASS",
+      "tests": ["test_track_lp_visit_event", "test_track_cta_click_event", "test_track_event_invalid_session"]
+    },
+    {
+      "feature": "Lead Submission WITHOUT code_postal",
+      "endpoint": "/api/public/leads",
+      "status": "PASS",
+      "tests": ["test_submit_lead_with_departement_no_code_postal", "test_submit_lead_departement_only", "test_lead_data_model_no_code_postal_field", "test_phone_validation"]
+    },
+    {
+      "feature": "Lead Verification - departement present, no code_postal",
+      "status": "PASS",
+      "tests": ["test_verify_lead_has_departement_no_code_postal"]
+    },
+    {
+      "feature": "CRM Payload Structure",
+      "status": "PASS",
+      "tests": ["test_lead_submission_crm_payload_structure"],
+      "note": "CRM returns auth_error (Token invalide) which is expected - payload structure is correct"
+    },
+    {
+      "feature": "Form Code Validation",
+      "status": "PASS",
+      "tests": ["test_invalid_form_code"]
+    }
+  ],
+  "backend_tests_summary": {
+    "total": 12,
+    "passed": 12,
+    "failed": 0,
+    "test_classes": [
+      "TestSessionCreation (2 tests)",
+      "TestEventTracking (3 tests)",
+      "TestLeadSubmissionNoCodPostal (4 tests)",
+      "TestLeadVerificationInDatabase (1 test)",
+      "TestLeadSenderNoCodPostal (1 test)",
+      "TestFormCodeValidation (1 test)"
+    ]
+  },
+  "schema_verification": {
+    "code_postal_removed": true,
+    "departement_present": true,
+    "files_verified": [
+      "/app/backend/routes/public.py - LeadData model has departement, no code_postal",
+      "/app/backend/models.py - LeadSubmit model has departement, no code_postal",
+      "/app/backend/services/lead_sender.py - send_to_crm_v2 maps departement to CRM, no code_postal"
+    ]
+  }
+}
