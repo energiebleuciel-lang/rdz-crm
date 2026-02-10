@@ -315,24 +315,50 @@ async def submit_lead(data: LeadData, request: Request):
     # Envoyer au CRM
     status = "no_crm"
     message = "Aucun CRM disponible"
+    actual_crm_sent = None
     
     if final_crm and final_key:
         from services.lead_sender import send_to_crm_v2, add_to_queue
         
         api_url = CRM_URLS[final_crm]
         status, response, should_queue = await send_to_crm_v2(lead, api_url, final_key)
+        actual_crm_sent = final_crm
+        
+        # FALLBACK : Si erreur (Token invalide, etc.) et cross_crm autorisé → essayer l'autre CRM
+        if status == "failed" and allow_cross_crm:
+            other_crm = "mdl" if final_crm == "zr7" else "zr7"
+            # Chercher la clé API de l'autre CRM dans les formulaires du même compte
+            other_form = await db.forms.find_one({
+                "account_id": account_id,
+                "target_crm": other_crm,
+                "crm_api_key": {"$exists": True, "$ne": ""}
+            }, {"_id": 0})
+            
+            if other_form and other_form.get("crm_api_key"):
+                other_key = other_form["crm_api_key"]
+                other_url = CRM_URLS[other_crm]
+                status, response, should_queue = await send_to_crm_v2(lead, other_url, other_key)
+                actual_crm_sent = other_crm
+                
+                if status == "success":
+                    # Marquer comme transféré
+                    await db.leads.update_one(
+                        {"id": lead_id},
+                        {"$set": {"is_transferred": True, "routing_reason": f"fallback_{other_crm}"}}
+                    )
         
         if should_queue:
             await add_to_queue(lead, api_url, final_key, "error")
             status = "queued"
         
-        message = f"Envoyé vers {final_crm.upper()}" if status == "success" else response
+        message = f"Envoyé vers {actual_crm_sent.upper()}" if status == "success" else str(response)
     
     # Mettre à jour le lead
     await db.leads.update_one(
         {"id": lead_id},
         {"$set": {
             "api_status": status,
+            "target_crm": actual_crm_sent or final_crm,
             "sent_to_crm": status in ["success", "duplicate"],
             "sent_at": now_iso() if status in ["success", "duplicate"] else None
         }}
@@ -346,9 +372,9 @@ async def submit_lead(data: LeadData, request: Request):
         )
     
     return {
-        "success": status in ["success", "duplicate", "queued", "no_crm"],
+        "success": status in ["success", "duplicate", "queued"],
         "lead_id": lead_id,
         "status": status,
-        "crm": final_crm or "none",
+        "crm": actual_crm_sent or final_crm or "none",
         "message": message
     }
