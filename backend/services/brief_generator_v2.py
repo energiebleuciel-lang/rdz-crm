@@ -33,28 +33,44 @@ async def generate_brief_v2(lp_id: str) -> dict:
     tracking_type = lp.get("tracking_type", "redirect")
     redirect_url = lp.get("redirect_url", "/merci")
     
-    # Récupérer le Form lié
+    # Récupérer le Form lié (2 méthodes : lp.form_id OU form.lp_id)
     form = None
     form_code = ""
     form_url = ""
+    
+    # Méthode 1: LP a un form_id
     if form_id:
         form = await db.forms.find_one({"id": form_id}, {"_id": 0})
-        if form:
-            form_code = form.get("code", "")
-            form_url = form.get("url", "")
+    
+    # Méthode 2: Form a un lp_id qui pointe vers cette LP
+    if not form:
+        form = await db.forms.find_one({"lp_id": lp_id}, {"_id": 0})
+    
+    if form:
+        form_code = form.get("code", "")
+        form_url = form.get("url", "")
+        # Prendre les valeurs du form si pas sur la LP
+        if not product_type:
+            product_type = form.get("product_type", "")
+        if not tracking_type or tracking_type == "redirect":
+            tracking_type = form.get("tracking_type", "redirect")
+        if not redirect_url or redirect_url == "/merci":
+            redirect_url = form.get("redirect_url", "/merci")
     
     if not form:
-        return {"error": "Form lié non trouvé"}
+        return {"error": "Form lié non trouvé. Veuillez lier un formulaire à cette LP."}
     
-    # Récupérer le compte
-    account = await db.accounts.find_one({"id": lp.get("account_id")}, {"_id": 0})
-    if not account:
-        return {"error": "Compte non trouvé"}
+    # Récupérer le compte depuis LP ou Form
+    account_id = lp.get("account_id") or form.get("account_id")
+    account = None
+    if account_id:
+        account = await db.accounts.find_one({"id": account_id}, {"_id": 0})
     
-    account_name = account.get("name", "")
+    # Si pas de compte, créer une structure par défaut
+    account_name = account.get("name", "N/A") if account else "N/A"
     
     # GTM conversion
-    gtm_conversion = account.get("gtm_conversion", "")
+    gtm_conversion = account.get("gtm_conversion", "") if account else ""
     
     api_url = BACKEND_URL
     liaison_code = f"{lp_code}_{form_code}"
