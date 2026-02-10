@@ -18,9 +18,6 @@ def get_week_bounds(year: int, week: int):
     """
     Retourne les dates de début et fin d'une semaine ISO.
     """
-    # Premier jour de l'année
-    jan1 = datetime(year, 1, 1, tzinfo=timezone.utc)
-    
     # Trouver le premier lundi de la semaine 1
     # Semaine 1 contient le 4 janvier
     jan4 = datetime(year, 1, 4, tzinfo=timezone.utc)
