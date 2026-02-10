@@ -367,7 +367,7 @@ async def submit_lead(data: LeadSubmit, request: Request):
         "register_date": timestamp(),
         "created_at": now_iso(),
         # CRM
-        "target_crm": crm_id,
+        "target_crm": crm_slug,
         "api_status": "pending",
         "sent_to_crm": False
     }
