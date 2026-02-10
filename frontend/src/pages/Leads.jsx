@@ -184,29 +184,6 @@ export default function Leads() {
         </div>
         
         <div className="flex items-center gap-3">
-          {/* Filtres */}
-          <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
-            {[
-              { value: 'all', label: 'Tous' },
-              { value: 'success', label: 'Envoyés' },
-              { value: 'failed', label: 'Échoués' },
-              { value: 'no_crm', label: 'Sans CRM' },
-              { value: 'queued', label: 'En queue' }
-            ].map(f => (
-              <button
-                key={f.value}
-                onClick={() => setFilter(f.value)}
-                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                  filter === f.value 
-                    ? 'bg-white text-slate-800 shadow-sm' 
-                    : 'text-slate-600 hover:text-slate-800'
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-          
           <Button variant="secondary" onClick={loadData}>
             <RefreshCw className="w-4 h-4" />
           </Button>
@@ -215,6 +192,77 @@ export default function Leads() {
             <Download className="w-4 h-4" />
             Export CSV
           </Button>
+        </div>
+      </div>
+
+      {/* Filtres */}
+      <div className="flex flex-wrap items-center gap-4 bg-slate-50 p-4 rounded-lg">
+        {/* Filtre par statut */}
+        <div className="flex gap-1 bg-white p-1 rounded-lg shadow-sm">
+          {[
+            { value: 'all', label: 'Tous' },
+            { value: 'success', label: 'Envoyés' },
+            { value: 'failed', label: 'Échoués' },
+            { value: 'no_crm', label: 'Sans distrib.' },
+            { value: 'queued', label: 'En queue' }
+          ].map(f => (
+            <button
+              key={f.value}
+              onClick={() => setFilter(f.value)}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                filter === f.value 
+                  ? 'bg-amber-500 text-white' 
+                  : 'text-slate-600 hover:text-slate-800 hover:bg-slate-100'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Filtre transférés */}
+        <div className="flex items-center gap-2">
+          <ArrowRightLeft className="w-4 h-4 text-slate-400" />
+          <select
+            value={transferredFilter === null ? 'all' : transferredFilter ? 'yes' : 'no'}
+            onChange={(e) => {
+              const val = e.target.value;
+              setTransferredFilter(val === 'all' ? null : val === 'yes');
+            }}
+            className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-white"
+          >
+            <option value="all">Tous les leads</option>
+            <option value="yes">Transférés uniquement</option>
+            <option value="no">Non transférés</option>
+          </select>
+        </div>
+
+        {/* Filtre période */}
+        <div className="flex items-center gap-2">
+          <Calendar className="w-4 h-4 text-slate-400" />
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="px-2 py-1.5 border border-slate-200 rounded-lg text-sm bg-white"
+            placeholder="Du"
+          />
+          <span className="text-slate-400">→</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="px-2 py-1.5 border border-slate-200 rounded-lg text-sm bg-white"
+            placeholder="Au"
+          />
+          {(dateFrom || dateTo) && (
+            <button
+              onClick={() => { setDateFrom(''); setDateTo(''); }}
+              className="text-xs text-red-500 hover:underline"
+            >
+              Effacer
+            </button>
+          )}
         </div>
       </div>
 
