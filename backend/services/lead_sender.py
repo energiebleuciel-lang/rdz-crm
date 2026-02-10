@@ -180,7 +180,7 @@ async def send_to_crm(lead_doc: dict, api_url: str, api_key: str) -> tuple:
     custom_fields = {}
     
     for field in ["superficie_logement", "chauffage_actuel", "departement", 
-                  "code_postal", "type_logement", "statut_occupant", "facture_electricite"]:
+                  "type_logement", "statut_occupant", "facture_electricite"]:
         if lead_doc.get(field):
             custom_fields[field] = {"value": lead_doc[field]}
     
