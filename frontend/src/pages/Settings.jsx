@@ -1,17 +1,18 @@
 /**
- * Page Paramètres - Clé API et configuration CRMs
+ * Page Paramètres - Configuration système
  */
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { API } from '../hooks/useApi';
 import { Card, Loading, Button, Badge } from '../components/UI';
-import { Key, Copy, Database, CheckCircle, RefreshCw, Eye, EyeOff } from 'lucide-react';
+import { Key, Copy, Database, CheckCircle, RefreshCw, Eye, EyeOff, Shield, Server, AlertTriangle } from 'lucide-react';
 
 export default function Settings() {
   const { authFetch } = useAuth();
   const [apiKey, setApiKey] = useState('');
   const [crms, setCrms] = useState([]);
+  const [crmApiStatus, setCrmApiStatus] = useState({});
   const [loading, setLoading] = useState(true);
   const [showKey, setShowKey] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -24,7 +25,7 @@ export default function Settings() {
     try {
       setLoading(true);
       
-      // API Key
+      // API Key (ancienne clé globale - pour info)
       const keyRes = await authFetch(`${API}/api/config/api-key`);
       if (keyRes.ok) {
         const data = await keyRes.json();
@@ -36,6 +37,13 @@ export default function Settings() {
       if (crmsRes.ok) {
         const data = await crmsRes.json();
         setCrms(data.crms || []);
+      }
+      
+      // Vérifier statut des clés API CRM
+      const statusRes = await authFetch(`${API}/api/config/crm-api-status`);
+      if (statusRes.ok) {
+        const data = await statusRes.json();
+        setCrmApiStatus(data);
       }
     } catch (e) {
       console.error('Load error:', e);
@@ -80,16 +88,93 @@ export default function Settings() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-slate-800">Paramètres</h1>
 
-      {/* Clé API Globale */}
-      <Card className="p-6">
+      {/* Nouveau système v2 - Clés API Serveur */}
+      <Card className="p-6 border-2 border-green-200 bg-green-50/30">
         <div className="flex items-center gap-3 mb-4">
-          <div className="p-3 bg-amber-100 rounded-xl">
-            <Key className="w-6 h-6 text-amber-600" />
+          <div className="p-3 bg-green-100 rounded-xl">
+            <Server className="w-6 h-6 text-green-600" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-slate-800">Clé API Globale</h2>
-            <p className="text-sm text-slate-500">Utilisée pour authentifier les soumissions de leads</p>
+            <h2 className="text-lg font-semibold text-slate-800">Clés API CRM (v2)</h2>
+            <p className="text-sm text-slate-500">Stockées côté serveur - Non visibles dans les scripts</p>
           </div>
+          <Badge variant="success" className="ml-auto">Sécurisé</Badge>
+        </div>
+        
+        <div className="bg-white rounded-lg p-4 space-y-3">
+          {/* ZR7 */}
+          <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center text-white font-bold text-sm">
+                ZR7
+              </div>
+              <div>
+                <h4 className="font-medium text-slate-800">ZR7 Digital</h4>
+                <p className="text-xs text-slate-500">app.zr7-digital.fr</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {crmApiStatus.zr7 ? (
+                <Badge variant="success" className="flex items-center gap-1">
+                  <CheckCircle className="w-3 h-3" />
+                  Configurée
+                </Badge>
+              ) : (
+                <Badge variant="danger" className="flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" />
+                  Non configurée
+                </Badge>
+              )}
+            </div>
+          </div>
+          
+          {/* MDL */}
+          <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center text-white font-bold text-sm">
+                MDL
+              </div>
+              <div>
+                <h4 className="font-medium text-slate-800">Maison du Lead</h4>
+                <p className="text-xs text-slate-500">maison-du-lead.com</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {crmApiStatus.mdl ? (
+                <Badge variant="success" className="flex items-center gap-1">
+                  <CheckCircle className="w-3 h-3" />
+                  Configurée
+                </Badge>
+              ) : (
+                <Badge variant="danger" className="flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" />
+                  Non configurée
+                </Badge>
+              )}
+            </div>
+          </div>
+        </div>
+        
+        <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <p className="text-sm text-blue-800">
+            <Shield className="w-4 h-4 inline mr-1" />
+            <strong>Configuration serveur uniquement</strong> - Les clés API sont configurées dans le fichier <code className="bg-blue-100 px-1 rounded">.env</code> du serveur.
+            Elles ne sont jamais exposées dans les scripts client.
+          </p>
+        </div>
+      </Card>
+
+      {/* Ancienne clé API Globale (pour référence) */}
+      <Card className="p-6 opacity-75">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-3 bg-slate-100 rounded-xl">
+            <Key className="w-6 h-6 text-slate-500" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-slate-800">Ancienne Clé API (v1)</h2>
+            <p className="text-sm text-slate-500">Utilisée par les anciens scripts - Dépréciée</p>
+          </div>
+          <Badge variant="warning" className="ml-auto">Dépréciée</Badge>
         </div>
         
         <div className="bg-slate-900 rounded-lg p-4">
@@ -116,12 +201,9 @@ export default function Settings() {
           </div>
         </div>
         
-        <div className="flex items-center justify-between mt-4">
-          <p className="text-xs text-slate-500">
-            Cette clé doit être incluse dans le header <code className="bg-slate-100 px-1 rounded">Authorization: Token [clé]</code>
-          </p>
-          <Badge variant="info">Clé unique</Badge>
-        </div>
+        <p className="text-xs text-slate-500 mt-4">
+          ⚠️ Les nouveaux scripts v2 n'utilisent plus cette clé. Elle reste disponible pour les anciens formulaires.
+        </p>
       </Card>
 
       {/* CRMs Configurés */}
