@@ -277,11 +277,12 @@ async def submit_lead(data: LeadSubmit, request: Request):
     Soumission de lead vers RDZ puis vers ZR7/MDL.
     
     Flow:
-    1. Valider téléphone
-    2. Récupérer config formulaire (target_crm + crm_api_key)
-    3. Créer le lead dans RDZ
-    4. Envoyer vers ZR7 ou MDL avec la clé API du formulaire
-    5. Mettre à jour la session
+    1. Valider téléphone et code postal
+    2. Récupérer config formulaire
+    3. Vérifier si le CRM cible a une commande
+    4. Si non et allow_cross_crm, essayer l'autre CRM
+    5. Créer le lead dans RDZ
+    6. Envoyer vers le CRM qui a une commande
     """
     # 1. Valider téléphone
     is_valid, phone_result = validate_phone_fr(data.phone)
@@ -289,7 +290,7 @@ async def submit_lead(data: LeadSubmit, request: Request):
         return {"success": False, "error": phone_result}
     phone = phone_result
     
-    # Valider code postal si fourni
+    # Valider code postal
     code_postal = ""
     dept = ""
     if data.code_postal:
@@ -310,27 +311,52 @@ async def submit_lead(data: LeadSubmit, request: Request):
     form_code = form.get("code", "")
     product_type = form.get("product_type", "PV")
     account_id = form.get("account_id", "")
-    
-    # *** NOUVEAU : Récupérer target_crm et crm_api_key du FORMULAIRE ***
-    target_crm = form.get("target_crm", "").lower()  # "zr7" ou "mdl"
+    target_crm = form.get("target_crm", "").lower()
     crm_api_key = form.get("crm_api_key", "")
+    allow_cross_crm = form.get("allow_cross_crm", True)
     
-    # Vérifier que le formulaire a une configuration CRM valide
     if not target_crm or target_crm not in CRM_URLS:
-        return {"success": False, "error": f"CRM cible non configuré pour ce formulaire. Configurez 'target_crm' (zr7 ou mdl) dans le formulaire."}
+        return {"success": False, "error": "CRM cible non configuré"}
     
     if not crm_api_key:
-        return {"success": False, "error": f"Clé API {target_crm.upper()} non configurée pour ce formulaire. Ajoutez 'crm_api_key' dans la configuration du formulaire."}
+        return {"success": False, "error": f"Clé API {target_crm.upper()} non configurée"}
     
-    api_url = CRM_URLS[target_crm]
+    # 3. Vérifier les commandes
+    final_crm = None
+    final_api_key = None
     
-    # Récupérer la session pour avoir les UTM et lp_code
+    # Récupérer l'ID du CRM cible
+    target_crm_id = await get_crm_id_by_slug(target_crm)
+    
+    if target_crm_id and await check_commande(target_crm_id, dept, product_type):
+        # Le CRM cible a une commande
+        final_crm = target_crm
+        final_api_key = crm_api_key
+    elif allow_cross_crm:
+        # Essayer l'autre CRM
+        other_crm = "mdl" if target_crm == "zr7" else "zr7"
+        other_crm_id = await get_crm_id_by_slug(other_crm)
+        
+        if other_crm_id and await check_commande(other_crm_id, dept, product_type):
+            # L'autre CRM a une commande - mais on a besoin de sa clé API
+            # On cherche un autre formulaire du même compte avec ce CRM configuré
+            other_form = await db.forms.find_one({
+                "account_id": account_id,
+                "target_crm": other_crm,
+                "crm_api_key": {"$exists": True, "$ne": ""}
+            }, {"_id": 0})
+            
+            if other_form and other_form.get("crm_api_key"):
+                final_crm = other_crm
+                final_api_key = other_form.get("crm_api_key")
+    
+    # Récupérer session
     session = await db.visitor_sessions.find_one({"id": data.session_id}, {"_id": 0})
     lp_code = session.get("lp_code", "") if session else ""
     utm = session.get("utm", {}) if session else {}
     liaison_code = f"{lp_code}_{form_code}" if lp_code else form_code
     
-    # 3. Créer le document lead dans RDZ
+    # 4. Créer le lead dans RDZ
     lead_id = str(uuid.uuid4())
     lead_doc = {
         "id": lead_id,
@@ -339,65 +365,61 @@ async def submit_lead(data: LeadSubmit, request: Request):
         "form_code": form_code,
         "account_id": account_id,
         "product_type": product_type,
-        # Identité
         "phone": phone,
         "nom": data.nom or "",
         "prenom": data.prenom or "",
         "civilite": data.civilite or "",
         "email": data.email or "",
-        # Localisation
         "code_postal": code_postal,
         "departement": dept,
         "ville": data.ville or "",
         "adresse": data.adresse or "",
-        # Logement
         "type_logement": data.type_logement or "",
         "statut_occupant": data.statut_occupant or "",
         "surface_habitable": data.surface_habitable or "",
         "annee_construction": data.annee_construction or "",
         "type_chauffage": data.type_chauffage or "",
-        # Énergie
         "facture_electricite": data.facture_electricite or "",
         "facture_chauffage": data.facture_chauffage or "",
-        # Projet
         "type_projet": data.type_projet or "",
         "delai_projet": data.delai_projet or "",
         "budget": data.budget or "",
-        # Tracking
         "lp_code": lp_code,
         "liaison_code": liaison_code,
-        "source": utm.get("source", ""),
         "utm_source": utm.get("source", ""),
         "utm_medium": utm.get("medium", ""),
         "utm_campaign": utm.get("campaign", ""),
-        # Consentement
         "rgpd_consent": data.rgpd_consent if data.rgpd_consent is not None else True,
         "newsletter": data.newsletter or False,
-        # Metadata
         "ip": request.headers.get("x-forwarded-for", request.client.host if request.client else ""),
         "register_date": timestamp(),
         "created_at": now_iso(),
-        # CRM
-        "target_crm": target_crm,  # "zr7" ou "mdl" depuis le formulaire
-        "api_status": "pending",
+        "target_crm": final_crm or target_crm,
+        "api_status": "pending" if final_crm else "no_crm",
         "sent_to_crm": False
     }
     
     await db.leads.insert_one(lead_doc)
     
-    # 4. Envoyer au CRM (ZR7 ou MDL) avec la clé API du formulaire
-    from services.lead_sender import send_to_crm_v2, add_to_queue
+    # 5. Envoyer au CRM si on en a trouvé un
+    status = "no_crm"
+    response = "Aucun CRM n'a de commande pour ce département/produit"
     
-    status, response, should_queue = await send_to_crm_v2(lead_doc, api_url, crm_api_key)
-    
-    if should_queue:
-        await add_to_queue(lead_doc, api_url, crm_api_key, "crm_error")
-        status = "queued"
+    if final_crm and final_api_key:
+        from services.lead_sender import send_to_crm_v2, add_to_queue
+        
+        api_url = CRM_URLS[final_crm]
+        status, response, should_queue = await send_to_crm_v2(lead_doc, api_url, final_api_key)
+        
+        if should_queue:
+            await add_to_queue(lead_doc, api_url, final_api_key, "crm_error")
+            status = "queued"
     
     # Mettre à jour le lead
     await db.leads.update_one(
         {"id": lead_id},
         {"$set": {
+            "target_crm": final_crm or "none",
             "api_status": status,
             "api_response": response,
             "sent_to_crm": status in ["success", "duplicate"],
@@ -405,7 +427,7 @@ async def submit_lead(data: LeadSubmit, request: Request):
         }}
     )
     
-    # 6. Mettre à jour la session
+    # Mettre à jour la session
     if session:
         await db.visitor_sessions.update_one(
             {"id": data.session_id},
@@ -415,21 +437,13 @@ async def submit_lead(data: LeadSubmit, request: Request):
                 "converted_at": now_iso()
             }}
         )
-        
-        # Ajouter événement form_submit
-        await track_event(TrackEvent(
-            session_id=data.session_id,
-            event_type="form_submit",
-            form_code=form_code,
-            lp_code=lp_code,
-            data={"lead_id": lead_id, "status": status}
-        ), request)
     
     return {
-        "success": status in ["success", "duplicate", "queued"],
+        "success": status in ["success", "duplicate", "queued", "no_crm"],
         "lead_id": lead_id,
         "status": status,
-        "message": "Lead enregistré" if status == "queued" else ("Lead envoyé" if status == "success" else response)
+        "crm": final_crm or "none",
+        "message": "Lead enregistré" if status == "no_crm" else ("Lead envoyé vers " + final_crm.upper() if status == "success" else response)
     }
 
 
