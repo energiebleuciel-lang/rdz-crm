@@ -168,6 +168,103 @@ export default function Accounts() {
     }
   };
 
+  // Mini Brief Functions
+  const openMiniBrief = async (account) => {
+    try {
+      setMiniBriefAccount(account);
+      setGeneratedBrief(null);
+      setSelectedOptions([]);
+      
+      const res = await authFetch(`${API}/api/accounts/${account.id}/brief-options`);
+      if (res.ok) {
+        const data = await res.json();
+        setBriefOptions(data.options || []);
+        // Pré-sélectionner les options qui ont une valeur
+        const preSelected = (data.options || [])
+          .filter(opt => opt.has_value)
+          .map(opt => opt.key);
+        setSelectedOptions(preSelected);
+        setShowMiniBriefModal(true);
+      } else {
+        alert('Erreur lors du chargement des options');
+      }
+    } catch (e) {
+      alert('Erreur: ' + e.message);
+    }
+  };
+
+  const toggleOption = (key) => {
+    setSelectedOptions(prev => 
+      prev.includes(key) 
+        ? prev.filter(k => k !== key)
+        : [...prev, key]
+    );
+    // Reset generated brief when selection changes
+    setGeneratedBrief(null);
+  };
+
+  const generateMiniBrief = async () => {
+    if (selectedOptions.length === 0) {
+      alert('Sélectionnez au moins un élément');
+      return;
+    }
+    
+    try {
+      const res = await authFetch(`${API}/api/accounts/${miniBriefAccount.id}/mini-brief`, {
+        method: 'POST',
+        body: JSON.stringify({ selections: selectedOptions })
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setGeneratedBrief(data);
+      } else {
+        alert('Erreur lors de la génération');
+      }
+    } catch (e) {
+      alert('Erreur: ' + e.message);
+    }
+  };
+
+  const copyToClipboard = async (text, label) => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      setCopySuccess(label);
+      setTimeout(() => setCopySuccess(null), 2000);
+    } catch (e) {
+      alert('Impossible de copier');
+    }
+  };
+
+  const copyAllBrief = () => {
+    if (!generatedBrief || !generatedBrief.items) return;
+    
+    let fullText = `=== MINI BRIEF - ${miniBriefAccount?.name} ===\n\n`;
+    
+    generatedBrief.items.forEach(item => {
+      fullText += `--- ${item.label} ---\n`;
+      fullText += item.value + '\n\n';
+    });
+    
+    copyToClipboard(fullText, 'all');
+  };
+
+  // Group options by category
+  const groupedOptions = briefOptions.reduce((acc, opt) => {
+    if (!acc[opt.category]) acc[opt.category] = [];
+    acc[opt.category].push(opt);
+    return acc;
+  }, {});
+
   if (loading) return <Loading />;
 
   return (
