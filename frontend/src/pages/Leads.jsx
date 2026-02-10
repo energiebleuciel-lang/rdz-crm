@@ -492,11 +492,20 @@ export default function Leads() {
             <div>
               <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
                 <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-                CRM
+                CRM & Distribution
               </h3>
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <div><span className="text-slate-500">CRM cible:</span> <span className="font-medium">{selectedLead.target_crm_slug?.toUpperCase() || '-'}</span></div>
-                <div><span className="text-slate-500">Statut:</span> <Badge variant={statusVariant(selectedLead.api_status)}>{selectedLead.api_status}</Badge></div>
+                <div><span className="text-slate-500">CRM d'origine:</span> <span className="font-medium">{selectedLead.origin_crm?.toUpperCase() || '-'}</span></div>
+                <div><span className="text-slate-500">CRM cible:</span> <span className="font-medium">{selectedLead.target_crm?.toUpperCase() || '-'}</span></div>
+                <div>
+                  <span className="text-slate-500">Transféré:</span> 
+                  {selectedLead.is_transferred ? (
+                    <Badge variant="info" className="ml-2">Oui → {selectedLead.target_crm?.toUpperCase()}</Badge>
+                  ) : (
+                    <span className="font-medium ml-2">Non</span>
+                  )}
+                </div>
+                <div><span className="text-slate-500">Statut:</span> <Badge variant={statusVariant(selectedLead.api_status)}>{statusLabel(selectedLead.api_status)}</Badge></div>
                 <div><span className="text-slate-500">Raison routing:</span> <span className="font-medium">{selectedLead.routing_reason || '-'}</span></div>
                 <div><span className="text-slate-500">Envoyé:</span> <span className="font-medium">{selectedLead.sent_to_crm ? 'Oui' : 'Non'}</span></div>
               </div>
