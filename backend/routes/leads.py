@@ -178,7 +178,6 @@ async def submit_lead_v1(data: LeadSubmit, request: Request, api_key: str = Depe
         "civilite": data.civilite or "",
         "email": data.email or "",
         # Localisation
-        "code_postal": code_postal,
         "departement": dept,
         "ville": data.ville or "",
         "adresse": data.adresse or "",
