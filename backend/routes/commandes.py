@@ -47,10 +47,11 @@ async def check_commande(crm_id: str, product_type: str, departement: str, user:
     return {"has_commande": result, "crm_id": crm_id, "product_type": product_type, "departement": departement}
 
 
-async def has_commande(crm_id: str, product_type: str, departement: str) -> bool:
+async def has_commande(crm_id: str, departement: str, product_type: str) -> bool:
     """
     Vérifie si un CRM a une commande active pour un produit/département donné.
     Utilisé par le routage des leads.
+    Ordre des paramètres: crm_id, departement, product_type (comme l'ancienne version)
     """
     # Chercher une commande active qui match
     commande = await db.commandes.find_one({
