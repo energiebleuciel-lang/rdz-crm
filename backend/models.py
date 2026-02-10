@@ -219,7 +219,6 @@ class LeadSubmit(BaseModel):
     civilite: Optional[str] = ""  # M., Mme, Mlle
     email: Optional[str] = ""
     # Localisation
-    code_postal: Optional[str] = ""
     departement: Optional[str] = ""
     ville: Optional[str] = ""
     adresse: Optional[str] = ""
