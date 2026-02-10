@@ -1,12 +1,12 @@
 /**
- * Page Paramètres - Configuration système
+ * Page Paramètres
  */
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { API } from '../hooks/useApi';
 import { Card, Loading, Button, Badge } from '../components/UI';
-import { Key, Copy, Database, CheckCircle, Eye, EyeOff, Shield, Server } from 'lucide-react';
+import { Key, Copy, Database, CheckCircle, Eye, EyeOff } from 'lucide-react';
 
 export default function Settings() {
   const { authFetch } = useAuth();
@@ -24,14 +24,12 @@ export default function Settings() {
     try {
       setLoading(true);
       
-      // API Key (ancienne clé globale - pour info)
       const keyRes = await authFetch(`${API}/api/config/api-key`);
       if (keyRes.ok) {
         const data = await keyRes.json();
         setApiKey(data.api_key);
       }
       
-      // CRMs
       const crmsRes = await authFetch(`${API}/api/crms`);
       if (crmsRes.ok) {
         const data = await crmsRes.json();
@@ -62,7 +60,6 @@ export default function Settings() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (e) {
-      // Fallback
       const textarea = document.createElement('textarea');
       textarea.value = apiKey;
       document.body.appendChild(textarea);
@@ -80,72 +77,16 @@ export default function Settings() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-slate-800">Paramètres</h1>
 
-      {/* Nouveau système v2 - Clés API par Formulaire */}
-      <Card className="p-6 border-2 border-green-200 bg-green-50/30">
+      {/* Clé API RDZ */}
+      <Card className="p-6">
         <div className="flex items-center gap-3 mb-4">
-          <div className="p-3 bg-green-100 rounded-xl">
-            <Server className="w-6 h-6 text-green-600" />
+          <div className="p-3 bg-amber-100 rounded-xl">
+            <Key className="w-6 h-6 text-amber-600" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-slate-800">Clés API CRM (v2)</h2>
-            <p className="text-sm text-slate-500">Chaque formulaire a sa propre clé API</p>
+            <h2 className="text-lg font-semibold text-slate-800">Clé API RDZ</h2>
+            <p className="text-sm text-slate-500">Pour récupérer vos leads depuis RDZ</p>
           </div>
-          <Badge variant="success" className="ml-auto">Sécurisé</Badge>
-        </div>
-        
-        <div className="bg-white rounded-lg p-4 space-y-3">
-          {/* ZR7 */}
-          <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center text-white font-bold text-sm">
-                ZR7
-              </div>
-              <div>
-                <h4 className="font-medium text-slate-800">ZR7 Digital</h4>
-                <p className="text-xs text-slate-500">app.zr7-digital.fr</p>
-              </div>
-            </div>
-            <Badge variant="info">Par formulaire</Badge>
-          </div>
-          
-          {/* MDL */}
-          <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center text-white font-bold text-sm">
-                MDL
-              </div>
-              <div>
-                <h4 className="font-medium text-slate-800">Maison du Lead</h4>
-                <p className="text-xs text-slate-500">maison-du-lead.com</p>
-              </div>
-            </div>
-            <Badge variant="info">Par formulaire</Badge>
-          </div>
-        </div>
-        
-        <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-          <p className="text-sm text-blue-800">
-            <Shield className="w-4 h-4 inline mr-1" />
-            <strong>Configuration par formulaire</strong> - Chaque formulaire a son propre <code className="bg-blue-100 px-1 rounded">target_crm</code> et <code className="bg-blue-100 px-1 rounded">crm_api_key</code>.
-            Les clés ne sont jamais exposées dans les scripts client.
-          </p>
-          <p className="text-sm text-blue-700 mt-2">
-            → Configurez les clés API dans <a href="/forms" className="underline font-medium">Formulaires</a>
-          </p>
-        </div>
-      </Card>
-
-      {/* Ancienne clé API Globale (pour référence) */}
-      <Card className="p-6 opacity-75">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="p-3 bg-slate-100 rounded-xl">
-            <Key className="w-6 h-6 text-slate-500" />
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold text-slate-800">Ancienne Clé API (v1)</h2>
-            <p className="text-sm text-slate-500">Utilisée par les anciens scripts - Dépréciée</p>
-          </div>
-          <Badge variant="warning" className="ml-auto">Dépréciée</Badge>
         </div>
         
         <div className="bg-slate-900 rounded-lg p-4">
@@ -172,12 +113,18 @@ export default function Settings() {
           </div>
         </div>
         
-        <p className="text-xs text-slate-500 mt-4">
-          ⚠️ Les nouveaux scripts v2 n'utilisent plus cette clé. Elle reste disponible pour les anciens formulaires.
-        </p>
+        <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <p className="text-sm text-blue-800">
+            <strong>Utilisation :</strong>
+          </p>
+          <code className="text-xs text-blue-700 block mt-2">
+            GET /api/v1/leads<br/>
+            Authorization: Token {apiKey ? apiKey.substring(0, 15) + '...' : 'VOTRE_CLE'}
+          </code>
+        </div>
       </Card>
 
-      {/* CRMs Configurés */}
+      {/* CRMs */}
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
@@ -185,8 +132,8 @@ export default function Settings() {
               <Database className="w-6 h-6 text-blue-600" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-slate-800">CRMs Configurés</h2>
-              <p className="text-sm text-slate-500">Destinations pour le routage des leads</p>
+              <h2 className="text-lg font-semibold text-slate-800">CRMs</h2>
+              <p className="text-sm text-slate-500">Destinations pour l'envoi des leads</p>
             </div>
           </div>
           
@@ -205,23 +152,18 @@ export default function Settings() {
                   <h3 className="font-medium text-slate-800">{crm.name}</h3>
                   <p className="text-sm text-slate-500">{crm.slug?.toUpperCase()}</p>
                 </div>
-                <div className="text-right">
-                  <Badge variant="success">Actif</Badge>
-                  <p className="text-xs text-slate-500 mt-1 truncate max-w-[200px]">
-                    {crm.api_url || 'URL non configurée'}
-                  </p>
-                </div>
+                <Badge variant="success">Actif</Badge>
               </div>
             ))}
           </div>
         ) : (
           <p className="text-center text-slate-500 py-8">
-            Aucun CRM configuré. Cliquez sur "Initialiser CRMs" pour créer MDL et ZR7.
+            Aucun CRM configuré.
           </p>
         )}
         
         <p className="text-xs text-slate-500 mt-4">
-          💡 Pour gérer les commandes par département/produit, allez dans <a href="/commandes" className="text-blue-600 hover:underline">Commandes</a>
+          Les clés API ZR7/MDL se configurent dans chaque <a href="/forms" className="text-blue-600 hover:underline">Formulaire</a>
         </p>
       </Card>
     </div>
