@@ -89,11 +89,13 @@ export default function Forms() {
       url: '',
       product_type: 'PV',
       lp_id: '',
+      target_crm: currentCRM?.slug || '',  // Pré-remplir avec le CRM actuel
       crm_api_key: '',
       allow_cross_crm: true,
       tracking_type: 'redirect',
       redirect_url: '/merci'
     });
+    setShowApiKey(false);
     setShowModal(true);
   };
 
@@ -105,11 +107,13 @@ export default function Forms() {
       url: formItem.url,
       product_type: formItem.product_type,
       lp_id: formItem.lp_id || '',
+      target_crm: formItem.target_crm || '',
       crm_api_key: formItem.crm_api_key || '',
       allow_cross_crm: formItem.allow_cross_crm !== false,
       tracking_type: formItem.tracking_type || 'redirect',
       redirect_url: formItem.redirect_url || '/merci'
     });
+    setShowApiKey(false);
     setShowModal(true);
   };
 
