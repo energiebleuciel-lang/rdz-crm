@@ -68,7 +68,7 @@ class LeadData(BaseModel):
     prenom: Optional[str] = ""
     civilite: Optional[str] = ""
     email: Optional[str] = ""
-    code_postal: Optional[str] = ""
+    departement: Optional[str] = ""
     ville: Optional[str] = ""
     adresse: Optional[str] = ""
     type_logement: Optional[str] = ""
@@ -196,14 +196,8 @@ async def submit_lead(data: LeadData, request: Request):
     if not is_valid:
         return {"success": False, "error": phone}
     
-    # Valider code postal
-    dept = ""
-    code_postal = ""
-    if data.code_postal:
-        is_valid, code_postal = validate_postal_code_fr(data.code_postal)
-        if not is_valid:
-            return {"success": False, "error": code_postal}
-        dept = code_postal[:2]
+    # Récupérer département (directement depuis les données)
+    dept = data.departement or ""
     
     # Récupérer formulaire
     form = await db.forms.find_one(
@@ -283,7 +277,6 @@ async def submit_lead(data: LeadData, request: Request):
         "prenom": data.prenom or "",
         "civilite": data.civilite or "",
         "email": data.email or "",
-        "code_postal": code_postal,
         "departement": dept,
         "ville": data.ville or "",
         "adresse": data.adresse or "",
