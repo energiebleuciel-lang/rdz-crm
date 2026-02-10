@@ -1,94 +1,62 @@
 <analysis>**original_problem_statement:**
-The user's initial request was to fix a broken tracking system (visits, clicks, lead submissions) on a Hostinger VPS. This evolved into a complete from-scratch refactor of the tracking and lead submission system.
-
-The core requirements implemented are:
-1.  **Centralized Lead Collection:** The main application (RDZ) collects all leads first.
-2.  **Per-Form Dispatching:** Each form has its own configuration to dispatch leads to a target CRM (ZR7 or MDL) with a unique API key.
-3.  **Command-Based Routing:** The system checks if the target CRM has an active commande (order) for the lead's product/department before sending.
-4.  **Cross-CRM Fallback:** If the primary CRM has no order, the lead is sent to the other CRM if  is enabled.
-5.  **Secure Lead Export:** A secure endpoint () allows lead retrieval using a single, non-modifiable server-side API key.
-6.  **Mini Brief Builder:** A feature on the  page allows users to generate custom code snippets (for logos, GTM, legal text) by selecting checkboxes.
-7.  **Dashboard & Leads Page Enhancements:** The dashboard is now filtered by CRM. The leads page was improved to show Origin CRM vs. Distribution and to identify transferred leads, with new filters for transfers and date ranges.
-8.  **Full System Audit:** The entire codebase was audited and harmonized to ensure consistent naming conventions and data structures.
-9.  **Deployment:** The user requested a full, from-scratch deployment guide for a new Hostinger VPS, which was executed.
-10. **Tracking Bug Fix:** The user reported that event tracking for  and  was failing due to a CORS error, while form submissions worked.
+The user initially requested to fix a CORS issue with their tracking scripts. This led to a series of subsequent, urgent requests:
+1.  **Field Harmonization:** The user wanted to completely remove the  field from the entire application (backend, frontend, database, generated scripts) and use  as the sole field for geographical data.
+2.  **Media Library Feature:** The user requested a new Médias section in the CRM to upload, view, and manage images. These images should be available for use by both CRMs (ZR7 and MDL), either as shared resources or assigned to a specific one.
+3.  **Frontend Menu Reorganization:** The user asked to restructure the frontend sidebar menu into logical categories (Acquisition, Distribution, etc.) for better usability.
+4.  **Terminé Lead Stat Fix:** The user reported that the Terminé (Finished) lead count was not working correctly. They requested that all submitted leads be counted as Terminé, regardless of whether the final CRM submission was successful.
+5.  **API Key Security:** The user requested a security measure to prevent the  on a form from being accidentally or maliciously removed once it has been set.
+6.  **CRM Fallback Logic:** The user requested that if a lead fails to be sent to its primary target CRM (e.g., due to an invalid API key), the system should automatically attempt to send it to the other CRM as a fallback, provided cross-CRM routing is enabled.
 
 **User's preferred language**: French
 
 **what currently exists?**
-A full-stack application (React + FastAPI + MongoDB) has been successfully deployed from scratch onto the user's Hostinger VPS () and is accessible online. The deployment included setting up the full LEMP-like stack (Nginx, MongoDB, Python/Node), configuring systemd services, and securing the site with SSL. The GitHub repository has been made private and is accessed by the server via an SSH deploy key. All features, including the complex lead routing logic and the Mini Brief builder, are deployed. A fix for a critical CORS tracking issue has also been deployed.
+A full-stack application (React + FastAPI + MongoDB) is deployed on the user's Hostinger VPS. The codebase has been significantly modified in this session. The  field has been entirely replaced by . A new, fully functional Media library has been implemented, allowing for image uploads and management. The frontend sidebar has been reorganized into categories. The logic for calculating Terminé leads has been updated to count all created leads. A security lock has been added to the  field on forms. A critical bug in the lead routing function () was identified and fixed. Finally, a CRM fallback mechanism has been implemented.
 
 **Last working item**:
-- **Last item agent was working:** Fixing a critical CORS issue that prevented tracking events (, ) from being captured on external landing pages. The agent correctly identified that the  option in the client-side tracking scripts was incompatible with the backend's  policy. The fix involved modifying the script generation logic in  to remove the problematic  option and improve debuggability. The fix was successfully deployed to the user's production server.
+- **Last item agent was working:** The agent implemented a comprehensive set of fixes and features as per the user's rapid-fire requests. The final piece of work was implementing and testing the CRM fallback logic, ensuring that if a lead submission to the primary CRM fails, it attempts to send to the secondary CRM. This included marking the lead as  correctly.
 - **Status:** USER VERIFICATION PENDING
-- **Agent Testing Done:** Y (Agent confirmed the backend CORS headers were correct via  but could not test the full JavaScript execution on an external site.)
-- **Which testing method agent to use?** Manual testing by user. The user must generate a new Brief from their live CRM, place the new Script LP on an external landing page, and check the browser's console (for debug logs) and the CRM database to confirm  and  events are being recorded.
+- **Agent Testing Done:** Y
+- **Which testing method agent to use?** Manual testing by user. The user must deploy the latest changes to their production server and verify all the new features and fixes. Specifically:
+    1.  Confirm the Terminé stat on the Forms page now counts all submitted leads.
+    2.  Test the CRM fallback by using a form with an invalid API key and checking if the lead is routed to the other CRM.
+    3.  Test the new Médias library by uploading and managing images.
+    4.  Verify that an existing  on a form cannot be removed.
 - **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-- **Issue 1: Verify the CORS tracking fix (P0)**
-  - **Description:** The core tracking functionality ( and ) was broken due to a CORS issue. A fix has been deployed, but it needs to be confirmed by the user on a live landing page. This is the highest priority as it impacts the fundamental purpose of the application.
+- **Issue 1: Verify Production Deployment and All Recent Changes (P0)**
+  - **Description:** A large number of critical changes (field migration, stats logic, security, fallback logic, new feature) have been implemented but not yet deployed or verified by the user on their live server. This is the highest priority.
   - **Status:** USER VERIFICATION PENDING
   - **Is recurring issue?** N
+
+- **Issue 2: Add  to  (P1)**
+  - **Description:** This task from the previous handoff was overlooked. The  operation on the server can fail if the  directory is tracked. This needs to be added to  to prevent future deployment issues.
+  - **Status:** NOT STARTED
+  - **Is recurring issue?** Y
 
 **In progress Task List**:
 - None.
 
 **Upcoming and Future Tasks**
-
-- **Upcoming Tasks:**
-  - **P0: Add  to :** The  operation on the server failed because the  directory was being tracked. This needs to be added to  to prevent future deployment issues.
-
 - **Future Tasks (from project backlog):**
-  - **P1:** Implement Sub-accounts feature.
-  - **P1:** Implement detailed Product Type configuration.
-  - **P2:** Add system alerts via email (SendGrid is on hold).
-  - **P2:** Create an Image Library.
-  - **P3:** Add A/B Testing (Campaign Mode).
+  - P1: Implement Sub-accounts feature.
+  - P1: Implement detailed Product Type configuration.
+  - P2: Add system alerts via email.
+  - P2: Create an Image Library (This might be a more advanced version of the one just created).
+  - P3: Add A/B Testing (Campaign Mode).
 
 **Completed work in this session**
-- **Mini Brief Builder:** Implemented a new feature on the Accounts page to generate custom code snippets on demand.
-- **Dashboard CRM Filtering:** Updated the main dashboard to filter all statistics based on the selected CRM.
-- **Leads Page Overhaul:** Enhanced the Leads page to show CRM Origine vs. Distribution, a Transferred status, and added new filters.
-- **Full System Audit & Harmonization:** Performed a comprehensive code and database audit to standardize naming conventions ( -> ) and remove obsolete fields (, ), ensuring data consistency.
-- **Full Production Deployment:** Successfully guided the user through a complete, from-scratch deployment on a Hostinger VPS, including system setup, Nginx configuration, SSL, and  service creation.
-- **GitHub Security:** Switched the project's Git repository from public to private and configured SSH deploy key access for the server.
-- **Deployment Debugging:** Solved multiple live deployment issues, including a missing environment variable, an incorrect field name in the database ( vs ), and a npm <command>
-
-Usage:
-
-npm install        install all the dependencies in your project
-npm install <foo>  add the <foo> dependency to your project
-npm test           run this project's tests
-npm run <foo>      run the script named <foo>
-npm <command> -h   quick help on <command>
-npm -l             display usage info for all commands
-npm help <term>    search for help on <term>
-npm help npm       more involved overview
-
-All commands:
-
-    access, adduser, audit, bugs, cache, ci, completion,
-    config, dedupe, deprecate, diff, dist-tag, docs, doctor,
-    edit, exec, explain, explore, find-dupes, fund, get, help,
-    help-search, hook, init, install, install-ci-test,
-    install-test, link, ll, login, logout, ls, org, outdated,
-    owner, pack, ping, pkg, prefix, profile, prune, publish,
-    query, rebuild, repo, restart, root, run-script, sbom,
-    search, set, shrinkwrap, star, stars, start, stop, team,
-    test, token, uninstall, unpublish, unstar, update, version,
-    view, whoami
-
-Specify configs in the ini-formatted file:
-    /root/.npmrc
-or on the command line via: npm <command> --key=value
-
-More configuration info: npm help config
-Configuration fields: npm help 7 config
-
-npm@10.8.2 /usr/lib/node_modules/npm dependency conflict.
-- **CORS Tracking Bug Fix:** Identified and fixed a critical CORS issue preventing  and  tracking by removing  from the generated tracking scripts. Deployed the fix to production.
-- **Context Document Creation:** Created a detailed context document for the user to ensure consistency in future development sessions.
+- ** ->  Migration:** Completely removed  and replaced it with  across the entire application stack.
+- **Terminé Stat Logic Fix:** Modified the logic in  to count all created leads for a form as Terminé, not just those with a  or  API status.
+- **API Key Security:** Added logic in  () to prevent an existing  from being cleared or unset.
+- **CRM Fallback Implementation:** Implemented logic in  to attempt sending a lead to the fallback CRM if the primary CRM submission fails and  is enabled.
+- ** Bug Fix:** Diagnosed and fixed a critical bug where inverted parameters in the  function call were breaking lead routing.
+- **Refactoring:** Removed a duplicate  function from , centralizing it in .
+- **Media Library Feature:**
+  - Created backend endpoints () for uploading, listing, and deleting media files.
+  - Created a  directory for storing uploaded images.
+  - Created a frontend page () with UI for managing the media library.
+- **Frontend Menu Reorganization:** Restructured the sidebar navigation in  into logical categories for improved user experience.
 
 **Earlier issues found/mentioned but not fixed**
 - None.
@@ -97,65 +65,85 @@ npm@10.8.2 /usr/lib/node_modules/npm dependency conflict.
 - None.
 
 **Code Architecture**
-- **Production Stack:**
-  - **VPS:** Hostinger
-  - **OS:** Ubuntu 24.04
-  - **Web Server:** Nginx (as reverse proxy)
-  - **Backend:** FastAPI (managed by , running on port 8001)
-  - **Frontend:** Static React build served by Nginx from .
-  - **Database:** MongoDB
-  - **Source Control:** Private GitHub repository with SSH deploy key for server access.
+- **Backend:** FastAPI
+  - A new route was added: .
+  - A new static directory was created:  for file uploads.
+- **Frontend:** React
+  - A new page was added: .
+- **Database:** MongoDB
+  - A new collection  was implicitly created to store image metadata.
+  - The  collection schema no longer contains .
 
 **Key Technical Concepts**
-- **Production Deployment:** Full setup of a LEMP-like stack (Linux, Nginx, MongoDB, Python) using  for service management and  for SSL.
-- **CORS Debugging:** Diagnosed the browser security restriction that prevents sending credentials () to a domain that responds with a wildcard origin ().
-- **SSH Deploy Keys:** Secured automated Git access for the production server without using passwords or PATs.
+- **Full-stack Refactoring:** Complete migration of a data field ( to ).
+- **Error Handling & Fallback Logic:** Implemented a business rule to try a secondary action (sending to another CRM) upon failure of the primary action.
+- **API Security:** Added business logic to make a specific field () write-once.
+- **Live Debugging:** Traced a complex logic bug by analyzing git history and understanding the interplay between function signatures and calls across different files.
 
 **key DB schema**
-- : 
-- : 
-- : 
+- **leads:** 
+- **forms:** 
+- **media (New):** 
 
 **changes in tech stack**
-- The application environment has moved from the Emergent preview pod to a user-managed Hostinger VPS.
+- None.
 
 **All files of reference**
-- : **(MODIFIED)** The core logic for generating tracking scripts was corrected to fix the CORS issue.
-- : **(MODIFIED)** Updated to support new filtering and data harmonization.
-- : **(MODIFIED)** UI updated to display origin/distribution CRMs and new filters.
-- **New production files (on VPS):**
-  - : Manages the backend process.
-  - : Nginx configuration.
-  - : Backend production environment variables.
-  - : Frontend production environment variables.
+- **Modified Backend:**
+  - : Logic for ,  fix, and CRM fallback.
+  - : Updated to use  and correct  call.
+  - : Added  security and fixed Terminé stats.
+  - : Corrected  signature.
+  - : Removed .
+  - : Updated generated scripts to use .
+  - : Updated CRM mappings to use .
+  - : Added the  router.
+- **New Backend:**
+  - 
+- **Modified Frontend:**
+  - : Reorganized sidebar menu.
+  - : Displays .
+  - : Updated documentation in comments.
+  - : Added route for the Media page.
+- **New Frontend:**
+  - 
+
+**Areas that need refactoring**:
+- The  function was a source of significant confusion and bugs due to being defined in multiple places with different signatures before being centralized. While it's fixed now, it indicates a need for careful code organization to avoid such issues.
+
+**key api endpoints**
+-  (POST): Main lead submission endpoint, now includes fallback logic.
+-  (PUT): Endpoint for updating forms, now prevents  from being cleared.
+-  (GET): Endpoint for single form stats, now counts all leads as finished.
+-  (GET, POST): List and upload media.
+-  (DELETE): Delete media.
+-  (GET): Serve media file.
 
 **Critical Info for New Agent**
-- The application is **LIVE** on a production VPS. All future work must consider this production environment. Changes must be deployed via  on the server.
-- The immediate priority is to **confirm with the user if the tracking fix works**. This is a blocker for the app's core functionality.
-- The user has been given a **Context Document** with all naming conventions, architecture details, and production credentials. You should request this document at the start of the next session to ensure consistency. The key convention is that all leads have  and  (as slugs, e.g., 'zr7', 'mdl').
-- Guide the user to add  to  to prevent future deployment conflicts.
+- The application is **LIVE** on a production VPS. Deployment is done via  on the server.
+- The user is technically savvy and can get very frustrated. Maintain clear, direct communication and justify your actions with analysis.
+- The definition of a **Terminé lead has been changed by user request**. It now counts **all** leads created from a form, regardless of their  (success, failed, etc.). The fix is in .
+- A **CRM fallback** is now implemented in . If a primary CRM submission fails, it will attempt to send to the other CRM if  is true. The lead is marked as .
+- A form's  is now **write-once**. It cannot be cleared or unset via the API after being saved.
 
 **documents and test reports created in this job**
-- A comprehensive Context Document containing project info, architecture, naming conventions, and credentials was provided to the user in the chat.
-- A step-by-step deployment guide was provided to the user in the chat.
--  was updated to reflect the system audit and new features.
+-  (largely outdated by subsequent changes).
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Reports tracking issue: CORS error,  &  not working.
-2.  **Agent:** Asks for server access to diagnose.
-3.  **User:** Gives password, but agent realizes user is already on the server.
-4.  **Agent:** Asks user to run commands directly.
-5.  **Agent:** After analyzing logs and configs, determines the problem is the tracking script itself.
-6.  **User:** Provides the tracking script from a generated brief.
-7.  **Agent:** Proposes a corrected script and asks user to test.
-8.  **User:** Asks if that's the real solution.
-9.  **Agent:** Explains the root cause ( + ) and offers to fix the script generator in the backend.
-10. **User:** Asks to fix it everywhere in the backend and verify it's done correctly.
-11. **User (after deployment attempt):** Reports  error due to local changes on server.
+1.  **User:** Reports Terminé count is broken again after it was supposedly fixed. Expresses extreme frustration.
+2.  **Agent:** Begins emergency diagnosis by tracing git history to find the breaking change.
+3.  **Agent:** Identifies that reverting a fix for the  parameter order was the likely cause of the new failure.
+4.  **User:** Asks if the issue is because of an invalid token.
+5.  **Agent:** Explains the Token invalide error is expected with test keys and is separate from the routing logic bug.
+6.  **Agent:** Restores the  logic to its buggy-but-functional state from before 13:00, which relied on wildcard matching.
+7.  **User:** Realizes the API key on the form was missing. Asks for a security feature to prevent the key from being removed once set. Also requests that even if there's no commande, the lead should be integrated.
+8.  **Agent:** Acknowledges the new requirements and begins implementing them.
+9.  **User:** Adds another requirement: if a lead submission fails due to an API key error, it should fallback and be sent to the MDL CRM.
+10. **Agent:** Implements the CRM fallback logic and confirms with the user that all new features and fixes are ready for deployment.
+11. **User:** go on publie juste avant c pris en compte pour scipt (Go, publish, just before that is it taken into account for the script?).
 
 **Project Health Check:**
-- **Live/Deployed:** The application is running in production.
-- **Partially Broken:** Core tracking functionality (, ) is pending user verification after a fix was deployed. This is a critical issue.
+- **Broken**: Critical features and fixes have been implemented but are not yet deployed and verified on the user's production server. The application's core logic was recently broken and fixed, so its stability is unconfirmed in the live environment.
 
 **3rd Party Integrations**
 - **ZR7 Digital API:** To send leads.
@@ -163,13 +151,13 @@ npm@10.8.2 /usr/lib/node_modules/npm dependency conflict.
 - **APScheduler:** Used for background tasks in the backend.
 
 **Testing status**
-- **Testing agent used after significant changes:** NO (Agent performed manual E2E testing and debugging).
-- **Test files created:** None.
-- **Known regressions:** None.
+- **Testing agent used after significant changes:** NO
+- **Troubleshoot agent used after agent stuck in loop:** NO
+- **Test files created:** None. The agent relied on  and manual database checks.
+- **Known regressions:** A logic bug in  was temporarily reintroduced and then fixed correctly. The final state should be stable.
 
 **Credentials to test flow:**
 - **Production UI Login:**  / 
-- **Production URL:** 
 
 **What agent forgot to execute**
-- The agent did not add the  directory to , which caused a  conflict on the production server. This needs to be addressed to ensure smooth future deployments.</analysis>
+- The agent again forgot to add the  directory to , a task carried over from the previous fork. This remains a pending item.</analysis>
