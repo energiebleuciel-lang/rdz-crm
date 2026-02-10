@@ -176,7 +176,7 @@ async def calculate_billing(data: BillingPeriodCreate, user: dict = Depends(requ
             "$lt": end_date.isoformat()
         },
         "api_status": {"$in": ["success", "duplicate"]},
-        "target_crm_id": data.to_crm_id
+        "target_crm": await get_crm_slug(data.to_crm_id)  # Utiliser le slug au lieu de l'ID
     }, {"_id": 0}).to_list(10000)
     
     # Calculer par produit/département
