@@ -45,9 +45,16 @@ async def lifespan(app: FastAPI):
         await db.leads.create_index("created_at", background=True)
         await db.tracking.create_index("lp_code", background=True)
         await db.tracking.create_index("form_code", background=True)
+        await db.tracking.create_index("session_id", background=True)  # Nouveau
         await db.lead_queue.create_index("status", background=True)
         await db.lead_queue.create_index("next_retry_at", background=True)
         await db.verification_reports.create_index("run_at", background=True)
+        # Nouveaux index pour sessions visiteurs
+        await db.visitor_sessions.create_index("id", unique=True, background=True)
+        await db.visitor_sessions.create_index("visitor_id", background=True)
+        await db.visitor_sessions.create_index("lp_code", background=True)
+        await db.visitor_sessions.create_index("form_code", background=True)
+        await db.visitor_sessions.create_index("status", background=True)
         logger.info("✅ Index MongoDB créés/vérifiés")
     except Exception as e:
         logger.warning(f"⚠️ Index MongoDB: {str(e)}")
