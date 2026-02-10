@@ -6,8 +6,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useCRM } from '../hooks/useCRM';
 import { API } from '../hooks/useApi';
-import { Card, Loading, Badge, Button, Modal } from '../components/UI';
-import { Users, RefreshCw, Download, Eye, RotateCcw } from 'lucide-react';
+import { Card, Loading, Badge, Button, Modal, Input } from '../components/UI';
+import { Users, RefreshCw, Download, Eye, RotateCcw, ArrowRightLeft, Calendar } from 'lucide-react';
 
 export default function Leads() {
   const { authFetch } = useAuth();
@@ -16,6 +16,9 @@ export default function Leads() {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const [transferredFilter, setTransferredFilter] = useState(null); // null = tous, true = transférés, false = non transférés
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [selectedLead, setSelectedLead] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
