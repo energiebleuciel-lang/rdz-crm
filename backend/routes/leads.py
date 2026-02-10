@@ -388,14 +388,29 @@ async def archive_lead(lead_id: str, user: dict = Depends(get_current_user)):
 
 
 @router.get("/leads/stats/global")
-async def get_leads_stats(user: dict = Depends(get_current_user)):
-    """Stats globales des leads"""
-    total = await db.leads.count_documents({})
-    success = await db.leads.count_documents({"api_status": "success"})
-    duplicate = await db.leads.count_documents({"api_status": "duplicate"})
-    failed = await db.leads.count_documents({"api_status": "failed"})
-    queued = await db.leads.count_documents({"api_status": "queued"})
-    no_crm = await db.leads.count_documents({"api_status": "no_crm"})
+async def get_leads_stats(crm_id: str = None, user: dict = Depends(get_current_user)):
+    """Stats globales des leads, optionnellement filtrées par CRM"""
+    query = {}
+    
+    # Filtrer par CRM via les accounts
+    if crm_id:
+        accounts = await db.accounts.find({"crm_id": crm_id}, {"id": 1}).to_list(1000)
+        account_ids = [a["id"] for a in accounts]
+        query["account_id"] = {"$in": account_ids}
+    
+    total = await db.leads.count_documents(query)
+    
+    success_query = {**query, "api_status": "success"}
+    duplicate_query = {**query, "api_status": "duplicate"}
+    failed_query = {**query, "api_status": "failed"}
+    queued_query = {**query, "api_status": "queued"}
+    no_crm_query = {**query, "api_status": "no_crm"}
+    
+    success = await db.leads.count_documents(success_query)
+    duplicate = await db.leads.count_documents(duplicate_query)
+    failed = await db.leads.count_documents(failed_query)
+    queued = await db.leads.count_documents(queued_query)
+    no_crm = await db.leads.count_documents(no_crm_query)
     
     return {
         "total": total,
