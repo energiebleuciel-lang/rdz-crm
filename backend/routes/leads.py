@@ -157,8 +157,7 @@ async def submit_lead_v1(data: LeadSubmit, request: Request, api_key: str = Depe
                 if await has_commande(crm_id, product_type, dept):
                     target_crm = crm
                     routing_reason = f"cross_crm_{crm.get('slug')}"
-                    # Note: On utilise la même clé API du formulaire
-                    # car c'est la clé qui permet d'envoyer au CRM
+                    is_transferred = True  # Transfert inter-CRM !
                     break
     
     # Étape 3c: Si toujours pas de CRM, stocker localement
