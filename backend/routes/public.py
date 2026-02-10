@@ -238,11 +238,13 @@ async def submit_lead(data: LeadData, request: Request):
     final_crm = None
     final_key = None
     is_transferred = False  # Le lead sera-t-il transféré vers un autre CRM ?
+    routing_reason = "no_crm"  # Raison du routing
     
     crm_id = await get_crm_id(target_crm)
     if crm_id and await has_commande(crm_id, dept, product_type):
         final_crm = target_crm
         final_key = crm_api_key
+        routing_reason = f"commande_{target_crm}"
     elif allow_cross_crm:
         other = "mdl" if target_crm == "zr7" else "zr7"
         other_id = await get_crm_id(other)
@@ -256,6 +258,7 @@ async def submit_lead(data: LeadData, request: Request):
                 final_crm = other
                 final_key = other_form.get("crm_api_key")
                 is_transferred = True  # Transfert inter-CRM !
+                routing_reason = f"cross_crm_{other}"
     
     # Récupérer session
     session = await db.visitor_sessions.find_one({"id": data.session_id}, {"_id": 0})
