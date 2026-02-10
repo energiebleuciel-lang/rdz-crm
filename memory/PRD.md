@@ -67,17 +67,15 @@ Fonctionnalité sur la page Comptes permettant de générer un brief personnalis
 - **Colonne "Distribution"** séparée de "CRM Origine"
 - **Modal de détail enrichi** : Section "CRM & Distribution" avec toutes les infos
 
-### ✅ Audit Technique Complet (Décembre 2025)
+### ✅ Audit Technique Complet (Février 2026)
 Audit exhaustif du système avant déploiement :
 
 **Corrections effectuées :**
-- Ligne dupliquée dans `public.py` supprimée
+- Fonction `has_commande` dupliquée → Import centralisé depuis `commandes.py`
+- Migration `send_to_crm` → `send_to_crm_v2` partout
+- URLs CRM hardcodées → Fonction `get_crm_url()` dynamique depuis DB
 - Champs lead harmonisés entre toutes les APIs
-- Champs obsolètes (`target_crm_id`, `target_crm_slug`) supprimés
-- 26+ leads existants normalisés en base
-- Export CSV mis à jour avec nouveaux champs
-- Billing.py adapté au nouveau schéma
-- Corrections lint dans auth.py, lps.py, billing.py, lead_sender.py
+- Champs obsolètes (`code_postal`, `target_crm_id`, `target_crm_slug`) supprimés
 
 **Schéma Lead Normalisé :**
 ```
@@ -88,14 +86,31 @@ routing_reason  : raison du routing
 allow_cross_crm : boolean
 api_status      : pending|success|failed|duplicate|no_crm
 sent_to_crm     : boolean
+departement     : code département (REMPLACE code_postal)
 ```
+
+### 🔒 SCHEMA VERROUILLÉ (Février 2026)
+
+**IMPORTANT: Tous les noms de champs sont maintenant VERROUILLÉS.**
+
+Pour modifier un nom de champ, l'utilisateur DOIT dire:
+> "Je déverrouille le schema pour modifier [nom_du_champ]"
+
+**Fichiers de référence:**
+- `/app/backend/schema_locked.py` - Définition technique
+- `/app/memory/SCHEMA_LOCKED.md` - Documentation
+
+**Champs interdits (JAMAIS UTILISER):**
+- `code_postal` → Utiliser `departement`
+- `target_crm_id` → Utiliser `target_crm`
+- `source` → Utiliser `utm_source`
 
 **Tests passés :**
 - ✅ Lint Python backend (routes, services)
 - ✅ Lint JavaScript frontend (pages)
 - ✅ Import tous les modules
-- ✅ Démarrage serveur FastAPI (102 routes)
-- ✅ Test E2E complet (Session → Tracking → Lead → Routage → Validation)
+- ✅ Démarrage serveur FastAPI
+- ✅ Test E2E complet (Session → Tracking → Lead → Routage)
 
 ## À Faire
 
