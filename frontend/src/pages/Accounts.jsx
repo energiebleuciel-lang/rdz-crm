@@ -603,6 +603,146 @@ Nous collectons les données suivantes :
           </div>
         </form>
       </Modal>
+
+      {/* Modal Mini Brief */}
+      <Modal 
+        isOpen={showMiniBriefModal} 
+        onClose={() => { setShowMiniBriefModal(false); setCopySuccess(null); setGeneratedBrief(null); }}
+        title={`Mini Brief - ${miniBriefAccount?.name || ''}`}
+        size="xl"
+      >
+        <div className="space-y-6">
+          {/* Success Toast */}
+          {copySuccess && (
+            <div className="fixed top-4 right-4 z-[100] bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-pulse">
+              <Check className="w-5 h-5" />
+              {copySuccess === 'all' ? 'Brief complet copié !' : `${copySuccess} copié !`}
+            </div>
+          )}
+
+          {/* Selection Phase */}
+          {!generatedBrief && (
+            <>
+              <p className="text-sm text-slate-600">
+                Sélectionnez les éléments à inclure dans votre brief :
+              </p>
+
+              <div className="space-y-4">
+                {Object.entries(groupedOptions).map(([category, options]) => (
+                  <div key={category} className="border rounded-lg p-4">
+                    <h4 className="font-medium text-slate-700 mb-3">{category}</h4>
+                    <div className="space-y-2">
+                      {options.map(opt => (
+                        <label 
+                          key={opt.key}
+                          className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
+                            selectedOptions.includes(opt.key) 
+                              ? 'bg-purple-50 border border-purple-200' 
+                              : 'hover:bg-slate-50'
+                          } ${!opt.has_value ? 'opacity-50' : ''}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedOptions.includes(opt.key)}
+                            onChange={() => toggleOption(opt.key)}
+                            disabled={!opt.has_value}
+                            className="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500"
+                          />
+                          <span className={`flex-1 ${!opt.has_value ? 'text-slate-400' : 'text-slate-700'}`}>
+                            {opt.label}
+                          </span>
+                          {!opt.has_value && (
+                            <Badge variant="warning" className="text-xs">Non configuré</Badge>
+                          )}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <Button variant="secondary" onClick={() => setShowMiniBriefModal(false)}>
+                  Annuler
+                </Button>
+                <Button 
+                  onClick={generateMiniBrief}
+                  disabled={selectedOptions.length === 0}
+                >
+                  Générer le Brief ({selectedOptions.length} élément{selectedOptions.length > 1 ? 's' : ''})
+                </Button>
+              </div>
+            </>
+          )}
+
+          {/* Generated Brief */}
+          {generatedBrief && (
+            <>
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-slate-800">Brief généré</h3>
+                <button
+                  onClick={copyAllBrief}
+                  className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-medium transition-colors"
+                >
+                  <Clipboard className="w-4 h-4" />
+                  Copier tout
+                </button>
+              </div>
+
+              <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+                {generatedBrief.items.map((item, idx) => (
+                  <div key={idx} className="border rounded-lg overflow-hidden">
+                    <div className="flex items-center justify-between bg-slate-100 px-4 py-2">
+                      <span className="font-medium text-slate-700">{item.label}</span>
+                      <button
+                        onClick={() => copyToClipboard(item.value, item.label)}
+                        className="flex items-center gap-1 px-2 py-1 text-sm text-slate-600 hover:text-slate-800 hover:bg-slate-200 rounded transition-colors"
+                      >
+                        <Clipboard className="w-3 h-3" />
+                        Copier
+                      </button>
+                    </div>
+                    <div className="p-4">
+                      {item.format === 'code' ? (
+                        <pre className="bg-slate-900 text-green-400 p-3 rounded text-xs overflow-x-auto whitespace-pre-wrap">
+                          {item.value}
+                        </pre>
+                      ) : item.format === 'url' ? (
+                        <div className="flex items-center gap-2">
+                          <code className="bg-slate-100 px-3 py-2 rounded text-sm text-blue-600 flex-1 break-all">
+                            {item.value}
+                          </code>
+                          {(item.type === 'logo_principal' || item.type === 'logo_secondaire') && item.value && (
+                            <img 
+                              src={item.value} 
+                              alt={item.label}
+                              className="h-10 object-contain border rounded"
+                              onError={(e) => e.target.style.display = 'none'}
+                            />
+                          )}
+                        </div>
+                      ) : (
+                        <div className="bg-slate-50 p-3 rounded text-sm text-slate-700 whitespace-pre-wrap max-h-40 overflow-y-auto">
+                          {item.value}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-between gap-3 pt-4 border-t">
+                <Button variant="secondary" onClick={() => setGeneratedBrief(null)}>
+                  ← Modifier la sélection
+                </Button>
+                <Button variant="secondary" onClick={() => { setShowMiniBriefModal(false); setGeneratedBrief(null); }}>
+                  Fermer
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }
