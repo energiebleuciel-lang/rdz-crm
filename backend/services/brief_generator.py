@@ -80,10 +80,7 @@ async def generate_brief_v2(lp_id: str) -> dict:
           // Redirection
           setTimeout(function() {{ window.location.href = "{redirect_url}"; }}, 500);"""
     
-    script_universal = f'''<!-- =================================================== -->
-<!-- RDZ TRACKING SCRIPT v2 - {lp_code} + {form_code} -->
-<!-- Mode: {form_mode.upper()} | Produit: {product_type} -->
-<!-- =================================================== -->
+    script_universal = f'''<!-- RDZ TRACKING - {lp_code} + {form_code} -->
 <script>
 (function() {{
   "use strict";
