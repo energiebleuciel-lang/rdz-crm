@@ -311,7 +311,7 @@ async def submit_lead(data: LeadSubmit, request: Request):
     api_key = crm_config["api_key"]
     
     if not api_key:
-        return {"success": False, "error": f"Clé API {crm_id.upper()} non configurée sur le serveur"}
+        return {"success": False, "error": f"Clé API {crm_slug.upper()} non configurée sur le serveur"}
     
     # Récupérer la session pour avoir les UTM et lp_code
     session = await db.visitor_sessions.find_one({"id": data.session_id}, {"_id": 0})
