@@ -235,14 +235,14 @@ async def submit_lead(data: LeadData, request: Request):
     routing_reason = "no_crm"  # Raison du routing
     
     crm_id = await get_crm_id(target_crm)
-    if crm_id and await has_commande(crm_id, dept, product_type):
+    if crm_id and await has_commande(crm_id, product_type, dept):
         final_crm = target_crm
         final_key = crm_api_key
         routing_reason = f"commande_{target_crm}"
     elif allow_cross_crm:
         other = "mdl" if target_crm == "zr7" else "zr7"
         other_id = await get_crm_id(other)
-        if other_id and await has_commande(other_id, dept, product_type):
+        if other_id and await has_commande(other_id, product_type, dept):
             other_form = await db.forms.find_one({
                 "account_id": account_id,
                 "target_crm": other,
