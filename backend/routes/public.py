@@ -359,7 +359,7 @@ async def submit_lead(data: LeadSubmit, request: Request):
     status, response, should_queue = await send_to_crm_v2(lead_doc, api_url, crm_api_key)
     
     if should_queue:
-        await add_to_queue(lead_doc, api_url, api_key, "crm_error")
+        await add_to_queue(lead_doc, api_url, crm_api_key, "crm_error")
         status = "queued"
     
     # Mettre à jour le lead
