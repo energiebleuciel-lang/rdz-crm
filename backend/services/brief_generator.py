@@ -1,9 +1,5 @@
 """
-Service de génération de Brief v2
-Scripts simplifiés (~50 lignes) avec:
-- Cookie de session fonctionnel
-- Tracking unifié
-- Pas de clé API visible (tout côté serveur)
+Service de génération de Brief
 """
 
 from config import db, BACKEND_URL
@@ -11,13 +7,7 @@ from config import db, BACKEND_URL
 
 async def generate_brief_v2(lp_id: str) -> dict:
     """
-    Génère un brief v2 avec scripts simplifiés.
-    
-    Nouveautés:
-    - 1 seul script universel (embedded ou redirect)
-    - Cookie de session automatique
-    - Pas de clé API dans le script
-    - ~50 lignes au lieu de 500+
+    Génère le brief avec script de tracking.
     """
     # Récupérer la LP
     lp = await db.lps.find_one({"id": lp_id}, {"_id": 0})
