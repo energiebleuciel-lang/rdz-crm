@@ -220,7 +220,16 @@ async def submit_lead(data: LeadData, request: Request):
     crm_api_key = form.get("crm_api_key", "")
     allow_cross_crm = form.get("allow_cross_crm", True)
     
+    # Récupérer le compte pour déterminer le CRM d'origine
+    account = await db.accounts.find_one({"id": account_id}, {"_id": 0})
+    origin_crm_id = account.get("crm_id") if account else None
+    origin_crm_slug = None
+    if origin_crm_id:
+        origin_crm_doc = await db.crms.find_one({"id": origin_crm_id}, {"_id": 0})
+        origin_crm_slug = origin_crm_doc.get("slug") if origin_crm_doc else None
+    
     if not target_crm or target_crm not in CRM_URLS:
+        return {"success": False, "error": "CRM non configuré"}
         return {"success": False, "error": "CRM non configuré"}
     
     if not crm_api_key:
