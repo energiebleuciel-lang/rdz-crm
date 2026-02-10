@@ -41,7 +41,52 @@ async def get_api_key(authorization: Optional[str] = Header(None)):
     raise HTTPException(status_code=401, detail="Clé API invalide")
 
 
-# ==================== API V1 (EXTERNE) ====================
+# ==================== API EXTERNE (avec clé API RDZ) ====================
+
+@router.get("/v1/leads")
+async def get_leads_api(
+    form_code: Optional[str] = None,
+    status: Optional[str] = None,
+    since: Optional[str] = None,
+    limit: int = 100,
+    api_key: str = Depends(get_api_key)
+):
+    """
+    Récupérer les leads depuis RDZ avec la clé API.
+    
+    Comme Landbot : une clé API centrale permet de récupérer tous les leads.
+    
+    Paramètres:
+    - form_code: Filtrer par code formulaire
+    - status: Filtrer par statut (success, failed, queued, no_crm)
+    - since: Leads depuis cette date ISO (ex: 2024-01-01T00:00:00)
+    - limit: Nombre max de leads (défaut: 100, max: 1000)
+    
+    Exemple:
+    GET /api/v1/leads?form_code=PV-007&limit=50
+    Authorization: Token VOTRE_CLE_API_RDZ
+    """
+    query = {}
+    
+    if form_code:
+        query["form_code"] = form_code
+    if status:
+        query["api_status"] = status
+    if since:
+        query["created_at"] = {"$gte": since}
+    
+    # Limiter à 1000 max
+    limit = min(limit, 1000)
+    
+    leads = await db.leads.find(query, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    total = await db.leads.count_documents(query)
+    
+    return {
+        "success": True,
+        "leads": leads,
+        "count": len(leads),
+        "total": total
+    }
 
 @router.post("/v1/leads")
 async def submit_lead_v1(data: LeadSubmit, request: Request, api_key: str = Depends(get_api_key)):
