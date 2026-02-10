@@ -284,7 +284,6 @@ async def generate_brief_v2(lp_id: str) -> dict:
     }
     
     return {
-        "version": "2.0",
         "mode": form_mode,
         "lp": {
             "id": lp_id,
@@ -305,27 +304,14 @@ async def generate_brief_v2(lp_id: str) -> dict:
         },
         "scripts": {
             "universal": script_universal,
-            # Pas de scripts séparés - tout est dans le script universel
-            "lp": None,
-            "form": None,
             "combined": script_universal
         },
-        "script_count": 1,
         "lead_fields": lead_fields,
-        "api_url": api_url,
-        "tracking_type": tracking_type,
-        "redirect_url": redirect_url,
-        "endpoints": {
-            "init_session": f"{api_url}/api/public/track/session",
-            "track_event": f"{api_url}/api/public/track/event",
-            "submit_lead": f"{api_url}/api/public/leads",
-            "get_config": f"{api_url}/api/public/config/{form_code}"
-        },
         "instructions": {
-            "installation": f"Copiez le script ci-dessus et collez-le sur votre page ({lp_url})",
-            "cta": 'Ajoutez onclick="rdzClickCTA()" sur vos boutons CTA',
-            "form_start": 'Ajoutez onfocus="rdzFormStart()" sur le premier champ du formulaire',
-            "submit": 'Appelez rdzSubmitLead({phone: "...", nom: "...", ...}) à la soumission'
+            "installation": f"Copiez le script et collez-le sur {lp_url}",
+            "cta": 'onclick="rdzClickCTA()"',
+            "form_start": 'onfocus="rdzFormStart()"',
+            "submit": 'rdzSubmitLead({phone, nom, ...})'
         }
     }
 
