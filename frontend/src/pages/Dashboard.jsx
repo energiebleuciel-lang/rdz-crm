@@ -68,7 +68,12 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-slate-800">Tableau de bord</h1>
+      <div>
+        <h1 className="text-2xl font-bold text-slate-800">Tableau de bord</h1>
+        <p className="text-sm text-slate-500">
+          CRM: <span className="font-medium text-slate-700">{currentCRM?.name || 'Non sélectionné'}</span>
+        </p>
+      </div>
 
       {/* Stats principales */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
