@@ -3,11 +3,18 @@ Routes pour les Comptes (entreprises clientes)
 """
 
 from fastapi import APIRouter, HTTPException, Depends
+from pydantic import BaseModel
+from typing import List
 import uuid
 
 from models import AccountCreate, AccountUpdate
 from config import db, now_iso
 from routes.auth import get_current_user, require_admin
+from services.brief_generator import get_account_brief_options, generate_mini_brief
+
+
+class MiniBriefRequest(BaseModel):
+    selections: List[str]  # liste des clés à inclure dans le brief
 
 router = APIRouter(prefix="/accounts", tags=["Comptes"])
 
