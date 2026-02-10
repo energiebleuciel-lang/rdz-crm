@@ -26,6 +26,16 @@ from services.billing import (
 router = APIRouter(prefix="/billing", tags=["Facturation"])
 
 
+# ==================== HELPERS ====================
+
+async def get_crm_slug(crm_id: str) -> str:
+    """Récupère le slug d'un CRM à partir de son ID"""
+    if not crm_id:
+        return ""
+    crm = await db.crms.find_one({"id": crm_id}, {"slug": 1})
+    return crm.get("slug", "") if crm else ""
+
+
 # ==================== MODELS ====================
 
 class LeadPriceCreate(BaseModel):
