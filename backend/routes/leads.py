@@ -1,8 +1,5 @@
 """
 Routes pour les Leads
-- Réception via API v1 (externe)
-- Liste et gestion interne
-- Routage intelligent vers CRM
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Request, Header
@@ -17,23 +14,20 @@ from services.lead_sender import send_to_crm, add_to_queue
 
 router = APIRouter(tags=["Leads"])
 
-# Auth par API Key pour l'API v1
 api_key_header = APIKeyHeader(name="Authorization", auto_error=False)
 
 
 async def get_api_key(authorization: Optional[str] = Header(None)):
-    """Valide la clé API pour l'API v1"""
+    """Valide la clé API RDZ"""
     if not authorization:
         raise HTTPException(status_code=401, detail="Clé API manquante")
     
-    # Format: "Token xxx" ou "Bearer xxx"
     parts = authorization.split(" ")
     if len(parts) != 2:
         raise HTTPException(status_code=401, detail="Format clé invalide")
     
     token = parts[1]
     
-    # Vérifier la clé globale
     config = await db.system_config.find_one({"type": "global_api_key"})
     if config and config.get("api_key") == token:
         return token
@@ -43,7 +37,7 @@ async def get_api_key(authorization: Optional[str] = Header(None)):
 
 # ==================== API EXTERNE (avec clé API RDZ) ====================
 
-@router.get("/v1/leads")
+@router.get("/leads/export")
 async def get_leads_api(
     form_code: Optional[str] = None,
     status: Optional[str] = None,
@@ -53,8 +47,6 @@ async def get_leads_api(
 ):
     """
     Récupérer les leads depuis RDZ avec la clé API.
-    
-    Comme Landbot : une clé API centrale permet de récupérer tous les leads.
     
     Paramètres:
     - form_code: Filtrer par code formulaire
