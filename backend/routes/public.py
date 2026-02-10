@@ -214,7 +214,9 @@ async def submit_lead(data: LeadData, request: Request):
         origin_crm_doc = await db.crms.find_one({"id": origin_crm_id}, {"_id": 0})
         origin_crm_slug = origin_crm_doc.get("slug") if origin_crm_doc else None
     
-    if not target_crm or target_crm not in CRM_URLS:
+    # Vérifier que le CRM cible est configuré en DB
+    target_crm_url = await get_crm_url(target_crm)
+    if not target_crm or not target_crm_url:
         return {"success": False, "error": "CRM non configuré"}
     
     if not crm_api_key:
