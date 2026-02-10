@@ -83,8 +83,14 @@ export default function Settings() {
           <div className="p-3 bg-amber-100 rounded-xl">
             <Key className="w-6 h-6 text-amber-600" />
           </div>
-          <div>
-            <h2 className="text-lg font-semibold text-slate-800">Clé API RDZ</h2>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-slate-800">Clé API RDZ</h2>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 text-xs font-medium rounded-full">
+                <Lock className="w-3 h-3" />
+                Permanente
+              </span>
+            </div>
             <p className="text-sm text-slate-500">Pour récupérer vos leads depuis RDZ</p>
           </div>
         </div>
@@ -109,6 +115,20 @@ export default function Settings() {
               >
                 {copied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
               </button>
+            </div>
+          </div>
+        </div>
+        
+        <div className="mt-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
+          <div className="flex items-start gap-2">
+            <Shield className="w-4 h-4 text-amber-600 mt-0.5" />
+            <div>
+              <p className="text-sm text-amber-800 font-medium">
+                Clé permanente et non régénérable
+              </p>
+              <p className="text-xs text-amber-700 mt-1">
+                Cette clé API est unique et ne peut jamais être modifiée ou supprimée pour des raisons de sécurité.
+              </p>
             </div>
           </div>
         </div>
