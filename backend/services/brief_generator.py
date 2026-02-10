@@ -1,13 +1,12 @@
 """
 Service de génération de Brief
-Génère 2 scripts séparés : un pour LP, un pour Form
 """
 
 from config import db, BACKEND_URL
 
 
 async def generate_brief(lp_id: str) -> dict:
-    """Génère le brief avec 2 scripts séparés (LP + Form)"""
+    """Génère le brief complet avec scripts + infos compte"""
     
     # Récupérer la LP
     lp = await db.lps.find_one({"id": lp_id}, {"_id": 0})
@@ -28,7 +27,6 @@ async def generate_brief(lp_id: str) -> dict:
     
     if form_id:
         form = await db.forms.find_one({"id": form_id}, {"_id": 0})
-    
     if not form:
         form = await db.forms.find_one({"lp_id": lp_id}, {"_id": 0})
     
@@ -49,17 +47,53 @@ async def generate_brief(lp_id: str) -> dict:
     if account_id:
         account = await db.accounts.find_one({"id": account_id}, {"_id": 0})
     
-    gtm_conversion = account.get("gtm_conversion", "") if account else ""
+    # Infos du compte
+    account_name = ""
+    logos = {}
+    gtm = {}
+    liens = {}
+    
+    if account:
+        account_name = account.get("name", "")
+        
+        # Logos
+        logos = {
+            "principal": account.get("logo_main_url") or account.get("logo_left_url") or "",
+            "secondaire": account.get("logo_secondary_url") or account.get("logo_right_url") or "",
+            "mini": account.get("logo_mini_url") or account.get("logo_small_url") or "",
+            "favicon": account.get("favicon_url") or ""
+        }
+        
+        # GTM
+        gtm = {
+            "head": account.get("gtm_head") or account.get("gtm_pixel_header") or "",
+            "body": account.get("gtm_body") or "",
+            "conversion": account.get("gtm_conversion") or account.get("gtm_conversion_code") or ""
+        }
+        
+        # Liens
+        liens = {
+            "redirection": redirect_url or account.get("default_redirect_url") or "/merci",
+            "confidentialite": account.get("privacy_policy_url") or "",
+            "mentions_legales": account.get("legal_mentions_url") or ""
+        }
+        
+        # Textes légaux (si URLs vides, on met les textes)
+        if not liens["confidentialite"] and account.get("privacy_policy_text"):
+            liens["confidentialite_texte"] = account.get("privacy_policy_text")
+        if not liens["mentions_legales"] and account.get("legal_mentions_text"):
+            liens["mentions_legales_texte"] = account.get("legal_mentions_text")
     
     api_url = BACKEND_URL
     liaison_code = f"{lp_code}_{form_code}"
     
-    # Actions après soumission
+    # Post submit actions
     post_submit = ""
-    if tracking_type in ["gtm", "both"] and gtm_conversion:
-        post_submit += f"\n        {gtm_conversion}"
-    if tracking_type in ["redirect", "both"] and redirect_url:
-        post_submit += f"\n        setTimeout(function() {{ window.location.href = '{redirect_url}'; }}, 500);"
+    if tracking_type in ["gtm", "both"] and gtm.get("conversion"):
+        post_submit += f"\n        {gtm['conversion']}"
+    final_redirect = liens.get("redirection", "/merci")
+    if tracking_type in ["redirect", "both"] and final_redirect:
+        post_submit += f"\n        setTimeout(function() {{ window.location.href = '{final_redirect}'; }}, 500);"
     
     # ==================== SCRIPT LP ====================
     script_lp = f'''<!-- RDZ TRACKING LP - {lp_code} -->
@@ -73,7 +107,6 @@ async def generate_brief(lp_id: str) -> dict:
     session: null
   }};
 
-  // Créer session
   async function initSession() {{
     if (RDZ.session) return RDZ.session;
     var params = new URLSearchParams(window.location.search);
@@ -99,7 +132,6 @@ async def generate_brief(lp_id: str) -> dict:
     }}
   }}
 
-  // Tracker événement
   function track(type) {{
     if (!RDZ.session) return;
     fetch(RDZ.api + "/track/event", {{
@@ -114,21 +146,17 @@ async def generate_brief(lp_id: str) -> dict:
     }});
   }}
 
-  // VISITE LP - Automatique au chargement
   document.addEventListener("DOMContentLoaded", function() {{
     initSession().then(function() {{
       track("lp_visit");
     }});
   }});
 
-  // CLIC CTA - Appeler sur le bouton CTA
   window.rdzClickCTA = function() {{
     track("cta_click");
-    // Rediriger vers le formulaire avec session_id
     if (RDZ.formUrl && RDZ.session) {{
       var url = RDZ.formUrl;
       url += (url.indexOf("?") === -1 ? "?" : "&") + "session=" + RDZ.session;
-      // Conserver les UTM
       var params = new URLSearchParams(window.location.search);
       ["utm_source", "utm_medium", "utm_campaign"].forEach(function(p) {{
         if (params.get(p)) url += "&" + p + "=" + encodeURIComponent(params.get(p));
@@ -137,16 +165,7 @@ async def generate_brief(lp_id: str) -> dict:
     }}
   }};
 }})();
-</script>
-
-<!--
-UTILISATION :
-1. Coller ce script sur la page LP ({lp_url})
-2. Sur le bouton CTA : onclick="rdzClickCTA()"
-
-Exemple :
-<button onclick="rdzClickCTA()">Demander un devis</button>
--->'''
+</script>'''
 
     # ==================== SCRIPT FORM ====================
     script_form = f'''<!-- RDZ TRACKING FORM - {form_code} -->
@@ -159,20 +178,14 @@ Exemple :
     session: null
   }};
 
-  // Récupérer ou créer session
   async function initSession() {{
     if (RDZ.session) return RDZ.session;
-    
     var params = new URLSearchParams(window.location.search);
-    
-    // Récupérer session depuis URL (venant de la LP)
     var sessionFromUrl = params.get("session");
     if (sessionFromUrl) {{
       RDZ.session = sessionFromUrl;
       return RDZ.session;
     }}
-    
-    // Sinon créer nouvelle session (accès direct au form)
     try {{
       var res = await fetch(RDZ.api + "/track/session", {{
         method: "POST",
@@ -195,7 +208,6 @@ Exemple :
     }}
   }}
 
-  // Tracker événement
   function track(type) {{
     if (!RDZ.session) return;
     fetch(RDZ.api + "/track/event", {{
@@ -210,12 +222,10 @@ Exemple :
     }});
   }}
 
-  // Init au chargement
   document.addEventListener("DOMContentLoaded", function() {{
     initSession();
   }});
 
-  // FORM DÉMARRÉ - Appeler sur le premier bouton du formulaire
   var formStarted = false;
   window.rdzFormStart = function() {{
     if (formStarted) return;
@@ -225,7 +235,6 @@ Exemple :
     }});
   }};
 
-  // FORM FINI - Appeler avec les données du lead
   window.rdzSubmitLead = async function(data) {{
     var sid = RDZ.session || await initSession();
     if (!sid) {{
@@ -253,28 +262,7 @@ Exemple :
     }}
   }};
 }})();
-</script>
-
-<!--
-UTILISATION :
-1. Coller ce script sur la page formulaire ({form_url})
-2. Sur le premier bouton du form : onclick="rdzFormStart()"
-3. À la soumission : rdzSubmitLead({{phone, nom, code_postal, ...}})
-
-Exemple :
-<button onclick="rdzFormStart()">Suivant</button>
-<button onclick="envoyerLead()">Envoyer</button>
-
-<script>
-function envoyerLead() {{
-  rdzSubmitLead({{
-    phone: document.getElementById("phone").value,
-    nom: document.getElementById("nom").value,
-    code_postal: document.getElementById("cp").value
-  }});
-}}
-</script>
--->'''
+</script>'''
 
     return {
         "lp": {
@@ -289,25 +277,18 @@ function envoyerLead() {{
             "name": form.get("name", "") if form else "",
             "url": form_url
         },
+        "account": account_name,
         "liaison_code": liaison_code,
+        "logos": logos,
+        "gtm": gtm,
+        "liens": liens,
         "script_lp": script_lp,
         "script_form": script_form,
-        "instructions": {
-            "lp": {
-                "installer": f"Coller le Script LP sur {lp_url}",
-                "cta": 'onclick="rdzClickCTA()" sur le bouton CTA'
-            },
-            "form": {
-                "installer": f"Coller le Script Form sur {form_url}",
-                "start": 'onclick="rdzFormStart()" sur le premier bouton',
-                "submit": "rdzSubmitLead({phone, nom, code_postal, ...})"
-            }
-        },
         "champs": ["phone", "nom", "prenom", "email", "code_postal", "ville", "type_logement", "statut_occupant", "facture_electricite"]
     }
 
 
-# Alias pour compatibilité frontend
+# Alias pour le frontend
 async def generate_brief_v2(lp_id: str) -> dict:
     result = await generate_brief(lp_id)
     if "error" in result:
@@ -315,17 +296,14 @@ async def generate_brief_v2(lp_id: str) -> dict:
     return {
         "lp": result["lp"],
         "form": result["form"],
-        "mode": "redirect",
+        "account": result["account"],
         "liaison_code": result["liaison_code"],
+        "logos": result["logos"],
+        "gtm": result["gtm"],
+        "liens": result["liens"],
         "scripts": {
             "lp": result["script_lp"],
             "form": result["script_form"]
         },
-        "instructions": result["instructions"],
-        "lead_fields": {
-            "obligatoire": [{"key": "phone", "label": "Téléphone", "required": True}],
-            "identite": [{"key": "nom", "label": "Nom"}, {"key": "prenom", "label": "Prénom"}, {"key": "email", "label": "Email"}],
-            "localisation": [{"key": "code_postal", "label": "Code Postal"}, {"key": "ville", "label": "Ville"}],
-            "logement": [{"key": "type_logement", "label": "Type"}, {"key": "statut_occupant", "label": "Statut"}]
-        }
+        "champs": result["champs"]
     }
