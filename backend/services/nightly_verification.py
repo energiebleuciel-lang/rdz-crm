@@ -112,7 +112,7 @@ async def retry_lead_internal(lead: dict) -> dict:
     Utilise la même logique que /api/leads/{lead_id}/retry
     """
     from routes.commandes import has_commande
-    from services.lead_sender import send_to_crm
+    from services.lead_sender import send_to_crm_v2
     
     lead_id = lead.get("id")
     
