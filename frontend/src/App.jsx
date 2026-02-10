@@ -75,6 +75,7 @@ function AppRoutes() {
       <Route path="/departements" element={<PrivateRoute><Departements /></PrivateRoute>} />
       <Route path="/commandes" element={<PrivateRoute><Commandes /></PrivateRoute>} />
       <Route path="/billing" element={<PrivateRoute><Billing /></PrivateRoute>} />
+      <Route path="/media" element={<PrivateRoute><Media /></PrivateRoute>} />
       <Route path="/users" element={<PrivateRoute><UsersPage /></PrivateRoute>} />
       <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
       
