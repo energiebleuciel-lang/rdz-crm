@@ -1,12 +1,13 @@
 """
 Service de génération de Brief
+Génère 2 scripts séparés : un pour LP, un pour Form
 """
 
 from config import db, BACKEND_URL
 
 
 async def generate_brief(lp_id: str) -> dict:
-    """Génère le brief avec script de tracking pour une LP"""
+    """Génère le brief avec 2 scripts séparés (LP + Form)"""
     
     # Récupérer la LP
     lp = await db.lps.find_one({"id": lp_id}, {"_id": 0})
@@ -16,9 +17,7 @@ async def generate_brief(lp_id: str) -> dict:
     lp_code = lp.get("code", "")
     lp_url = lp.get("url", "")
     lp_name = lp.get("name", "")
-    form_mode = lp.get("form_mode", "redirect")
     form_id = lp.get("form_id")
-    product_type = lp.get("product_type", "")
     tracking_type = lp.get("tracking_type", "redirect")
     redirect_url = lp.get("redirect_url", "/merci")
     
@@ -36,8 +35,6 @@ async def generate_brief(lp_id: str) -> dict:
     if form:
         form_code = form.get("code", "")
         form_url = form.get("url", "")
-        if not product_type:
-            product_type = form.get("product_type", "")
         if not tracking_type or tracking_type == "redirect":
             tracking_type = form.get("tracking_type", "redirect")
         if not redirect_url or redirect_url == "/merci":
@@ -52,7 +49,6 @@ async def generate_brief(lp_id: str) -> dict:
     if account_id:
         account = await db.accounts.find_one({"id": account_id}, {"_id": 0})
     
-    account_name = account.get("name", "") if account else ""
     gtm_conversion = account.get("gtm_conversion", "") if account else ""
     
     api_url = BACKEND_URL
@@ -65,14 +61,15 @@ async def generate_brief(lp_id: str) -> dict:
     if tracking_type in ["redirect", "both"] and redirect_url:
         post_submit += f"\n        setTimeout(function() {{ window.location.href = '{redirect_url}'; }}, 500);"
     
-    # Script de tracking
-    script = f'''<!-- RDZ TRACKING - {lp_code} -->
+    # ==================== SCRIPT LP ====================
+    script_lp = f'''<!-- RDZ TRACKING LP - {lp_code} -->
 <script>
 (function() {{
   var RDZ = {{
     api: "{api_url}/api/public",
     lp: "{lp_code}",
     form: "{form_code}",
+    formUrl: "{form_url}",
     session: null
   }};
 
@@ -98,47 +95,137 @@ async def generate_brief(lp_id: str) -> dict:
       RDZ.session = data.session_id;
       return RDZ.session;
     }} catch(e) {{
-      console.error("[RDZ] Session error:", e);
       return null;
     }}
   }}
 
-  // Tracker un événement
-  async function track(type) {{
-    var sid = RDZ.session || await initSession();
-    if (!sid) return;
+  // Tracker événement
+  function track(type) {{
+    if (!RDZ.session) return;
     fetch(RDZ.api + "/track/event", {{
       method: "POST",
       headers: {{"Content-Type": "application/json"}},
       body: JSON.stringify({{
-        session_id: sid,
+        session_id: RDZ.session,
         event_type: type,
         lp_code: RDZ.lp,
         form_code: RDZ.form
       }})
-    }}).catch(function(e) {{}});
+    }});
   }}
 
-  // 1. VISITE LP - Automatique
+  // VISITE LP - Automatique au chargement
   document.addEventListener("DOMContentLoaded", function() {{
     initSession().then(function() {{
       track("lp_visit");
     }});
   }});
 
-  // 2. CLIC CTA - Appeler onclick="rdzClickCTA()"
+  // CLIC CTA - Appeler sur le bouton CTA
   window.rdzClickCTA = function() {{
     track("cta_click");
+    // Rediriger vers le formulaire avec session_id
+    if (RDZ.formUrl && RDZ.session) {{
+      var url = RDZ.formUrl;
+      url += (url.indexOf("?") === -1 ? "?" : "&") + "session=" + RDZ.session;
+      // Conserver les UTM
+      var params = new URLSearchParams(window.location.search);
+      ["utm_source", "utm_medium", "utm_campaign"].forEach(function(p) {{
+        if (params.get(p)) url += "&" + p + "=" + encodeURIComponent(params.get(p));
+      }});
+      window.location.href = url;
+    }}
+  }};
+}})();
+</script>
+
+<!--
+UTILISATION :
+1. Coller ce script sur la page LP ({lp_url})
+2. Sur le bouton CTA : onclick="rdzClickCTA()"
+
+Exemple :
+<button onclick="rdzClickCTA()">Demander un devis</button>
+-->'''
+
+    # ==================== SCRIPT FORM ====================
+    script_form = f'''<!-- RDZ TRACKING FORM - {form_code} -->
+<script>
+(function() {{
+  var RDZ = {{
+    api: "{api_url}/api/public",
+    lp: "{lp_code}",
+    form: "{form_code}",
+    session: null
   }};
 
-  // 3. FORM DÉMARRÉ - Appeler onclick="rdzFormStart()" sur premier bouton
+  // Récupérer ou créer session
+  async function initSession() {{
+    if (RDZ.session) return RDZ.session;
+    
+    var params = new URLSearchParams(window.location.search);
+    
+    // Récupérer session depuis URL (venant de la LP)
+    var sessionFromUrl = params.get("session");
+    if (sessionFromUrl) {{
+      RDZ.session = sessionFromUrl;
+      return RDZ.session;
+    }}
+    
+    // Sinon créer nouvelle session (accès direct au form)
+    try {{
+      var res = await fetch(RDZ.api + "/track/session", {{
+        method: "POST",
+        headers: {{"Content-Type": "application/json"}},
+        credentials: "include",
+        body: JSON.stringify({{
+          lp_code: params.get("lp") || RDZ.lp,
+          form_code: RDZ.form,
+          referrer: document.referrer,
+          utm_source: params.get("utm_source") || "",
+          utm_medium: params.get("utm_medium") || "",
+          utm_campaign: params.get("utm_campaign") || ""
+        }})
+      }});
+      var data = await res.json();
+      RDZ.session = data.session_id;
+      return RDZ.session;
+    }} catch(e) {{
+      return null;
+    }}
+  }}
+
+  // Tracker événement
+  function track(type) {{
+    if (!RDZ.session) return;
+    fetch(RDZ.api + "/track/event", {{
+      method: "POST",
+      headers: {{"Content-Type": "application/json"}},
+      body: JSON.stringify({{
+        session_id: RDZ.session,
+        event_type: type,
+        lp_code: RDZ.lp,
+        form_code: RDZ.form
+      }})
+    }});
+  }}
+
+  // Init au chargement
+  document.addEventListener("DOMContentLoaded", function() {{
+    initSession();
+  }});
+
+  // FORM DÉMARRÉ - Appeler sur le premier bouton du formulaire
+  var formStarted = false;
   window.rdzFormStart = function() {{
-    if (window._rdzStarted) return;
-    window._rdzStarted = true;
-    track("form_start");
+    if (formStarted) return;
+    formStarted = true;
+    initSession().then(function() {{
+      track("form_start");
+    }});
   }};
 
-  // 4. FORM FINI - Appeler rdzSubmitLead({{phone, nom, ...}})
+  // FORM FINI - Appeler avec les données du lead
   window.rdzSubmitLead = async function(data) {{
     var sid = RDZ.session || await initSession();
     if (!sid) {{
@@ -166,7 +253,28 @@ async def generate_brief(lp_id: str) -> dict:
     }}
   }};
 }})();
-</script>'''
+</script>
+
+<!--
+UTILISATION :
+1. Coller ce script sur la page formulaire ({form_url})
+2. Sur le premier bouton du form : onclick="rdzFormStart()"
+3. À la soumission : rdzSubmitLead({{phone, nom, code_postal, ...}})
+
+Exemple :
+<button onclick="rdzFormStart()">Suivant</button>
+<button onclick="envoyerLead()">Envoyer</button>
+
+<script>
+function envoyerLead() {{
+  rdzSubmitLead({{
+    phone: document.getElementById("phone").value,
+    nom: document.getElementById("nom").value,
+    code_postal: document.getElementById("cp").value
+  }});
+}}
+</script>
+-->'''
 
     return {
         "lp": {
@@ -181,33 +289,37 @@ async def generate_brief(lp_id: str) -> dict:
             "name": form.get("name", "") if form else "",
             "url": form_url
         },
-        "mode": form_mode,
         "liaison_code": liaison_code,
-        "script": script,
+        "script_lp": script_lp,
+        "script_form": script_form,
         "instructions": {
-            "visite_lp": "Automatique",
-            "clic_cta": 'onclick="rdzClickCTA()"',
-            "form_start": 'onclick="rdzFormStart()" sur premier bouton',
-            "form_submit": "rdzSubmitLead({phone, nom, code_postal, ...})"
+            "lp": {
+                "installer": f"Coller le Script LP sur {lp_url}",
+                "cta": 'onclick="rdzClickCTA()" sur le bouton CTA'
+            },
+            "form": {
+                "installer": f"Coller le Script Form sur {form_url}",
+                "start": 'onclick="rdzFormStart()" sur le premier bouton',
+                "submit": "rdzSubmitLead({phone, nom, code_postal, ...})"
+            }
         },
         "champs": ["phone", "nom", "prenom", "email", "code_postal", "ville", "type_logement", "statut_occupant", "facture_electricite"]
     }
 
 
-# Alias pour compatibilité
+# Alias pour compatibilité frontend
 async def generate_brief_v2(lp_id: str) -> dict:
     result = await generate_brief(lp_id)
-    # Adapter le format pour le frontend existant
     if "error" in result:
         return result
     return {
         "lp": result["lp"],
         "form": result["form"],
-        "mode": result["mode"],
+        "mode": "redirect",
         "liaison_code": result["liaison_code"],
         "scripts": {
-            "universal": result["script"],
-            "combined": result["script"]
+            "lp": result["script_lp"],
+            "form": result["script_form"]
         },
         "instructions": result["instructions"],
         "lead_fields": {
