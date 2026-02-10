@@ -215,37 +215,8 @@ async def generate_brief_v2(lp_id: str) -> dict:
       track("lp_visit");
     }});
   }});
-  
-  console.log("[RDZ] Script v2 loaded - LP:", RDZ.LP, "| Form:", RDZ.FORM);
 }})();
 </script>
-
-<!-- === USAGE === -->
-<!--
-1. CTA BUTTON (déclenche tracking + navigation si redirect):
-   <button onclick="rdzClickCTA('hero')">Demander un devis</button>
-
-2. FORM START (sur premier champ ou bouton suivant):
-   <input onfocus="rdzFormStart()" placeholder="Votre nom">
-
-3. SUBMIT (à la soumission finale):
-   <button onclick="submitMyForm()">Envoyer</button>
-   
-   <script>
-   function submitMyForm() {{
-     rdzSubmitLead({{
-       phone: document.getElementById("phone").value,
-       nom: document.getElementById("nom").value,
-       prenom: document.getElementById("prenom").value,
-       email: document.getElementById("email").value,
-       code_postal: document.getElementById("cp").value,
-       type_logement: document.getElementById("logement").value,
-       statut_occupant: document.getElementById("statut").value,
-       facture_electricite: document.getElementById("facture").value
-     }});
-   }}
-   </script>
--->
 '''
 
     # ==================== CHAMPS DISPONIBLES ====================
