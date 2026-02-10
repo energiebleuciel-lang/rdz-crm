@@ -6,13 +6,12 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { API } from '../hooks/useApi';
 import { Card, Loading, Button, Badge } from '../components/UI';
-import { Key, Copy, Database, CheckCircle, RefreshCw, Eye, EyeOff, Shield, Server, AlertTriangle } from 'lucide-react';
+import { Key, Copy, Database, CheckCircle, Eye, EyeOff, Shield, Server } from 'lucide-react';
 
 export default function Settings() {
   const { authFetch } = useAuth();
   const [apiKey, setApiKey] = useState('');
   const [crms, setCrms] = useState([]);
-  const [crmApiStatus, setCrmApiStatus] = useState({});
   const [loading, setLoading] = useState(true);
   const [showKey, setShowKey] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -37,13 +36,6 @@ export default function Settings() {
       if (crmsRes.ok) {
         const data = await crmsRes.json();
         setCrms(data.crms || []);
-      }
-      
-      // Vérifier statut des clés API CRM
-      const statusRes = await authFetch(`${API}/api/config/crm-api-status`);
-      if (statusRes.ok) {
-        const data = await statusRes.json();
-        setCrmApiStatus(data);
       }
     } catch (e) {
       console.error('Load error:', e);
