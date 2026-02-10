@@ -360,7 +360,7 @@ async def retry_lead(lead_id: str, user: dict = Depends(get_current_user)):
     
     # Essayer le CRM principal
     if primary_crm_id:
-        if await has_commande(primary_crm_id, product_type, dept):
+        if await has_commande(primary_crm_id, dept, product_type):
             target_crm = crm_map.get(primary_crm_id)
             routing_reason = f"commande_{target_crm.get('slug')}" if target_crm else "primary"
     
@@ -368,7 +368,7 @@ async def retry_lead(lead_id: str, user: dict = Depends(get_current_user)):
     if not target_crm and allow_cross_crm:
         for crm_id, crm in crm_map.items():
             if crm_id != primary_crm_id:
-                if await has_commande(crm_id, product_type, dept):
+                if await has_commande(crm_id, dept, product_type):
                     target_crm = crm
                     routing_reason = f"cross_crm_{crm.get('slug')}"
                     break
