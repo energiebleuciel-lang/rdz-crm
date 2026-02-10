@@ -166,7 +166,8 @@ class FormCreate(BaseModel):
     product_type: str  # PV, PAC, ITE
     lp_id: Optional[str] = ""  # LP liée (optionnel)
     # Config CRM destination
-    crm_api_key: Optional[str] = ""  # Clé API ZR7/MDL
+    target_crm: Optional[str] = ""  # "zr7" ou "mdl" - vers quel CRM envoyer
+    crm_api_key: Optional[str] = ""  # Clé API du CRM pour ce formulaire
     allow_cross_crm: Optional[bool] = True  # Si True, fallback vers autre CRM si pas de commande
     # Tracking
     tracking_type: str = "redirect"  # gtm, redirect, both
@@ -178,6 +179,7 @@ class FormUpdate(BaseModel):
     url: Optional[str] = None
     product_type: Optional[str] = None
     lp_id: Optional[str] = None
+    target_crm: Optional[str] = None  # "zr7" ou "mdl"
     crm_api_key: Optional[str] = None
     allow_cross_crm: Optional[bool] = None
     tracking_type: Optional[str] = None
