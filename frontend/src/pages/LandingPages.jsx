@@ -596,28 +596,59 @@ export default function LandingPages() {
                     <ExternalLink className="w-3 h-3 inline" />
                   </a>
                 </div>
-                <div>
-                  <span className="text-slate-500">Mode:</span>
-                  <Badge variant={briefData.mode === 'embedded' ? 'success' : 'info'} className="ml-2">
-                    {briefData.mode === 'embedded' ? 'Embedded' : 'Redirect'}
-                  </Badge>
-                </div>
-                <div>
+                <div className="col-span-2">
                   <span className="text-slate-500">Liaison:</span>
                   <code className="ml-2 bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs">{briefData.liaison_code}</code>
                 </div>
               </div>
             </div>
 
-            {/* Script */}
-            <div>
+            {/* Script LP */}
+            <div className="border-2 border-blue-200 rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-slate-800">Script de tracking</h3>
+                <h3 className="font-semibold text-blue-800">1. Script LP</h3>
                 <button
-                  onClick={() => copyScript(briefData.scripts?.universal || briefData.scripts?.combined)}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors"
+                  onClick={() => copyScript(briefData.scripts?.lp)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
                 >
                   <Clipboard className="w-4 h-4" />
+                  Copier
+                </button>
+              </div>
+              <p className="text-sm text-slate-600 mb-2">
+                À coller sur : <code className="bg-slate-100 px-2 py-0.5 rounded">{briefData.lp.url}</code>
+              </p>
+              <pre className="bg-slate-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto max-h-48">
+                {briefData.scripts?.lp}
+              </pre>
+              <div className="mt-2 text-xs text-blue-700 bg-blue-50 p-2 rounded">
+                <strong>Bouton CTA :</strong> <code>onclick="rdzClickCTA()"</code>
+              </div>
+            </div>
+
+            {/* Script Form */}
+            <div className="border-2 border-orange-200 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-semibold text-orange-800">2. Script Form</h3>
+                <button
+                  onClick={() => copyScript(briefData.scripts?.form)}
+                  className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium transition-colors"
+                >
+                  <Clipboard className="w-4 h-4" />
+                  Copier
+                </button>
+              </div>
+              <p className="text-sm text-slate-600 mb-2">
+                À coller sur : <code className="bg-slate-100 px-2 py-0.5 rounded">{briefData.form.url}</code>
+              </p>
+              <pre className="bg-slate-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto max-h-48">
+                {briefData.scripts?.form}
+              </pre>
+              <div className="mt-2 text-xs text-orange-700 bg-orange-50 p-2 rounded space-y-1">
+                <p><strong>Premier bouton :</strong> <code>onclick="rdzFormStart()"</code></p>
+                <p><strong>Soumission :</strong> <code>rdzSubmitLead(&#123;phone, nom, code_postal, ...&#125;)</code></p>
+              </div>
+            </div>
                   Copier le script
                 </button>
               </div>
