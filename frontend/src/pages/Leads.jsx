@@ -424,8 +424,7 @@ export default function Leads() {
                 Localisation
               </h3>
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <div><span className="text-slate-500">Code postal:</span> <span className="font-medium font-mono">{selectedLead.code_postal || '-'}</span></div>
-                <div><span className="text-slate-500">Département:</span> <span className="font-medium">{selectedLead.departement || '-'}</span></div>
+                <div><span className="text-slate-500">Département:</span> <span className="font-medium font-mono">{selectedLead.departement || '-'}</span></div>
                 <div><span className="text-slate-500">Ville:</span> <span className="font-medium">{selectedLead.ville || '-'}</span></div>
                 <div className="col-span-2"><span className="text-slate-500">Adresse:</span> <span className="font-medium">{selectedLead.adresse || '-'}</span></div>
               </div>
