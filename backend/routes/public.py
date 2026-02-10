@@ -307,10 +307,12 @@ async def submit_lead(data: LeadData, request: Request):
         "ip": request.headers.get("x-forwarded-for", request.client.host if request.client else ""),
         "register_date": timestamp(),
         "created_at": now_iso(),
-        # CRM info
+        # CRM info - Champs harmonisés avec leads.py v1
         "origin_crm": origin_crm_slug or target_crm,  # CRM d'origine (compte)
-        "target_crm": final_crm or "none",  # CRM de destination final
+        "target_crm": final_crm or "none",  # CRM de destination final (slug)
         "is_transferred": is_transferred,  # Transféré vers autre CRM ?
+        "routing_reason": routing_reason,  # Raison du routing
+        "allow_cross_crm": allow_cross_crm,  # Cross-CRM autorisé ?
         "api_status": "pending" if final_crm else "no_crm",
         "sent_to_crm": False
     }
