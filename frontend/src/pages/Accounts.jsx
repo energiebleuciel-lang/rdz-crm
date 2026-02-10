@@ -7,7 +7,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useCRM } from '../hooks/useCRM';
 import { API } from '../hooks/useApi';
 import { Card, Modal, Button, Input, Select, Loading, EmptyState, Badge } from '../components/UI';
-import { Building, Plus, Edit, Trash2, Image, Code, ChevronDown, ChevronUp, FileText } from 'lucide-react';
+import { Building, Plus, Edit, Trash2, Image, Code, ChevronDown, ChevronUp, FileText, Clipboard, Check, FileDown } from 'lucide-react';
 
 export default function Accounts() {
   const { authFetch } = useAuth();
@@ -18,6 +18,15 @@ export default function Accounts() {
   const [editingAccount, setEditingAccount] = useState(null);
   const [showGtmSection, setShowGtmSection] = useState(false);
   const [showLegalSection, setShowLegalSection] = useState(false);
+  
+  // Mini Brief
+  const [showMiniBriefModal, setShowMiniBriefModal] = useState(false);
+  const [miniBriefAccount, setMiniBriefAccount] = useState(null);
+  const [briefOptions, setBriefOptions] = useState([]);
+  const [selectedOptions, setSelectedOptions] = useState([]);
+  const [generatedBrief, setGeneratedBrief] = useState(null);
+  const [copySuccess, setCopySuccess] = useState(null);
+  
   const [form, setForm] = useState({
     name: '',
     crm_id: '',
