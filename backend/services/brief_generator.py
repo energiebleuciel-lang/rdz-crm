@@ -467,8 +467,13 @@ async def generate_brief(lp_id: str) -> dict:
     api: "{api_url}/api/public",
     lp: "{lp_code}",
     form: "{form_code}",
-    session: null
+    session: null,
+    debug: false
   }};
+
+  function log(msg, data) {{
+    if (RDZ.debug) console.log("[RDZ FORM]", msg, data || "");
+  }}
 
   async function initSession() {{
     if (RDZ.session) return RDZ.session;
@@ -476,13 +481,14 @@ async def generate_brief(lp_id: str) -> dict:
     var sessionFromUrl = params.get("session");
     if (sessionFromUrl) {{
       RDZ.session = sessionFromUrl;
+      log("Session récupérée depuis URL:", RDZ.session);
       return RDZ.session;
     }}
     try {{
+      log("Création nouvelle session...");
       var res = await fetch(RDZ.api + "/track/session", {{
         method: "POST",
         headers: {{"Content-Type": "application/json"}},
-        credentials: "include",
         body: JSON.stringify({{
           lp_code: params.get("lp") || RDZ.lp,
           form_code: RDZ.form,
@@ -494,24 +500,36 @@ async def generate_brief(lp_id: str) -> dict:
       }});
       var data = await res.json();
       RDZ.session = data.session_id;
+      log("Session créée:", RDZ.session);
       return RDZ.session;
     }} catch(e) {{
+      log("Erreur session:", e.message);
       return null;
     }}
   }}
 
-  function track(type) {{
-    if (!RDZ.session) return;
-    fetch(RDZ.api + "/track/event", {{
-      method: "POST",
-      headers: {{"Content-Type": "application/json"}},
-      body: JSON.stringify({{
-        session_id: RDZ.session,
-        event_type: type,
-        lp_code: RDZ.lp,
-        form_code: RDZ.form
-      }})
-    }});
+  async function track(type) {{
+    if (!RDZ.session) {{
+      log("Pas de session pour track:", type);
+      return;
+    }}
+    try {{
+      log("Track:", type);
+      var res = await fetch(RDZ.api + "/track/event", {{
+        method: "POST",
+        headers: {{"Content-Type": "application/json"}},
+        body: JSON.stringify({{
+          session_id: RDZ.session,
+          event_type: type,
+          lp_code: RDZ.lp,
+          form_code: RDZ.form
+        }})
+      }});
+      var data = await res.json();
+      log("Track réponse:", data);
+    }} catch(e) {{
+      log("Erreur track:", e.message);
+    }}
   }}
 
   document.addEventListener("DOMContentLoaded", function() {{
@@ -519,21 +537,21 @@ async def generate_brief(lp_id: str) -> dict:
   }});
 
   var formStarted = false;
-  window.rdzFormStart = function() {{
+  window.rdzFormStart = async function() {{
     if (formStarted) return;
     formStarted = true;
-    initSession().then(function() {{
-      track("form_start");
-    }});
+    await initSession();
+    await track("form_start");
   }};
 
   window.rdzSubmitLead = async function(data) {{
     var sid = RDZ.session || await initSession();
     if (!sid) {{
-      alert("Erreur de session");
-      return {{success: false}};
+      log("Erreur: pas de session");
+      return {{success: false, error: "Pas de session"}};
     }}
     try {{
+      log("Envoi lead...", data);
       var res = await fetch(RDZ.api + "/leads", {{
         method: "POST",
         headers: {{"Content-Type": "application/json"}},
@@ -543,16 +561,17 @@ async def generate_brief(lp_id: str) -> dict:
         }}, data))
       }});
       var result = await res.json();
-      if (result.success) {{{post_submit}
-      }} else {{
-        alert(result.error || "Erreur");
+      log("Réponse lead:", result);
+      if (result.success || result.lead_id) {{{post_submit}
       }}
       return result;
     }} catch(e) {{
-      alert("Erreur technique");
-      return {{success: false}};
+      log("Erreur envoi lead:", e.message);
+      return {{success: false, error: e.message}};
     }}
   }};
+
+  window.RDZ_FORM = RDZ;
 }})();
 </script>'''
 
