@@ -464,6 +464,12 @@ export default function Forms() {
             <div className="mt-3">
               <label className="block text-sm font-medium text-slate-700 mb-1">
                 Clé API pour ce formulaire
+                {editingForm?.crm_api_key && (
+                  <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 text-xs font-medium rounded-full">
+                    <Lock className="w-3 h-3" />
+                    Verrouillée
+                  </span>
+                )}
               </label>
               <div className="relative">
                 <input
@@ -485,6 +491,12 @@ export default function Forms() {
               <p className="text-xs text-slate-500 mt-1">
                 La clé API {form.target_crm?.toUpperCase() || 'du CRM'} pour authentifier l'envoi des leads
               </p>
+              {editingForm?.crm_api_key && (
+                <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                  <Shield className="w-3 h-3" />
+                  Une fois enregistrée, la clé API ne peut pas être supprimée. Vous pouvez uniquement la remplacer.
+                </p>
+              )}
             </div>
             
             <div className="mt-3">
