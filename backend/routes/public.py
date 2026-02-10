@@ -314,7 +314,11 @@ async def submit_lead(data: LeadData, request: Request):
     if final_crm and final_key:
         from services.lead_sender import send_to_crm_v2, add_to_queue
         
-        api_url = CRM_URLS[final_crm]
+        # Récupérer URL dynamiquement depuis la DB
+        api_url = await get_crm_url(final_crm)
+        if not api_url:
+            return {"success": False, "error": f"URL API non configurée pour {final_crm.upper()}"}
+        
         status, response, should_queue = await send_to_crm_v2(lead, api_url, final_key)
         actual_crm_sent = final_crm
         
@@ -330,15 +334,16 @@ async def submit_lead(data: LeadData, request: Request):
             
             if other_form and other_form.get("crm_api_key"):
                 other_key = other_form["crm_api_key"]
-                other_url = CRM_URLS[other_crm]
-                status, response, should_queue = await send_to_crm_v2(lead, other_url, other_key)
-                actual_crm_sent = other_crm
-                
-                # Marquer comme transféré (fallback utilisé)
-                await db.leads.update_one(
-                    {"id": lead_id},
-                    {"$set": {"is_transferred": True, "routing_reason": f"fallback_{other_crm}"}}
-                )
+                other_url = await get_crm_url(other_crm)  # URL dynamique
+                if other_url:
+                    status, response, should_queue = await send_to_crm_v2(lead, other_url, other_key)
+                    actual_crm_sent = other_crm
+                    
+                    # Marquer comme transféré (fallback utilisé)
+                    await db.leads.update_one(
+                        {"id": lead_id},
+                        {"$set": {"is_transferred": True, "routing_reason": f"fallback_{other_crm}"}}
+                    )
         
         if should_queue:
             await add_to_queue(lead, api_url, final_key, "error")
