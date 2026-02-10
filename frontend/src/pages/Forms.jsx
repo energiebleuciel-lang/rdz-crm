@@ -7,7 +7,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useCRM } from '../hooks/useCRM';
 import { API } from '../hooks/useApi';
 import { Card, Modal, Button, Input, Select, Loading, EmptyState, Badge } from '../components/UI';
-import { FileText, Plus, Edit, Trash2, Copy, Code, ExternalLink, Link2 } from 'lucide-react';
+import { FileText, Plus, Edit, Trash2, Copy, Code, ExternalLink, Link2, Key, Eye, EyeOff } from 'lucide-react';
 
 export default function Forms() {
   const { authFetch } = useAuth();
@@ -21,6 +21,7 @@ export default function Forms() {
   const [editingForm, setEditingForm] = useState(null);
   const [briefData, setBriefData] = useState(null);
   const [filter, setFilter] = useState('all');
+  const [showApiKey, setShowApiKey] = useState(false);
   
   const [form, setForm] = useState({
     account_id: '',
@@ -28,7 +29,8 @@ export default function Forms() {
     url: '',
     product_type: 'PV',
     lp_id: '',
-    crm_api_key: '',
+    target_crm: '',  // "zr7" ou "mdl"
+    crm_api_key: '', // Clé API pour ce formulaire
     allow_cross_crm: true,
     tracking_type: 'redirect',
     redirect_url: '/merci'
