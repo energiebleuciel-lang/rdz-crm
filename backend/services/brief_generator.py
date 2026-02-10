@@ -573,6 +573,67 @@ async def generate_brief(lp_id: str) -> dict:
 
   window.RDZ_FORM = RDZ;
 }})();
+</script>
+
+<!-- ============================================================
+     📋 TEMPLATE D'UTILISATION - COPIEZ ET ADAPTEZ CE CODE
+     ⚠️  UTILISEZ EXACTEMENT CES NOMS DE CHAMPS (ne pas modifier)
+     ============================================================ -->
+<script>
+/*
+ * EXEMPLE D'INTÉGRATION - Adaptez les sélecteurs à votre formulaire
+ * 
+ * IMPORTANT: Les noms des champs sont OBLIGATOIRES et VERROUILLÉS.
+ * Ne changez PAS les noms (ex: "departement" pas "department")
+ */
+
+// Fonction à appeler lors de la soumission de votre formulaire
+async function envoyerLead() {{
+  // Template des données - UTILISEZ EXACTEMENT CES NOMS
+  var leadData = {{
+    // === CHAMPS OBLIGATOIRES ===
+    phone: document.getElementById('phone').value,           // Téléphone (10 chiffres)
+    
+    // === CHAMPS RECOMMANDÉS ===
+    nom: document.getElementById('nom').value,               // Nom de famille
+    prenom: document.getElementById('prenom').value,         // Prénom
+    email: document.getElementById('email').value,           // Email
+    departement: document.getElementById('departement').value, // ⚠️ Code département (01-95) - PAS "department"
+    ville: document.getElementById('ville').value,           // Ville
+    
+    // === CHAMPS OPTIONNELS (selon votre formulaire) ===
+    civilite: document.getElementById('civilite').value,     // M., Mme, Mlle
+    type_logement: document.getElementById('type_logement').value,       // Maison, Appartement
+    statut_occupant: document.getElementById('statut_occupant').value,   // Propriétaire, Locataire
+    facture_electricite: document.getElementById('facture_electricite').value, // Tranche facture
+    type_chauffage: document.getElementById('type_chauffage').value,     // Type de chauffage
+    surface_habitable: document.getElementById('surface_habitable').value, // Surface m²
+    
+    // === CHAMPS PROJET ===
+    type_projet: document.getElementById('type_projet').value,   // Installation, Remplacement
+    delai_projet: document.getElementById('delai_projet').value, // Délai souhaité
+    budget: document.getElementById('budget').value              // Budget prévu
+  }};
+  
+  // Envoi du lead
+  var result = await rdzSubmitLead(leadData);
+  
+  if (result.success) {{
+    console.log("Lead envoyé avec succès!");
+    // Redirection ou message de succès...
+  }} else {{
+    console.error("Erreur:", result.error);
+  }}
+}}
+
+/*
+ * 🚫 CHAMPS INTERDITS - NE JAMAIS UTILISER:
+ *    - code_postal    → Utilisez "departement"
+ *    - department     → Utilisez "departement" (français)
+ *    - cp             → Utilisez "departement"
+ *    - zipcode        → Utilisez "departement"
+ *    - postal_code    → Utilisez "departement"
+ */
 </script>'''
 
     return {
