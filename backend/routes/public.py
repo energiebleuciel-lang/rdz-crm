@@ -20,18 +20,10 @@ router = APIRouter(prefix="/public", tags=["Public API v2"])
 
 # ==================== CONFIGURATION CRM ====================
 
-# Clés API stockées côté serveur (non visibles côté client)
-CRM_CONFIG = {
-    "zr7": {
-        "name": "ZR7 Digital",
-        "api_url": os.environ.get("ZR7_API_URL", "https://app.zr7-digital.fr/lead/api/create_lead/"),
-        "api_key": os.environ.get("ZR7_API_KEY", "")
-    },
-    "mdl": {
-        "name": "Maison du Lead",
-        "api_url": os.environ.get("MDL_API_URL", "https://maison-du-lead.com/lead/api/create_lead/"),
-        "api_key": os.environ.get("MDL_API_KEY", "")
-    }
+# URLs des CRMs (les clés API sont stockées PAR FORMULAIRE)
+CRM_URLS = {
+    "zr7": "https://app.zr7-digital.fr/lead/api/create_lead/",
+    "mdl": "https://maison-du-lead.com/lead/api/create_lead/"
 }
 
 
