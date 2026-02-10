@@ -649,34 +649,6 @@ export default function LandingPages() {
                 <p><strong>Soumission :</strong> <code>rdzSubmitLead(&#123;phone, nom, code_postal, ...&#125;)</code></p>
               </div>
             </div>
-                  Copier le script
-                </button>
-              </div>
-              <p className="text-sm text-slate-600 mb-2">
-                À coller sur: <code className="bg-slate-100 px-2 py-0.5 rounded">{briefData.lp.url}</code>
-                {briefData.mode === 'redirect' && (
-                  <span className="ml-2">et <code className="bg-slate-100 px-2 py-0.5 rounded">{briefData.form.url}</code></span>
-                )}
-              </p>
-              <div className="relative">
-                <pre className="bg-slate-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto max-h-80 select-all">
-                  {briefData.scripts?.universal || briefData.scripts?.combined}
-                </pre>
-              </div>
-            </div>
-
-            {/* Instructions */}
-            {briefData.instructions && (
-              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                <h3 className="font-semibold text-blue-800 mb-3">Instructions</h3>
-                <div className="space-y-2 text-sm text-blue-900">
-                  <p><strong>1.</strong> {briefData.instructions.installation}</p>
-                  <p><strong>2.</strong> <code className="bg-blue-100 px-1 rounded">{briefData.instructions.cta}</code></p>
-                  <p><strong>3.</strong> <code className="bg-blue-100 px-1 rounded">{briefData.instructions.form_start}</code></p>
-                  <p><strong>4.</strong> <code className="bg-blue-100 px-1 rounded">{briefData.instructions.submit}</code></p>
-                </div>
-              </div>
-            )}
 
             {/* Champs disponibles */}
             <div>
