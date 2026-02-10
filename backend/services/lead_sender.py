@@ -113,7 +113,7 @@ async def send_to_crm_v2(lead_doc: dict, api_url: str, api_key: str) -> tuple:
             try:
                 data = resp.json()
                 response = str(data)
-            except:
+            except Exception:
                 response = resp.text
             
             # Analyser la réponse selon la doc API
