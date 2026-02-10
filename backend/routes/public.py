@@ -230,7 +230,6 @@ async def submit_lead(data: LeadData, request: Request):
     
     if not target_crm or target_crm not in CRM_URLS:
         return {"success": False, "error": "CRM non configuré"}
-        return {"success": False, "error": "CRM non configuré"}
     
     if not crm_api_key:
         return {"success": False, "error": f"Clé API {target_crm.upper()} non configurée"}
