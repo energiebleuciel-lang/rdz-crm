@@ -106,3 +106,21 @@ async def delete_account(account_id: str, user: dict = Depends(require_admin)):
     
     await db.accounts.delete_one({"id": account_id})
     return {"success": True}
+
+
+@router.get("/{account_id}/brief-options")
+async def get_brief_options(account_id: str, user: dict = Depends(get_current_user)):
+    """Récupère les options disponibles pour générer un mini brief"""
+    result = await get_account_brief_options(account_id)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+
+@router.post("/{account_id}/mini-brief")
+async def create_mini_brief(account_id: str, data: MiniBriefRequest, user: dict = Depends(get_current_user)):
+    """Génère un mini brief avec les éléments sélectionnés"""
+    result = await generate_mini_brief(account_id, data.selections)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
