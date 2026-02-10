@@ -263,10 +263,13 @@ async def list_leads(
     form_code: str = None,
     status: str = None,
     crm_id: str = None,
+    transferred: bool = None,
+    date_from: str = None,
+    date_to: str = None,
     limit: int = 100,
     user: dict = Depends(get_current_user)
 ):
-    """Liste les leads avec filtres, y compris par CRM"""
+    """Liste les leads avec filtres, y compris par CRM, transfert et période"""
     query = {}
     if form_code:
         query["form_code"] = form_code
@@ -280,8 +283,34 @@ async def list_leads(
         account_ids = [a["id"] for a in accounts]
         query["account_id"] = {"$in": account_ids}
     
+    # Filtrer par leads transférés
+    if transferred is not None:
+        query["is_transferred"] = transferred
+    
+    # Filtrer par période
+    if date_from or date_to:
+        date_query = {}
+        if date_from:
+            date_query["$gte"] = date_from
+        if date_to:
+            # Ajouter T23:59:59 pour inclure toute la journée
+            date_query["$lte"] = date_to + "T23:59:59" if "T" not in date_to else date_to
+        if date_query:
+            query["created_at"] = date_query
+    
     leads = await db.leads.find(query, {"_id": 0}).sort("created_at", -1).to_list(limit)
     total = await db.leads.count_documents(query)
+    
+    # Ajouter origin_crm pour les anciens leads qui n'en ont pas
+    for lead in leads:
+        if not lead.get("origin_crm"):
+            # Récupérer depuis le compte
+            account = await db.accounts.find_one({"id": lead.get("account_id")}, {"crm_id": 1})
+            if account and account.get("crm_id"):
+                crm = await db.crms.find_one({"id": account["crm_id"]}, {"slug": 1})
+                lead["origin_crm"] = crm.get("slug") if crm else lead.get("target_crm", "")
+            else:
+                lead["origin_crm"] = lead.get("target_crm", "")
     
     return {"leads": leads, "count": len(leads), "total": total}
 
