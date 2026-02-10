@@ -278,7 +278,8 @@ export default function Leads() {
                 <th className="text-left p-4 text-sm font-medium text-slate-600">Form</th>
                 <th className="text-left p-4 text-sm font-medium text-slate-600">LP</th>
                 <th className="text-left p-4 text-sm font-medium text-slate-600">Source</th>
-                <th className="text-left p-4 text-sm font-medium text-slate-600">CRM</th>
+                <th className="text-left p-4 text-sm font-medium text-slate-600">CRM Origine</th>
+                <th className="text-left p-4 text-sm font-medium text-slate-600">Distribution</th>
                 <th className="text-left p-4 text-sm font-medium text-slate-600">Statut</th>
                 <th className="text-left p-4 text-sm font-medium text-slate-600">Date</th>
                 <th className="text-left p-4 text-sm font-medium text-slate-600">Actions</th>
