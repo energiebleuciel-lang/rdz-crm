@@ -346,17 +346,17 @@ async def submit_lead(data: LeadSubmit, request: Request):
         "register_date": timestamp(),
         "created_at": now_iso(),
         # CRM
-        "target_crm": crm_slug,
+        "target_crm": target_crm,  # "zr7" ou "mdl" depuis le formulaire
         "api_status": "pending",
         "sent_to_crm": False
     }
     
     await db.leads.insert_one(lead_doc)
     
-    # 5. Envoyer au CRM
+    # 4. Envoyer au CRM (ZR7 ou MDL) avec la clé API du formulaire
     from services.lead_sender import send_to_crm_v2, add_to_queue
     
-    status, response, should_queue = await send_to_crm_v2(lead_doc, api_url, api_key)
+    status, response, should_queue = await send_to_crm_v2(lead_doc, api_url, crm_api_key)
     
     if should_queue:
         await add_to_queue(lead_doc, api_url, api_key, "crm_error")
