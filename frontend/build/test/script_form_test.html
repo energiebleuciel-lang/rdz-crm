@@ -1,0 +1,237 @@
+<!-- ================================================================ -->
+<!-- SCRIPT FORM TEST - Mode Redirect                                  -->
+<!-- Form: FORM-TEST-001 | Reçoit params de LP: LP-TEST-001           -->
+<!-- Pour tester sur : votre-page-formulaire.html                     -->
+<!-- ================================================================ -->
+
+<script>
+(function() {
+  // ========== CONFIGURATION FORM ==========
+  var CONFIG = {
+    API_URL: "https://leadmaster-76.preview.emergentagent.com",
+    FORM_CODE: "FORM-TEST-001",
+    LP_CODE: "",
+    LIAISON_CODE: "",
+    PRODUCT_TYPE: "PV",
+    MODE: "redirect"
+  };
+
+  // ========== LIRE PARAMS URL (venant de la LP) ==========
+  var urlParams = new URLSearchParams(window.location.search);
+  CONFIG.LP_CODE = urlParams.get("lp") || "DIRECT";
+  CONFIG.LIAISON_CODE = urlParams.get("liaison") || "DIRECT_" + CONFIG.FORM_CODE;
+  
+  var UTM = {
+    source: urlParams.get("utm_source") || "",
+    medium: urlParams.get("utm_medium") || "",
+    campaign: urlParams.get("utm_campaign") || ""
+  };
+
+  // Exposer le contexte
+  window.__EnerSolar_CONTEXT__ = CONFIG;
+
+  console.log("[TEST] Form context:", CONFIG);
+  console.log("[TEST] UTM:", UTM);
+
+  // ========== TRACKING FORM START ==========
+  var formStarted = false;
+  window.trackFormStart = function() {
+    if (formStarted) return;
+    formStarted = true;
+    
+    console.log("[TEST] Form Start tracked");
+    
+    fetch(CONFIG.API_URL + "/api/track/form-start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        form_code: CONFIG.FORM_CODE,
+        lp_code: CONFIG.LP_CODE,
+        liaison_code: CONFIG.LIAISON_CODE
+      })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) { 
+      console.log("[TEST] Form Start response:", data); 
+    })
+    .catch(function(e) { 
+      console.log("[TEST] Form start error:", e); 
+    });
+  };
+
+  // ========== VALIDATION TÉLÉPHONE ==========
+  window.validatePhone = function(phone) {
+    var digits = phone.replace(/\D/g, "");
+    if (digits.length === 9 && digits[0] !== "0") digits = "0" + digits;
+    if (digits.length !== 10) return { valid: false, error: "Le numéro doit contenir 10 chiffres" };
+    if (!digits.startsWith("0")) return { valid: false, error: "Le numéro doit commencer par 0" };
+    if (digits === "0123456789" || /^0(\d)\1{8}$/.test(digits)) return { valid: false, error: "Numéro invalide" };
+    return { valid: true, phone: digits };
+  };
+
+  // ========== SOUMISSION LEAD ==========
+  window.submitLead = function(leadData) {
+    console.log("[TEST] Submitting lead:", leadData);
+    
+    var phoneCheck = validatePhone(leadData.phone || "");
+    if (!phoneCheck.valid) {
+      alert(phoneCheck.error);
+      return Promise.reject(phoneCheck.error);
+    }
+
+    var payload = {
+      form_id: CONFIG.FORM_CODE,
+      phone: phoneCheck.phone,
+      nom: leadData.nom || "",
+      prenom: leadData.prenom || "",
+      civilite: leadData.civilite || "",
+      email: leadData.email || "",
+      code_postal: leadData.code_postal || "",
+      departement: (leadData.code_postal || "").substring(0, 2),
+      ville: leadData.ville || "",
+      adresse: leadData.adresse || "",
+      type_logement: leadData.type_logement || "",
+      statut_occupant: leadData.statut_occupant || "",
+      surface_habitable: leadData.surface_habitable || "",
+      type_chauffage: leadData.type_chauffage || "",
+      facture_electricite: leadData.facture_electricite || "",
+      lp_code: CONFIG.LP_CODE,
+      liaison_code: CONFIG.LIAISON_CODE,
+      source: leadData.source || UTM.source || "",
+      utm_source: UTM.source,
+      utm_medium: UTM.medium,
+      utm_campaign: UTM.campaign,
+      rgpd_consent: leadData.rgpd_consent !== false,
+      newsletter: leadData.newsletter || false
+    };
+
+    console.log("[TEST] Payload:", payload);
+
+    return fetch(CONFIG.API_URL + "/api/v1/leads", {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": "Token 342b6515-7424-43a6-b5c9-142385fc6ef1"  // Clé API ZR7 PV
+      },
+      body: JSON.stringify(payload)
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+      console.log("[TEST] Lead response:", data);
+      if (data.success) {
+        alert("Lead envoyé avec succès!\nID: " + data.lead_id);
+      } else {
+        alert("Erreur: " + (data.error || data.message || JSON.stringify(data)));
+      }
+      return data;
+    })
+    .catch(function(error) {
+      console.error("[TEST] Lead error:", error);
+      alert("Erreur technique: " + error);
+      throw error;
+    });
+  };
+
+  // ========== INIT ==========
+  console.log("[TEST] Script Form initialisé (redirect)");
+  console.log("[TEST] Form:", CONFIG.FORM_CODE, "| LP source:", CONFIG.LP_CODE, "| Liaison:", CONFIG.LIAISON_CODE);
+})();
+</script>
+
+<!-- ========== EXEMPLE HTML DE TEST ========== -->
+<!--
+Copiez ce HTML complet dans votre page de test:
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Formulaire - Demande de devis</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; }
+    input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
+    button { background: #f59e0b; color: white; padding: 15px 30px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+    button:hover { background: #d97706; }
+    .debug { background: #f3f4f6; padding: 10px; margin-top: 20px; font-size: 12px; }
+  </style>
+  [COLLEZ LE SCRIPT CI-DESSUS ICI]
+</head>
+<body>
+  <h1>Demande de devis solaire</h1>
+  
+  <div class="form-group">
+    <label>Téléphone *</label>
+    <input type="tel" id="phone" onfocus="trackFormStart()" placeholder="06 12 34 56 78">
+  </div>
+  
+  <div class="form-group">
+    <label>Nom</label>
+    <input type="text" id="nom" placeholder="Dupont">
+  </div>
+  
+  <div class="form-group">
+    <label>Prénom</label>
+    <input type="text" id="prenom" placeholder="Jean">
+  </div>
+  
+  <div class="form-group">
+    <label>Email</label>
+    <input type="email" id="email" placeholder="jean@email.com">
+  </div>
+  
+  <div class="form-group">
+    <label>Code Postal</label>
+    <input type="text" id="code_postal" placeholder="75001">
+  </div>
+  
+  <div class="form-group">
+    <label>Type de logement</label>
+    <select id="type_logement">
+      <option value="">Sélectionner...</option>
+      <option value="Maison">Maison</option>
+      <option value="Appartement">Appartement</option>
+    </select>
+  </div>
+  
+  <div class="form-group">
+    <label>Statut</label>
+    <select id="statut_occupant">
+      <option value="">Sélectionner...</option>
+      <option value="Propriétaire">Propriétaire</option>
+      <option value="Locataire">Locataire</option>
+    </select>
+  </div>
+  
+  <div class="form-group">
+    <label>
+      <input type="checkbox" id="rgpd" checked> J'accepte la politique de confidentialité
+    </label>
+  </div>
+  
+  <button onclick="submitMyForm()">Envoyer ma demande</button>
+  
+  <div class="debug" id="debug"></div>
+  
+  <script>
+  function submitMyForm() {
+    submitLead({
+      phone: document.getElementById('phone').value,
+      nom: document.getElementById('nom').value,
+      prenom: document.getElementById('prenom').value,
+      email: document.getElementById('email').value,
+      code_postal: document.getElementById('code_postal').value,
+      type_logement: document.getElementById('type_logement').value,
+      statut_occupant: document.getElementById('statut_occupant').value,
+      rgpd_consent: document.getElementById('rgpd').checked
+    });
+  }
+  
+  // Afficher debug info
+  document.getElementById('debug').innerHTML = 
+    'LP: ' + (new URLSearchParams(window.location.search).get('lp') || 'DIRECT') + '<br>' +
+    'Liaison: ' + (new URLSearchParams(window.location.search).get('liaison') || 'N/A');
+  </script>
+</body>
+</html>
+-->
