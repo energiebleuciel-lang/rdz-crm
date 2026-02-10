@@ -369,6 +369,15 @@ async def update_form(form_id: str, data: FormUpdate, user: dict = Depends(get_c
         if not lp:
             raise HTTPException(status_code=400, detail="LP non trouvée")
     
+    # SÉCURITÉ : Empêcher la suppression de la clé API une fois enregistrée
+    existing_api_key = form.get("crm_api_key", "")
+    if existing_api_key and data.crm_api_key is not None:
+        if data.crm_api_key == "" or data.crm_api_key.strip() == "":
+            raise HTTPException(
+                status_code=400, 
+                detail="Impossible de supprimer la clé API une fois enregistrée. Contactez un administrateur."
+            )
+    
     update_data = {k: v for k, v in data.model_dump().items() if v is not None}
     update_data["updated_at"] = now_iso()
     update_data["updated_by"] = user["id"]
