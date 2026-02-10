@@ -33,9 +33,9 @@ async def list_lps(
     lps_raw = await cursor.to_list(200)
     
     lps = []
-    for l in lps_raw:
-        l.pop("_id", None)
-        lps.append(l)
+    for lp_item in lps_raw:
+        lp_item.pop("_id", None)
+        lps.append(lp_item)
     
     lps.sort(key=lambda x: x.get("created_at", ""), reverse=True)
     
