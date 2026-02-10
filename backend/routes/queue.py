@@ -26,7 +26,7 @@ async def queue_stats(crm_id: str = None, user: dict = Depends(get_current_user)
         
         # Récupérer les lead_ids des leads de ce CRM
         leads = await db.leads.find({"account_id": {"$in": account_ids}}, {"id": 1}).to_list(100000)
-        lead_ids = [l["id"] for l in leads]
+        lead_ids = [lead["id"] for lead in leads]
         
         query = {"lead_id": {"$in": lead_ids}}
         
