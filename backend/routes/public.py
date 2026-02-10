@@ -305,7 +305,10 @@ async def submit_lead(data: LeadData, request: Request):
         "ip": request.headers.get("x-forwarded-for", request.client.host if request.client else ""),
         "register_date": timestamp(),
         "created_at": now_iso(),
-        "target_crm": final_crm or "none",
+        # CRM info
+        "origin_crm": origin_crm_slug or target_crm,  # CRM d'origine (compte)
+        "target_crm": final_crm or "none",  # CRM de destination final
+        "is_transferred": is_transferred,  # Transféré vers autre CRM ?
         "api_status": "pending" if final_crm else "no_crm",
         "sent_to_crm": False
     }
