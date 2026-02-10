@@ -213,11 +213,9 @@ async def submit_lead_v1(data: LeadSubmit, request: Request, api_key: str = Depe
         "ip": request.headers.get("x-forwarded-for", request.client.host if request.client else ""),
         "register_date": timestamp(),
         "created_at": now_iso(),
-        # CRM info - Champs harmonisés
-        "origin_crm": origin_crm_slug or "",  # CRM d'origine (compte)
-        "target_crm": target_crm.get("slug") if target_crm else "none",  # CRM destination (slug)
-        "target_crm_id": target_crm.get("id") if target_crm else None,
-        "target_crm_slug": target_crm.get("slug") if target_crm else None,
+        # CRM info - Schéma normalisé
+        "origin_crm": origin_crm_slug or "",  # CRM d'origine (compte) - slug
+        "target_crm": target_crm.get("slug") if target_crm else "none",  # CRM destination - slug
         "is_transferred": is_transferred,  # Transféré inter-CRM ?
         "routing_reason": routing_reason,
         "allow_cross_crm": allow_cross_crm,
