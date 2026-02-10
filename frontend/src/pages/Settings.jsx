@@ -118,7 +118,7 @@ export default function Settings() {
             <strong>Utilisation :</strong>
           </p>
           <code className="text-xs text-blue-700 block mt-2">
-            GET /api/v1/leads<br/>
+            GET /api/leads/export<br/>
             Authorization: Token {apiKey ? apiKey.substring(0, 15) + '...' : 'VOTRE_CLE'}
           </code>
         </div>
