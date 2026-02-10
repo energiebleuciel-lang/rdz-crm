@@ -58,6 +58,15 @@ Fonctionnalité sur la page Comptes permettant de générer un brief personnalis
 - Indication du CRM actif sous le titre
 - Stats leads et queue filtrées automatiquement
 
+### ✅ Page Leads améliorée (Décembre 2025)
+- **CRM d'origine** : Chaque lead affiche maintenant son CRM d'origine (basé sur le compte)
+- **Badge Transféré** : Si un lead est transféré inter-CRM, un badge "→ ZR7" ou "→ MDL" s'affiche
+- **Nouveaux filtres** :
+  - Filtre "Transférés" : Tous / Transférés uniquement / Non transférés
+  - Filtre "Période" : Date de début et date de fin
+- **Colonne "Distribution"** séparée de "CRM Origine"
+- **Modal de détail enrichi** : Section "CRM & Distribution" avec toutes les infos
+
 ## À Faire
 
 ### 🔶 Priorité Haute
