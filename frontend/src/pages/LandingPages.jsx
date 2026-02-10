@@ -648,7 +648,7 @@ export default function LandingPages() {
               </pre>
               <div className="mt-2 text-xs text-orange-700 bg-orange-50 p-2 rounded space-y-1">
                 <p><strong>Premier bouton :</strong> <code>onclick="rdzFormStart()"</code></p>
-                <p><strong>Soumission :</strong> <code>rdzSubmitLead(&#123;phone, nom, code_postal, ...&#125;)</code></p>
+                <p><strong>Soumission :</strong> <code>rdzSubmitLead(&#123;phone, nom, departement, ...&#125;)</code></p>
               </div>
             </div>
 
