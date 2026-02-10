@@ -13,6 +13,7 @@ import { Globe, Plus, Edit, Trash2, Copy, Code, ExternalLink, Link2, AlertTriang
 export default function LandingPages() {
   const { authFetch } = useAuth();
   const { selectedCRM, currentCRM } = useCRM();
+  const navigate = useNavigate();
   const [lps, setLps] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
