@@ -381,6 +381,9 @@ async def update_form(form_id: str, data: FormUpdate, user: dict = Depends(get_c
             )
     
     update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    
+    # SÉCURITÉ : Le code du formulaire (tracking) ne peut JAMAIS être modifié
+    update_data.pop("code", None)
     update_data["updated_at"] = now_iso()
     update_data["updated_by"] = user["id"]
     
