@@ -10,7 +10,7 @@ import uuid
 from models import LeadSubmit
 from config import db, now_iso, timestamp, validate_phone_fr
 from routes.auth import get_current_user, require_admin
-from services.lead_sender import send_to_crm, add_to_queue
+from services.lead_sender import send_to_crm_v2, add_to_queue
 
 router = APIRouter(tags=["Leads"])
 
