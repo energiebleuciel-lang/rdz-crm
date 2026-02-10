@@ -1,9 +1,8 @@
 """
-Routes Publiques - Nouveau système de tracking v2
-Endpoints SANS authentification pour:
-- Gestion des sessions visiteurs (cookie fonctionnel)
-- Tracking unifié des événements
-- Soumission de leads (clé API côté serveur)
+Routes Publiques
+- Sessions visiteurs
+- Tracking événements  
+- Soumission leads
 """
 
 from fastapi import APIRouter, HTTPException, Request, Response
@@ -11,20 +10,53 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional, List
 import uuid
-import os
 from datetime import datetime, timezone
 
 from config import db, now_iso, timestamp, validate_phone_fr, validate_postal_code_fr
 
-router = APIRouter(prefix="/public", tags=["Public API v2"])
+router = APIRouter(prefix="/public", tags=["Public"])
 
-# ==================== CONFIGURATION CRM ====================
-
-# URLs des CRMs (les clés API sont stockées PAR FORMULAIRE)
+# URLs des CRMs
 CRM_URLS = {
     "zr7": "https://app.zr7-digital.fr/lead/api/create_lead/",
     "mdl": "https://maison-du-lead.com/lead/api/create_lead/"
 }
+
+
+async def check_commande(crm_id: str, departement: str, product_type: str) -> bool:
+    """
+    Vérifie si un CRM a une commande active pour ce département et produit.
+    
+    Retourne True si:
+    - Il existe une commande active pour ce crm_id
+    - Le département est dans la liste (ou "*" = tous)
+    - Le produit correspond (ou "*" = tous)
+    """
+    # Chercher une commande qui match
+    query = {
+        "crm_id": crm_id,
+        "active": True,
+        "$or": [
+            {"product_type": product_type},
+            {"product_type": "*"}
+        ]
+    }
+    
+    commandes = await db.commandes.find(query, {"_id": 0}).to_list(100)
+    
+    for cmd in commandes:
+        depts = cmd.get("departements", [])
+        # "*" = tous les départements
+        if "*" in depts or departement in depts:
+            return True
+    
+    return False
+
+
+async def get_crm_id_by_slug(slug: str) -> str:
+    """Récupère l'ID du CRM depuis son slug (zr7 ou mdl)"""
+    crm = await db.crms.find_one({"slug": slug}, {"_id": 0})
+    return crm.get("id") if crm else None
 
 
 # ==================== MODELS ====================
