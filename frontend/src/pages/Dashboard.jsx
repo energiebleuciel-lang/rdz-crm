@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react';
 import { useApi, API } from '../hooks/useApi';
 import { useAuth } from '../hooks/useAuth';
+import { useCRM } from '../hooks/useCRM';
 import { Card, StatCard, Loading, Badge } from '../components/UI';
 import { 
   Users, FileText, Globe, TrendingUp, CheckCircle, XCircle, 
@@ -13,29 +14,32 @@ import {
 
 export default function Dashboard() {
   const { authFetch } = useAuth();
+  const { selectedCRM, currentCRM } = useCRM();
   const [stats, setStats] = useState(null);
   const [queueStats, setQueueStats] = useState(null);
   const [recentLeads, setRecentLeads] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (selectedCRM) {
+      loadData();
+    }
+  }, [selectedCRM]);
 
   const loadData = async () => {
     try {
       setLoading(true);
       
-      // Stats leads
-      const statsRes = await authFetch(`${API}/api/leads/stats/global`);
+      // Stats leads - filtré par CRM
+      const statsRes = await authFetch(`${API}/api/leads/stats/global?crm_id=${selectedCRM}`);
       if (statsRes.ok) setStats(await statsRes.json());
       
-      // Stats queue
-      const queueRes = await authFetch(`${API}/api/queue/stats`);
+      // Stats queue - filtré par CRM
+      const queueRes = await authFetch(`${API}/api/queue/stats?crm_id=${selectedCRM}`);
       if (queueRes.ok) setQueueStats(await queueRes.json());
       
-      // Recent leads
-      const leadsRes = await authFetch(`${API}/api/leads?limit=10`);
+      // Recent leads - filtré par CRM
+      const leadsRes = await authFetch(`${API}/api/leads?limit=10&crm_id=${selectedCRM}`);
       if (leadsRes.ok) {
         const data = await leadsRes.json();
         setRecentLeads(data.leads || []);
