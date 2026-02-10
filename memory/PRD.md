@@ -27,6 +27,8 @@ Avant d'envoyer un lead :
 - `POST /api/public/track/session` - Créer session visiteur
 - `POST /api/public/track/event` - Tracker événement
 - `POST /api/public/leads` - Soumettre lead
+- `GET /api/accounts/{id}/brief-options` - Options disponibles pour mini brief
+- `POST /api/accounts/{id}/mini-brief` - Générer mini brief sélectif
 
 ### ✅ Tracking Events
 - `lp_visit` - Visite de la LP (automatique)
@@ -37,23 +39,31 @@ Avant d'envoyer un lead :
 ### ✅ Configuration
 - Page Settings : Clé API RDZ visible, non modifiable
 - Page Formulaires : target_crm + crm_api_key par formulaire
-- Brief : Script de tracking simplifié
+- Brief LP/Form : Scripts de tracking séparés (LP + Form)
+
+### ✅ Mini Brief Sélectif (Nouveau - Décembre 2025)
+Fonctionnalité sur la page Comptes permettant de générer un brief personnalisé avec sélection des éléments :
+- **Logos** : Logo Principal, Logo Secondaire
+- **GTM & Tracking** : Code GTM (Head), Code GTM (Body), Code de Tracking Conversion
+- **Textes Légaux** : Texte Mentions Légales, Texte Politique de Confidentialité, Texte CGU
+- **Autres** : URL de Redirection
+- Boutons "Copier" individuels + "Copier tout"
+- Éléments non configurés affichés en grisé avec badge "Non configuré"
 
 ## À Faire
 
 ### 🔶 Priorité Haute
-- **Séparer tracking LP / Form** : Pour pas fausser les stats du funnel
-  - Option 1 : 1 script avec paramètre `page` (lp ou form)
-  - Option 2 : 2 scripts séparés
+- Tests end-to-end complets du flux LP → Form → Lead
+- Déploiement sur VPS Hostinger (`/var/www/crm-leads/`)
 
 ### 🔷 Priorité Moyenne
-- Tests end-to-end complets
-- Déploiement sur VPS Hostinger
+- Sous-comptes
+- Configuration détaillée des Types de Produits
 
 ### ⬜ Backlog
-- Sous-comptes
-- Alertes email
-- A/B Testing
+- Alertes email (SendGrid - en pause)
+- Bibliothèque d'images
+- A/B Testing ("Mode Campagne")
 
 ## Credentials Test
 - **UI Login** : `energiebleuciel@gmail.com` / `92Ruemarxdormoy`
@@ -63,4 +73,4 @@ Avant d'envoyer un lead :
 - **MDL** : `https://maison-du-lead.com/lead/api/create_lead/`
 
 ## Dernière Mise à Jour
-2026-02-10 - Refactoring complet du système de tracking et API
+Décembre 2025 - Ajout du Mini Brief Sélectif sur la page Comptes
