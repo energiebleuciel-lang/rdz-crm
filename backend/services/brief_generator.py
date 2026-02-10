@@ -595,7 +595,7 @@ async def generate_brief(lp_id: str) -> dict:
         "liens": liens,
         "script_lp": script_lp,
         "script_form": script_form,
-        "champs": ["phone", "nom", "prenom", "email", "code_postal", "ville", "type_logement", "statut_occupant", "facture_electricite"]
+        "champs": ["phone", "nom", "prenom", "email", "departement", "ville", "type_logement", "statut_occupant", "facture_electricite"]
     }
 
 
