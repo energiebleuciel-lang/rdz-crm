@@ -308,7 +308,24 @@ export default function Leads() {
                     {lead.source || lead.utm_source || '-'}
                   </td>
                   <td className="p-4 text-sm">
-                    {lead.target_crm_slug?.toUpperCase() || '-'}
+                    <span className="font-medium text-slate-700">
+                      {lead.origin_crm?.toUpperCase() || '-'}
+                    </span>
+                  </td>
+                  <td className="p-4 text-sm">
+                    <div className="flex items-center gap-1">
+                      {lead.is_transferred ? (
+                        <>
+                          <Badge variant="info" className="text-xs">
+                            → {lead.target_crm?.toUpperCase()}
+                          </Badge>
+                        </>
+                      ) : lead.target_crm && lead.target_crm !== 'none' ? (
+                        <span className="text-green-600">{lead.target_crm?.toUpperCase()}</span>
+                      ) : (
+                        <span className="text-slate-400">-</span>
+                      )}
+                    </div>
                   </td>
                   <td className="p-4">
                     <div className="flex flex-col">
