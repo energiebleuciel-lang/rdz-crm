@@ -388,14 +388,17 @@ async def retry_lead(lead_id: str, user: dict = Depends(get_current_user)):
     # Envoyer au CRM
     status, response, _ = await send_to_crm(lead, target_crm.get("api_url"), api_key_crm)
     
+    # Déterminer si c'est un transfert
+    is_transferred = routing_reason.startswith("cross_crm_")
+    
     await db.leads.update_one(
         {"id": lead_id},
         {"$set": {
             "api_status": status,
             "api_response": response,
             "sent_to_crm": status in ["success", "duplicate"],
-            "target_crm_id": target_crm.get("id"),
-            "target_crm_slug": target_crm.get("slug"),
+            "target_crm": target_crm.get("slug"),  # Schéma normalisé
+            "is_transferred": is_transferred,
             "routing_reason": routing_reason,
             "retried_at": now_iso(),
             "retry_count": lead.get("retry_count", 0) + 1
