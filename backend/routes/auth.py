@@ -84,7 +84,7 @@ async def login(data: UserLogin, request: Request):
     if user.get("password") != hash_password(data.password):
         raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
     
-    if user.get("active") == False:
+    if not user.get("active", True):
         raise HTTPException(status_code=403, detail="Compte désactivé")
     
     # Créer session
