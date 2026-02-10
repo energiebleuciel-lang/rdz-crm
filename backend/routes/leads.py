@@ -131,6 +131,13 @@ async def submit_lead_v1(data: LeadSubmit, request: Request, api_key: str = Depe
     routing_reason = "no_crm"
     api_url = ""
     api_key_crm = form.get("crm_api_key", "")
+    is_transferred = False  # Sera True si cross-CRM
+    
+    # Récupérer le CRM d'origine du compte
+    origin_crm_slug = None
+    origin_crm = await db.crms.find_one({"id": primary_crm_id}, {"_id": 0}) if primary_crm_id else None
+    if origin_crm:
+        origin_crm_slug = origin_crm.get("slug")
     
     # Récupérer tous les CRMs
     all_crms = await db.crms.find({}, {"_id": 0}).to_list(10)
