@@ -5,6 +5,279 @@ Service de génération de Brief
 from config import db, BACKEND_URL
 
 
+async def generate_mini_brief(account_id: str, selections: list) -> dict:
+    """
+    Génère un mini brief sélectif basé sur les éléments choisis par l'utilisateur
+    
+    selections peut contenir:
+    - logo_principal
+    - logo_secondaire
+    - gtm_head
+    - gtm_body
+    - gtm_conversion
+    - mentions_legales_texte
+    - confidentialite_texte
+    - cgu_texte
+    - url_redirection
+    """
+    
+    # Récupérer le compte
+    account = await db.accounts.find_one({"id": account_id}, {"_id": 0})
+    if not account:
+        return {"error": "Compte non trouvé"}
+    
+    brief_items = []
+    
+    # Logos
+    if "logo_principal" in selections:
+        logo = account.get("logo_main_url") or account.get("logo_left_url") or ""
+        if logo:
+            brief_items.append({
+                "type": "logo_principal",
+                "label": "Logo Principal",
+                "value": logo,
+                "format": "url"
+            })
+    
+    if "logo_secondaire" in selections:
+        logo = account.get("logo_secondary_url") or account.get("logo_right_url") or ""
+        if logo:
+            brief_items.append({
+                "type": "logo_secondaire",
+                "label": "Logo Secondaire",
+                "value": logo,
+                "format": "url"
+            })
+    
+    # GTM
+    if "gtm_head" in selections:
+        gtm = account.get("gtm_head") or account.get("gtm_pixel_header") or ""
+        if gtm:
+            brief_items.append({
+                "type": "gtm_head",
+                "label": "Code GTM (Head)",
+                "value": gtm,
+                "format": "code"
+            })
+    
+    if "gtm_body" in selections:
+        gtm = account.get("gtm_body") or ""
+        if gtm:
+            brief_items.append({
+                "type": "gtm_body",
+                "label": "Code GTM (Body)",
+                "value": gtm,
+                "format": "code"
+            })
+    
+    if "gtm_conversion" in selections:
+        gtm = account.get("gtm_conversion") or account.get("gtm_conversion_code") or ""
+        if gtm:
+            brief_items.append({
+                "type": "gtm_conversion",
+                "label": "Code de Tracking Conversion",
+                "value": gtm,
+                "format": "code"
+            })
+    
+    # Textes légaux
+    if "mentions_legales_texte" in selections:
+        texte = account.get("legal_mentions_text") or ""
+        if texte:
+            brief_items.append({
+                "type": "mentions_legales_texte",
+                "label": "Texte Mentions Légales",
+                "value": texte,
+                "format": "text"
+            })
+    
+    if "confidentialite_texte" in selections:
+        texte = account.get("privacy_policy_text") or ""
+        if texte:
+            brief_items.append({
+                "type": "confidentialite_texte",
+                "label": "Texte Politique de Confidentialité",
+                "value": texte,
+                "format": "text"
+            })
+    
+    if "cgu_texte" in selections:
+        texte = account.get("cgu_text") or ""
+        if texte:
+            brief_items.append({
+                "type": "cgu_texte",
+                "label": "Texte CGU",
+                "value": texte,
+                "format": "text"
+            })
+    
+    # URL de redirection par défaut
+    if "url_redirection" in selections:
+        url = account.get("default_redirect_url") or "/merci"
+        brief_items.append({
+            "type": "url_redirection",
+            "label": "URL de Redirection",
+            "value": url,
+            "format": "url"
+        })
+    
+    return {
+        "account_id": account_id,
+        "account_name": account.get("name", ""),
+        "items": brief_items,
+        "generated_at": __import__("datetime").datetime.utcnow().isoformat()
+    }
+
+
+async def get_account_brief_options(account_id: str) -> dict:
+    """
+    Récupère la liste des éléments disponibles pour le mini brief d'un compte
+    """
+    
+    account = await db.accounts.find_one({"id": account_id}, {"_id": 0})
+    if not account:
+        return {"error": "Compte non trouvé"}
+    
+    options = []
+    
+    # Logos
+    if account.get("logo_main_url") or account.get("logo_left_url"):
+        options.append({
+            "key": "logo_principal",
+            "label": "Logo Principal",
+            "category": "Logos",
+            "has_value": True
+        })
+    else:
+        options.append({
+            "key": "logo_principal",
+            "label": "Logo Principal",
+            "category": "Logos",
+            "has_value": False
+        })
+    
+    if account.get("logo_secondary_url") or account.get("logo_right_url"):
+        options.append({
+            "key": "logo_secondaire",
+            "label": "Logo Secondaire",
+            "category": "Logos",
+            "has_value": True
+        })
+    else:
+        options.append({
+            "key": "logo_secondaire",
+            "label": "Logo Secondaire",
+            "category": "Logos",
+            "has_value": False
+        })
+    
+    # GTM
+    if account.get("gtm_head") or account.get("gtm_pixel_header"):
+        options.append({
+            "key": "gtm_head",
+            "label": "Code GTM (Head)",
+            "category": "GTM & Tracking",
+            "has_value": True
+        })
+    else:
+        options.append({
+            "key": "gtm_head",
+            "label": "Code GTM (Head)",
+            "category": "GTM & Tracking",
+            "has_value": False
+        })
+    
+    if account.get("gtm_body"):
+        options.append({
+            "key": "gtm_body",
+            "label": "Code GTM (Body)",
+            "category": "GTM & Tracking",
+            "has_value": True
+        })
+    else:
+        options.append({
+            "key": "gtm_body",
+            "label": "Code GTM (Body)",
+            "category": "GTM & Tracking",
+            "has_value": False
+        })
+    
+    if account.get("gtm_conversion") or account.get("gtm_conversion_code"):
+        options.append({
+            "key": "gtm_conversion",
+            "label": "Code de Tracking Conversion",
+            "category": "GTM & Tracking",
+            "has_value": True
+        })
+    else:
+        options.append({
+            "key": "gtm_conversion",
+            "label": "Code de Tracking Conversion",
+            "category": "GTM & Tracking",
+            "has_value": False
+        })
+    
+    # Textes légaux
+    if account.get("legal_mentions_text"):
+        options.append({
+            "key": "mentions_legales_texte",
+            "label": "Texte Mentions Légales",
+            "category": "Textes Légaux",
+            "has_value": True
+        })
+    else:
+        options.append({
+            "key": "mentions_legales_texte",
+            "label": "Texte Mentions Légales",
+            "category": "Textes Légaux",
+            "has_value": False
+        })
+    
+    if account.get("privacy_policy_text"):
+        options.append({
+            "key": "confidentialite_texte",
+            "label": "Texte Politique de Confidentialité",
+            "category": "Textes Légaux",
+            "has_value": True
+        })
+    else:
+        options.append({
+            "key": "confidentialite_texte",
+            "label": "Texte Politique de Confidentialité",
+            "category": "Textes Légaux",
+            "has_value": False
+        })
+    
+    if account.get("cgu_text"):
+        options.append({
+            "key": "cgu_texte",
+            "label": "Texte CGU",
+            "category": "Textes Légaux",
+            "has_value": True
+        })
+    else:
+        options.append({
+            "key": "cgu_texte",
+            "label": "Texte CGU",
+            "category": "Textes Légaux",
+            "has_value": False
+        })
+    
+    # URL de redirection
+    options.append({
+        "key": "url_redirection",
+        "label": "URL de Redirection",
+        "category": "Autres",
+        "has_value": True  # toujours disponible avec valeur par défaut
+    })
+    
+    return {
+        "account_id": account_id,
+        "account_name": account.get("name", ""),
+        "options": options
+    }
+
+
 async def generate_brief(lp_id: str) -> dict:
     """Génère le brief complet avec scripts + infos compte"""
     
