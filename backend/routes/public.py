@@ -340,12 +340,11 @@ async def submit_lead(data: LeadData, request: Request):
                 status, response, should_queue = await send_to_crm_v2(lead, other_url, other_key)
                 actual_crm_sent = other_crm
                 
-                if status == "success":
-                    # Marquer comme transféré
-                    await db.leads.update_one(
-                        {"id": lead_id},
-                        {"$set": {"is_transferred": True, "routing_reason": f"fallback_{other_crm}"}}
-                    )
+                # Marquer comme transféré (fallback utilisé)
+                await db.leads.update_one(
+                    {"id": lead_id},
+                    {"$set": {"is_transferred": True, "routing_reason": f"fallback_{other_crm}"}}
+                )
         
         if should_queue:
             await add_to_queue(lead, api_url, final_key, "error")
