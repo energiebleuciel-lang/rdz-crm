@@ -33,15 +33,16 @@ async def get_global_api_key(user: dict = Depends(require_admin)):
             "type": "global_api_key",
             "api_key": new_key,
             "created_at": now_iso(),
-            "note": "Clé unique - Ne peut pas être régénérée"
+            "locked": True,  # Verrouillé dès la création
+            "note": "Clé unique - Ne peut pas être régénérée ou supprimée"
         })
-        return {"api_key": new_key, "created": True}
+        return {"api_key": new_key, "created": True, "locked": True}
     
-    return {"api_key": config.get("api_key"), "created": False}
+    return {"api_key": config.get("api_key"), "created": False, "locked": True}
 
 
-# NOTE: L'endpoint /regenerate a été supprimé intentionnellement
-# La clé API est UNIQUE et ne doit pas être régénérable (style Landbot)
+# SÉCURITÉ : Aucun endpoint de régénération ou suppression de la clé API
+# La clé API RDZ est PERMANENTE et ne peut jamais être modifiée
 
 
 # ==================== STATUT CLÉS API CRM (v2) ====================
