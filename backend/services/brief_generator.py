@@ -340,19 +340,23 @@ async def generate_brief_v2(lp_id: str) -> dict:
     }
 
 
-# Garder l'ancienne fonction pour compatibilité
+# Fonction simple pour compatibilité
 async def generate_brief(form_id: str) -> dict:
-    """Ancienne fonction - redirige vers v2 si possible"""
+    """Génère le brief pour un formulaire"""
     form = await db.forms.find_one({"id": form_id}, {"_id": 0})
     if not form:
         return {"error": "Formulaire non trouvé"}
     
-    # Si le form a une LP liée, utiliser v2
+    # Trouver la LP liée
+    lp = None
     if form.get("lp_id"):
         lp = await db.lps.find_one({"id": form["lp_id"]}, {"_id": 0})
-        if lp:
-            return await generate_brief_v2(lp.get("id"))
     
-    # Sinon utiliser l'ancienne méthode (fallback)
-    from services.brief_generator_legacy import generate_brief_legacy
-    return await generate_brief_legacy(form_id)
+    if not lp:
+        # Chercher une LP qui pointe vers ce form
+        lp = await db.lps.find_one({"form_id": form_id}, {"_id": 0})
+    
+    if lp:
+        return await generate_brief_v2(lp.get("id"))
+    
+    return {"error": "Aucune LP liée à ce formulaire"}
