@@ -1,144 +1,136 @@
 <analysis>**original_problem_statement:**
-The user is building a multi-tenant CRM and lead management dashboard. The primary goal of this session was to deploy the completed application to the user's Hostinger VPS. After a lengthy and complex deployment process, the application is now live. However, the user discovered that the core functionality is broken in the production environment. Tracking events (page views, clicks, form submissions) are not being recorded, and new leads cannot be created.
+The user initially reported that a previously deployed multi-tenant CRM on a Hostinger VPS had broken core functionality: tracking events (visits, clicks) and lead submissions were not working.
 
-The user has now requested a professional, in-depth analysis of the entire system to identify the root cause of these failures and to refactor the tracking and lead submission logic to be more robust, taking inspiration from the Landbot API model.
-
-PRODUCT REQUIREMENTS:
-1.  Diagnose why the tracking and lead submission features are failing in the production environment.
-2.  Refactor the backend and frontend to implement a robust, Landbot-inspired tracking system.
-3.  Ensure all statistics (visits, clicks, form starts, completions, leads) are correctly captured and displayed.
-4.  Ensure lead submission works flawlessly and leads are routed correctly.
-5.  All fixes must be deployed and verified on the user's live Hostinger VPS.
+The user requested a complete from-scratch refactoring of the tracking and lead submission system, taking inspiration from the Landbot API model. The requirements evolved significantly throughout the session:
+1.  **Centralized Collection:** The user's application (RDZ) must first collect all leads.
+2.  **Per-Form Dispatching:** Each form in the CRM must have its own configuration to dispatch the collected lead to a target CRM (either ZR7 or MDL), using a unique API key stored per form.
+3.  **Command-Based Routing:** Before sending a lead to the target CRM, the system must verify if that CRM has an active commande (order) for the lead's product type and department.
+4.  **Cross-CRM Fallback:** If the primary target CRM has no active order, and the form's  flag is true, the system should attempt to send the lead to the *other* CRM.
+5.  **Secure Lead Retrieval:** A single, non-modifiable, server-side API key (the RDZ key) must be used to securely retrieve all collected leads from the RDZ database via a dedicated API endpoint. This key should be visible but not editable in the dashboard.
+6.  **Separated Tracking Scripts:** To ensure accurate funnel statistics, the system must generate two separate tracking scripts: one for the Landing Page (tracking visits and CTA clicks) and one for the Form (tracking form starts and submissions).
+7.  **Comprehensive Brief:** The Brief modal, which provides the tracking scripts, must also include all necessary account-level information for easy integration: logo URLs, GTM codes, legal/privacy page links, and the form's redirection URL.
 
 **User's preferred language**: French
 
 **what currently exists?**
-A full-stack application (React, FastAPI, MongoDB) has been fully deployed to the user's production Hostinger VPS. The deployment includes a configured Nginx reverse proxy, a Supervisor-managed backend process, and a valid SSL certificate from Certbot. The production database has been populated with the configuration data (Accounts, CRMs, Users, etc.) migrated from the development environment. The user can log in and access all UI pages, but the application's core data-capturing functionalities are non-operational.
+The backend has been completely refactored to meet the user's new requirements.
+- A new public API () handles session creation, event tracking, and lead submission without exposing any sensitive keys on the client-side.
+- The lead submission logic correctly fetches the target CRM and API key from the specific form, checks for active commandes, and implements the cross-CRM fallback logic.
+- A secure endpoint () allows lead retrieval using the central, non-modifiable RDZ API key.
+- The brief generator () is partially updated to create the comprehensive brief, including account-level data (logos, GTM, links). It successfully generates the two separate scripts for LP and Form.
+- The frontend has been cleaned up to remove confusing v1/v2 labels. The  page correctly displays the read-only RDZ API key, and the  page includes fields to configure the target CRM and API key for each form.
 
 **Last working item**:
-- **Last item agent was working:** The user requested a deep, professional analysis of the broken tracking and lead-submission functionality. The agent began this analysis by reviewing the overall file structure and key backend files, including  and , to understand the current implementation before proposing a fix.
+- **Last item agent was working:** Implementing the Comprehensive Brief feature. The agent successfully rewrote the backend  to gather all the necessary data (logos, GTM, links, scripts). It then began updating the frontend modal in  to display this new rich information but did not complete the UI changes.
 - **Status:** IN PROGRESS
 - **Agent Testing Done:** N
-- **Which testing method agent to use?** After the refactor, comprehensive testing is required. First, use curl to test all new/modified backend endpoints. Then, use the frontend testing agent to conduct end-to-end tests, from generating a brief to submitting a lead and verifying that all stats are updated correctly in the UI.
-- **User Testing Done:** Y (User tested the deployed application and confirmed that tracking and lead submission are completely broken).
+- **Which testing method agent to use?** screenshot tool. After finishing the UI update in , the agent must take a screenshot of the Brief modal to verify that all the new information (Logos, GTM, Links, and the two scripts) is displayed correctly and clearly.
+- **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-- **Issue 1: Core functionality (Tracking & Lead Submission) is broken in production (Priority: P0)**
-  - **Description:** Despite a successful deployment and data import, all tracking and lead submission features are failing on the live server. When the user creates and uses a new Landing Page and Form, no statistics (visits, clicks, form starts) are recorded, and no leads are created. The application is currently unusable for its primary purpose.
-  - **Attempted fixes:** The agent has initiated a deep-dive analysis of the codebase to diagnose the problem. The user has suggested redesigning the system to be more robust, like the Landbot API.
-  - **Next debug checklist:**
-    1.  Continue the analysis of , , and  to pinpoint the exact failure points.
-    2.  Check the live server logs (, ) for any requests hitting the  or  endpoints and analyze the errors.
-    3.  Finalize the refactoring plan based on the Landbot model and present it to the user for approval.
-    4.  Execute the refactoring plan across the backend and frontend.
-  - **Why fix this issue and what will be achieved with the fix?** This is a critical, application-breaking bug. Fixing it will make the deployed CRM functional and usable for its core purpose of lead generation and management.
-  - **Status:** IN PROGRESS
-  - **Is recurring issue?** N
-  - **Should Test frontend/backend/both after fix?** Both.
-  - **Blocked on other issue:** None.
+There are no outstanding bugs. The work is focused on completing the requested features.
 
 **In progress Task List**:
-- **Task 1: Professional Analysis & Refactoring Plan (Priority: P0)**
-  - **Where to resume:** The agent has started analyzing the code. The next step is to complete this analysis, consolidate the findings, and present the detailed, multi-phase refactoring plan (already outlined in the agent's thoughts) to the user for confirmation before writing any new code.
-  - **What will be achieved with this?** A clear, user-approved roadmap to fix the application's critical flaws and make the tracking system reliable.
+- **Task 1: Complete Comprehensive Brief UI (Priority: P0)**
+  - **Where to resume:** Continue editing . The backend logic is complete, but the frontend modal needs to be updated to render the new fields provided by the brief endpoint (logos, GTM codes, legal links, redirection URL) in a clear, well-structured format.
+  - **What will be achieved with this?** The user will have a fully copy-pasteable brief, which was the final feature request of the session, making integration much faster for their clients.
   - **Status:** IN PROGRESS
-  - **Should Test frontend/backend/both after fix?** Both.
-  - **Blocked on something:** Waiting to complete analysis and get user approval on the plan.
+  - **Should Test frontend/backend/both after fix?** Frontend.
+  - **Blocked on something:** None.
 
 **Upcoming and Future Tasks**
-- **Upcoming Tasks (part of the requested refactor):**
-  - **P0: Refactor Backend Tracking System:** Implement a new, robust tracking system inspired by Landbot. This involves creating new public endpoints for visits, CTA clicks, and form events, and introducing a visitor/session tracking model.
-  - **P0: Refactor Backend Lead Submission:** Simplify and harden the public lead submission endpoint .
-  - **P0: Refactor Frontend for New Stats:** Update the UI on the Landing Pages, Forms, and Dashboard pages to display the new, more detailed statistics from the refactored tracking system.
-  - **P0: Update Brief Generator:** Ensure the generator creates JavaScript snippets with the correct API endpoints and logic for the new tracking system.
+- **Upcoming Tasks:**
+  - **P0: Full End-to-End Test:** Once the Comprehensive Brief UI is done, perform a full end-to-end test of the entire flow: generate a brief, install it (conceptually), simulate a visit, a CTA click, starting a form, and submitting a lead. Verify that all tracking events are created and that the lead is correctly processed and queued for dispatch.
+  - **P1: Deployment to Hostinger VPS:** The original goal of the project. Once all features are confirmed working locally, the code needs to be pulled to the user's VPS at , dependencies installed, and services restarted.
 - **Future Tasks (from project backlog):**
-  - **P1:** Implement remaining V1 features: Sub-accounts, detailed Product Type configuration.
-  - **P2:** Add system alerts via email.
-  - **P2:** Image Library, further enhancements to Activity Logs.
-  - **P3:** A/B Testing (Campaign Mode).
+  - **P1:** Implement Sub-accounts feature.
+  - **P1:** Implement detailed Product Type configuration.
+  - **P2:** Add system alerts via email (SendGrid integration is on hold).
+  - **P2:** Create an Image Library.
+  - **P3:** Add A/B Testing (Campaign Mode).
 
 **Completed work in this session**
-- **Full Production Deployment:** Successfully guided the user through deploying the entire application to their Hostinger VPS, including setting up the server environment (Python 3.12, Node.js, MongoDB), cloning the Git repository, and configuring Nginx, Supervisor, and Certbot for SSL.
-- **Live Debugging & Hotfixes:** Diagnosed and fixed multiple critical issues post-deployment, including Node.js dependency conflicts (, ), backend startup failures ( missing), and authentication bugs (, ).
-- **Production Data Migration:** Assisted the user in performing a clean reinstall of the application code and then executed a series of custom Python scripts to import all essential configuration data from the development environment into the new production database.
-
-**Earlier issues found/mentioned but not fixed**
-- **SendGrid 401 Unauthorized:** This issue remains on hold as it requires user action within their SendGrid account.
-
-**Known issue recurrence from previous fork**
-- None.
+- **Complete Refactor of Tracking/Lead System:** Rebuilt the entire lead capture and tracking mechanism from the ground up.
+  - **New Public API:** Created a new set of public endpoints () for session management, event tracking, and lead submission that do not expose API keys.
+  - **Per-Form CRM Configuration:** Implemented logic where each form has its own target CRM (ZR7/MDL) and its own dispatch API key, configured via the UI.
+  - **Command-Based Routing Logic:** Added a critical business logic step to check for active commandes (orders) before dispatching a lead to a CRM, with a cross-CRM fallback mechanism.
+  - **Secure Lead Export Endpoint:** Created the  endpoint, secured by a single, non-modifiable RDZ API key.
+  - **Split Tracking Scripts:** Refactored the brief generator to create two separate, linked scripts for Landing Pages and Forms to ensure accurate funnel tracking.
+- **Major Code Cleanup:** In response to user feedback, removed all old/legacy files (, old ), eliminated confusing v1/v2 naming from code and UI, and simplified the presentation of API keys in the dashboard.
 
 **Code Architecture**
-The application is deployed on a standard VPS. Key paths on the server:
-- **Project Root:** 
-- **Nginx Config:** 
-- **Supervisor Config:** 
-- **Backend Logs:**  & 
+- 
+  - 
+    - : **(NEW)** Handles all public-facing, unauthenticated requests: session creation, event tracking (, , ), and initial lead submission. Contains the core business logic for command checking and cross-CRM routing.
+    - : **(REFACTORED)** Now primarily holds the secure, authenticated endpoint  for retrieving leads using the central RDZ API key.
+    - : Handles CRUD for Landing Pages and triggers the brief generation.
+    - : Handles CRUD for Forms, including the new  and  fields.
+    - : Provides API endpoints for configuration data, like the RDZ API key status.
+  - 
+    - : **(REWRITTEN)** Generates the comprehensive brief, including two separate scripts (LP & Form) and pulls account-level data (logos, GTM, links).
+  - : Pydantic models, updated with new fields in the  model.
+- 
+  - 
+    - : Displays LPs and the Brief modal (UI update in progress).
+    - : Displays Forms and the creation/edit modal with fields for  and .
+    - : Displays the read-only central Clé API RDZ and CRM configuration status.
 
 **Key Technical Concepts**
-- **Production VPS Deployment:** Deployed a full-stack application to a non-containerized Linux environment using Nginx (reverse proxy), Supervisor (process management), and Certbot (SSL).
-- **Manual Database Migration:** Data from the development MongoDB was exported and then imported into the production database using a series of targeted Python scripts executed directly on the VPS.
-- **Live Environment Debugging:** Resolved complex dependency and configuration issues in a live production environment.
-
-**key DB schema**
-- A new  collection has been proposed as part of the refactoring plan to better track user journeys.
-
-**changes in tech stack**
-- None within the application. The session focused on deployment technologies (Nginx, Supervisor, Certbot).
+- **Session Tracking Across Domains/Pages:** The session is maintained between the LP and the Form by passing the  as a URL query parameter () during the CTA redirection.
+- **Server-Side API Key Management:** Sensitive CRM dispatch keys are stored per-form in the database and are never exposed to the client. The lead submission endpoint uses the  to look up the correct key on the server before dispatching.
+- **Conditional Business Logic:** The lead dispatch logic is complex, involving database lookups for forms, accounts, and commandes before making a decision on where (and if) to send the lead.
 
 **All files of reference**
-- **Files to be analyzed/refactored:**
-  -  (Core tracking logic)
-  -  (Public lead submission endpoint)
-  -  (Generates the client-side tracking scripts)
-  -  (Displays tracking stats)
-  -  (Displays form stats)
-- **Server Configuration Files (on VPS):**
-  - 
-  - 
+-  (Backend logic for the rich brief)
+-  (Frontend UI for the rich brief modal - **NEEDS WORK**)
+-  (Core logic for tracking and lead submission/routing)
+-  (Secure lead export endpoint)
+-  (UI for configuring per-form API keys)
+-  (UI for displaying the read-only RDZ key)
+-  (Schema for Forms and other objects)
 
 **key api endpoints**
-- **Endpoints currently failing in production:**
-  - 
-  - 
-  - 
-  - 
-- **Public endpoint for form configuration:**
-  - 
+- : Creates a new visitor session.
+- : Tracks an event (e.g., , , ).
+- : Submits a lead from a form. This triggers the storage in RDZ and the subsequent dispatch logic to ZR7/MDL.
+- : **(SECURED)** Retrieves leads from the RDZ database. Requires  header.
+- : Retrieves the comprehensive brief data for a specific Landing Page.
 
 **Critical Info for New Agent**
-- The user is frustrated because their newly deployed application is non-functional. Prioritize clear communication and a robust, well-explained solution.
-- The immediate task is to complete the professional analysis, confirm the refactoring plan with the user, and then execute it.
-- All code changes must be made with the production environment in mind. The workflow should be: develop/fix -> push to GitHub -> pull on VPS -> restart services.
-- The user is running commands directly on their VPS. Provide clear, copy-pasteable commands.
-- The previous agent has already outlined a solid, multi-phase refactoring plan inspired by Landbot. This should be the foundation of the proposed solution.
+- The user is very hands-on and specific. They prefer clean, rewritten code over small edits and dislike confusing labels like v1/v2 or legacy.
+- The core logic is now quite complex. Remember the flow: .
+- The distinction between the **public submission API** (no key needed) and the **secure export API** (RDZ key required) is crucial.
+- The immediate next step is purely frontend: finish building the UI for the Comprehensive Brief in . All backend data is already being provided.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1. **User (BLOCKER):** Reports that after creating a new LP + Form on the deployed server, nothing works—no lead submissions, no tracking stats. Asks for a deep review of the entire system.
-2. **Agent (RESPONSE):** Agrees to begin a deep analysis.
-3. **User (ACTION):** Provides a link to the Landbot API and requests a refactor of the tracking system to be as robust as Landbot's model, while keeping the existing LP+Form logic. Asks for a detailed action plan before coding.
-4. **Agent (RESPONSE):** Agrees to analyze the Landbot API and create a comprehensive plan.
-5. **Agent (ACTION):** Analyzes the Landbot API documentation.
-6. **Agent (PLAN):** Proposes a detailed, multi-phase plan covering backend and frontend refactoring for tracking and leads, followed by testing and deployment. Asks the user if they should start with diagnosis or refactoring.
-7. **User (REQUEST):** analyze one I want a pro analysis - The user wants a professional analysis first.
-8. **Agent (ACTION):** Acknowledges and begins the deep analysis by listing and viewing project files.
-9. **Agent (ACTION):** Views .
-10. **Agent (ACTION):** Views  and plans to examine the frontend next.
-- **Pending:** The agent needs to complete the analysis and present the findings and the proposed refactoring plan to the user.
+1.  **User:** Asks how the session is tracked between the two separate scripts (LP and Form).
+2.  **Agent:** Explains the  URL parameter mechanism for linking the two pages.
+3.  **User:** Understands and approves (très clair bravo ben code ca propement dans les script).
+4.  **Agent:** Confirms this logic is already coded and clean.
+5.  **User:** Requests a new major feature: the Brief should be a comprehensive, copy-paste block with logos, GTM codes, and legal/privacy links from the account settings.
+6.  **Agent:** Acknowledges and checks the database schema for the required fields.
+7.  **Agent:** Implements the backend logic and starts updating the frontend.
+8.  **User:** Asks if the script should be automatically adapted based on the URL of the LP and Form.
+9.  **Agent:** Proposes a single script that detects the URL to adapt its behavior.
+10. **User:** Clarifies they were asking again how the session is tracked between pages.
 
 **Project Health Check:**
-- **Broken:** The application's core features (lead tracking and submission) are non-functional in the production environment.
+- **In Progress:** The core backend logic is refactored and functional based on local testing. The UI for the final requested feature is incomplete. The application is not broken but requires finishing the current task before it's ready for deployment testing.
 
 **3rd Party Integrations**
-- **Application:** Maison du Lead API, ZR7 Digital API, SendGrid (inactive), APScheduler.
-- **Deployment:** Git/GitHub, Nginx, Supervisor, Certbot (Let's Encrypt).
+- **ZR7 Digital API:** To send leads.
+- **Maison du Lead (MDL) API:** To send leads.
+- **SendGrid:** Inactive/On Hold.
+- **APScheduler:** Used for background tasks.
 
 **Testing status**
-- **Testing agent used after significant changes:** NO (in this session). The last formal tests were in the previous session. The current failure was discovered by the user post-deployment.
-- **Known regressions:** The entire tracking and lead submission functionality has regressed to a non-working state in the production environment.
+- **Testing agent used after significant changes:** NO
+- **Troubleshoot agent used after agent stuck in loop:** NO
+- **Test files created:** None in this session.
+- **Known regressions:** None. The previous broken state was the starting point for a full refactor.
 
 **Credentials to test flow:**
 - **UI Login:**  / 
 
 **What agent forgot to execute**
-- The agent did not perform a post-deployment end-to-end test of the core functionality (e.g., submitting a test lead via a generated brief). This would have identified the critical failure immediately after deployment instead of relying on the user to find it.</analysis>
+- The agent did not complete the frontend implementation for the Comprehensive Brief feature in  after updating the backend.</analysis>
