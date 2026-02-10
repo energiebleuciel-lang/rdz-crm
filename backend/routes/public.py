@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from typing import Optional
 import uuid
 
-from config import db, now_iso, timestamp, validate_phone_fr, validate_postal_code_fr
+from config import db, now_iso, timestamp, validate_phone_fr
 
 router = APIRouter(prefix="/public", tags=["Public"])
 
