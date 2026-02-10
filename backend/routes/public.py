@@ -242,14 +242,13 @@ async def track_event(data: TrackEvent, request: Request):
 @router.post("/leads")
 async def submit_lead(data: LeadSubmit, request: Request):
     """
-    Soumission de lead SANS clé API visible.
-    La clé API est stockée côté serveur et associée au CRM du compte.
+    Soumission de lead vers RDZ puis vers ZR7/MDL.
     
     Flow:
     1. Valider téléphone
-    2. Récupérer config formulaire
-    3. Déterminer CRM destination (ZR7 ou MDL)
-    4. Envoyer avec la clé API serveur
+    2. Récupérer config formulaire (target_crm + crm_api_key)
+    3. Créer le lead dans RDZ
+    4. Envoyer vers ZR7 ou MDL avec la clé API du formulaire
     5. Mettre à jour la session
     """
     # 1. Valider téléphone
@@ -280,30 +279,18 @@ async def submit_lead(data: LeadSubmit, request: Request):
     product_type = form.get("product_type", "PV")
     account_id = form.get("account_id", "")
     
-    # Récupérer le compte pour avoir le CRM
-    account = await db.accounts.find_one({"id": account_id}, {"_id": 0})
-    if not account:
-        return {"success": False, "error": "Compte non trouvé"}
+    # *** NOUVEAU : Récupérer target_crm et crm_api_key du FORMULAIRE ***
+    target_crm = form.get("target_crm", "").lower()  # "zr7" ou "mdl"
+    crm_api_key = form.get("crm_api_key", "")
     
-    crm_id = account.get("crm_id", "")
+    # Vérifier que le formulaire a une configuration CRM valide
+    if not target_crm or target_crm not in CRM_URLS:
+        return {"success": False, "error": f"CRM cible non configuré pour ce formulaire. Configurez 'target_crm' (zr7 ou mdl) dans le formulaire."}
     
-    # Récupérer le CRM pour avoir le slug
-    crm = await db.crms.find_one({"id": crm_id}, {"_id": 0})
-    if not crm:
-        return {"success": False, "error": f"CRM non trouvé: {crm_id}"}
+    if not crm_api_key:
+        return {"success": False, "error": f"Clé API {target_crm.upper()} non configurée pour ce formulaire. Ajoutez 'crm_api_key' dans la configuration du formulaire."}
     
-    crm_slug = crm.get("slug", "").lower()  # "zr7" ou "mdl"
-    
-    # 3. Déterminer CRM destination et récupérer clé API
-    crm_config = CRM_CONFIG.get(crm_slug)
-    if not crm_config:
-        return {"success": False, "error": f"CRM non configuré: {crm_slug}"}
-    
-    api_url = crm_config["api_url"]
-    api_key = crm_config["api_key"]
-    
-    if not api_key:
-        return {"success": False, "error": f"Clé API {crm_slug.upper()} non configurée sur le serveur"}
+    api_url = CRM_URLS[target_crm]
     
     # Récupérer la session pour avoir les UTM et lp_code
     session = await db.visitor_sessions.find_one({"id": data.session_id}, {"_id": 0})
@@ -311,7 +298,7 @@ async def submit_lead(data: LeadSubmit, request: Request):
     utm = session.get("utm", {}) if session else {}
     liaison_code = f"{lp_code}_{form_code}" if lp_code else form_code
     
-    # 4. Créer le document lead
+    # 3. Créer le document lead dans RDZ
     lead_id = str(uuid.uuid4())
     lead_doc = {
         "id": lead_id,
