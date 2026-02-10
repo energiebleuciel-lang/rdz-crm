@@ -96,7 +96,7 @@ export default function Leads() {
     const filtered = filteredLeads;
     const headers = [
       'Téléphone', 'Nom', 'Prénom', 'Civilité', 'Email', 
-      'Code Postal', 'Département', 'Ville', 'Adresse',
+      'Département', 'Ville', 'Adresse',
       'Type Logement', 'Statut Occupant', 'Surface', 'Année Construction', 'Type Chauffage',
       'Facture Électricité', 'Facture Chauffage',
       'Type Projet', 'Délai', 'Budget',
@@ -109,7 +109,6 @@ export default function Leads() {
       l.prenom,
       l.civilite,
       l.email,
-      l.code_postal,
       l.departement,
       l.ville,
       l.adresse,
