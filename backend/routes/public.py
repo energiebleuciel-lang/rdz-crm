@@ -9,40 +9,29 @@ from typing import Optional
 import uuid
 
 from config import db, now_iso, timestamp, validate_phone_fr
+from routes.commandes import has_commande  # Import centralisé - PAS DE DUPLICATION
 
 router = APIRouter(prefix="/public", tags=["Public"])
-
-# URLs des CRMs
-CRM_URLS = {
-    "zr7": "https://app.zr7-digital.fr/lead/api/create_lead/",
-    "mdl": "https://maison-du-lead.com/lead/api/create_lead/"
-}
 
 
 # ==================== HELPERS ====================
 
+async def get_crm_info(slug: str) -> dict:
+    """Récupère les infos complètes du CRM depuis son slug (ID + URL)"""
+    crm = await db.crms.find_one({"slug": slug}, {"_id": 0})
+    return crm if crm else None
+
+
 async def get_crm_id(slug: str) -> str:
     """Récupère l'ID du CRM depuis son slug"""
-    crm = await db.crms.find_one({"slug": slug}, {"_id": 0})
+    crm = await get_crm_info(slug)
     return crm.get("id") if crm else None
 
 
-async def has_commande(crm_id: str, product_type: str, departement: str) -> bool:
-    """
-    Vérifie si un CRM a une commande pour ce produit/département.
-    ATTENTION: Signature alignée avec commandes.py -> (crm_id, product_type, departement)
-    """
-    query = {
-        "crm_id": crm_id,
-        "active": True,
-        "$or": [{"product_type": product_type}, {"product_type": "*"}]
-    }
-    commandes = await db.commandes.find(query, {"_id": 0}).to_list(100)
-    for cmd in commandes:
-        depts = cmd.get("departements", [])
-        if "*" in depts or departement in depts:
-            return True
-    return False
+async def get_crm_url(slug: str) -> str:
+    """Récupère l'URL API du CRM depuis son slug (dynamique depuis DB)"""
+    crm = await get_crm_info(slug)
+    return crm.get("api_url") if crm else None
 
 
 # ==================== MODELS ====================
