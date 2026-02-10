@@ -32,8 +32,19 @@ export default function Leads() {
     try {
       setLoading(true);
       
-      // Charger les leads filtrés directement par CRM côté backend
-      const res = await authFetch(`${API}/api/leads?crm_id=${selectedCRM}&limit=500`);
+      // Construire l'URL avec les filtres
+      let url = `${API}/api/leads?crm_id=${selectedCRM}&limit=500`;
+      if (transferredFilter !== null) {
+        url += `&transferred=${transferredFilter}`;
+      }
+      if (dateFrom) {
+        url += `&date_from=${dateFrom}`;
+      }
+      if (dateTo) {
+        url += `&date_to=${dateTo}`;
+      }
+      
+      const res = await authFetch(url);
       if (res.ok) {
         const data = await res.json();
         setLeads(data.leads || []);
@@ -51,6 +62,13 @@ export default function Leads() {
       setLoading(false);
     }
   };
+
+  // Recharger quand les filtres changent
+  useEffect(() => {
+    if (selectedCRM) {
+      loadData();
+    }
+  }, [selectedCRM, transferredFilter, dateFrom, dateTo]);
 
   const viewLead = (lead) => {
     setSelectedLead(lead);
