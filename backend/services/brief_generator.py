@@ -377,17 +377,22 @@ async def generate_brief(lp_id: str) -> dict:
     lp: "{lp_code}",
     form: "{form_code}",
     formUrl: "{form_url}",
-    session: null
+    session: null,
+    debug: false
   }};
+
+  function log(msg, data) {{
+    if (RDZ.debug) console.log("[RDZ LP]", msg, data || "");
+  }}
 
   async function initSession() {{
     if (RDZ.session) return RDZ.session;
     var params = new URLSearchParams(window.location.search);
     try {{
+      log("Création session...");
       var res = await fetch(RDZ.api + "/track/session", {{
         method: "POST",
         headers: {{"Content-Type": "application/json"}},
-        credentials: "include",
         body: JSON.stringify({{
           lp_code: RDZ.lp,
           form_code: RDZ.form,
@@ -399,34 +404,45 @@ async def generate_brief(lp_id: str) -> dict:
       }});
       var data = await res.json();
       RDZ.session = data.session_id;
+      log("Session créée:", RDZ.session);
       return RDZ.session;
     }} catch(e) {{
+      log("Erreur session:", e.message);
       return null;
     }}
   }}
 
-  function track(type) {{
-    if (!RDZ.session) return;
-    fetch(RDZ.api + "/track/event", {{
-      method: "POST",
-      headers: {{"Content-Type": "application/json"}},
-      body: JSON.stringify({{
-        session_id: RDZ.session,
-        event_type: type,
-        lp_code: RDZ.lp,
-        form_code: RDZ.form
-      }})
-    }});
+  async function track(type) {{
+    if (!RDZ.session) {{
+      log("Pas de session pour track:", type);
+      return;
+    }}
+    try {{
+      log("Track:", type);
+      var res = await fetch(RDZ.api + "/track/event", {{
+        method: "POST",
+        headers: {{"Content-Type": "application/json"}},
+        body: JSON.stringify({{
+          session_id: RDZ.session,
+          event_type: type,
+          lp_code: RDZ.lp,
+          form_code: RDZ.form
+        }})
+      }});
+      var data = await res.json();
+      log("Track réponse:", data);
+    }} catch(e) {{
+      log("Erreur track:", e.message);
+    }}
   }}
 
-  document.addEventListener("DOMContentLoaded", function() {{
-    initSession().then(function() {{
-      track("lp_visit");
-    }});
+  document.addEventListener("DOMContentLoaded", async function() {{
+    await initSession();
+    await track("lp_visit");
   }});
 
-  window.rdzClickCTA = function() {{
-    track("cta_click");
+  window.rdzClickCTA = async function() {{
+    await track("cta_click");
     if (RDZ.formUrl && RDZ.session) {{
       var url = RDZ.formUrl;
       url += (url.indexOf("?") === -1 ? "?" : "&") + "session=" + RDZ.session;
@@ -434,9 +450,12 @@ async def generate_brief(lp_id: str) -> dict:
       ["utm_source", "utm_medium", "utm_campaign"].forEach(function(p) {{
         if (params.get(p)) url += "&" + p + "=" + encodeURIComponent(params.get(p));
       }});
-      window.location.href = url;
+      log("Redirection vers:", url);
+      setTimeout(function() {{ window.location.href = url; }}, 100);
     }}
   }};
+
+  window.RDZ_LP = RDZ;
 }})();
 </script>'''
 
