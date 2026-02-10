@@ -4,12 +4,14 @@ Routes pour la configuration
 - Types de produits
 - Aides financières
 - Bibliothèque d'images
+- Statut des clés API CRM
 """
 
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional, List, Dict
 import uuid
+import os
 
 from config import db, now_iso
 from routes.auth import get_current_user, require_admin
@@ -40,6 +42,24 @@ async def get_global_api_key(user: dict = Depends(require_admin)):
 
 # NOTE: L'endpoint /regenerate a été supprimé intentionnellement
 # La clé API est UNIQUE et ne doit pas être régénérable (style Landbot)
+
+
+# ==================== STATUT CLÉS API CRM (v2) ====================
+
+@router.get("/crm-api-status")
+async def get_crm_api_status(user: dict = Depends(get_current_user)):
+    """
+    Vérifie si les clés API CRM sont configurées côté serveur.
+    Ne retourne PAS les clés - juste un booléen pour chaque CRM.
+    """
+    zr7_key = os.environ.get("ZR7_API_KEY", "")
+    mdl_key = os.environ.get("MDL_API_KEY", "")
+    
+    return {
+        "zr7": bool(zr7_key and len(zr7_key) > 10),
+        "mdl": bool(mdl_key and len(mdl_key) > 10),
+        "note": "Les clés sont configurées dans le fichier .env du serveur"
+    }
 
 
 # ==================== MODELS ====================
