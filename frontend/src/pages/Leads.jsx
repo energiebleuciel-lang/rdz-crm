@@ -379,7 +379,7 @@ export default function Leads() {
               ))}
               {filteredLeads.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="p-8 text-center text-slate-500">
+                  <td colSpan={12} className="p-8 text-center text-slate-500">
                     Aucun lead trouvé
                   </td>
                 </tr>
