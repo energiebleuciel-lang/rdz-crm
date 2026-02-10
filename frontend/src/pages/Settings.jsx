@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { API } from '../hooks/useApi';
 import { Card, Loading, Button, Badge } from '../components/UI';
-import { Key, Copy, Database, CheckCircle, Eye, EyeOff } from 'lucide-react';
+import { Key, Copy, Database, CheckCircle, Eye, EyeOff, Lock, Shield } from 'lucide-react';
 
 export default function Settings() {
   const { authFetch } = useAuth();
