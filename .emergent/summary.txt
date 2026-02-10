@@ -1,136 +1,175 @@
 <analysis>**original_problem_statement:**
-The user initially reported that a previously deployed multi-tenant CRM on a Hostinger VPS had broken core functionality: tracking events (visits, clicks) and lead submissions were not working.
+The user's initial request was to fix a broken tracking system (visits, clicks, lead submissions) on a Hostinger VPS. This evolved into a complete from-scratch refactor of the tracking and lead submission system.
 
-The user requested a complete from-scratch refactoring of the tracking and lead submission system, taking inspiration from the Landbot API model. The requirements evolved significantly throughout the session:
-1.  **Centralized Collection:** The user's application (RDZ) must first collect all leads.
-2.  **Per-Form Dispatching:** Each form in the CRM must have its own configuration to dispatch the collected lead to a target CRM (either ZR7 or MDL), using a unique API key stored per form.
-3.  **Command-Based Routing:** Before sending a lead to the target CRM, the system must verify if that CRM has an active commande (order) for the lead's product type and department.
-4.  **Cross-CRM Fallback:** If the primary target CRM has no active order, and the form's  flag is true, the system should attempt to send the lead to the *other* CRM.
-5.  **Secure Lead Retrieval:** A single, non-modifiable, server-side API key (the RDZ key) must be used to securely retrieve all collected leads from the RDZ database via a dedicated API endpoint. This key should be visible but not editable in the dashboard.
-6.  **Separated Tracking Scripts:** To ensure accurate funnel statistics, the system must generate two separate tracking scripts: one for the Landing Page (tracking visits and CTA clicks) and one for the Form (tracking form starts and submissions).
-7.  **Comprehensive Brief:** The Brief modal, which provides the tracking scripts, must also include all necessary account-level information for easy integration: logo URLs, GTM codes, legal/privacy page links, and the form's redirection URL.
+The core requirements implemented are:
+1.  **Centralized Lead Collection:** The main application (RDZ) collects all leads first.
+2.  **Per-Form Dispatching:** Each form has its own configuration to dispatch leads to a target CRM (ZR7 or MDL) with a unique API key.
+3.  **Command-Based Routing:** The system checks if the target CRM has an active commande (order) for the lead's product/department before sending.
+4.  **Cross-CRM Fallback:** If the primary CRM has no order, the lead is sent to the other CRM if  is enabled.
+5.  **Secure Lead Export:** A secure endpoint () allows lead retrieval using a single, non-modifiable server-side API key.
+6.  **Mini Brief Builder:** A feature on the  page allows users to generate custom code snippets (for logos, GTM, legal text) by selecting checkboxes.
+7.  **Dashboard & Leads Page Enhancements:** The dashboard is now filtered by CRM. The leads page was improved to show Origin CRM vs. Distribution and to identify transferred leads, with new filters for transfers and date ranges.
+8.  **Full System Audit:** The entire codebase was audited and harmonized to ensure consistent naming conventions and data structures.
+9.  **Deployment:** The user requested a full, from-scratch deployment guide for a new Hostinger VPS, which was executed.
+10. **Tracking Bug Fix:** The user reported that event tracking for  and  was failing due to a CORS error, while form submissions worked.
 
 **User's preferred language**: French
 
 **what currently exists?**
-The backend has been completely refactored to meet the user's new requirements.
-- A new public API () handles session creation, event tracking, and lead submission without exposing any sensitive keys on the client-side.
-- The lead submission logic correctly fetches the target CRM and API key from the specific form, checks for active commandes, and implements the cross-CRM fallback logic.
-- A secure endpoint () allows lead retrieval using the central, non-modifiable RDZ API key.
-- The brief generator () is partially updated to create the comprehensive brief, including account-level data (logos, GTM, links). It successfully generates the two separate scripts for LP and Form.
-- The frontend has been cleaned up to remove confusing v1/v2 labels. The  page correctly displays the read-only RDZ API key, and the  page includes fields to configure the target CRM and API key for each form.
+A full-stack application (React + FastAPI + MongoDB) has been successfully deployed from scratch onto the user's Hostinger VPS () and is accessible online. The deployment included setting up the full LEMP-like stack (Nginx, MongoDB, Python/Node), configuring systemd services, and securing the site with SSL. The GitHub repository has been made private and is accessed by the server via an SSH deploy key. All features, including the complex lead routing logic and the Mini Brief builder, are deployed. A fix for a critical CORS tracking issue has also been deployed.
 
 **Last working item**:
-- **Last item agent was working:** Implementing the Comprehensive Brief feature. The agent successfully rewrote the backend  to gather all the necessary data (logos, GTM, links, scripts). It then began updating the frontend modal in  to display this new rich information but did not complete the UI changes.
-- **Status:** IN PROGRESS
-- **Agent Testing Done:** N
-- **Which testing method agent to use?** screenshot tool. After finishing the UI update in , the agent must take a screenshot of the Brief modal to verify that all the new information (Logos, GTM, Links, and the two scripts) is displayed correctly and clearly.
+- **Last item agent was working:** Fixing a critical CORS issue that prevented tracking events (, ) from being captured on external landing pages. The agent correctly identified that the  option in the client-side tracking scripts was incompatible with the backend's  policy. The fix involved modifying the script generation logic in  to remove the problematic  option and improve debuggability. The fix was successfully deployed to the user's production server.
+- **Status:** USER VERIFICATION PENDING
+- **Agent Testing Done:** Y (Agent confirmed the backend CORS headers were correct via  but could not test the full JavaScript execution on an external site.)
+- **Which testing method agent to use?** Manual testing by user. The user must generate a new Brief from their live CRM, place the new Script LP on an external landing page, and check the browser's console (for debug logs) and the CRM database to confirm  and  events are being recorded.
 - **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-There are no outstanding bugs. The work is focused on completing the requested features.
+- **Issue 1: Verify the CORS tracking fix (P0)**
+  - **Description:** The core tracking functionality ( and ) was broken due to a CORS issue. A fix has been deployed, but it needs to be confirmed by the user on a live landing page. This is the highest priority as it impacts the fundamental purpose of the application.
+  - **Status:** USER VERIFICATION PENDING
+  - **Is recurring issue?** N
 
 **In progress Task List**:
-- **Task 1: Complete Comprehensive Brief UI (Priority: P0)**
-  - **Where to resume:** Continue editing . The backend logic is complete, but the frontend modal needs to be updated to render the new fields provided by the brief endpoint (logos, GTM codes, legal links, redirection URL) in a clear, well-structured format.
-  - **What will be achieved with this?** The user will have a fully copy-pasteable brief, which was the final feature request of the session, making integration much faster for their clients.
-  - **Status:** IN PROGRESS
-  - **Should Test frontend/backend/both after fix?** Frontend.
-  - **Blocked on something:** None.
+- None.
 
 **Upcoming and Future Tasks**
+
 - **Upcoming Tasks:**
-  - **P0: Full End-to-End Test:** Once the Comprehensive Brief UI is done, perform a full end-to-end test of the entire flow: generate a brief, install it (conceptually), simulate a visit, a CTA click, starting a form, and submitting a lead. Verify that all tracking events are created and that the lead is correctly processed and queued for dispatch.
-  - **P1: Deployment to Hostinger VPS:** The original goal of the project. Once all features are confirmed working locally, the code needs to be pulled to the user's VPS at , dependencies installed, and services restarted.
+  - **P0: Add  to :** The  operation on the server failed because the  directory was being tracked. This needs to be added to  to prevent future deployment issues.
+
 - **Future Tasks (from project backlog):**
   - **P1:** Implement Sub-accounts feature.
   - **P1:** Implement detailed Product Type configuration.
-  - **P2:** Add system alerts via email (SendGrid integration is on hold).
+  - **P2:** Add system alerts via email (SendGrid is on hold).
   - **P2:** Create an Image Library.
   - **P3:** Add A/B Testing (Campaign Mode).
 
 **Completed work in this session**
-- **Complete Refactor of Tracking/Lead System:** Rebuilt the entire lead capture and tracking mechanism from the ground up.
-  - **New Public API:** Created a new set of public endpoints () for session management, event tracking, and lead submission that do not expose API keys.
-  - **Per-Form CRM Configuration:** Implemented logic where each form has its own target CRM (ZR7/MDL) and its own dispatch API key, configured via the UI.
-  - **Command-Based Routing Logic:** Added a critical business logic step to check for active commandes (orders) before dispatching a lead to a CRM, with a cross-CRM fallback mechanism.
-  - **Secure Lead Export Endpoint:** Created the  endpoint, secured by a single, non-modifiable RDZ API key.
-  - **Split Tracking Scripts:** Refactored the brief generator to create two separate, linked scripts for Landing Pages and Forms to ensure accurate funnel tracking.
-- **Major Code Cleanup:** In response to user feedback, removed all old/legacy files (, old ), eliminated confusing v1/v2 naming from code and UI, and simplified the presentation of API keys in the dashboard.
+- **Mini Brief Builder:** Implemented a new feature on the Accounts page to generate custom code snippets on demand.
+- **Dashboard CRM Filtering:** Updated the main dashboard to filter all statistics based on the selected CRM.
+- **Leads Page Overhaul:** Enhanced the Leads page to show CRM Origine vs. Distribution, a Transferred status, and added new filters.
+- **Full System Audit & Harmonization:** Performed a comprehensive code and database audit to standardize naming conventions ( -> ) and remove obsolete fields (, ), ensuring data consistency.
+- **Full Production Deployment:** Successfully guided the user through a complete, from-scratch deployment on a Hostinger VPS, including system setup, Nginx configuration, SSL, and  service creation.
+- **GitHub Security:** Switched the project's Git repository from public to private and configured SSH deploy key access for the server.
+- **Deployment Debugging:** Solved multiple live deployment issues, including a missing environment variable, an incorrect field name in the database ( vs ), and a npm <command>
+
+Usage:
+
+npm install        install all the dependencies in your project
+npm install <foo>  add the <foo> dependency to your project
+npm test           run this project's tests
+npm run <foo>      run the script named <foo>
+npm <command> -h   quick help on <command>
+npm -l             display usage info for all commands
+npm help <term>    search for help on <term>
+npm help npm       more involved overview
+
+All commands:
+
+    access, adduser, audit, bugs, cache, ci, completion,
+    config, dedupe, deprecate, diff, dist-tag, docs, doctor,
+    edit, exec, explain, explore, find-dupes, fund, get, help,
+    help-search, hook, init, install, install-ci-test,
+    install-test, link, ll, login, logout, ls, org, outdated,
+    owner, pack, ping, pkg, prefix, profile, prune, publish,
+    query, rebuild, repo, restart, root, run-script, sbom,
+    search, set, shrinkwrap, star, stars, start, stop, team,
+    test, token, uninstall, unpublish, unstar, update, version,
+    view, whoami
+
+Specify configs in the ini-formatted file:
+    /root/.npmrc
+or on the command line via: npm <command> --key=value
+
+More configuration info: npm help config
+Configuration fields: npm help 7 config
+
+npm@10.8.2 /usr/lib/node_modules/npm dependency conflict.
+- **CORS Tracking Bug Fix:** Identified and fixed a critical CORS issue preventing  and  tracking by removing  from the generated tracking scripts. Deployed the fix to production.
+- **Context Document Creation:** Created a detailed context document for the user to ensure consistency in future development sessions.
+
+**Earlier issues found/mentioned but not fixed**
+- None.
+
+**Known issue recurrence from previous fork**
+- None.
 
 **Code Architecture**
-- 
-  - 
-    - : **(NEW)** Handles all public-facing, unauthenticated requests: session creation, event tracking (, , ), and initial lead submission. Contains the core business logic for command checking and cross-CRM routing.
-    - : **(REFACTORED)** Now primarily holds the secure, authenticated endpoint  for retrieving leads using the central RDZ API key.
-    - : Handles CRUD for Landing Pages and triggers the brief generation.
-    - : Handles CRUD for Forms, including the new  and  fields.
-    - : Provides API endpoints for configuration data, like the RDZ API key status.
-  - 
-    - : **(REWRITTEN)** Generates the comprehensive brief, including two separate scripts (LP & Form) and pulls account-level data (logos, GTM, links).
-  - : Pydantic models, updated with new fields in the  model.
-- 
-  - 
-    - : Displays LPs and the Brief modal (UI update in progress).
-    - : Displays Forms and the creation/edit modal with fields for  and .
-    - : Displays the read-only central Clé API RDZ and CRM configuration status.
+- **Production Stack:**
+  - **VPS:** Hostinger
+  - **OS:** Ubuntu 24.04
+  - **Web Server:** Nginx (as reverse proxy)
+  - **Backend:** FastAPI (managed by , running on port 8001)
+  - **Frontend:** Static React build served by Nginx from .
+  - **Database:** MongoDB
+  - **Source Control:** Private GitHub repository with SSH deploy key for server access.
 
 **Key Technical Concepts**
-- **Session Tracking Across Domains/Pages:** The session is maintained between the LP and the Form by passing the  as a URL query parameter () during the CTA redirection.
-- **Server-Side API Key Management:** Sensitive CRM dispatch keys are stored per-form in the database and are never exposed to the client. The lead submission endpoint uses the  to look up the correct key on the server before dispatching.
-- **Conditional Business Logic:** The lead dispatch logic is complex, involving database lookups for forms, accounts, and commandes before making a decision on where (and if) to send the lead.
+- **Production Deployment:** Full setup of a LEMP-like stack (Linux, Nginx, MongoDB, Python) using  for service management and  for SSL.
+- **CORS Debugging:** Diagnosed the browser security restriction that prevents sending credentials () to a domain that responds with a wildcard origin ().
+- **SSH Deploy Keys:** Secured automated Git access for the production server without using passwords or PATs.
+
+**key DB schema**
+- : 
+- : 
+- : 
+
+**changes in tech stack**
+- The application environment has moved from the Emergent preview pod to a user-managed Hostinger VPS.
 
 **All files of reference**
--  (Backend logic for the rich brief)
--  (Frontend UI for the rich brief modal - **NEEDS WORK**)
--  (Core logic for tracking and lead submission/routing)
--  (Secure lead export endpoint)
--  (UI for configuring per-form API keys)
--  (UI for displaying the read-only RDZ key)
--  (Schema for Forms and other objects)
-
-**key api endpoints**
-- : Creates a new visitor session.
-- : Tracks an event (e.g., , , ).
-- : Submits a lead from a form. This triggers the storage in RDZ and the subsequent dispatch logic to ZR7/MDL.
-- : **(SECURED)** Retrieves leads from the RDZ database. Requires  header.
-- : Retrieves the comprehensive brief data for a specific Landing Page.
+- : **(MODIFIED)** The core logic for generating tracking scripts was corrected to fix the CORS issue.
+- : **(MODIFIED)** Updated to support new filtering and data harmonization.
+- : **(MODIFIED)** UI updated to display origin/distribution CRMs and new filters.
+- **New production files (on VPS):**
+  - : Manages the backend process.
+  - : Nginx configuration.
+  - : Backend production environment variables.
+  - : Frontend production environment variables.
 
 **Critical Info for New Agent**
-- The user is very hands-on and specific. They prefer clean, rewritten code over small edits and dislike confusing labels like v1/v2 or legacy.
-- The core logic is now quite complex. Remember the flow: .
-- The distinction between the **public submission API** (no key needed) and the **secure export API** (RDZ key required) is crucial.
-- The immediate next step is purely frontend: finish building the UI for the Comprehensive Brief in . All backend data is already being provided.
+- The application is **LIVE** on a production VPS. All future work must consider this production environment. Changes must be deployed via  on the server.
+- The immediate priority is to **confirm with the user if the tracking fix works**. This is a blocker for the app's core functionality.
+- The user has been given a **Context Document** with all naming conventions, architecture details, and production credentials. You should request this document at the start of the next session to ensure consistency. The key convention is that all leads have  and  (as slugs, e.g., 'zr7', 'mdl').
+- Guide the user to add  to  to prevent future deployment conflicts.
+
+**documents and test reports created in this job**
+- A comprehensive Context Document containing project info, architecture, naming conventions, and credentials was provided to the user in the chat.
+- A step-by-step deployment guide was provided to the user in the chat.
+-  was updated to reflect the system audit and new features.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Asks how the session is tracked between the two separate scripts (LP and Form).
-2.  **Agent:** Explains the  URL parameter mechanism for linking the two pages.
-3.  **User:** Understands and approves (très clair bravo ben code ca propement dans les script).
-4.  **Agent:** Confirms this logic is already coded and clean.
-5.  **User:** Requests a new major feature: the Brief should be a comprehensive, copy-paste block with logos, GTM codes, and legal/privacy links from the account settings.
-6.  **Agent:** Acknowledges and checks the database schema for the required fields.
-7.  **Agent:** Implements the backend logic and starts updating the frontend.
-8.  **User:** Asks if the script should be automatically adapted based on the URL of the LP and Form.
-9.  **Agent:** Proposes a single script that detects the URL to adapt its behavior.
-10. **User:** Clarifies they were asking again how the session is tracked between pages.
+1.  **User:** Reports tracking issue: CORS error,  &  not working.
+2.  **Agent:** Asks for server access to diagnose.
+3.  **User:** Gives password, but agent realizes user is already on the server.
+4.  **Agent:** Asks user to run commands directly.
+5.  **Agent:** After analyzing logs and configs, determines the problem is the tracking script itself.
+6.  **User:** Provides the tracking script from a generated brief.
+7.  **Agent:** Proposes a corrected script and asks user to test.
+8.  **User:** Asks if that's the real solution.
+9.  **Agent:** Explains the root cause ( + ) and offers to fix the script generator in the backend.
+10. **User:** Asks to fix it everywhere in the backend and verify it's done correctly.
+11. **User (after deployment attempt):** Reports  error due to local changes on server.
 
 **Project Health Check:**
-- **In Progress:** The core backend logic is refactored and functional based on local testing. The UI for the final requested feature is incomplete. The application is not broken but requires finishing the current task before it's ready for deployment testing.
+- **Live/Deployed:** The application is running in production.
+- **Partially Broken:** Core tracking functionality (, ) is pending user verification after a fix was deployed. This is a critical issue.
 
 **3rd Party Integrations**
 - **ZR7 Digital API:** To send leads.
 - **Maison du Lead (MDL) API:** To send leads.
-- **SendGrid:** Inactive/On Hold.
-- **APScheduler:** Used for background tasks.
+- **APScheduler:** Used for background tasks in the backend.
 
 **Testing status**
-- **Testing agent used after significant changes:** NO
-- **Troubleshoot agent used after agent stuck in loop:** NO
-- **Test files created:** None in this session.
-- **Known regressions:** None. The previous broken state was the starting point for a full refactor.
+- **Testing agent used after significant changes:** NO (Agent performed manual E2E testing and debugging).
+- **Test files created:** None.
+- **Known regressions:** None.
 
 **Credentials to test flow:**
-- **UI Login:**  / 
+- **Production UI Login:**  / 
+- **Production URL:** 
 
 **What agent forgot to execute**
-- The agent did not complete the frontend implementation for the Comprehensive Brief feature in  after updating the backend.</analysis>
+- The agent did not add the  directory to , which caused a  conflict on the production server. This needs to be addressed to ensure smooth future deployments.</analysis>
