@@ -255,10 +255,21 @@ async def list_forms(
     for form in forms:
         code = form.get("code", "")
         
-        # Stats
-        started = await db.tracking.count_documents({"form_code": code, "event": "form_start"})
-        leads_total = await db.leads.count_documents({"form_code": code})
-        leads_sent = await db.leads.count_documents({"form_code": code, "sent_to_crm": True})
+        # Stats - EXCLURE les leads avec stats_reset: True
+        started = await db.tracking.count_documents({
+            "form_code": code, 
+            "event": "form_start",
+            "stats_reset": {"$ne": True}
+        })
+        leads_total = await db.leads.count_documents({
+            "form_code": code,
+            "stats_reset": {"$ne": True}
+        })
+        leads_sent = await db.leads.count_documents({
+            "form_code": code, 
+            "sent_to_crm": True,
+            "stats_reset": {"$ne": True}
+        })
         
         form["stats"] = {
             "started": started,
