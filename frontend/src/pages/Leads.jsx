@@ -389,6 +389,7 @@ export default function Leads() {
       case 'queued': return 'info';
       case 'failed': return 'danger';
       case 'no_crm': return 'secondary';
+      case 'no_api_key': return 'warning';
       case 'pending_no_order': return 'warning';
       case 'pending_manual': return 'info';
       default: return 'default';
@@ -402,6 +403,7 @@ export default function Leads() {
       case 'queued': return 'En file';
       case 'failed': return 'Échec';
       case 'no_crm': return 'Sans CRM';
+      case 'no_api_key': return 'Sans clé';
       case 'pending_no_order': return 'En attente';
       case 'pending_manual': return 'Manuel requis';
       default: return status;
