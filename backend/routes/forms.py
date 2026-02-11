@@ -510,6 +510,15 @@ async def reset_form_stats(
         }}
     )
     
+    # Marquer aussi les tracking events (form_start) comme resetés
+    await db.tracking.update_many(
+        {"form_code": form_code, "stats_reset": {"$ne": True}},
+        {"$set": {
+            "stats_reset": True,
+            "stats_reset_at": now_iso()
+        }}
+    )
+    
     # Mettre à jour le formulaire
     await db.forms.update_one(
         {"id": form_id},
