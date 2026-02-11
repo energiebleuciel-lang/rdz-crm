@@ -315,3 +315,73 @@ async def log_activity(user_id: str, user_email: str, action: str, entity_type: 
         "details": details,
         "created_at": now_iso()
     })
+
+
+# ==================== CLÉS API REDISTRIBUTION INTER-CRM ====================
+
+@router.get("/redistribution-keys")
+async def get_redistribution_keys(user: dict = Depends(require_admin)):
+    """
+    Récupère les 6 clés API pour la redistribution inter-CRM.
+    Ces clés sont utilisées quand un lead est envoyé d'un CRM vers l'autre.
+    """
+    config = await db.system_config.find_one({"type": "redistribution_keys"}, {"_id": 0})
+    
+    if not config:
+        # Structure par défaut
+        return {
+            "keys": {
+                "zr7": {"PV": "", "PAC": "", "ITE": ""},
+                "mdl": {"PV": "", "PAC": "", "ITE": ""}
+            }
+        }
+    
+    return {"keys": config.get("keys", {})}
+
+
+@router.put("/redistribution-keys")
+async def update_redistribution_keys(
+    data: dict,
+    user: dict = Depends(require_admin)
+):
+    """
+    Met à jour les 6 clés API de redistribution inter-CRM.
+    
+    Format attendu:
+    {
+        "keys": {
+            "zr7": {"PV": "key1", "PAC": "key2", "ITE": "key3"},
+            "mdl": {"PV": "key4", "PAC": "key5", "ITE": "key6"}
+        }
+    }
+    """
+    keys = data.get("keys", {})
+    
+    # Validation basique
+    if not isinstance(keys, dict):
+        raise HTTPException(status_code=400, detail="Format invalide pour 'keys'")
+    
+    # Sauvegarder
+    await db.system_config.update_one(
+        {"type": "redistribution_keys"},
+        {"$set": {
+            "type": "redistribution_keys",
+            "keys": keys,
+            "updated_at": now_iso(),
+            "updated_by": user.get("email")
+        }},
+        upsert=True
+    )
+    
+    # Log activité
+    await log_activity(
+        user.get("id", ""),
+        user.get("email", ""),
+        "update",
+        "redistribution_keys",
+        "system",
+        "Mise à jour des clés de redistribution"
+    )
+    
+    return {"success": True, "message": "Clés de redistribution mises à jour"}
+
