@@ -93,10 +93,18 @@ async def get_lp(lp_id: str, user: dict = Depends(get_current_user)):
     
     lp_code = lp.get("code", "")
     
-    # Stats
+    # Stats - EXCLURE les events avec stats_reset: True
     lp["stats"] = {
-        "visits": await db.tracking.count_documents({"lp_code": lp_code, "event": "lp_visit"}),
-        "cta_clicks": await db.tracking.count_documents({"lp_code": lp_code, "event": "cta_click"})
+        "visits": await db.tracking.count_documents({
+            "lp_code": lp_code, 
+            "event": "lp_visit",
+            "stats_reset": {"$ne": True}
+        }),
+        "cta_clicks": await db.tracking.count_documents({
+            "lp_code": lp_code, 
+            "event": "cta_click",
+            "stats_reset": {"$ne": True}
+        })
     }
     
     # Form lié
@@ -105,8 +113,15 @@ async def get_lp(lp_id: str, user: dict = Depends(get_current_user)):
         if form:
             lp["form"] = form
             form_code = form.get("code", "")
-            lp["stats"]["form_starts"] = await db.tracking.count_documents({"form_code": form_code, "event": "form_start"})
-            lp["stats"]["form_submits"] = await db.leads.count_documents({"form_code": form_code})
+            lp["stats"]["form_starts"] = await db.tracking.count_documents({
+                "form_code": form_code, 
+                "event": "form_start",
+                "stats_reset": {"$ne": True}
+            })
+            lp["stats"]["form_submits"] = await db.leads.count_documents({
+                "form_code": form_code,
+                "stats_reset": {"$ne": True}
+            })
             lp["liaison_code"] = f"{lp_code}_{form_code}"
     
     return lp
