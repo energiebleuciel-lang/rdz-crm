@@ -1,4 +1,16 @@
 """
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  🔒🔒🔒  FICHIER CRITIQUE VERROUILLÉ - NE PAS MODIFIER  🔒🔒🔒               ║
+║                                                                              ║
+║  Ce fichier contient le NOYAU CRITIQUE d'intégration des leads:              ║
+║  - submit_lead()    : Réception leads                                        ║
+║  - create_session() : Tracking sessions                                      ║
+║  - track_event()    : Événements tracking                                    ║
+║  - get_crm_url()    : URLs CRM                                               ║
+║                                                                              ║
+║  DÉVERROUILLAGE REQUIS: "Je déverrouille le noyau critique pour modifier X"  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
 Routes Publiques - Tracking et soumission leads
 """
 
