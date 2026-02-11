@@ -1,4 +1,16 @@
 """
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  🔒🔒🔒  FICHIER CRITIQUE VERROUILLÉ - NE PAS MODIFIER  🔒🔒🔒               ║
+║                                                                              ║
+║  Ce fichier contient la fonction CRITIQUE de routage:                        ║
+║  - has_commande(crm_id, product_type, departement)                           ║
+║                                                                              ║
+║  Cette fonction détermine vers quel CRM le lead est envoyé.                  ║
+║  Toute modification peut PERDRE DES LEADS définitivement.                    ║
+║                                                                              ║
+║  DÉVERROUILLAGE REQUIS: "Je déverrouille le noyau critique pour modifier X"  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
 Routes pour les Commandes
 - Gestion des commandes de leads par CRM/produit/département
 - Logique de routage cross-CRM
