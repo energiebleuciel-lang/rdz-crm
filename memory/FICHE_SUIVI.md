@@ -5,6 +5,26 @@
 
 ---
 
+## 🔒 NOYAU CRITIQUE VERROUILLÉ
+
+**⛔ LE SYSTÈME D'INTÉGRATION LEADS EST DÉFINITIVEMENT VERROUILLÉ ⛔**
+
+| Fonction | Fichier | Rôle |
+|----------|---------|------|
+| `submit_lead()` | `public.py` | Réception leads |
+| `has_commande()` | `commandes.py` | Routage CRM |
+| `send_to_crm_v2()` | `lead_sender.py` | Envoi vers ZR7/MDL |
+| `add_to_queue()` | `lead_sender.py` | Retry automatique |
+| `validate_phone_fr()` | `config.py` | Validation téléphone |
+| `create_session()` | `public.py` | Session tracking |
+| `track_event()` | `public.py` | Événements |
+
+**Pour modifier :** "Je déverrouille le noyau critique pour modifier [fonction]"
+
+**Fichier de référence :** `/app/backend/core_locked.py`
+
+---
+
 ## 🎯 RÉSUMÉ DU PROJET
 
 **RDZ CRM** est un CRM multi-tenant pour la collecte et distribution de leads vers deux CRMs externes :
