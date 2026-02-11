@@ -438,7 +438,7 @@ async def duplicate_form(form_id: str, user: dict = Depends(get_current_user)):
 
 # ==================== ADMIN : RESET STATS ====================
 
-@router.post("/forms/{form_id}/reset-stats")
+@router.post("/{form_id}/reset-stats")
 async def reset_form_stats(
     form_id: str,
     user: dict = Depends(require_admin)
