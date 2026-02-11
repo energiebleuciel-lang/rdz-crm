@@ -1,0 +1,141 @@
+{
+  "summary": "Completed comprehensive testing of admin lead management features. All 17 backend API tests passed (100%). Frontend UI testing verified all requested features: Edit/Delete/Force-Send buttons on each lead row, mass selection with checkbox, mass action bar with Modifier/Forcer envoi/Supprimer buttons, and Reset Stats button on Forms page.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_admin_features.py",
+    "/app/test_reports/pytest/pytest_admin_features.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "PUT /api/leads/{id} correctly validates allowed fields and requires admin role",
+    "DELETE /api/leads/{id} properly removes lead and cleans up queue entries",
+    "POST /api/leads/{id}/force-send validates target_crm (zr7/mdl only)",
+    "POST /api/forms/{id}/reset-stats creates snapshot before reset and marks leads as stats_reset=true",
+    "All admin endpoints properly require authentication (401 without token)"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_admin_features.py"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "email": "energiebleuciel@gmail.com",
+    "password": "92Ruemarxdormoy"
+  },
+  "seed_data_creation": "None - used existing data",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All admin features verified and working: 1) Lead Edit modal with phone/email/nom/prenom/departement/ville/notes_admin fields, 2) Lead Delete modal with warning, 3) Force Send modal with ZR7/MDL options, 4) Mass selection via checkboxes, 5) Mass action bar appears when leads selected, 6) Mass Edit/Delete/Force-Send modals, 7) Forms page Reset Stats button and modal",
+  "features_tested": [
+    {
+      "feature": "Page Leads - Liste avec filtres",
+      "status": "PASS",
+      "details": "Leads list displays with status filters (Tous, Envoyé, Doublon, Échec, En file, Sans CRM, En attente), transfer filter, and date range filters"
+    },
+    {
+      "feature": "Page Leads - Sélection multiple (checkbox)",
+      "status": "PASS",
+      "details": "Checkbox column visible for admin, select all header checkbox, individual row checkboxes work correctly"
+    },
+    {
+      "feature": "Page Leads - Modal édition individuelle",
+      "status": "PASS",
+      "details": "Edit button (pencil icon) opens modal with fields: Téléphone, Email, Nom, Prénom, Département, Ville, Notes admin"
+    },
+    {
+      "feature": "Page Leads - Modal suppression individuelle",
+      "status": "PASS",
+      "details": "Trash button opens modal with 'Action irréversible' warning and lead phone number"
+    },
+    {
+      "feature": "Page Leads - Modal forcer envoi CRM",
+      "status": "PASS",
+      "details": "Send button opens modal with ZR7 Digital and Maison du Lead options"
+    },
+    {
+      "feature": "Page Leads - Barre d'actions masse",
+      "status": "PASS",
+      "details": "Yellow bar appears when leads selected showing count and Modifier/Forcer envoi/Supprimer/X buttons"
+    },
+    {
+      "feature": "Page Leads - Modal édition masse",
+      "status": "PASS",
+      "details": "Mass edit modal shows count, info message about empty fields, Département/Ville/Notes admin fields"
+    },
+    {
+      "feature": "Page Leads - Modal suppression masse",
+      "status": "PASS",
+      "details": "Mass delete modal shows warning and count of leads to be deleted"
+    },
+    {
+      "feature": "Page Leads - Modal envoi masse vers CRM",
+      "status": "PASS",
+      "details": "Mass force send modal shows count and ZR7/MDL options"
+    },
+    {
+      "feature": "Page Forms - Bouton Reset Stats",
+      "status": "PASS",
+      "details": "RotateCcw icon button visible on each form card for admin users"
+    },
+    {
+      "feature": "Page Forms - Modal confirmation Reset Stats",
+      "status": "PASS",
+      "details": "Modal shows warning, form code, current stats count, and Confirmer le reset button"
+    },
+    {
+      "feature": "API PUT /api/leads/{id}",
+      "status": "PASS",
+      "details": "Updates lead fields, validates allowed fields, returns 400 for invalid/empty data, 404 for non-existent lead"
+    },
+    {
+      "feature": "API DELETE /api/leads/{id}",
+      "status": "PASS",
+      "details": "Deletes lead, returns 404 for non-existent lead"
+    },
+    {
+      "feature": "API POST /api/leads/{id}/force-send",
+      "status": "PASS",
+      "details": "Validates target_crm must be 'zr7' or 'mdl', returns 400 for invalid CRM"
+    },
+    {
+      "feature": "API POST /api/forms/{id}/reset-stats",
+      "status": "PASS",
+      "details": "Resets form stats, creates snapshot, marks leads as stats_reset=true, returns leads_affected count"
+    }
+  ],
+  "backend_tests_summary": {
+    "total": 17,
+    "passed": 17,
+    "failed": 0,
+    "test_classes": [
+      "TestAdminAuth (1 test)",
+      "TestLeadsList (1 test)",
+      "TestLeadUpdate (4 tests)",
+      "TestLeadDelete (1 test)",
+      "TestLeadForceSend (3 tests)",
+      "TestFormResetStats (2 tests)",
+      "TestFormsList (1 test)",
+      "TestUnauthorizedAccess (4 tests)"
+    ]
+  },
+  "ui_elements_verified": {
+    "leads_page": {
+      "action_buttons_per_row": ["Eye (view)", "Edit (pencil)", "Send (paper plane)", "Trash", "Retry (rotate) for failed"],
+      "mass_action_bar": ["Selection count", "Modifier", "Forcer envoi", "Supprimer (red)", "X (clear)"],
+      "filters": ["Status tabs", "Transfer dropdown", "Date range pickers"]
+    },
+    "forms_page": {
+      "action_buttons_per_card": ["Brief", "Duplicate", "Edit", "Reset Stats (rotate)", "Delete"]
+    }
+  }
+}
