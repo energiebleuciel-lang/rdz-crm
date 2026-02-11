@@ -355,22 +355,32 @@ async def submit_lead(data: LeadData, request: Request):
         "routing_reason": routing_reason,  # Raison du routing
         "distribution_reason": distribution_reason,  # Raison de la distribution
         "allow_cross_crm": allow_cross_crm,  # Cross-CRM autorisé ?
-        "api_status": initial_status,  # pending, pending_no_order, no_api_key, no_crm
+        "api_status": initial_status,  # pending, pending_no_order, no_api_key, no_crm, orphan, invalid_phone
         "sent_to_crm": False,
         "manual_only": False,  # Pour redistribution auto
-        "retry_count": 0
+        "retry_count": 0,
+        # FLAGS de diagnostic
+        "phone_invalid": phone_invalid,  # True si téléphone non valide
+        "form_not_found": form_not_found  # True si formulaire non trouvé
     }
     
     # TOUJOURS sauvegarder le lead
     await db.leads.insert_one(lead)
     
-    # Envoyer au CRM (seulement si on a un CRM et une clé)
+    # Envoyer au CRM (seulement si on a un CRM et une clé ET pas de problème de données)
     status = initial_status  # Garder le statut initial par défaut
     message = ""
     actual_crm_sent = None
     warning = None  # Pour notifier des problèmes non-bloquants
     
-    if initial_status == "no_crm":
+    # Gérer les différents cas d'erreur
+    if initial_status == "orphan":
+        message = "Lead enregistré - Formulaire non trouvé"
+        warning = "FORM_NOT_FOUND"
+    elif initial_status == "invalid_phone":
+        message = "Lead enregistré - Téléphone invalide"
+        warning = "PHONE_INVALID"
+    elif initial_status == "no_crm":
         message = "Lead enregistré - CRM non configuré"
         warning = "CRM_NOT_CONFIGURED"
     elif initial_status == "no_api_key":
