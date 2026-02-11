@@ -483,8 +483,8 @@ export default function Leads() {
       <Card className="p-4">
         <div className="flex flex-wrap items-center gap-4">
           {/* Status filter */}
-          <div className="flex gap-2">
-            {['all', 'success', 'duplicate', 'failed', 'queued', 'no_crm', 'pending_no_order'].map(s => (
+          <div className="flex gap-2 flex-wrap">
+            {['all', 'success', 'duplicate', 'failed', 'queued', 'no_crm', 'no_api_key', 'pending_no_order'].map(s => (
               <button
                 key={s}
                 onClick={() => setFilter(s)}
