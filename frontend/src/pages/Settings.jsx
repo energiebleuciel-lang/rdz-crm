@@ -187,6 +187,9 @@ export default function Settings() {
           Les clés API ZR7/MDL se configurent dans chaque <a href="/forms" className="text-blue-600 hover:underline">Formulaire</a>
         </p>
       </Card>
+
+      {/* Clés de redistribution inter-CRM */}
+      <RedistributionKeys />
     </div>
   );
 }
