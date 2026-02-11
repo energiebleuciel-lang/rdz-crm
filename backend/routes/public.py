@@ -193,12 +193,20 @@ async def track_event(data: EventData, request: Request):
 
 @router.post("/leads")
 async def submit_lead(data: LeadData, request: Request):
-    """Soumettre un lead"""
+    """
+    Soumettre un lead
     
-    # Valider téléphone
-    is_valid, phone = validate_phone_fr(data.phone)
-    if not is_valid:
-        return {"success": False, "error": phone}
+    RÈGLE ABSOLUE : Le lead est TOUJOURS créé dans RDZ, peu importe :
+    - Si le téléphone est invalide → lead créé avec flag phone_invalid
+    - Si le formulaire n'existe pas → lead orphelin créé
+    - Si la clé API est manquante → lead créé avec status no_api_key
+    - Si pas de commande → lead créé avec status pending_no_order
+    """
+    
+    # Valider téléphone - mais NE PAS bloquer si invalide
+    is_valid, phone_result = validate_phone_fr(data.phone)
+    phone = phone_result if is_valid else data.phone  # Garder le téléphone brut si invalide
+    phone_invalid = not is_valid
     
     # Récupérer département (directement depuis les données)
     dept = data.departement or ""
@@ -208,8 +216,19 @@ async def submit_lead(data: LeadData, request: Request):
         {"$or": [{"code": data.form_code}, {"id": data.form_code}]},
         {"_id": 0}
     )
-    if not form:
-        return {"success": False, "error": "Formulaire non trouvé"}
+    
+    # Si formulaire non trouvé, créer un lead "orphelin" quand même
+    form_not_found = form is None
+    if form_not_found:
+        form = {
+            "id": None,
+            "code": data.form_code or "UNKNOWN",
+            "product_type": "PV",
+            "account_id": "",
+            "target_crm": "",
+            "crm_api_key": "",
+            "allow_cross_crm": False
+        }
     
     form_code = form.get("code", "")
     product_type = form.get("product_type", "PV")
