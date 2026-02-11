@@ -257,6 +257,17 @@ export default function Forms() {
 
   return (
     <div className="space-y-6">
+      {/* Message d'action */}
+      {actionMessage && (
+        <div className={`p-3 rounded-lg ${
+          actionMessage.type === 'success' 
+            ? 'bg-green-50 text-green-800 border border-green-200' 
+            : 'bg-red-50 text-red-800 border border-red-200'
+        }`}>
+          {actionMessage.text}
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-4">
@@ -748,6 +759,49 @@ export default function Forms() {
                   ℹ️ {briefData.phone_validation.auto_format}
                 </p>
               )}
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Modal Reset Stats */}
+      <Modal 
+        isOpen={showResetStatsModal} 
+        onClose={() => setShowResetStatsModal(false)}
+        title="Remettre les stats à zéro"
+        size="sm"
+      >
+        {selectedFormForReset && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 p-4 bg-amber-50 rounded-lg border border-amber-200">
+              <AlertTriangle className="w-6 h-6 text-amber-600 flex-shrink-0" />
+              <div>
+                <p className="font-medium text-amber-800">Attention</p>
+                <p className="text-sm text-amber-700">
+                  Cette action remet les statistiques du formulaire <strong>{selectedFormForReset.code}</strong> à zéro.
+                </p>
+                <p className="text-xs text-amber-600 mt-1">
+                  Les leads ne seront PAS supprimés, mais ils ne seront plus comptés dans les stats.
+                </p>
+              </div>
+            </div>
+            
+            <div className="bg-slate-50 p-3 rounded-lg text-sm">
+              <p className="text-slate-600">Formulaire : <span className="font-mono font-medium">{selectedFormForReset.code}</span></p>
+              <p className="text-slate-600">Stats actuelles : <span className="font-medium">{selectedFormForReset.stats?.leads || 0} leads</span></p>
+            </div>
+            
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setShowResetStatsModal(false)}>
+                Annuler
+              </Button>
+              <Button 
+                onClick={resetFormStats} 
+                disabled={actionLoading}
+                className="bg-amber-600 hover:bg-amber-700"
+              >
+                {actionLoading ? 'Reset en cours...' : 'Confirmer le reset'}
+              </Button>
             </div>
           </div>
         )}
