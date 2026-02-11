@@ -1,46 +1,65 @@
 /**
- * Page Leads - Filtrée par CRM sélectionné
+ * Page Leads - Gestion complète des leads
+ * - Liste avec filtres
+ * - Voir détail
+ * - Modifier (single + mass)
+ * - Supprimer (single + mass)
+ * - Forcer envoi CRM (single + mass)
+ * - Export CSV
  */
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useCRM } from '../hooks/useCRM';
 import { API } from '../hooks/useApi';
-import { Card, Loading, Badge, Button, Modal, Input } from '../components/UI';
-import { Users, RefreshCw, Download, Eye, RotateCcw, ArrowRightLeft, Calendar } from 'lucide-react';
+import { Card, Loading, Badge, Button, Modal, Input, Select } from '../components/UI';
+import { 
+  Users, RefreshCw, Download, Eye, RotateCcw, ArrowRightLeft, Calendar,
+  Edit, Trash2, Send, CheckSquare, Square, AlertTriangle, X
+} from 'lucide-react';
 
 export default function Leads() {
-  const { authFetch } = useAuth();
+  const { authFetch, user } = useAuth();
   const { selectedCRM, currentCRM } = useCRM();
   const [leads, setLeads] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
-  const [transferredFilter, setTransferredFilter] = useState(null); // null = tous, true = transférés, false = non transférés
+  const [transferredFilter, setTransferredFilter] = useState(null);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  
+  // Modals
   const [selectedLead, setSelectedLead] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showForceSendModal, setShowForceSendModal] = useState(false);
+  const [showMassEditModal, setShowMassEditModal] = useState(false);
+  const [showMassDeleteModal, setShowMassDeleteModal] = useState(false);
+  const [showMassForceSendModal, setShowMassForceSendModal] = useState(false);
+  
+  // Selection pour mass actions
+  const [selectedLeadIds, setSelectedLeadIds] = useState([]);
+  const [selectAll, setSelectAll] = useState(false);
+  
+  // Form data
+  const [editForm, setEditForm] = useState({});
+  const [massEditForm, setMassEditForm] = useState({});
+  const [forceSendCRM, setForceSendCRM] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionMessage, setActionMessage] = useState(null);
 
-  useEffect(() => {
-    // Ce useEffect est maintenant géré par celui avec les filtres
-  }, [selectedCRM]);
+  const isAdmin = user?.role === 'admin';
 
+  // Load data
   const loadData = async () => {
     try {
       setLoading(true);
-      
-      // Construire l'URL avec les filtres
       let url = `${API}/api/leads?crm_id=${selectedCRM}&limit=500`;
-      if (transferredFilter !== null) {
-        url += `&transferred=${transferredFilter}`;
-      }
-      if (dateFrom) {
-        url += `&date_from=${dateFrom}`;
-      }
-      if (dateTo) {
-        url += `&date_to=${dateTo}`;
-      }
+      if (transferredFilter !== null) url += `&transferred=${transferredFilter}`;
+      if (dateFrom) url += `&date_from=${dateFrom}`;
+      if (dateTo) url += `&date_to=${dateTo}`;
       
       const res = await authFetch(url);
       if (res.ok) {
@@ -48,7 +67,6 @@ export default function Leads() {
         setLeads(data.leads || []);
       }
       
-      // Charger les comptes pour référence
       const accountsRes = await authFetch(`${API}/api/accounts?crm_id=${selectedCRM}`);
       if (accountsRes.ok) {
         const data = await accountsRes.json();
@@ -58,39 +76,276 @@ export default function Leads() {
       console.error('Load error:', e);
     } finally {
       setLoading(false);
+      setSelectedLeadIds([]);
+      setSelectAll(false);
     }
   };
 
-  // Recharger quand les filtres changent
   useEffect(() => {
-    if (selectedCRM) {
-      loadData();
-    }
+    if (selectedCRM) loadData();
   }, [selectedCRM, transferredFilter, dateFrom, dateTo]);
+
+  // ==================== SELECTION ====================
+  
+  const toggleSelectAll = () => {
+    if (selectAll) {
+      setSelectedLeadIds([]);
+    } else {
+      setSelectedLeadIds(filteredLeads.map(l => l.id));
+    }
+    setSelectAll(!selectAll);
+  };
+
+  const toggleSelectLead = (leadId) => {
+    if (selectedLeadIds.includes(leadId)) {
+      setSelectedLeadIds(selectedLeadIds.filter(id => id !== leadId));
+    } else {
+      setSelectedLeadIds([...selectedLeadIds, leadId]);
+    }
+  };
+
+  // ==================== SINGLE ACTIONS ====================
 
   const viewLead = (lead) => {
     setSelectedLead(lead);
     setShowDetailModal(true);
   };
 
+  const openEditModal = (lead) => {
+    setSelectedLead(lead);
+    setEditForm({
+      phone: lead.phone || '',
+      nom: lead.nom || '',
+      prenom: lead.prenom || '',
+      email: lead.email || '',
+      departement: lead.departement || '',
+      ville: lead.ville || '',
+      civilite: lead.civilite || '',
+      type_logement: lead.type_logement || '',
+      statut_occupant: lead.statut_occupant || '',
+      notes_admin: lead.notes_admin || ''
+    });
+    setShowEditModal(true);
+  };
+
+  const saveLead = async () => {
+    try {
+      setActionLoading(true);
+      const res = await authFetch(`${API}/api/leads/${selectedLead.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm)
+      });
+      
+      if (res.ok) {
+        setActionMessage({ type: 'success', text: 'Lead modifié avec succès !' });
+        setShowEditModal(false);
+        loadData();
+      } else {
+        const err = await res.json();
+        setActionMessage({ type: 'error', text: err.detail || 'Erreur lors de la modification' });
+      }
+    } catch (e) {
+      setActionMessage({ type: 'error', text: e.message });
+    } finally {
+      setActionLoading(false);
+      setTimeout(() => setActionMessage(null), 3000);
+    }
+  };
+
+  const openDeleteModal = (lead) => {
+    setSelectedLead(lead);
+    setShowDeleteModal(true);
+  };
+
+  const deleteLead = async () => {
+    try {
+      setActionLoading(true);
+      const res = await authFetch(`${API}/api/leads/${selectedLead.id}`, {
+        method: 'DELETE'
+      });
+      
+      if (res.ok) {
+        setActionMessage({ type: 'success', text: 'Lead supprimé !' });
+        setShowDeleteModal(false);
+        loadData();
+      } else {
+        const err = await res.json();
+        setActionMessage({ type: 'error', text: err.detail || 'Erreur lors de la suppression' });
+      }
+    } catch (e) {
+      setActionMessage({ type: 'error', text: e.message });
+    } finally {
+      setActionLoading(false);
+      setTimeout(() => setActionMessage(null), 3000);
+    }
+  };
+
+  const openForceSendModal = (lead) => {
+    setSelectedLead(lead);
+    setForceSendCRM('');
+    setShowForceSendModal(true);
+  };
+
+  const forceSendLead = async () => {
+    if (!forceSendCRM) return;
+    try {
+      setActionLoading(true);
+      const res = await authFetch(`${API}/api/leads/${selectedLead.id}/force-send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target_crm: forceSendCRM })
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setActionMessage({ type: 'success', text: `Envoyé vers ${forceSendCRM.toUpperCase()} !` });
+        setShowForceSendModal(false);
+        loadData();
+      } else {
+        const err = await res.json();
+        setActionMessage({ type: 'error', text: err.detail || 'Erreur lors de l\'envoi' });
+      }
+    } catch (e) {
+      setActionMessage({ type: 'error', text: e.message });
+    } finally {
+      setActionLoading(false);
+      setTimeout(() => setActionMessage(null), 3000);
+    }
+  };
+
   const retryLead = async (leadId) => {
     try {
-      const res = await authFetch(`${API}/api/leads/${leadId}/retry`, {
-        method: 'POST'
-      });
+      const res = await authFetch(`${API}/api/leads/${leadId}/retry`, { method: 'POST' });
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
-          alert(`✅ Lead relancé avec succès (${data.status})`);
+          setActionMessage({ type: 'success', text: `Lead relancé (${data.status})` });
         } else {
-          alert(`❌ Échec: ${data.error || data.status}`);
+          setActionMessage({ type: 'error', text: data.error || data.status });
         }
         loadData();
       }
     } catch (e) {
-      alert('Erreur: ' + e.message);
+      setActionMessage({ type: 'error', text: e.message });
+    }
+    setTimeout(() => setActionMessage(null), 3000);
+  };
+
+  // ==================== MASS ACTIONS ====================
+
+  const openMassEditModal = () => {
+    setMassEditForm({
+      departement: '',
+      ville: '',
+      notes_admin: ''
+    });
+    setShowMassEditModal(true);
+  };
+
+  const saveMassEdit = async () => {
+    try {
+      setActionLoading(true);
+      let successCount = 0;
+      let errorCount = 0;
+      
+      // Filtrer les champs vides
+      const updateData = Object.fromEntries(
+        Object.entries(massEditForm).filter(([k, v]) => v !== '')
+      );
+      
+      if (Object.keys(updateData).length === 0) {
+        setActionMessage({ type: 'error', text: 'Aucun champ à modifier' });
+        setActionLoading(false);
+        return;
+      }
+      
+      for (const leadId of selectedLeadIds) {
+        const res = await authFetch(`${API}/api/leads/${leadId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updateData)
+        });
+        if (res.ok) successCount++;
+        else errorCount++;
+      }
+      
+      setActionMessage({ 
+        type: successCount > 0 ? 'success' : 'error', 
+        text: `${successCount} modifié(s), ${errorCount} erreur(s)` 
+      });
+      setShowMassEditModal(false);
+      loadData();
+    } catch (e) {
+      setActionMessage({ type: 'error', text: e.message });
+    } finally {
+      setActionLoading(false);
+      setTimeout(() => setActionMessage(null), 3000);
     }
   };
+
+  const openMassDeleteModal = () => {
+    setShowMassDeleteModal(true);
+  };
+
+  const massDeleteLeads = async () => {
+    try {
+      setActionLoading(true);
+      let successCount = 0;
+      
+      for (const leadId of selectedLeadIds) {
+        const res = await authFetch(`${API}/api/leads/${leadId}`, { method: 'DELETE' });
+        if (res.ok) successCount++;
+      }
+      
+      setActionMessage({ type: 'success', text: `${successCount} lead(s) supprimé(s)` });
+      setShowMassDeleteModal(false);
+      loadData();
+    } catch (e) {
+      setActionMessage({ type: 'error', text: e.message });
+    } finally {
+      setActionLoading(false);
+      setTimeout(() => setActionMessage(null), 3000);
+    }
+  };
+
+  const openMassForceSendModal = () => {
+    setForceSendCRM('');
+    setShowMassForceSendModal(true);
+  };
+
+  const massForceSend = async () => {
+    if (!forceSendCRM) return;
+    try {
+      setActionLoading(true);
+      let successCount = 0;
+      let errorCount = 0;
+      
+      for (const leadId of selectedLeadIds) {
+        const res = await authFetch(`${API}/api/leads/${leadId}/force-send`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target_crm: forceSendCRM })
+        });
+        if (res.ok) successCount++;
+        else errorCount++;
+      }
+      
+      setActionMessage({ 
+        type: successCount > 0 ? 'success' : 'error', 
+        text: `${successCount} envoyé(s) vers ${forceSendCRM.toUpperCase()}, ${errorCount} erreur(s)` 
+      });
+      setShowMassForceSendModal(false);
+      loadData();
+    } catch (e) {
+      setActionMessage({ type: 'error', text: e.message });
+    } finally {
+      setActionLoading(false);
+      setTimeout(() => setActionMessage(null), 3000);
+    }
+  };
+
+  // ==================== EXPORT ====================
 
   const exportCSV = () => {
     const filtered = filteredLeads;
@@ -104,35 +359,13 @@ export default function Leads() {
       'CRM Origine', 'CRM Cible', 'Transféré', 'Statut', 'Date'
     ];
     const rows = filtered.map(l => [
-      l.phone,
-      l.nom,
-      l.prenom,
-      l.civilite,
-      l.email,
-      l.departement,
-      l.ville,
-      l.adresse,
-      l.type_logement,
-      l.statut_occupant,
-      l.surface_habitable,
-      l.annee_construction,
-      l.type_chauffage,
-      l.facture_electricite,
-      l.facture_chauffage,
-      l.type_projet,
-      l.delai_projet,
-      l.budget,
-      l.form_code,
-      l.lp_code,
-      l.liaison_code,
-      l.source,
-      l.utm_source,
-      l.utm_medium,
-      l.utm_campaign,
-      l.origin_crm,
-      l.target_crm,
-      l.is_transferred ? 'Oui' : 'Non',
-      l.api_status,
+      l.phone, l.nom, l.prenom, l.civilite, l.email,
+      l.departement, l.ville, l.adresse,
+      l.type_logement, l.statut_occupant, l.surface_habitable, l.annee_construction, l.type_chauffage,
+      l.facture_electricite, l.facture_chauffage,
+      l.type_projet, l.delai_projet, l.budget,
+      l.form_code, l.lp_code, l.liaison_code, l.source, l.utm_source, l.utm_medium, l.utm_campaign,
+      l.origin_crm, l.target_crm, l.is_transferred ? 'Oui' : 'Non', l.api_status,
       new Date(l.created_at).toLocaleDateString('fr-FR')
     ]);
     
@@ -145,9 +378,9 @@ export default function Leads() {
     a.click();
   };
 
-  const filteredLeads = filter === 'all' 
-    ? leads 
-    : leads.filter(l => l.api_status === filter);
+  // ==================== HELPERS ====================
+
+  const filteredLeads = filter === 'all' ? leads : leads.filter(l => l.api_status === filter);
 
   const statusVariant = (status) => {
     switch (status) {
@@ -156,374 +389,472 @@ export default function Leads() {
       case 'queued': return 'info';
       case 'failed': return 'danger';
       case 'no_crm': return 'secondary';
+      case 'pending_no_order': return 'warning';
+      case 'pending_manual': return 'info';
       default: return 'default';
     }
   };
-  
+
   const statusLabel = (status) => {
     switch (status) {
       case 'success': return 'Envoyé';
       case 'duplicate': return 'Doublon';
-      case 'queued': return 'En queue';
-      case 'failed': return 'Échoué';
-      case 'no_crm': return 'Pas de distrib.';
-      case 'pending': return 'En attente';
+      case 'queued': return 'En file';
+      case 'failed': return 'Échec';
+      case 'no_crm': return 'Sans CRM';
+      case 'pending_no_order': return 'En attente';
+      case 'pending_manual': return 'Manuel requis';
       default: return status;
     }
+  };
+
+  const getAccountName = (accountId) => {
+    const acc = accounts.find(a => a.id === accountId);
+    return acc?.name || accountId?.substring(0, 8) || '-';
   };
 
   if (loading) return <Loading />;
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Leads</h1>
-          <p className="text-sm text-slate-500">
-            CRM: <span className="font-medium text-slate-700">{currentCRM?.name}</span>
-          </p>
-        </div>
-        
         <div className="flex items-center gap-3">
-          <Button variant="secondary" onClick={loadData}>
-            <RefreshCw className="w-4 h-4" />
+          <div className="p-3 bg-gradient-to-br from-purple-100 to-purple-200 rounded-xl">
+            <Users className="w-6 h-6 text-purple-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800">Leads {currentCRM?.name || ''}</h1>
+            <p className="text-slate-500 text-sm">{filteredLeads.length} lead(s)</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={loadData}>
+            <RefreshCw className="w-4 h-4 mr-2" /> Actualiser
           </Button>
-          
-          <Button variant="secondary" onClick={exportCSV}>
-            <Download className="w-4 h-4" />
-            Export CSV
+          <Button variant="outline" onClick={exportCSV}>
+            <Download className="w-4 h-4 mr-2" /> Export CSV
           </Button>
         </div>
       </div>
 
-      {/* Filtres */}
-      <div className="flex flex-wrap items-center gap-4 bg-slate-50 p-4 rounded-lg">
-        {/* Filtre par statut */}
-        <div className="flex gap-1 bg-white p-1 rounded-lg shadow-sm">
-          {[
-            { value: 'all', label: 'Tous' },
-            { value: 'success', label: 'Envoyés' },
-            { value: 'failed', label: 'Échoués' },
-            { value: 'no_crm', label: 'Sans distrib.' },
-            { value: 'queued', label: 'En queue' }
-          ].map(f => (
-            <button
-              key={f.value}
-              onClick={() => setFilter(f.value)}
-              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                filter === f.value 
-                  ? 'bg-amber-500 text-white' 
-                  : 'text-slate-600 hover:text-slate-800 hover:bg-slate-100'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
+      {/* Message */}
+      {actionMessage && (
+        <div className={`p-3 rounded-lg ${
+          actionMessage.type === 'success' 
+            ? 'bg-green-50 text-green-800 border border-green-200' 
+            : 'bg-red-50 text-red-800 border border-red-200'
+        }`}>
+          {actionMessage.text}
         </div>
+      )}
 
-        {/* Filtre transférés */}
-        <div className="flex items-center gap-2">
-          <ArrowRightLeft className="w-4 h-4 text-slate-400" />
+      {/* Mass Actions Bar */}
+      {isAdmin && selectedLeadIds.length > 0 && (
+        <Card className="p-4 bg-amber-50 border-amber-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckSquare className="w-5 h-5 text-amber-600" />
+              <span className="font-medium text-amber-800">
+                {selectedLeadIds.length} lead(s) sélectionné(s)
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={openMassEditModal}>
+                <Edit className="w-4 h-4 mr-1" /> Modifier
+              </Button>
+              <Button size="sm" variant="outline" onClick={openMassForceSendModal}>
+                <Send className="w-4 h-4 mr-1" /> Forcer envoi
+              </Button>
+              <Button size="sm" variant="danger" onClick={openMassDeleteModal}>
+                <Trash2 className="w-4 h-4 mr-1" /> Supprimer
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => { setSelectedLeadIds([]); setSelectAll(false); }}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Filters */}
+      <Card className="p-4">
+        <div className="flex flex-wrap items-center gap-4">
+          {/* Status filter */}
+          <div className="flex gap-2">
+            {['all', 'success', 'duplicate', 'failed', 'queued', 'no_crm', 'pending_no_order'].map(s => (
+              <button
+                key={s}
+                onClick={() => setFilter(s)}
+                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                  filter === s 
+                    ? 'bg-purple-600 text-white' 
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {s === 'all' ? 'Tous' : statusLabel(s)}
+              </button>
+            ))}
+          </div>
+
+          {/* Transferred filter */}
           <select
-            value={transferredFilter === null ? 'all' : transferredFilter ? 'yes' : 'no'}
-            onChange={(e) => {
-              const val = e.target.value;
-              setTransferredFilter(val === 'all' ? null : val === 'yes');
-            }}
-            className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-white"
+            value={transferredFilter === null ? '' : transferredFilter.toString()}
+            onChange={(e) => setTransferredFilter(e.target.value === '' ? null : e.target.value === 'true')}
+            className="px-3 py-1 border rounded-lg text-sm"
           >
-            <option value="all">Tous les leads</option>
-            <option value="yes">Transférés uniquement</option>
-            <option value="no">Non transférés</option>
+            <option value="">Tous (transfert)</option>
+            <option value="true">Transférés</option>
+            <option value="false">Non transférés</option>
           </select>
-        </div>
 
-        {/* Filtre période */}
-        <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-slate-400" />
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            className="px-2 py-1.5 border border-slate-200 rounded-lg text-sm bg-white"
-            placeholder="Du"
-          />
-          <span className="text-slate-400">→</span>
-          <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            className="px-2 py-1.5 border border-slate-200 rounded-lg text-sm bg-white"
-            placeholder="Au"
-          />
-          {(dateFrom || dateTo) && (
-            <button
-              onClick={() => { setDateFrom(''); setDateTo(''); }}
-              className="text-xs text-red-500 hover:underline"
-            >
-              Effacer
-            </button>
-          )}
+          {/* Date filters */}
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-slate-400" />
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="px-2 py-1 border rounded-lg text-sm"
+              placeholder="Du"
+            />
+            <span className="text-slate-400">→</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="px-2 py-1 border rounded-lg text-sm"
+              placeholder="Au"
+            />
+          </div>
         </div>
-      </div>
+      </Card>
 
-      <Card>
+      {/* Table */}
+      <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-slate-50">
+            <thead className="bg-slate-50 border-b">
               <tr>
-                <th className="text-left p-4 text-sm font-medium text-slate-600">Téléphone</th>
-                <th className="text-left p-4 text-sm font-medium text-slate-600">Nom</th>
-                <th className="text-left p-4 text-sm font-medium text-slate-600">Email</th>
-                <th className="text-left p-4 text-sm font-medium text-slate-600">CP / Dept</th>
-                <th className="text-left p-4 text-sm font-medium text-slate-600">Form</th>
-                <th className="text-left p-4 text-sm font-medium text-slate-600">LP</th>
-                <th className="text-left p-4 text-sm font-medium text-slate-600">Source</th>
-                <th className="text-left p-4 text-sm font-medium text-slate-600">CRM Origine</th>
-                <th className="text-left p-4 text-sm font-medium text-slate-600">Distribution</th>
-                <th className="text-left p-4 text-sm font-medium text-slate-600">Statut</th>
-                <th className="text-left p-4 text-sm font-medium text-slate-600">Date</th>
-                <th className="text-left p-4 text-sm font-medium text-slate-600">Actions</th>
+                {isAdmin && (
+                  <th className="px-4 py-3 text-left">
+                    <button onClick={toggleSelectAll} className="p-1 hover:bg-slate-200 rounded">
+                      {selectAll ? <CheckSquare className="w-5 h-5 text-purple-600" /> : <Square className="w-5 h-5 text-slate-400" />}
+                    </button>
+                  </th>
+                )}
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Date</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Téléphone</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Contact</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Dept</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Formulaire</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Routage</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Statut</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-100">
               {filteredLeads.map(lead => (
-                <tr key={lead.id} className="border-t hover:bg-slate-50">
-                  <td className="p-4 font-mono text-sm">{lead.phone}</td>
-                  <td className="p-4">
-                    <span className="text-slate-500 text-xs">{lead.civilite}</span>{' '}
-                    {lead.nom} {lead.prenom}
+                <tr key={lead.id} className="hover:bg-slate-50">
+                  {isAdmin && (
+                    <td className="px-4 py-3">
+                      <button onClick={() => toggleSelectLead(lead.id)} className="p-1 hover:bg-slate-200 rounded">
+                        {selectedLeadIds.includes(lead.id) 
+                          ? <CheckSquare className="w-5 h-5 text-purple-600" /> 
+                          : <Square className="w-5 h-5 text-slate-400" />
+                        }
+                      </button>
+                    </td>
+                  )}
+                  <td className="px-4 py-3 text-sm text-slate-500">
+                    {new Date(lead.created_at).toLocaleDateString('fr-FR')}
+                    <br />
+                    <span className="text-xs">{new Date(lead.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
                   </td>
-                  <td className="p-4 text-sm text-slate-600 truncate max-w-[150px]">{lead.email}</td>
-                  <td className="p-4">
-                    <span className="font-mono text-sm">{lead.departement}</span>
+                  <td className="px-4 py-3">
+                    <span className="font-mono text-sm">{lead.phone}</span>
                   </td>
-                  <td className="p-4">
-                    <Badge variant="info">{lead.form_code}</Badge>
+                  <td className="px-4 py-3">
+                    <div className="text-sm font-medium text-slate-800">{lead.nom} {lead.prenom}</div>
+                    {lead.email && <div className="text-xs text-slate-500">{lead.email}</div>}
                   </td>
-                  <td className="p-4 text-sm text-slate-500">
-                    {lead.lp_code || '-'}
-                  </td>
-                  <td className="p-4 text-sm text-slate-500">
-                    {lead.source || lead.utm_source || '-'}
-                  </td>
-                  <td className="p-4 text-sm">
-                    <span className="font-medium text-slate-700">
-                      {lead.origin_crm?.toUpperCase() || '-'}
+                  <td className="px-4 py-3">
+                    <span className="inline-flex items-center justify-center w-8 h-8 bg-slate-100 rounded-full text-sm font-medium">
+                      {lead.departement || '-'}
                     </span>
                   </td>
-                  <td className="p-4 text-sm">
-                    <div className="flex items-center gap-1">
-                      {lead.is_transferred ? (
-                        <>
-                          <Badge variant="info" className="text-xs">
-                            → {lead.target_crm?.toUpperCase()}
-                          </Badge>
-                        </>
-                      ) : lead.target_crm && lead.target_crm !== 'none' ? (
-                        <span className="text-green-600">{lead.target_crm?.toUpperCase()}</span>
-                      ) : (
-                        <span className="text-slate-400">-</span>
+                  <td className="px-4 py-3">
+                    <span className="text-sm font-mono text-purple-600">{lead.form_code}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1 text-xs">
+                      <span className="px-2 py-0.5 bg-slate-100 rounded">{lead.origin_crm || '?'}</span>
+                      <ArrowRightLeft className="w-3 h-3 text-slate-400" />
+                      <span className={`px-2 py-0.5 rounded ${lead.target_crm === 'zr7' ? 'bg-blue-100 text-blue-700' : lead.target_crm === 'mdl' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100'}`}>
+                        {lead.target_crm || 'none'}
+                      </span>
+                      {lead.is_transferred && (
+                        <span className="px-1 py-0.5 bg-amber-100 text-amber-700 rounded text-xs">T</span>
                       )}
                     </div>
                   </td>
-                  <td className="p-4">
-                    <div className="flex flex-col">
-                      <Badge variant={statusVariant(lead.api_status)}>
-                        {statusLabel(lead.api_status)}
-                      </Badge>
-                      {['failed', 'no_crm'].includes(lead.api_status) && lead.api_response && (
-                        <span className="text-xs text-red-500 mt-1 max-w-[150px] truncate" title={lead.api_response}>
-                          {(() => {
-                            try {
-                              const resp = typeof lead.api_response === 'string' 
-                                ? JSON.parse(lead.api_response.replace(/'/g, '"'))
-                                : lead.api_response;
-                              return resp?.error || resp?.message || lead.api_response;
-                            } catch {
-                              return lead.api_response?.substring?.(0, 50) || 'Erreur';
-                            }
-                          })()}
-                        </span>
-                      )}
-                      {lead.api_status === 'no_crm' && !lead.api_response && (
-                        <span className="text-xs text-slate-500 mt-1">Pas de commande active</span>
-                      )}
-                    </div>
+                  <td className="px-4 py-3">
+                    <Badge variant={statusVariant(lead.api_status)}>
+                      {statusLabel(lead.api_status)}
+                    </Badge>
                   </td>
-                  <td className="p-4 text-sm text-slate-500">
-                    {new Date(lead.created_at).toLocaleDateString('fr-FR')}
-                  </td>
-                  <td className="p-4">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => viewLead(lead)}
-                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
-                        title="Voir détails"
-                      >
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-1">
+                      <button onClick={() => viewLead(lead)} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded" title="Voir">
                         <Eye className="w-4 h-4" />
                       </button>
-                      {['failed', 'no_crm', 'queued'].includes(lead.api_status) && (
-                        <button
-                          onClick={() => retryLead(lead.id)}
-                          className="flex items-center gap-1 px-2 py-1 text-sm text-amber-600 hover:bg-amber-50 rounded font-medium"
-                          title="Relancer l'envoi"
-                        >
-                          <RotateCcw className="w-3 h-3" />
-                          Relancer
+                      {isAdmin && (
+                        <>
+                          <button onClick={() => openEditModal(lead)} className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded" title="Modifier">
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => openForceSendModal(lead)} className="p-1.5 text-green-400 hover:text-green-600 hover:bg-green-50 rounded" title="Forcer envoi">
+                            <Send className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => openDeleteModal(lead)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded" title="Supprimer">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
+                      {['failed', 'queued'].includes(lead.api_status) && (
+                        <button onClick={() => retryLead(lead.id)} className="p-1.5 text-amber-400 hover:text-amber-600 hover:bg-amber-50 rounded" title="Relancer">
+                          <RotateCcw className="w-4 h-4" />
                         </button>
                       )}
                     </div>
                   </td>
                 </tr>
               ))}
-              {filteredLeads.length === 0 && (
-                <tr>
-                  <td colSpan={12} className="p-8 text-center text-slate-500">
-                    Aucun lead trouvé
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
-      </Card>
-
-      <p className="text-sm text-slate-500 text-center">
-        {filteredLeads.length} lead(s) affiché(s) sur {leads.length} total
-      </p>
-
-      {/* Modal Détail Lead */}
-      <Modal
-        isOpen={showDetailModal}
-        onClose={() => setShowDetailModal(false)}
-        title={`Lead ${selectedLead?.phone || ''}`}
-        size="lg"
-      >
-        {selectedLead && (
-          <div className="space-y-6">
-            {/* Identité */}
-            <div>
-              <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
-                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                Identité
-              </h3>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div><span className="text-slate-500">Civilité:</span> <span className="font-medium">{selectedLead.civilite || '-'}</span></div>
-                <div><span className="text-slate-500">Nom:</span> <span className="font-medium">{selectedLead.nom || '-'}</span></div>
-                <div><span className="text-slate-500">Prénom:</span> <span className="font-medium">{selectedLead.prenom || '-'}</span></div>
-                <div><span className="text-slate-500">Email:</span> <span className="font-medium">{selectedLead.email || '-'}</span></div>
-                <div><span className="text-slate-500">Téléphone:</span> <span className="font-medium font-mono">{selectedLead.phone}</span></div>
-              </div>
-            </div>
-
-            {/* Localisation */}
-            <div>
-              <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
-                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                Localisation
-              </h3>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div><span className="text-slate-500">Département:</span> <span className="font-medium font-mono">{selectedLead.departement || '-'}</span></div>
-                <div><span className="text-slate-500">Ville:</span> <span className="font-medium">{selectedLead.ville || '-'}</span></div>
-                <div className="col-span-2"><span className="text-slate-500">Adresse:</span> <span className="font-medium">{selectedLead.adresse || '-'}</span></div>
-              </div>
-            </div>
-
-            {/* Logement */}
-            <div>
-              <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
-                <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
-                Logement
-              </h3>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div><span className="text-slate-500">Type:</span> <span className="font-medium">{selectedLead.type_logement || '-'}</span></div>
-                <div><span className="text-slate-500">Statut:</span> <span className="font-medium">{selectedLead.statut_occupant || '-'}</span></div>
-                <div><span className="text-slate-500">Surface:</span> <span className="font-medium">{selectedLead.surface_habitable ? `${selectedLead.surface_habitable} m²` : '-'}</span></div>
-                <div><span className="text-slate-500">Année construction:</span> <span className="font-medium">{selectedLead.annee_construction || '-'}</span></div>
-                <div><span className="text-slate-500">Chauffage:</span> <span className="font-medium">{selectedLead.type_chauffage || '-'}</span></div>
-              </div>
-            </div>
-
-            {/* Énergie */}
-            <div>
-              <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
-                <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
-                Énergie
-              </h3>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div><span className="text-slate-500">Facture électricité:</span> <span className="font-medium">{selectedLead.facture_electricite || '-'}</span></div>
-                <div><span className="text-slate-500">Facture chauffage:</span> <span className="font-medium">{selectedLead.facture_chauffage || '-'}</span></div>
-              </div>
-            </div>
-
-            {/* Projet */}
-            <div>
-              <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
-                <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-                Projet
-              </h3>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div><span className="text-slate-500">Type projet:</span> <span className="font-medium">{selectedLead.type_projet || '-'}</span></div>
-                <div><span className="text-slate-500">Délai:</span> <span className="font-medium">{selectedLead.delai_projet || '-'}</span></div>
-                <div><span className="text-slate-500">Budget:</span> <span className="font-medium">{selectedLead.budget || '-'}</span></div>
-              </div>
-            </div>
-
-            {/* Tracking */}
-            <div>
-              <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
-                <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
-                Tracking
-              </h3>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div><span className="text-slate-500">Formulaire:</span> <Badge variant="info">{selectedLead.form_code}</Badge></div>
-                <div><span className="text-slate-500">LP:</span> <span className="font-medium font-mono">{selectedLead.lp_code || '-'}</span></div>
-                <div><span className="text-slate-500">Code liaison:</span> <span className="font-medium font-mono text-xs">{selectedLead.liaison_code || '-'}</span></div>
-                <div><span className="text-slate-500">Source:</span> <span className="font-medium">{selectedLead.source || '-'}</span></div>
-                <div><span className="text-slate-500">UTM Source:</span> <span className="font-medium">{selectedLead.utm_source || '-'}</span></div>
-                <div><span className="text-slate-500">UTM Medium:</span> <span className="font-medium">{selectedLead.utm_medium || '-'}</span></div>
-                <div><span className="text-slate-500">UTM Campaign:</span> <span className="font-medium">{selectedLead.utm_campaign || '-'}</span></div>
-              </div>
-            </div>
-
-            {/* CRM */}
-            <div>
-              <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
-                <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-                CRM & Distribution
-              </h3>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div><span className="text-slate-500">CRM d'origine:</span> <span className="font-medium">{selectedLead.origin_crm?.toUpperCase() || '-'}</span></div>
-                <div><span className="text-slate-500">CRM cible:</span> <span className="font-medium">{selectedLead.target_crm?.toUpperCase() || '-'}</span></div>
-                <div>
-                  <span className="text-slate-500">Transféré:</span> 
-                  {selectedLead.is_transferred ? (
-                    <Badge variant="info" className="ml-2">Oui → {selectedLead.target_crm?.toUpperCase()}</Badge>
-                  ) : (
-                    <span className="font-medium ml-2">Non</span>
-                  )}
-                </div>
-                <div><span className="text-slate-500">Statut:</span> <Badge variant={statusVariant(selectedLead.api_status)}>{statusLabel(selectedLead.api_status)}</Badge></div>
-                <div><span className="text-slate-500">Raison routing:</span> <span className="font-medium">{selectedLead.routing_reason || '-'}</span></div>
-                <div><span className="text-slate-500">Envoyé:</span> <span className="font-medium">{selectedLead.sent_to_crm ? 'Oui' : 'Non'}</span></div>
-              </div>
-              {selectedLead.api_response && (
-                <div className="mt-2 p-2 bg-slate-50 rounded text-xs font-mono">
-                  {selectedLead.api_response}
-                </div>
-              )}
-            </div>
-
-            {/* Metadata */}
-            <div className="pt-3 border-t text-xs text-slate-500">
-              <p>ID: {selectedLead.id}</p>
-              <p>Créé le: {new Date(selectedLead.created_at).toLocaleString('fr-FR')}</p>
-              <p>IP: {selectedLead.ip}</p>
-              <p>RGPD: {selectedLead.rgpd_consent ? '✓' : '✗'} | Newsletter: {selectedLead.newsletter ? '✓' : '✗'}</p>
-            </div>
+        
+        {filteredLeads.length === 0 && (
+          <div className="text-center py-12 text-slate-500">
+            Aucun lead trouvé avec ces filtres.
           </div>
         )}
+      </Card>
+
+      {/* ==================== MODALS ==================== */}
+
+      {/* Detail Modal */}
+      <Modal isOpen={showDetailModal} onClose={() => setShowDetailModal(false)} title="Détail du lead" size="lg">
+        {selectedLead && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h4 className="font-semibold text-slate-700 mb-2">Contact</h4>
+                <div className="space-y-1 text-sm">
+                  <p><span className="text-slate-500">Téléphone:</span> <span className="font-mono">{selectedLead.phone}</span></p>
+                  <p><span className="text-slate-500">Nom:</span> {selectedLead.civilite} {selectedLead.nom} {selectedLead.prenom}</p>
+                  <p><span className="text-slate-500">Email:</span> {selectedLead.email || '-'}</p>
+                </div>
+              </div>
+              <div>
+                <h4 className="font-semibold text-slate-700 mb-2">Localisation</h4>
+                <div className="space-y-1 text-sm">
+                  <p><span className="text-slate-500">Département:</span> {selectedLead.departement || '-'}</p>
+                  <p><span className="text-slate-500">Ville:</span> {selectedLead.ville || '-'}</p>
+                  <p><span className="text-slate-500">Adresse:</span> {selectedLead.adresse || '-'}</p>
+                </div>
+              </div>
+              <div>
+                <h4 className="font-semibold text-slate-700 mb-2">Logement</h4>
+                <div className="space-y-1 text-sm">
+                  <p><span className="text-slate-500">Type:</span> {selectedLead.type_logement || '-'}</p>
+                  <p><span className="text-slate-500">Statut:</span> {selectedLead.statut_occupant || '-'}</p>
+                  <p><span className="text-slate-500">Surface:</span> {selectedLead.surface_habitable || '-'}</p>
+                  <p><span className="text-slate-500">Chauffage:</span> {selectedLead.type_chauffage || '-'}</p>
+                </div>
+              </div>
+              <div>
+                <h4 className="font-semibold text-slate-700 mb-2">CRM</h4>
+                <div className="space-y-1 text-sm">
+                  <p><span className="text-slate-500">Origine:</span> {selectedLead.origin_crm || '-'}</p>
+                  <p><span className="text-slate-500">Destination:</span> {selectedLead.target_crm || '-'}</p>
+                  <p><span className="text-slate-500">Transféré:</span> {selectedLead.is_transferred ? 'Oui' : 'Non'}</p>
+                  <p><span className="text-slate-500">Statut:</span> <Badge variant={statusVariant(selectedLead.api_status)}>{statusLabel(selectedLead.api_status)}</Badge></p>
+                </div>
+              </div>
+            </div>
+            {selectedLead.notes_admin && (
+              <div>
+                <h4 className="font-semibold text-slate-700 mb-2">Notes Admin</h4>
+                <p className="text-sm bg-slate-50 p-3 rounded">{selectedLead.notes_admin}</p>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="Modifier le lead" size="md">
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Téléphone" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} />
+            <Input label="Email" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} />
+            <Input label="Nom" value={editForm.nom} onChange={e => setEditForm({...editForm, nom: e.target.value})} />
+            <Input label="Prénom" value={editForm.prenom} onChange={e => setEditForm({...editForm, prenom: e.target.value})} />
+            <Input label="Département" value={editForm.departement} onChange={e => setEditForm({...editForm, departement: e.target.value})} />
+            <Input label="Ville" value={editForm.ville} onChange={e => setEditForm({...editForm, ville: e.target.value})} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Notes admin</label>
+            <textarea 
+              value={editForm.notes_admin} 
+              onChange={e => setEditForm({...editForm, notes_admin: e.target.value})}
+              className="w-full px-3 py-2 border rounded-lg text-sm"
+              rows={3}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowEditModal(false)}>Annuler</Button>
+            <Button onClick={saveLead} disabled={actionLoading}>
+              {actionLoading ? 'Enregistrement...' : 'Enregistrer'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Modal */}
+      <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} title="Supprimer le lead" size="sm">
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 bg-red-50 rounded-lg">
+            <AlertTriangle className="w-6 h-6 text-red-600" />
+            <div>
+              <p className="font-medium text-red-800">Action irréversible</p>
+              <p className="text-sm text-red-600">Le lead {selectedLead?.phone} sera définitivement supprimé.</p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowDeleteModal(false)}>Annuler</Button>
+            <Button variant="danger" onClick={deleteLead} disabled={actionLoading}>
+              {actionLoading ? 'Suppression...' : 'Supprimer'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Force Send Modal */}
+      <Modal isOpen={showForceSendModal} onClose={() => setShowForceSendModal(false)} title="Forcer envoi vers CRM" size="sm">
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600">
+            Choisissez le CRM vers lequel envoyer le lead <strong>{selectedLead?.phone}</strong>
+          </p>
+          <div className="flex gap-4">
+            <button
+              onClick={() => setForceSendCRM('zr7')}
+              className={`flex-1 p-4 rounded-lg border-2 transition-colors ${
+                forceSendCRM === 'zr7' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              <div className="font-semibold text-blue-700">ZR7 Digital</div>
+              <div className="text-xs text-slate-500">zr7</div>
+            </button>
+            <button
+              onClick={() => setForceSendCRM('mdl')}
+              className={`flex-1 p-4 rounded-lg border-2 transition-colors ${
+                forceSendCRM === 'mdl' ? 'border-purple-500 bg-purple-50' : 'border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              <div className="font-semibold text-purple-700">Maison du Lead</div>
+              <div className="text-xs text-slate-500">mdl</div>
+            </button>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowForceSendModal(false)}>Annuler</Button>
+            <Button onClick={forceSendLead} disabled={!forceSendCRM || actionLoading}>
+              {actionLoading ? 'Envoi...' : 'Envoyer'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Mass Edit Modal */}
+      <Modal isOpen={showMassEditModal} onClose={() => setShowMassEditModal(false)} title={`Modifier ${selectedLeadIds.length} leads`} size="md">
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600 bg-amber-50 p-3 rounded">
+            Seuls les champs remplis seront modifiés. Laissez vide pour ne pas changer.
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Département" value={massEditForm.departement} onChange={e => setMassEditForm({...massEditForm, departement: e.target.value})} placeholder="Laisser vide pour ne pas changer" />
+            <Input label="Ville" value={massEditForm.ville} onChange={e => setMassEditForm({...massEditForm, ville: e.target.value})} placeholder="Laisser vide pour ne pas changer" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Notes admin</label>
+            <textarea 
+              value={massEditForm.notes_admin} 
+              onChange={e => setMassEditForm({...massEditForm, notes_admin: e.target.value})}
+              className="w-full px-3 py-2 border rounded-lg text-sm"
+              rows={2}
+              placeholder="Laisser vide pour ne pas changer"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowMassEditModal(false)}>Annuler</Button>
+            <Button onClick={saveMassEdit} disabled={actionLoading}>
+              {actionLoading ? 'Modification...' : `Modifier ${selectedLeadIds.length} leads`}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Mass Delete Modal */}
+      <Modal isOpen={showMassDeleteModal} onClose={() => setShowMassDeleteModal(false)} title="Supprimer les leads" size="sm">
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 bg-red-50 rounded-lg">
+            <AlertTriangle className="w-6 h-6 text-red-600" />
+            <div>
+              <p className="font-medium text-red-800">Action irréversible</p>
+              <p className="text-sm text-red-600">{selectedLeadIds.length} lead(s) seront définitivement supprimés.</p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowMassDeleteModal(false)}>Annuler</Button>
+            <Button variant="danger" onClick={massDeleteLeads} disabled={actionLoading}>
+              {actionLoading ? 'Suppression...' : `Supprimer ${selectedLeadIds.length} leads`}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Mass Force Send Modal */}
+      <Modal isOpen={showMassForceSendModal} onClose={() => setShowMassForceSendModal(false)} title={`Forcer envoi de ${selectedLeadIds.length} leads`} size="sm">
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600">
+            Choisissez le CRM vers lequel envoyer les {selectedLeadIds.length} leads sélectionnés.
+          </p>
+          <div className="flex gap-4">
+            <button
+              onClick={() => setForceSendCRM('zr7')}
+              className={`flex-1 p-4 rounded-lg border-2 transition-colors ${
+                forceSendCRM === 'zr7' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              <div className="font-semibold text-blue-700">ZR7 Digital</div>
+            </button>
+            <button
+              onClick={() => setForceSendCRM('mdl')}
+              className={`flex-1 p-4 rounded-lg border-2 transition-colors ${
+                forceSendCRM === 'mdl' ? 'border-purple-500 bg-purple-50' : 'border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              <div className="font-semibold text-purple-700">Maison du Lead</div>
+            </button>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowMassForceSendModal(false)}>Annuler</Button>
+            <Button onClick={massForceSend} disabled={!forceSendCRM || actionLoading}>
+              {actionLoading ? 'Envoi...' : `Envoyer ${selectedLeadIds.length} leads`}
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );
