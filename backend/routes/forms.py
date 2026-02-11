@@ -7,7 +7,7 @@ import uuid
 
 from models import FormCreate, FormUpdate
 from config import db, now_iso, generate_form_code, FRANCE_METRO_DEPTS
-from routes.auth import get_current_user
+from routes.auth import get_current_user, require_admin
 
 router = APIRouter(prefix="/forms", tags=["Formulaires"])
 
