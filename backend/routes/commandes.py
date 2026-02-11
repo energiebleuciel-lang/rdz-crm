@@ -122,6 +122,12 @@ async def create_commande(data: CommandeCreate, user: dict = Depends(get_current
     await db.commandes.insert_one(commande)
     commande.pop("_id", None)
     
+    # TRIGGER: Si la commande est créée active, redistribuer les leads en attente
+    if data.active:
+        from services.lead_redistributor import redistribute_leads_for_command
+        redistrib_result = await redistribute_leads_for_command(commande)
+        commande["redistribution_triggered"] = redistrib_result
+    
     return {"success": True, "commande": commande}
 
 
