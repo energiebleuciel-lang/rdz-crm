@@ -340,7 +340,9 @@ async def create_form(data: FormCreate, user: dict = Depends(get_current_user)):
         "url": data.url,  # OBLIGATOIRE
         "product_type": data.product_type.upper(),
         "lp_id": data.lp_id or "",
+        "target_crm": data.target_crm or "",  # CRM cible (zr7/mdl)
         "crm_api_key": data.crm_api_key or "",
+        "allow_cross_crm": data.allow_cross_crm if data.allow_cross_crm is not None else True,
         "tracking_type": data.tracking_type or "redirect",
         "redirect_url": data.redirect_url or "/merci",
         "notes": data.notes or "",
