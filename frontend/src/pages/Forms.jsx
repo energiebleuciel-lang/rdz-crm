@@ -338,24 +338,30 @@ export default function Forms() {
                   <button
                     onClick={() => copyCode(formItem.code)}
                     className="flex items-center gap-1 px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg"
+                    title="Copier le code"
                   >
                     <Copy className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => openEdit(formItem)}
                     className="flex items-center gap-1 px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg"
+                    title="Modifier"
                   >
                     <Edit className="w-4 h-4" />
                   </button>
-                  <button
-                    onClick={() => handleDuplicate(formItem)}
-                    className="flex items-center gap-1 px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg"
-                  >
-                    <Copy className="w-4 h-4" />
-                  </button>
+                  {isAdmin && (
+                    <button
+                      onClick={() => openResetStatsModal(formItem)}
+                      className="flex items-center gap-1 px-3 py-2 text-sm text-amber-600 hover:bg-amber-50 rounded-lg"
+                      title="Reset stats"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                    </button>
+                  )}
                   <button
                     onClick={() => handleDelete(formItem)}
                     className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg ml-auto"
+                    title="Supprimer"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
