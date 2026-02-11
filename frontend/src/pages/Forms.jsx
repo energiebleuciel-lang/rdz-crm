@@ -208,6 +208,41 @@ export default function Forms() {
     alert('Script copié !');
   };
 
+  // ==================== RESET STATS ====================
+  
+  const openResetStatsModal = (formItem) => {
+    setSelectedFormForReset(formItem);
+    setShowResetStatsModal(true);
+  };
+
+  const resetFormStats = async () => {
+    if (!selectedFormForReset) return;
+    try {
+      setActionLoading(true);
+      const res = await authFetch(`${API}/api/forms/${selectedFormForReset.id}/reset-stats`, {
+        method: 'POST'
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setActionMessage({ 
+          type: 'success', 
+          text: `Stats remises à 0 ! (${data.leads_affected} leads affectés)` 
+        });
+        setShowResetStatsModal(false);
+        loadData();
+      } else {
+        const err = await res.json();
+        setActionMessage({ type: 'error', text: err.detail || 'Erreur lors du reset' });
+      }
+    } catch (e) {
+      setActionMessage({ type: 'error', text: e.message });
+    } finally {
+      setActionLoading(false);
+      setTimeout(() => setActionMessage(null), 4000);
+    }
+  };
+
   const filteredForms = filter === 'all' 
     ? forms 
     : forms.filter(f => f.product_type === filter);
