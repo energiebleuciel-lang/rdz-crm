@@ -632,44 +632,55 @@ async def generate_brief(lp_id: str) -> dict:
 /*
  * EXEMPLE D'INTÉGRATION - Adaptez les sélecteurs à votre formulaire
  * 
- * IMPORTANT: Les noms des champs sont OBLIGATOIRES et VERROUILLÉS.
- * Ne changez PAS les noms (ex: "departement" pas "department")
+ * ⚠️ CHAMPS OBLIGATOIRES : phone, nom, departement
+ * Sans ces champs, le lead sera marqué comme "invalide" dans RDZ
  */
 
 // Fonction à appeler lors de la soumission de votre formulaire
 async function envoyerLead() {{
   // Template des données - UTILISEZ EXACTEMENT CES NOMS
   var leadData = {{
-    // === CHAMPS OBLIGATOIRES ===
-    phone: document.getElementById('phone').value,           // Téléphone (10 chiffres)
+    // ══════════════════════════════════════════════════════════
+    // 🔴 CHAMPS OBLIGATOIRES - Le lead sera invalide sans eux
+    // ══════════════════════════════════════════════════════════
+    phone: document.getElementById('phone').value,             // ⚠️ OBLIGATOIRE - Téléphone (10 chiffres)
+    nom: document.getElementById('nom').value,                 // ⚠️ OBLIGATOIRE - Nom de famille
+    departement: document.getElementById('departement').value, // ⚠️ OBLIGATOIRE - Code département (01-95)
     
-    // === CHAMPS RECOMMANDÉS ===
-    nom: document.getElementById('nom').value,               // Nom de famille
-    prenom: document.getElementById('prenom').value,         // Prénom
-    email: document.getElementById('email').value,           // Email
-    departement: document.getElementById('departement').value, // ⚠️ Code département (01-95) - PAS "department"
-    ville: document.getElementById('ville').value,           // Ville
+    // ══════════════════════════════════════════════════════════
+    // 🟡 CHAMPS RECOMMANDÉS
+    // ══════════════════════════════════════════════════════════
+    prenom: document.getElementById('prenom').value,           // Prénom
+    email: document.getElementById('email').value,             // Email
+    ville: document.getElementById('ville').value,             // Ville
     
-    // === CHAMPS OPTIONNELS (selon votre formulaire) ===
-    civilite: document.getElementById('civilite').value,     // M., Mme, Mlle
+    // ══════════════════════════════════════════════════════════
+    // ⚪ CHAMPS OPTIONNELS (selon votre formulaire)
+    // ══════════════════════════════════════════════════════════
+    civilite: document.getElementById('civilite').value,       // M., Mme, Mlle
     type_logement: document.getElementById('type_logement').value,       // Maison, Appartement
     statut_occupant: document.getElementById('statut_occupant').value,   // Propriétaire, Locataire
     facture_electricite: document.getElementById('facture_electricite').value, // Tranche facture
     type_chauffage: document.getElementById('type_chauffage').value,     // Type de chauffage
     surface_habitable: document.getElementById('surface_habitable').value, // Surface m²
-    
-    // === CHAMPS PROJET ===
     type_projet: document.getElementById('type_projet').value,   // Installation, Remplacement
     delai_projet: document.getElementById('delai_projet').value, // Délai souhaité
     budget: document.getElementById('budget').value              // Budget prévu
   }};
+  
+  // OPTIONNEL: Validation côté client AVANT envoi
+  var validation = rdzValidate(leadData);
+  if (!validation.valid) {{
+    alert("Veuillez remplir les champs obligatoires:\\n" + validation.errors.join("\\n"));
+    return; // Ne pas envoyer si validation échoue
+  }}
   
   // Envoi du lead
   var result = await rdzSubmitLead(leadData);
   
   if (result.success) {{
     console.log("Lead envoyé avec succès!");
-    // Redirection ou message de succès...
+    // Redirection automatique gérée par le script RDZ
   }} else {{
     console.error("Erreur:", result.error);
   }}
