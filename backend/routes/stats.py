@@ -65,8 +65,17 @@ async def get_stats_departements(
         
         query["form_code"] = {"$in": form_codes}
     
-    # Récupérer les leads
-    leads = await db.leads.find(query, {"_id": 0}).to_list(10000)
+    # Récupérer les leads avec projection des champs nécessaires uniquement
+    projection = {
+        "_id": 0,
+        "departement": 1,
+        "product_type": 1,
+        "source": 1,
+        "utm_source": 1,
+        "api_status": 1,
+        "created_at": 1
+    }
+    leads = await db.leads.find(query, projection).to_list(5000)
     
     # Agréger par département
     by_departement = {}
