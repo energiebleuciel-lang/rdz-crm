@@ -132,6 +132,8 @@ async def update_commande(commande_id: str, data: CommandeUpdate, user: dict = D
     if not commande:
         raise HTTPException(status_code=404, detail="Commande non trouvée")
     
+    was_active = commande.get("active", False)
+    
     update_data = {k: v for k, v in data.dict().items() if v is not None}
     
     # Valider les départements si fournis
@@ -148,6 +150,14 @@ async def update_commande(commande_id: str, data: CommandeUpdate, user: dict = D
     )
     
     updated = await db.commandes.find_one({"id": commande_id}, {"_id": 0})
+    
+    # TRIGGER: Si la commande passe de inactive à active, redistribuer les leads en attente
+    is_now_active = update_data.get("active", was_active)
+    if not was_active and is_now_active:
+        from services.lead_redistributor import redistribute_leads_for_command
+        redistrib_result = await redistribute_leads_for_command(updated)
+        updated["redistribution_triggered"] = redistrib_result
+    
     return {"success": True, "commande": updated}
 
 
