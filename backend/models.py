@@ -247,6 +247,38 @@ class LeadSubmit(BaseModel):
     newsletter: Optional[bool] = False
 
 
+class LeadUpdate(BaseModel):
+    """Modification d'un lead par admin"""
+    phone: Optional[str] = None
+    nom: Optional[str] = None
+    prenom: Optional[str] = None
+    civilite: Optional[str] = None
+    email: Optional[str] = None
+    departement: Optional[str] = None
+    ville: Optional[str] = None
+    adresse: Optional[str] = None
+    type_logement: Optional[str] = None
+    statut_occupant: Optional[str] = None
+    surface_habitable: Optional[str] = None
+    type_chauffage: Optional[str] = None
+    facture_electricite: Optional[str] = None
+    notes_admin: Optional[str] = None
+
+
+class LeadForceSend(BaseModel):
+    """Forcer l'envoi d'un lead vers un CRM"""
+    target_crm: str  # "zr7" ou "mdl"
+    reason: Optional[str] = "manual_redistribution"
+
+
+# ==================== REDISTRIBUTION KEYS ====================
+
+class RedistributionKeys(BaseModel):
+    """6 clés API pour distribution inter-CRM"""
+    zr7: Dict[str, str] = {"PV": "", "PAC": "", "ITE": ""}  # Clés pour envoyer VERS ZR7
+    mdl: Dict[str, str] = {"PV": "", "PAC": "", "ITE": ""}  # Clés pour envoyer VERS MDL
+
+
 # ==================== TRACKING ====================
 
 class TrackLPVisit(BaseModel):
