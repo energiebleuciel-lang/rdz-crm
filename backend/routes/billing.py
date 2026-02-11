@@ -187,7 +187,7 @@ async def calculate_billing(data: BillingPeriodCreate, user: dict = Depends(requ
         },
         "api_status": {"$in": ["success", "duplicate"]},
         "target_crm": await get_crm_slug(data.to_crm_id)  # Utiliser le slug au lieu de l'ID
-    }, {"_id": 0}).to_list(10000)
+    }, {"_id": 0, "product_type": 1, "departement": 1, "created_at": 1}).to_list(5000)
     
     # Calculer par produit/département
     breakdown = {}
