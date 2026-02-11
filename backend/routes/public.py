@@ -296,6 +296,14 @@ async def submit_lead(data: LeadData, request: Request):
     elif phone_invalid:
         initial_status = "invalid_phone"  # Téléphone invalide
         distribution_reason = "PHONE_INVALID"
+    elif missing_required:
+        initial_status = "missing_required"  # Champs obligatoires manquants
+        missing_fields = []
+        if missing_nom:
+            missing_fields.append("nom")
+        if missing_dept:
+            missing_fields.append("departement")
+        distribution_reason = f"MISSING_REQUIRED:{','.join(missing_fields)}"
     elif not has_crm_config:
         initial_status = "no_crm"
         distribution_reason = "CRM_NOT_CONFIGURED"
