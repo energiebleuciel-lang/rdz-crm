@@ -392,6 +392,7 @@ export default function Leads() {
       case 'no_api_key': return 'warning';
       case 'orphan': return 'danger';
       case 'invalid_phone': return 'danger';
+      case 'missing_required': return 'danger';
       case 'pending_no_order': return 'warning';
       case 'pending_manual': return 'info';
       default: return 'default';
@@ -408,6 +409,7 @@ export default function Leads() {
       case 'no_api_key': return 'Sans clé';
       case 'orphan': return 'Orphelin';
       case 'invalid_phone': return 'Tél invalide';
+      case 'missing_required': return 'Incomplet';
       case 'pending_no_order': return 'En attente';
       case 'pending_manual': return 'Manuel requis';
       default: return status;
