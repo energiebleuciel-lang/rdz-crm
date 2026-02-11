@@ -460,7 +460,27 @@ async def generate_brief(lp_id: str) -> dict:
 </script>'''
 
     # ==================== SCRIPT FORM ====================
-    script_form = f'''<!-- RDZ TRACKING FORM - {form_code} -->
+    script_form = f'''<!--
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║   ⚠️⚠️⚠️  RAPPEL IMPORTANT - CHAMPS OBLIGATOIRES  ⚠️⚠️⚠️                      ║
+║                                                                              ║
+║   Lors de la création de votre formulaire, vous DEVEZ collecter :            ║
+║                                                                              ║
+║   🔴 TÉLÉPHONE  → Champ "phone" (10 chiffres, format FR)                     ║
+║   🔴 NOM        → Champ "nom" (nom de famille)                               ║
+║   🔴 DÉPARTEMENT → Champ "departement" (code 01-95, 2A, 2B)                  ║
+║                                                                              ║
+║   Sans ces 3 champs, le lead sera marqué comme INCOMPLET dans RDZ            ║
+║   et ne pourra pas être envoyé vers ZR7/MDL automatiquement.                 ║
+║                                                                              ║
+║   ✅ Vérifiez que votre formulaire HTML contient ces champs                  ║
+║   ✅ Vérifiez que les valeurs sont passées à rdzSubmitLead()                 ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+-->
+
+<!-- RDZ TRACKING FORM - {form_code} -->
 <script>
 (function() {{
   var RDZ = {{
