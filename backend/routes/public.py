@@ -283,11 +283,17 @@ async def submit_lead(data: LeadData, request: Request):
     
     # Déterminer le statut initial
     # RÈGLE: Lead TOUJOURS sauvegardé, peu importe la config
-    if not has_crm_config:
+    if form_not_found:
+        initial_status = "orphan"  # Lead orphelin - formulaire non trouvé
+        distribution_reason = "FORM_NOT_FOUND"
+    elif phone_invalid:
+        initial_status = "invalid_phone"  # Téléphone invalide
+        distribution_reason = "PHONE_INVALID"
+    elif not has_crm_config:
         initial_status = "no_crm"
         distribution_reason = "CRM_NOT_CONFIGURED"
     elif not has_api_key:
-        initial_status = "no_api_key"  # NOUVEAU: Clé API manquante
+        initial_status = "no_api_key"  # Clé API manquante
         distribution_reason = "API_KEY_MISSING"
     elif final_crm and final_key:
         initial_status = "pending"
