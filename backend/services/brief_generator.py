@@ -372,15 +372,17 @@ async def generate_brief(lp_id: str) -> dict:
     script_lp = f'''<!--
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                                                                              ║
-║   ⚠️⚠️⚠️  RAPPEL IMPORTANT - CHAMPS OBLIGATOIRES  ⚠️⚠️⚠️                      ║
+║   📋 INSTALLATION SCRIPT LP - {lp_code}                                       ║
 ║                                                                              ║
-║   Le formulaire lié à cette LP DOIT collecter :                              ║
+║   1. Copiez les codes GTM dans <head> et <body> de votre LP                 ║
+║   2. Copiez ce script dans la balise <head>                                  ║
+║   3. Sur CHAQUE bouton CTA, ajoutez : onclick="rdzCtaClick()"               ║
 ║                                                                              ║
-║   🔴 TÉLÉPHONE  → Champ "phone" (10 chiffres, format FR)                     ║
-║   🔴 NOM        → Champ "nom" (nom de famille)                               ║
-║   🔴 DÉPARTEMENT → Champ "departement" (code 01-95, 2A, 2B)                  ║
+║   Exemple de bouton CTA :                                                    ║
+║   <a href="https://..." onclick="rdzCtaClick()" class="btn">Simuler</a>     ║
 ║                                                                              ║
-║   Sans ces 3 champs, le lead sera marqué INCOMPLET dans RDZ.                 ║
+║   ✅ Visite LP    → Trackée automatiquement au chargement                    ║
+║   ✅ Clic CTA     → Tracké via onclick="rdzCtaClick()"                       ║
 ║                                                                              ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 -->
@@ -392,7 +394,6 @@ async def generate_brief(lp_id: str) -> dict:
     api: "{api_url}/api/public",
     lp: "{lp_code}",
     form: "{form_code}",
-    formUrl: "{form_url}",
     session: null,
     debug: false
   }};
@@ -435,7 +436,7 @@ async def generate_brief(lp_id: str) -> dict:
     }}
     try {{
       log("Track:", type);
-      var res = await fetch(RDZ.api + "/track/event", {{
+      await fetch(RDZ.api + "/track/event", {{
         method: "POST",
         headers: {{"Content-Type": "application/json"}},
         body: JSON.stringify({{
@@ -445,30 +446,32 @@ async def generate_brief(lp_id: str) -> dict:
           form_code: RDZ.form
         }})
       }});
-      var data = await res.json();
-      log("Track réponse:", data);
+      log("Track OK:", type);
     }} catch(e) {{
       log("Erreur track:", e.message);
     }}
   }}
 
+  // ══════════════════════════════════════════════════════════
+  // TRACKING VISITE LP - Automatique au chargement
+  // ══════════════════════════════════════════════════════════
   document.addEventListener("DOMContentLoaded", async function() {{
     await initSession();
     await track("lp_visit");
   }});
 
-  window.rdzClickCTA = async function() {{
+  // ══════════════════════════════════════════════════════════
+  // TRACKING CLIC CTA - À appeler sur chaque bouton CTA
+  // Usage: onclick="rdzCtaClick()"
+  // ══════════════════════════════════════════════════════════
+  var ctaClicked = false;
+  
+  window.rdzCtaClick = async function() {{
+    if (ctaClicked) return;  // Protection anti-doublon
+    ctaClicked = true;
+    await initSession();
     await track("cta_click");
-    if (RDZ.formUrl && RDZ.session) {{
-      var url = RDZ.formUrl;
-      url += (url.indexOf("?") === -1 ? "?" : "&") + "session=" + RDZ.session;
-      var params = new URLSearchParams(window.location.search);
-      ["utm_source", "utm_medium", "utm_campaign"].forEach(function(p) {{
-        if (params.get(p)) url += "&" + p + "=" + encodeURIComponent(params.get(p));
-      }});
-      log("Redirection vers:", url);
-      setTimeout(function() {{ window.location.href = url; }}, 100);
-    }}
+    // Pas de redirection - le href du lien gère ça
   }};
 
   window.RDZ_LP = RDZ;
