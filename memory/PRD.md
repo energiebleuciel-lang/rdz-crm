@@ -13,118 +13,110 @@ Visiteur → LP → Form → RDZ (collecte) → ZR7 ou MDL (distribution)
 ### Clés API
 - **Clé API RDZ** : unique, non modifiable, pour récupérer les leads (`GET /api/leads/export`)
 - **Clés API ZR7/MDL** : par formulaire, pour envoyer les leads
+- **Clés de redistribution** : 6 clés (ZR7/MDL × PV/PAC/ITE) pour envoi inter-CRM
 
 ### Vérification Commandes
 Avant d'envoyer un lead :
 1. Vérifier si le CRM cible a une commande pour ce département + produit
 2. Si non et `allow_cross_crm` = true, essayer l'autre CRM
-3. Si aucun CRM disponible, stocker avec status "no_crm"
+3. Si aucun CRM disponible, stocker avec status "pending_no_order"
 
 ## Fonctionnalités Implémentées
 
+### ✅ Fonctionnalités Admin (Février 2026)
+
+**Page Leads - Actions individuelles:**
+- Édition lead (PUT /api/leads/{id}) : phone, email, nom, prenom, departement, ville, notes_admin
+- Suppression lead (DELETE /api/leads/{id}) : suppression définitive
+- Forcer envoi CRM (POST /api/leads/{id}/force-send) : vers ZR7 ou MDL
+
+**Page Leads - Actions de masse:**
+- Sélection multiple via checkboxes
+- Barre d'actions apparaît quand sélection active
+- Édition masse : modifier département, ville, notes pour X leads
+- Suppression masse : supprimer X leads
+- Envoi masse : forcer envoi de X leads vers un CRM
+
+**Page Forms - Reset Stats:**
+- Bouton Reset Stats (admin only) sur chaque carte formulaire
+- Modal de confirmation avec warning
+- Crée un snapshot avant reset
+- Marque les leads comme `stats_reset: true`
+- Les leads ne sont PAS supprimés, juste exclus des stats
+
+### ✅ Cycle de vie des Leads (Février 2026)
+
+**Nouveau comportement :**
+1. Tous les leads sont TOUJOURS sauvegardés en base, même sans commande
+2. Si pas de commande → `api_status: "pending_no_order"`
+3. Auto-redistribution quand commande activée (si lead < 8 jours)
+4. Leads > 8 jours → `api_status: "pending_manual"` (scheduler quotidien 4h UTC)
+5. Redistribution manuelle par admin pour leads > 8 jours
+
+**Statuts de lead :**
+- `pending` : En cours de traitement
+- `success` : Envoyé avec succès
+- `failed` : Échec d'envoi
+- `duplicate` : Doublon détecté
+- `no_crm` : Pas de CRM configuré
+- `queued` : En file d'attente
+- `pending_no_order` : En attente (pas de commande, < 8 jours)
+- `pending_manual` : Redistribution manuelle requise (> 8 jours)
+
+### ✅ Scheduler (APScheduler)
+- **3h UTC** : Vérification nocturne des leads
+- **4h UTC** : Marquage leads > 8 jours comme `pending_manual`
+- **Toutes les 5 min** : Traitement de la file d'attente
+
 ### ✅ API
-- `GET /api/leads/export` - Récupérer leads avec clé API RDZ
+
+**Routes publiques:**
 - `POST /api/public/track/session` - Créer session visiteur
 - `POST /api/public/track/event` - Tracker événement
 - `POST /api/public/leads` - Soumettre lead
-- `GET /api/accounts/{id}/brief-options` - Options disponibles pour mini brief
-- `POST /api/accounts/{id}/mini-brief` - Générer mini brief sélectif
-- `GET /api/leads/stats/global?crm_id=...` - Stats leads filtrées par CRM
-- `GET /api/queue/stats?crm_id=...` - Stats queue filtrées par CRM
+- `GET /api/forms/public/{code}` - Config formulaire public
 
-### ✅ Tracking Events
-- `lp_visit` - Visite de la LP (automatique)
-- `cta_click` - Clic sur bouton CTA
-- `form_start` - Premier bouton du formulaire cliqué
-- `form_submit` - Lead soumis
+**Routes authentifiées:**
+- `GET /api/leads/export` - Export leads avec clé API RDZ
+- `GET /api/leads/stats/global` - Stats globales (filtrées par CRM)
 
-### ✅ Configuration
-- Page Settings : Clé API RDZ visible, non modifiable
-- Page Formulaires : target_crm + crm_api_key par formulaire
-- Brief LP/Form : Scripts de tracking séparés (LP + Form)
+**Routes admin:**
+- `PUT /api/leads/{id}` - Modifier lead
+- `DELETE /api/leads/{id}` - Supprimer lead
+- `POST /api/leads/{id}/force-send` - Forcer envoi CRM
+- `POST /api/forms/{id}/reset-stats` - Reset statistiques
+- `GET /api/leads/pending` - Leads en attente redistribution
+- `GET/PUT /api/config/redistribution-keys` - Clés redistribution inter-CRM
 
-### ✅ Mini Brief Sélectif (Décembre 2025)
-Fonctionnalité sur la page Comptes permettant de générer un brief personnalisé avec sélection des éléments :
-- **Logos** : Logo Principal, Logo Secondaire
-- **GTM & Tracking** : Code GTM (Head), Code GTM (Body), Code de Tracking Conversion
-- **Textes Légaux** : Texte Mentions Légales, Texte Politique de Confidentialité, Texte CGU
-- **Autres** : URL de Redirection
-- Boutons "Copier" individuels + "Copier tout"
-- Éléments non configurés affichés en grisé avec badge "Non configuré"
-- Bouton d'accès rapide dans le modal Brief LP
+### 🔒 SCHEMA VERROUILLÉ
 
-### ✅ Dashboard filtré par CRM (Décembre 2025)
-- Le Tableau de bord affiche maintenant les stats filtrées par CRM sélectionné
-- Indication du CRM actif sous le titre
-- Stats leads et queue filtrées automatiquement
-
-### ✅ Page Leads améliorée (Décembre 2025)
-- **CRM d'origine** : Chaque lead affiche maintenant son CRM d'origine (basé sur le compte)
-- **Badge Transféré** : Si un lead est transféré inter-CRM, un badge "→ ZR7" ou "→ MDL" s'affiche
-- **Nouveaux filtres** :
-  - Filtre "Transférés" : Tous / Transférés uniquement / Non transférés
-  - Filtre "Période" : Date de début et date de fin
-- **Colonne "Distribution"** séparée de "CRM Origine"
-- **Modal de détail enrichi** : Section "CRM & Distribution" avec toutes les infos
-
-### ✅ Audit Technique Complet (Février 2026)
-Audit exhaustif du système avant déploiement :
-
-**Corrections effectuées :**
-- Fonction `has_commande` dupliquée → Import centralisé depuis `commandes.py`
-- Migration `send_to_crm` → `send_to_crm_v2` partout
-- URLs CRM hardcodées → Fonction `get_crm_url()` dynamique depuis DB
-- Champs lead harmonisés entre toutes les APIs
-- Champs obsolètes (`code_postal`, `target_crm_id`, `target_crm_slug`) supprimés
-
-**Schéma Lead Normalisé :**
+**Champs lead normalisés:**
 ```
 origin_crm      : slug CRM d'origine (compte)
 target_crm      : slug CRM de destination
 is_transferred  : boolean (transfert inter-CRM)
 routing_reason  : raison du routing
 allow_cross_crm : boolean
-api_status      : pending|success|failed|duplicate|no_crm
+api_status      : Enum ci-dessus
 sent_to_crm     : boolean
-departement     : code département (REMPLACE code_postal)
+departement     : code département (01-95, 2A, 2B)
 ```
-
-### 🔒 SCHEMA VERROUILLÉ (Février 2026)
-
-**IMPORTANT: Tous les noms de champs sont maintenant VERROUILLÉS.**
-
-Pour modifier un nom de champ, l'utilisateur DOIT dire:
-> "Je déverrouille le schema pour modifier [nom_du_champ]"
-
-**Fichiers de référence:**
-- `/app/backend/schema_locked.py` - Définition technique
-- `/app/memory/SCHEMA_LOCKED.md` - Documentation
 
 **Champs interdits (JAMAIS UTILISER):**
 - `code_postal` → Utiliser `departement`
 - `target_crm_id` → Utiliser `target_crm`
-- `source` → Utiliser `utm_source`
-
-**Tests passés :**
-- ✅ Lint Python backend (routes, services)
-- ✅ Lint JavaScript frontend (pages)
-- ✅ Import tous les modules
-- ✅ Démarrage serveur FastAPI
-- ✅ Test E2E complet (Session → Tracking → Lead → Routage)
 
 ## À Faire
 
 ### 🔶 Priorité Haute
-- Tests end-to-end complets du flux LP → Form → Lead
-- Déploiement sur VPS Hostinger (`/var/www/crm-leads/`)
+- Tests end-to-end complets du nouveau cycle de vie
 
 ### 🔷 Priorité Moyenne
 - Sous-comptes
 - Configuration détaillée des Types de Produits
 
 ### ⬜ Backlog
-- Alertes email (SendGrid - en pause)
-- Bibliothèque d'images
+- Alertes email (SendGrid)
 - A/B Testing ("Mode Campagne")
 
 ## Credentials Test
@@ -135,4 +127,4 @@ Pour modifier un nom de champ, l'utilisateur DOIT dire:
 - **MDL** : `https://maison-du-lead.com/lead/api/create_lead/`
 
 ## Dernière Mise à Jour
-Décembre 2025 - Dashboard filtré par CRM + Bouton Mini Brief dans Brief LP
+Février 2026 - Fonctionnalités Admin complètes + Scheduler lead aging
