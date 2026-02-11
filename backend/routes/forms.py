@@ -434,3 +434,82 @@ async def duplicate_form(form_id: str, user: dict = Depends(get_current_user)):
     await db.forms.insert_one(new_form)
     
     return {"success": True, "form": new_form, "code": new_code}
+
+
+# ==================== ADMIN : RESET STATS ====================
+
+@router.post("/forms/{form_id}/reset-stats")
+async def reset_form_stats(
+    form_id: str,
+    user: dict = Depends(require_admin)
+):
+    """
+    Remet les stats d'un formulaire à 0 (admin seulement).
+    Les leads ne sont PAS supprimés, seulement les compteurs.
+    
+    Crée un snapshot des stats avant reset pour historique.
+    """
+    # Récupérer le formulaire
+    form = await db.forms.find_one({"id": form_id}, {"_id": 0})
+    if not form:
+        raise HTTPException(status_code=404, detail="Formulaire non trouvé")
+    
+    form_code = form.get("code", "")
+    
+    # Compter les leads actuels pour le snapshot
+    total_leads = await db.leads.count_documents({"form_code": form_code})
+    success_leads = await db.leads.count_documents({"form_code": form_code, "api_status": "success"})
+    
+    # Créer un snapshot avant reset
+    snapshot = {
+        "id": str(uuid.uuid4()),
+        "form_id": form_id,
+        "form_code": form_code,
+        "type": "stats_reset",
+        "stats_before_reset": {
+            "total": total_leads,
+            "success": success_leads
+        },
+        "reset_by": user.get("email"),
+        "reset_at": now_iso()
+    }
+    await db.stats_snapshots.insert_one(snapshot)
+    
+    # Marquer les leads existants comme "pre-reset" 
+    # (pour ne plus les compter dans les stats actuelles)
+    await db.leads.update_many(
+        {"form_code": form_code, "stats_reset": {"$ne": True}},
+        {"$set": {
+            "stats_reset": True,
+            "stats_reset_at": now_iso()
+        }}
+    )
+    
+    # Mettre à jour le formulaire
+    await db.forms.update_one(
+        {"id": form_id},
+        {"$set": {
+            "stats_reset_at": now_iso(),
+            "stats_reset_by": user.get("email")
+        }}
+    )
+    
+    # Log activité
+    await db.activity_log.insert_one({
+        "user_id": user.get("id"),
+        "user_email": user.get("email"),
+        "action": "reset_stats",
+        "entity_type": "form",
+        "entity_id": form_id,
+        "entity_name": form_code,
+        "details": {"leads_affected": total_leads},
+        "created_at": now_iso()
+    })
+    
+    return {
+        "success": True,
+        "message": f"Stats remises à 0 pour {form_code}",
+        "leads_affected": total_leads,
+        "snapshot_id": snapshot["id"]
+    }
+
