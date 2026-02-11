@@ -7,10 +7,10 @@ import { useAuth } from '../hooks/useAuth';
 import { useCRM } from '../hooks/useCRM';
 import { API } from '../hooks/useApi';
 import { Card, Modal, Button, Input, Select, Loading, EmptyState, Badge } from '../components/UI';
-import { FileText, Plus, Edit, Trash2, Copy, Code, ExternalLink, Link2, Key, Eye, EyeOff, Lock, Shield } from 'lucide-react';
+import { FileText, Plus, Edit, Trash2, Copy, Code, ExternalLink, Link2, Key, Eye, EyeOff, Lock, Shield, RotateCcw, AlertTriangle } from 'lucide-react';
 
 export default function Forms() {
-  const { authFetch } = useAuth();
+  const { authFetch, user } = useAuth();
   const { selectedCRM, currentCRM } = useCRM();
   const [forms, setForms] = useState([]);
   const [accounts, setAccounts] = useState([]);
@@ -18,10 +18,16 @@ export default function Forms() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showBriefModal, setShowBriefModal] = useState(false);
+  const [showResetStatsModal, setShowResetStatsModal] = useState(false);
   const [editingForm, setEditingForm] = useState(null);
+  const [selectedFormForReset, setSelectedFormForReset] = useState(null);
   const [briefData, setBriefData] = useState(null);
   const [filter, setFilter] = useState('all');
   const [showApiKey, setShowApiKey] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionMessage, setActionMessage] = useState(null);
+
+  const isAdmin = user?.role === 'admin';
   
   const [form, setForm] = useState({
     account_id: '',
