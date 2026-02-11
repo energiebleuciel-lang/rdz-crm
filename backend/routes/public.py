@@ -330,7 +330,7 @@ async def submit_lead(data: LeadData, request: Request):
         "routing_reason": routing_reason,  # Raison du routing
         "distribution_reason": distribution_reason,  # Raison de la distribution
         "allow_cross_crm": allow_cross_crm,  # Cross-CRM autorisé ?
-        "api_status": initial_status,  # pending, pending_no_order
+        "api_status": initial_status,  # pending, pending_no_order, no_api_key, no_crm
         "sent_to_crm": False,
         "manual_only": False,  # Pour redistribution auto
         "retry_count": 0
@@ -339,57 +339,70 @@ async def submit_lead(data: LeadData, request: Request):
     # TOUJOURS sauvegarder le lead
     await db.leads.insert_one(lead)
     
-    # Envoyer au CRM
-    status = "no_crm"
-    message = "Aucun CRM disponible"
+    # Envoyer au CRM (seulement si on a un CRM et une clé)
+    status = initial_status  # Garder le statut initial par défaut
+    message = ""
     actual_crm_sent = None
+    warning = None  # Pour notifier des problèmes non-bloquants
     
-    if final_crm and final_key:
+    if initial_status == "no_crm":
+        message = "Lead enregistré - CRM non configuré"
+        warning = "CRM_NOT_CONFIGURED"
+    elif initial_status == "no_api_key":
+        message = "Lead enregistré - Clé API manquante"
+        warning = "API_KEY_MISSING"
+    elif final_crm and final_key:
         from services.lead_sender import send_to_crm_v2, add_to_queue
         
         # Récupérer URL dynamiquement depuis la DB
         api_url = await get_crm_url(final_crm)
         if not api_url:
-            return {"success": False, "error": f"URL API non configurée pour {final_crm.upper()}"}
-        
-        status, response, should_queue = await send_to_crm_v2(lead, api_url, final_key)
-        actual_crm_sent = final_crm
-        
-        # FALLBACK : Si erreur (Token invalide, etc.) et cross_crm autorisé → essayer l'autre CRM
-        if status == "failed" and allow_cross_crm:
-            other_crm = "mdl" if final_crm == "zr7" else "zr7"
-            # Chercher la clé API de l'autre CRM dans les formulaires du même compte
-            other_form = await db.forms.find_one({
-                "account_id": account_id,
-                "target_crm": other_crm,
-                "crm_api_key": {"$exists": True, "$ne": ""}
-            }, {"_id": 0})
+            # URL manquante - on garde le lead mais on notifie
+            status = "no_crm"
+            message = f"Lead enregistré - URL API non configurée pour {final_crm.upper()}"
+            warning = "API_URL_MISSING"
+        else:
+            status, response, should_queue = await send_to_crm_v2(lead, api_url, final_key)
+            actual_crm_sent = final_crm
             
-            if other_form and other_form.get("crm_api_key"):
-                other_key = other_form["crm_api_key"]
-                other_url = await get_crm_url(other_crm)  # URL dynamique
-                if other_url:
-                    status, response, should_queue = await send_to_crm_v2(lead, other_url, other_key)
-                    actual_crm_sent = other_crm
-                    
-                    # Marquer comme transféré (fallback utilisé)
-                    await db.leads.update_one(
-                        {"id": lead_id},
-                        {"$set": {"is_transferred": True, "routing_reason": f"fallback_{other_crm}"}}
-                    )
-        
-        if should_queue:
-            await add_to_queue(lead, api_url, final_key, "error")
-            status = "queued"
-        
-        message = f"Envoyé vers {actual_crm_sent.upper()}" if status == "success" else str(response)
+            # FALLBACK : Si erreur (Token invalide, etc.) et cross_crm autorisé → essayer l'autre CRM
+            if status == "failed" and allow_cross_crm:
+                other_crm = "mdl" if final_crm == "zr7" else "zr7"
+                # Chercher la clé API de l'autre CRM dans les formulaires du même compte
+                other_form = await db.forms.find_one({
+                    "account_id": account_id,
+                    "target_crm": other_crm,
+                    "crm_api_key": {"$exists": True, "$ne": ""}
+                }, {"_id": 0})
+                
+                if other_form and other_form.get("crm_api_key"):
+                    other_key = other_form["crm_api_key"]
+                    other_url = await get_crm_url(other_crm)  # URL dynamique
+                    if other_url:
+                        status, response, should_queue = await send_to_crm_v2(lead, other_url, other_key)
+                        actual_crm_sent = other_crm
+                        
+                        # Marquer comme transféré (fallback utilisé)
+                        await db.leads.update_one(
+                            {"id": lead_id},
+                            {"$set": {"is_transferred": True, "routing_reason": f"fallback_{other_crm}"}}
+                        )
+            
+            if should_queue:
+                await add_to_queue(lead, api_url, final_key, "error")
+                status = "queued"
+            
+            message = f"Envoyé vers {actual_crm_sent.upper()}" if status == "success" else str(response)
+    else:
+        # Pas de commande trouvée
+        message = "Lead enregistré - En attente de commande active"
     
-    # Mettre à jour le lead
+    # Mettre à jour le lead avec le statut final
     await db.leads.update_one(
         {"id": lead_id},
         {"$set": {
             "api_status": status,
-            "target_crm": actual_crm_sent or final_crm,
+            "target_crm": actual_crm_sent or target_crm or "none",
             "sent_to_crm": status in ["success", "duplicate"],
             "sent_at": now_iso() if status in ["success", "duplicate"] else None
         }}
@@ -402,10 +415,20 @@ async def submit_lead(data: LeadData, request: Request):
             {"$set": {"status": "converted", "lead_id": lead_id}}
         )
     
-    return {
-        "success": status in ["success", "duplicate", "queued"],
+    # IMPORTANT: Toujours retourner success=true pour le formulaire
+    # Le visiteur ne doit pas voir d'erreur, même si le lead n'est pas envoyé au CRM
+    response_data = {
+        "success": True,  # TOUJOURS true si le lead est créé
         "lead_id": lead_id,
         "status": status,
-        "crm": actual_crm_sent or final_crm or "none",
+        "crm": actual_crm_sent or target_crm or "none",
         "message": message
+    }
+    
+    # Ajouter le warning si présent (pour debug/logs côté client)
+    if warning:
+        response_data["warning"] = warning
+        response_data["stored"] = True  # Confirme que le lead est stocké dans RDZ
+    
+    return response_data
     }
