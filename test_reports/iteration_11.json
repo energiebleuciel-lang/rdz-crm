@@ -29,7 +29,7 @@
   },
   "test_credentials": {
     "form_code": "TEST-FORM-001",
-    "api_url": "https://form-track-enhance.preview.emergentagent.com"
+    "api_url": "https://admin-panel-150.preview.emergentagent.com"
   },
   "seed_data_creation": "None - used existing TEST-FORM-001 form",
   "retest_needed": false,

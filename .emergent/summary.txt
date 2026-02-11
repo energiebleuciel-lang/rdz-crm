@@ -1,163 +1,176 @@
 <analysis>**original_problem_statement:**
-The user initially requested to fix a CORS issue with their tracking scripts. This led to a series of subsequent, urgent requests:
-1.  **Field Harmonization:** The user wanted to completely remove the  field from the entire application (backend, frontend, database, generated scripts) and use  as the sole field for geographical data.
-2.  **Media Library Feature:** The user requested a new Médias section in the CRM to upload, view, and manage images. These images should be available for use by both CRMs (ZR7 and MDL), either as shared resources or assigned to a specific one.
-3.  **Frontend Menu Reorganization:** The user asked to restructure the frontend sidebar menu into logical categories (Acquisition, Distribution, etc.) for better usability.
-4.  **Terminé Lead Stat Fix:** The user reported that the Terminé (Finished) lead count was not working correctly. They requested that all submitted leads be counted as Terminé, regardless of whether the final CRM submission was successful.
-5.  **API Key Security:** The user requested a security measure to prevent the  on a form from being accidentally or maliciously removed once it has been set.
-6.  **CRM Fallback Logic:** The user requested that if a lead fails to be sent to its primary target CRM (e.g., due to an invalid API key), the system should automatically attempt to send it to the other CRM as a fallback, provided cross-CRM routing is enabled.
+The user initially requested a  to  field migration, a new Médias feature, menu reorganization, a fix for the Terminé lead stat, API key security, and a CRM fallback logic.
+
+This scope has significantly expanded to include:
+1.  **Enhanced Security:** Lock the form tracking code and system-wide RDZ API key against modifications.
+2.  **Full Technical Audit:** A complete codebase review and refactoring to improve consistency and remove duplicate logic.
+3.  **Schema and Core Logic Locking:** Implement a system requiring explicit user confirmation to modify critical data field names and core business logic functions.
+4.  **Improved Developer Experience:** Update the script generator to provide a clear, pre-filled template with the correct field names to prevent integration errors.
+5.  **New Lead Lifecycle (P0 Requirement):**
+    *   All incoming leads MUST be saved to the RDZ database, even if no matching  (order) is available.
+    *   Leads without a  are given the status .
+    *   An automatic redistribution system attempts to route these pending leads (if < 8 days old) when a relevant  is activated.
+    *   Leads older than 8 days require manual redistribution by an admin.
+6.  **Full Suite of Admin Features:**
+    *   Modify and delete individual leads.
+    *   Mass edit/delete multiple leads.
+    *   Manually force a lead to be sent to a specific CRM.
+    *   Reset a form's statistics to zero without deleting the associated leads.
+    *   A new system for managing 6 distinct API keys (PV/PAC/ITE for both ZR7 and MDL) for inter-CRM redistribution, to be configured in the Settings page.
 
 **User's preferred language**: French
 
 **what currently exists?**
-A full-stack application (React + FastAPI + MongoDB) is deployed on the user's Hostinger VPS. The codebase has been significantly modified in this session. The  field has been entirely replaced by . A new, fully functional Media library has been implemented, allowing for image uploads and management. The frontend sidebar has been reorganized into categories. The logic for calculating Terminé leads has been updated to count all created leads. A security lock has been added to the  field on forms. A critical bug in the lead routing function () was identified and fixed. Finally, a CRM fallback mechanism has been implemented.
+The application is a full-stack CRM (React + FastAPI + MongoDB). The codebase has been heavily modified to implement a vast number of user requests. A critical bug related to  routing was fixed. A full code audit and refactoring were completed. Schema and core logic locking mechanisms are in place to prevent accidental changes.
+
+The backend for a new, complex lead lifecycle (always save lead,  status, auto-redistribution) and a full suite of admin features (edit/delete/force-send leads, reset form stats, 6 new API keys) has been implemented. The frontend for managing the 6 new API keys in the Settings page is complete. The frontend UI for the other admin actions on the Leads and Forms pages is currently in progress.
 
 **Last working item**:
-- **Last item agent was working:** The agent implemented a comprehensive set of fixes and features as per the user's rapid-fire requests. The final piece of work was implementing and testing the CRM fallback logic, ensuring that if a lead submission to the primary CRM fails, it attempts to send to the secondary CRM. This included marking the lead as  correctly.
-- **Status:** USER VERIFICATION PENDING
-- **Agent Testing Done:** Y
-- **Which testing method agent to use?** Manual testing by user. The user must deploy the latest changes to their production server and verify all the new features and fixes. Specifically:
-    1.  Confirm the Terminé stat on the Forms page now counts all submitted leads.
-    2.  Test the CRM fallback by using a form with an invalid API key and checking if the lead is routed to the other CRM.
-    3.  Test the new Médias library by uploading and managing images.
-    4.  Verify that an existing  on a form cannot be removed.
+- **Last item agent was working:** Implementing the frontend UI for the new admin features. The agent was in the middle of adding the modal and logic for the Reset Stats button in .
+- **Status:** IN PROGRESS
+- **Agent Testing Done:** N
+- **Which testing method agent to use?** Frontend testing agent. The UI changes for the admin features are extensive, involving mass selection, multiple modals, and new actions on two different pages ( and ).
 - **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-- **Issue 1: Verify Production Deployment and All Recent Changes (P0)**
-  - **Description:** A large number of critical changes (field migration, stats logic, security, fallback logic, new feature) have been implemented but not yet deployed or verified by the user on their live server. This is the highest priority.
-  - **Status:** USER VERIFICATION PENDING
+- **Issue 1: Complete and Test Admin UI Features (P0)**
+  - **Description:** The backend for all requested admin features is implemented, but the frontend UI is incomplete. The  page was rewritten to support these actions, and  was modified for the reset stats feature.
+  - **Next debug checklist:**
+    - Review  to ensure all new admin actions (edit, delete, force send, mass selection, mass actions) are fully implemented and connected to the backend APIs.
+    - Finalize the implementation of the Reset Stats modal and its functionality in .
+    - Use the frontend testing agent to conduct a thorough test of all new admin functionalities on both the Leads and Forms pages.
+  - **Why fix this issue?** To deliver the complete suite of admin management tools requested by the user.
+  - **Status:** IN PROGRESS
   - **Is recurring issue?** N
+  - **Should Test frontend/backend/both after fix?** Frontend
 
-- **Issue 2: Add  to  (P1)**
-  - **Description:** This task from the previous handoff was overlooked. The  operation on the server can fail if the  directory is tracked. This needs to be added to  to prevent future deployment issues.
+- **Issue 2: Implement and Test Lead Aging Scheduler (P1)**
+  - **Description:** The new lead lifecycle specifies that leads older than 8 days should be flagged for manual redistribution only (e.g., ). The backend service exists, but a recurring background job (cron/scheduler) needs to be implemented to perform this check and update the leads daily.
+  - **Next debug checklist:**
+    - Verify if a scheduler (like APScheduler, which is already a dependency) is configured to run a daily job.
+    - Implement the function that queries for leads with  older than 8 days and updates their status/flag.
+    - Add this function to the scheduler.
+  - **Why fix this issue?** To complete the user-defined lead lifecycle logic.
   - **Status:** NOT STARTED
-  - **Is recurring issue?** Y
+  - **Is recurring issue?** N
+  - **Should Test frontend/backend/both after fix?** Backend
 
 **In progress Task List**:
-- None.
+- **Task 1: Complete Frontend for Admin Features**
+  - **Where to resume:** Continue working on  to finalize the Reset Stats modal. Then, move to  to implement the UI for editing, deleting, force-sending, and mass-editing leads.
+  - **What will be achieved with this?** A fully functional UI for all the new admin capabilities.
+  - **Status:** IN PROGRESS
+  - **Should Test frontend/backend/both after fix?** Frontend
 
 **Upcoming and Future Tasks**
+- **Upcoming Tasks:**
+  - P1: Full end-to-end test of the new lead lifecycle ( -> auto-redistribution on  activation).
 - **Future Tasks (from project backlog):**
   - P1: Implement Sub-accounts feature.
   - P1: Implement detailed Product Type configuration.
   - P2: Add system alerts via email.
-  - P2: Create an Image Library (This might be a more advanced version of the one just created).
   - P3: Add A/B Testing (Campaign Mode).
 
 **Completed work in this session**
-- ** ->  Migration:** Completely removed  and replaced it with  across the entire application stack.
-- **Terminé Stat Logic Fix:** Modified the logic in  to count all created leads for a form as Terminé, not just those with a  or  API status.
-- **API Key Security:** Added logic in  () to prevent an existing  from being cleared or unset.
-- **CRM Fallback Implementation:** Implemented logic in  to attempt sending a lead to the fallback CRM if the primary CRM submission fails and  is enabled.
-- ** Bug Fix:** Diagnosed and fixed a critical bug where inverted parameters in the  function call were breaking lead routing.
-- **Refactoring:** Removed a duplicate  function from , centralizing it in .
-- **Media Library Feature:**
-  - Created backend endpoints () for uploading, listing, and deleting media files.
-  - Created a  directory for storing uploaded images.
-  - Created a frontend page () with UI for managing the media library.
-- **Frontend Menu Reorganization:** Restructured the sidebar navigation in  into logical categories for improved user experience.
+- **Critical Bug Fix:** Corrected inverted parameters in the  function, fixing the lead routing logic for the  field.
+- **Full Technical Audit & Refactor:**
+  - Centralized the  function.
+  - Standardized all lead sending operations to use the  function.
+  - Replaced hardcoded CRM URLs with a dynamic function () that fetches them from the database.
+- **System Hardening:**
+  - Implemented a Schema Lock () to protect critical data field names from being changed accidentally.
+  - Implemented a Core Lock () with in-code comments to protect critical business logic functions from modification without explicit user consent.
+- **Improved Developer Experience:** Updated the brief generator () to include a clear, pre-filled  template, minimizing integration errors.
+- **Backend for New Lead Lifecycle & Admin Features:**
+  - Modified  to ensure every lead is saved to the database, introducing the  status.
+  - Created a new service  to handle automatic and manual lead redistribution.
+  - Added a trigger in  to initiate auto-redistribution when a  is activated.
+  - Added new admin API endpoints in  (edit, delete, force-send),  (reset stats), and  (manage 6 inter-CRM API keys).
+- **Frontend for Inter-CRM Keys:** Implemented the UI in the Settings page ( and ) for configuring the 6 new API keys.
 
 **Earlier issues found/mentioned but not fixed**
 - None.
 
 **Known issue recurrence from previous fork**
-- None.
+- The  file was missing , which caused deployment issues. This was fixed in this session.
 
 **Code Architecture**
-- **Backend:** FastAPI
-  - A new route was added: .
-  - A new static directory was created:  for file uploads.
-- **Frontend:** React
-  - A new page was added: .
-- **Database:** MongoDB
-  - A new collection  was implicitly created to store image metadata.
-  - The  collection schema no longer contains .
+- **Backend (FastAPI):** A new service was added at  for the new lead lifecycle. The routes in  (, , , , ) were all significantly updated with new admin endpoints and logic. Helper files  and  were added for system hardening.
+- **Frontend (React):** The  page has been completely rewritten to support new admin actions and is a work in progress.  and  were updated. A new component was added at .
+- **Database (MongoDB):** The  collection schema was updated with new fields/enums:  now includes  and , and new fields like , , , and  were added. A new document type in the  collection will store the 6 redistribution API keys.
 
 **Key Technical Concepts**
-- **Full-stack Refactoring:** Complete migration of a data field ( to ).
-- **Error Handling & Fallback Logic:** Implemented a business rule to try a secondary action (sending to another CRM) upon failure of the primary action.
-- **API Security:** Added business logic to make a specific field () write-once.
-- **Live Debugging:** Traced a complex logic bug by analyzing git history and understanding the interplay between function signatures and calls across different files.
+- **Admin Role-Based Access Control:** New API endpoints are protected and can only be accessed by admin users.
+- **Event-Driven Logic:** The activation of a  triggers a background task to redistribute pending leads.
+- **Defensive Programming:** The Core Lock and Schema Lock systems are designed to prevent accidental regressions and enforce consistency.
+- **Separation of Concerns:** The complex redistribution logic is encapsulated in its own service file (), and the UI for the 6 keys is in a dedicated component.
 
 **key DB schema**
 - **leads:** 
-- **forms:** 
-- **media (New):** 
+- **system_config (New):** 
 
 **changes in tech stack**
 - None.
 
 **All files of reference**
-- **Modified Backend:**
-  - : Logic for ,  fix, and CRM fallback.
-  - : Updated to use  and correct  call.
-  - : Added  security and fixed Terminé stats.
-  - : Corrected  signature.
-  - : Removed .
-  - : Updated generated scripts to use .
-  - : Updated CRM mappings to use .
-  - : Added the  router.
-- **New Backend:**
-  - 
-- **Modified Frontend:**
-  - : Reorganized sidebar menu.
-  - : Displays .
-  - : Updated documentation in comments.
-  - : Added route for the Media page.
-- **New Frontend:**
-  - 
+- **New Backend:** , , 
+- **Modified Backend:** , , , , , 
+- **New Frontend:** 
+- **Modified Frontend:**  (rewritten), , 
+- **Documentation:**  (Project progress tracker)
 
 **Areas that need refactoring**:
-- The  function was a source of significant confusion and bugs due to being defined in multiple places with different signatures before being centralized. While it's fixed now, it indicates a need for careful code organization to avoid such issues.
+- The rewritten  is now very large and handles complex state (selections, modals for different actions). It would benefit from being broken down into smaller, more manageable components (e.g., , , ).
 
 **key api endpoints**
--  (POST): Main lead submission endpoint, now includes fallback logic.
--  (PUT): Endpoint for updating forms, now prevents  from being cleared.
--  (GET): Endpoint for single form stats, now counts all leads as finished.
--  (GET, POST): List and upload media.
--  (DELETE): Delete media.
--  (GET): Serve media file.
+- **Admin Lead Actions:** , , 
+- **Admin Form Actions:** 
+- **Admin Config:** , 
 
 **Critical Info for New Agent**
-- The application is **LIVE** on a production VPS. Deployment is done via  on the server.
-- The user is technically savvy and can get very frustrated. Maintain clear, direct communication and justify your actions with analysis.
-- The definition of a **Terminé lead has been changed by user request**. It now counts **all** leads created from a form, regardless of their  (success, failed, etc.). The fix is in .
-- A **CRM fallback** is now implemented in . If a primary CRM submission fails, it will attempt to send to the other CRM if  is true. The lead is marked as .
-- A form's  is now **write-once**. It cannot be cleared or unset via the API after being saved.
+- **CORE IS LOCKED:** Critical functions for lead intake (), routing (), and sending () are locked via code comments. Do not modify them without explicit user confirmation, stating: .
+- **SCHEMA IS LOCKED:** Critical data field names are defined in . Do not change field names without explicit user confirmation, stating: .
+- **NEW LEAD LIFECYCLE:** A major change in business logic has been implemented. All leads are now saved to the DB, even without a matching order (). They get  and are picked up by an auto-redistribution service if an order is activated within 8 days.
+- **ADMIN FEATURES IN PROGRESS:** The backend for a full suite of admin features is complete, but the frontend UI is still being built. Your primary task is to complete this UI.
 
 **documents and test reports created in this job**
--  (largely outdated by subsequent changes).
+- 
+-  (Key project tracking document)
+-  (Documentation for locked schema)
+-  (Implementation of locked schema)
+-  (List of locked core functions)
+-  (New service for lead lifecycle)
+-  (New component for settings page)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Reports Terminé count is broken again after it was supposedly fixed. Expresses extreme frustration.
-2.  **Agent:** Begins emergency diagnosis by tracing git history to find the breaking change.
-3.  **Agent:** Identifies that reverting a fix for the  parameter order was the likely cause of the new failure.
-4.  **User:** Asks if the issue is because of an invalid token.
-5.  **Agent:** Explains the Token invalide error is expected with test keys and is separate from the routing logic bug.
-6.  **Agent:** Restores the  logic to its buggy-but-functional state from before 13:00, which relied on wildcard matching.
-7.  **User:** Realizes the API key on the form was missing. Asks for a security feature to prevent the key from being removed once set. Also requests that even if there's no commande, the lead should be integrated.
-8.  **Agent:** Acknowledges the new requirements and begins implementing them.
-9.  **User:** Adds another requirement: if a lead submission fails due to an API key error, it should fallback and be sent to the MDL CRM.
-10. **Agent:** Implements the CRM fallback logic and confirms with the user that all new features and fixes are ready for deployment.
-11. **User:** go on publie juste avant c pris en compte pour scipt (Go, publish, just before that is it taken into account for the script?).
+1.  **User:** Requests admin features: modify/delete lead, force delivery, reset form stats, and asks for implementation options. (Requirement Gathering - Complete)
+2.  **User:** Clarifies requirements, specifying reset stats doesn't delete leads and introduces the concept of 6 system-level API keys for inter-CRM redistribution. (Requirement Gathering - Complete)
+3.  **User:** Confirms how the 6-key system should work for inter-CRM accounting. (Requirement Gathering - Complete)
+4.  **User:** Provides a detailed specification for a new lead lifecycle: always save leads, use a  status, and implement an auto-redistribution logic based on lead age (< 8 days). (Requirement Gathering - Complete)
+5.  **User:** Confirms the new status will be  and that redistribution will be triggered when a command activates. Asks to confirm no impact on existing forms. (Requirement Gathering - Complete)
+6.  **User:** Confirms the understanding of the 6 API key system for inter-CRM transfers. (Requirement Gathering - Complete)
+7.  **User:** Approves the entire plan and tells the agent to code everything with an intelligent, modular structure. (Task Started)
+8.  **User:** Points out that the frontend for the admin features (edit lead, reset stats, etc.) was not yet implemented. (Task In Progress)
+9.  **User:** Adds mass edit to the requirements for the lead management UI and tells the agent to proceed with coding. (Task In Progress)
+10. **User:** Prompts the agent with  to continue after a pause in implementation. (Task In Progress)
 
 **Project Health Check:**
-- **Broken**: Critical features and fixes have been implemented but are not yet deployed and verified on the user's production server. The application's core logic was recently broken and fixed, so its stability is unconfirmed in the live environment.
+- **Broken**: The application's frontend is in a partially implemented state. Key admin features have backend support but lack a complete and tested user interface on the  and  pages. The app is likely runnable, but these new features are not usable.
 
 **3rd Party Integrations**
-- **ZR7 Digital API:** To send leads.
-- **Maison du Lead (MDL) API:** To send leads.
-- **APScheduler:** Used for background tasks in the backend.
+- **ZR7 Digital API:** For sending leads.
+- **Maison du Lead (MDL) API:** For sending leads.
+- **APScheduler:** Used for background tasks in the backend (will be needed for the lead aging job).
 
 **Testing status**
 - **Testing agent used after significant changes:** NO
 - **Troubleshoot agent used after agent stuck in loop:** NO
-- **Test files created:** None. The agent relied on  and manual database checks.
-- **Known regressions:** A logic bug in  was temporarily reintroduced and then fixed correctly. The final state should be stable.
+- **Test files created:** None in this session.
+- **Known regressions:** None confirmed, but the complete rewrite of  is a high-risk change that requires thorough testing.
 
 **Credentials to test flow:**
-- **Production UI Login:**  / 
+- **UI Login:**  / 
 
 **What agent forgot to execute**
-- The agent again forgot to add the  directory to , a task carried over from the previous fork. This remains a pending item.</analysis>
+- The agent was in the middle of implementing the frontend for the admin features. The work is not forgotten, but it is the main pending task.
+- The scheduler/cron job for flagging leads older than 8 days as manual only has not been implemented yet. This is a pending part of the new lead lifecycle feature.</analysis>
