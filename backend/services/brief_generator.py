@@ -369,7 +369,23 @@ async def generate_brief(lp_id: str) -> dict:
         post_submit += f"\n        setTimeout(function() {{ window.location.href = '{final_redirect}'; }}, 500);"
     
     # ==================== SCRIPT LP ====================
-    script_lp = f'''<!-- RDZ TRACKING LP - {lp_code} -->
+    script_lp = f'''<!--
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║   ⚠️⚠️⚠️  RAPPEL IMPORTANT - CHAMPS OBLIGATOIRES  ⚠️⚠️⚠️                      ║
+║                                                                              ║
+║   Le formulaire lié à cette LP DOIT collecter :                              ║
+║                                                                              ║
+║   🔴 TÉLÉPHONE  → Champ "phone" (10 chiffres, format FR)                     ║
+║   🔴 NOM        → Champ "nom" (nom de famille)                               ║
+║   🔴 DÉPARTEMENT → Champ "departement" (code 01-95, 2A, 2B)                  ║
+║                                                                              ║
+║   Sans ces 3 champs, le lead sera marqué INCOMPLET dans RDZ.                 ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+-->
+
+<!-- RDZ TRACKING LP - {lp_code} -->
 <script>
 (function() {{
   var RDZ = {{
