@@ -15,13 +15,39 @@ Visiteur → LP → Form → RDZ (collecte) → ZR7 ou MDL (distribution)
 - **Clés API ZR7/MDL** : par formulaire, pour envoyer les leads
 - **Clés de redistribution** : 6 clés (ZR7/MDL × PV/PAC/ITE) pour envoi inter-CRM
 
-### Vérification Commandes
-Avant d'envoyer un lead :
-1. Vérifier si le CRM cible a une commande pour ce département + produit
-2. Si non et `allow_cross_crm` = true, essayer l'autre CRM
-3. Si aucun CRM disponible, stocker avec status "pending_no_order"
+### Règle critique : Lead TOUJOURS sauvegardé (Février 2026)
+```
+AVANT: Clé API vide → return error → Lead PERDU ❌
+APRÈS: Clé API vide → Lead sauvegardé avec status "no_api_key" → Envoi manuel possible ✅
+```
+
+## Statuts de Lead
+
+| Statut | Description | Action admin |
+|--------|-------------|--------------|
+| `success` | Envoyé au CRM avec succès | - |
+| `duplicate` | Doublon détecté par le CRM | - |
+| `queued` | En file d'attente (retry) | Automatique |
+| `failed` | Erreur d'envoi CRM | Forcer envoi |
+| `no_crm` | CRM non configuré sur le formulaire | Configurer CRM |
+| `no_api_key` | **NOUVEAU** - Clé API manquante | Forcer envoi |
+| `pending_no_order` | Pas de commande active (<8j) | Redistribution auto |
+| `pending_manual` | Pas de commande active (>8j) | Redistribution manuelle |
 
 ## Fonctionnalités Implémentées
+
+### ✅ Correction critique : Lead toujours sauvegardé (Février 2026)
+
+**Problème résolu :**
+- Les leads n'étaient PAS créés si la clé API du formulaire était vide
+- Le visiteur voyait une erreur sur le formulaire
+
+**Solution implémentée :**
+- Le lead est TOUJOURS sauvegardé dans RDZ
+- Nouveau statut `no_api_key` pour identifier ces cas
+- Réponse API toujours `success: true` pour le formulaire
+- Badge orange "Sans clé" visible dans l'admin
+- Admin peut utiliser "Forcer envoi" pour envoyer manuellement
 
 ### ✅ Fonctionnalités Admin (Février 2026)
 
@@ -44,51 +70,31 @@ Avant d'envoyer un lead :
 - Marque les leads comme `stats_reset: true`
 - Les leads ne sont PAS supprimés, juste exclus des stats
 
-### ✅ Cycle de vie des Leads (Février 2026)
-
-**Nouveau comportement :**
-1. Tous les leads sont TOUJOURS sauvegardés en base, même sans commande
-2. Si pas de commande → `api_status: "pending_no_order"`
-3. Auto-redistribution quand commande activée (si lead < 8 jours)
-4. Leads > 8 jours → `api_status: "pending_manual"` (scheduler quotidien 4h UTC)
-5. Redistribution manuelle par admin pour leads > 8 jours
-
-**Statuts de lead :**
-- `pending` : En cours de traitement
-- `success` : Envoyé avec succès
-- `failed` : Échec d'envoi
-- `duplicate` : Doublon détecté
-- `no_crm` : Pas de CRM configuré
-- `queued` : En file d'attente
-- `pending_no_order` : En attente (pas de commande, < 8 jours)
-- `pending_manual` : Redistribution manuelle requise (> 8 jours)
-
 ### ✅ Scheduler (APScheduler)
 - **3h UTC** : Vérification nocturne des leads
 - **4h UTC** : Marquage leads > 8 jours comme `pending_manual`
 - **Toutes les 5 min** : Traitement de la file d'attente
 
-### ✅ API
+## API Réponses
 
-**Routes publiques:**
-- `POST /api/public/track/session` - Créer session visiteur
-- `POST /api/public/track/event` - Tracker événement
-- `POST /api/public/leads` - Soumettre lead
-- `GET /api/forms/public/{code}` - Config formulaire public
+### POST /api/public/leads
 
-**Routes authentifiées:**
-- `GET /api/leads/export` - Export leads avec clé API RDZ
-- `GET /api/leads/stats/global` - Stats globales (filtrées par CRM)
+**Cas 1: Envoi réussi**
+```json
+{"success": true, "lead_id": "...", "status": "success", "crm": "zr7", "message": "Envoyé vers ZR7"}
+```
 
-**Routes admin:**
-- `PUT /api/leads/{id}` - Modifier lead
-- `DELETE /api/leads/{id}` - Supprimer lead
-- `POST /api/leads/{id}/force-send` - Forcer envoi CRM
-- `POST /api/forms/{id}/reset-stats` - Reset statistiques
-- `GET /api/leads/pending` - Leads en attente redistribution
-- `GET/PUT /api/config/redistribution-keys` - Clés redistribution inter-CRM
+**Cas 2: Clé API manquante (NOUVEAU)**
+```json
+{"success": true, "lead_id": "...", "status": "no_api_key", "crm": "zr7", "message": "Lead enregistré - Clé API manquante", "warning": "API_KEY_MISSING", "stored": true}
+```
 
-### 🔒 SCHEMA VERROUILLÉ
+**Cas 3: En attente de commande**
+```json
+{"success": true, "lead_id": "...", "status": "pending_no_order", "message": "Lead enregistré - En attente de commande active"}
+```
+
+## 🔒 SCHEMA VERROUILLÉ
 
 **Champs lead normalisés:**
 ```
@@ -96,15 +102,12 @@ origin_crm      : slug CRM d'origine (compte)
 target_crm      : slug CRM de destination
 is_transferred  : boolean (transfert inter-CRM)
 routing_reason  : raison du routing
+distribution_reason: raison détaillée (API_KEY_MISSING, NO_ELIGIBLE_ORDER, etc.)
 allow_cross_crm : boolean
-api_status      : Enum ci-dessus
+api_status      : Enum (voir tableau ci-dessus)
 sent_to_crm     : boolean
 departement     : code département (01-95, 2A, 2B)
 ```
-
-**Champs interdits (JAMAIS UTILISER):**
-- `code_postal` → Utiliser `departement`
-- `target_crm_id` → Utiliser `target_crm`
 
 ## À Faire
 
@@ -127,4 +130,4 @@ departement     : code département (01-95, 2A, 2B)
 - **MDL** : `https://maison-du-lead.com/lead/api/create_lead/`
 
 ## Dernière Mise à Jour
-Février 2026 - Fonctionnalités Admin complètes + Scheduler lead aging
+Février 2026 - Correction critique : Lead TOUJOURS sauvegardé même sans clé API
