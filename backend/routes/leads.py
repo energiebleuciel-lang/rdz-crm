@@ -439,12 +439,14 @@ async def get_leads_stats(crm_id: str = None, user: dict = Depends(get_current_u
     failed_query = {**query, "api_status": "failed"}
     queued_query = {**query, "api_status": "queued"}
     no_crm_query = {**query, "api_status": "no_crm"}
+    pending_query = {**query, "api_status": {"$in": ["pending_no_order", "pending_manual"]}}
     
     success = await db.leads.count_documents(success_query)
     duplicate = await db.leads.count_documents(duplicate_query)
     failed = await db.leads.count_documents(failed_query)
     queued = await db.leads.count_documents(queued_query)
     no_crm = await db.leads.count_documents(no_crm_query)
+    pending = await db.leads.count_documents(pending_query)
     
     return {
         "total": total,
@@ -453,5 +455,151 @@ async def get_leads_stats(crm_id: str = None, user: dict = Depends(get_current_u
         "failed": failed,
         "queued": queued,
         "no_crm": no_crm,
+        "pending_redistribution": pending,
         "sent_rate": round((success + duplicate) / total * 100, 1) if total > 0 else 0
     }
+
+
+# ==================== ADMIN : GESTION LEADS ====================
+
+@router.put("/leads/{lead_id}")
+async def update_lead(
+    lead_id: str,
+    data: dict,
+    user: dict = Depends(require_admin)
+):
+    """
+    Modifier un lead (admin seulement).
+    Permet de corriger les infos d'un lead.
+    """
+    from models import LeadUpdate
+    
+    lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead non trouvé")
+    
+    # Champs modifiables
+    allowed_fields = [
+        "phone", "nom", "prenom", "civilite", "email",
+        "departement", "ville", "adresse",
+        "type_logement", "statut_occupant", "surface_habitable",
+        "type_chauffage", "facture_electricite", "notes_admin"
+    ]
+    
+    update_data = {k: v for k, v in data.items() if k in allowed_fields and v is not None}
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="Aucun champ à modifier")
+    
+    # Ajouter metadata modification
+    update_data["modified_at"] = now_iso()
+    update_data["modified_by"] = user.get("email", "admin")
+    
+    await db.leads.update_one({"id": lead_id}, {"$set": update_data})
+    
+    # Log activité
+    await db.activity_log.insert_one({
+        "user_id": user.get("id"),
+        "user_email": user.get("email"),
+        "action": "update",
+        "entity_type": "lead",
+        "entity_id": lead_id,
+        "details": {"fields_updated": list(update_data.keys())},
+        "created_at": now_iso()
+    })
+    
+    updated_lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
+    return {"success": True, "lead": updated_lead}
+
+
+@router.delete("/leads/{lead_id}")
+async def delete_lead(
+    lead_id: str,
+    user: dict = Depends(require_admin)
+):
+    """
+    Supprimer un lead (admin seulement).
+    Action irréversible.
+    """
+    lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead non trouvé")
+    
+    # Supprimer le lead
+    await db.leads.delete_one({"id": lead_id})
+    
+    # Supprimer aussi de la queue si présent
+    await db.lead_queue.delete_many({"lead_id": lead_id})
+    
+    # Log activité
+    await db.activity_log.insert_one({
+        "user_id": user.get("id"),
+        "user_email": user.get("email"),
+        "action": "delete",
+        "entity_type": "lead",
+        "entity_id": lead_id,
+        "details": {"phone": lead.get("phone"), "form_code": lead.get("form_code")},
+        "created_at": now_iso()
+    })
+    
+    return {"success": True, "message": "Lead supprimé"}
+
+
+@router.post("/leads/{lead_id}/force-send")
+async def force_send_lead_to_crm(
+    lead_id: str,
+    data: dict,
+    user: dict = Depends(require_admin)
+):
+    """
+    Forcer l'envoi d'un lead vers un CRM spécifique (admin seulement).
+    - Si même CRM que l'origine: utilise la clé du formulaire
+    - Si CRM différent: utilise la clé de redistribution
+    """
+    from services.lead_redistributor import force_send_lead
+    
+    target_crm = data.get("target_crm", "").lower()
+    if target_crm not in ["zr7", "mdl"]:
+        raise HTTPException(status_code=400, detail="target_crm doit être 'zr7' ou 'mdl'")
+    
+    result = await force_send_lead(lead_id, target_crm, user.get("email", "admin"))
+    
+    # Log activité
+    await db.activity_log.insert_one({
+        "user_id": user.get("id"),
+        "user_email": user.get("email"),
+        "action": "force_send",
+        "entity_type": "lead",
+        "entity_id": lead_id,
+        "details": {"target_crm": target_crm, "result": result.get("status")},
+        "created_at": now_iso()
+    })
+    
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("message"))
+    
+    return result
+
+
+@router.get("/leads/pending")
+async def get_pending_leads(
+    user: dict = Depends(require_admin)
+):
+    """
+    Récupérer les leads en attente de redistribution (admin).
+    """
+    from services.lead_redistributor import get_pending_leads_stats
+    
+    stats = await get_pending_leads_stats()
+    
+    # Récupérer les leads en attente
+    leads = await db.leads.find(
+        {"api_status": {"$in": ["pending_no_order", "pending_manual"]}},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    return {
+        "stats": stats,
+        "leads": leads
+    }
+
