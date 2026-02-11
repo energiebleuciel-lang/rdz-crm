@@ -227,12 +227,12 @@ async def submit_lead(data: LeadData, request: Request):
         origin_crm_slug = origin_crm_doc.get("slug") if origin_crm_doc else None
     
     # Vérifier que le CRM cible est configuré en DB
-    target_crm_url = await get_crm_url(target_crm)
-    if not target_crm or not target_crm_url:
-        return {"success": False, "error": "CRM non configuré"}
+    target_crm_url = await get_crm_url(target_crm) if target_crm else None
     
-    if not crm_api_key:
-        return {"success": False, "error": f"Clé API {target_crm.upper()} non configurée"}
+    # IMPORTANT: On ne bloque plus si clé API manquante !
+    # Le lead sera TOUJOURS créé, avec un statut approprié
+    has_api_key = bool(crm_api_key and crm_api_key.strip())
+    has_crm_config = bool(target_crm and target_crm_url)
     
     # Vérifier commandes et trouver le bon CRM
     final_crm = None
@@ -240,29 +240,37 @@ async def submit_lead(data: LeadData, request: Request):
     is_transferred = False  # Le lead sera-t-il transféré vers un autre CRM ?
     routing_reason = "no_crm"  # Raison du routing
     
-    crm_id = await get_crm_id(target_crm)
-    if crm_id and await has_commande(crm_id, product_type, dept):
-        final_crm = target_crm
-        final_key = crm_api_key
-        routing_reason = f"commande_{target_crm}"
-    elif allow_cross_crm:
-        other = "mdl" if target_crm == "zr7" else "zr7"
-        other_id = await get_crm_id(other)
-        if other_id and await has_commande(other_id, product_type, dept):
-            other_form = await db.forms.find_one({
-                "account_id": account_id,
-                "target_crm": other,
-                "crm_api_key": {"$exists": True, "$ne": ""}
-            }, {"_id": 0})
-            if other_form:
-                final_crm = other
-                final_key = other_form.get("crm_api_key")
-                is_transferred = True  # Transfert inter-CRM !
-                routing_reason = f"cross_crm_{other}"
+    if has_crm_config and has_api_key:
+        # Cas normal : CRM et clé configurés
+        crm_id = await get_crm_id(target_crm)
+        if crm_id and await has_commande(crm_id, product_type, dept):
+            final_crm = target_crm
+            final_key = crm_api_key
+            routing_reason = f"commande_{target_crm}"
+        elif allow_cross_crm:
+            other = "mdl" if target_crm == "zr7" else "zr7"
+            other_id = await get_crm_id(other)
+            if other_id and await has_commande(other_id, product_type, dept):
+                other_form = await db.forms.find_one({
+                    "account_id": account_id,
+                    "target_crm": other,
+                    "crm_api_key": {"$exists": True, "$ne": ""}
+                }, {"_id": 0})
+                if other_form:
+                    final_crm = other
+                    final_key = other_form.get("crm_api_key")
+                    is_transferred = True  # Transfert inter-CRM !
+                    routing_reason = f"cross_crm_{other}"
     
     # Déterminer le statut initial
-    # RÈGLE: Lead TOUJOURS sauvegardé, même sans commande
-    if final_crm and final_key:
+    # RÈGLE: Lead TOUJOURS sauvegardé, peu importe la config
+    if not has_crm_config:
+        initial_status = "no_crm"
+        distribution_reason = "CRM_NOT_CONFIGURED"
+    elif not has_api_key:
+        initial_status = "no_api_key"  # NOUVEAU: Clé API manquante
+        distribution_reason = "API_KEY_MISSING"
+    elif final_crm and final_key:
         initial_status = "pending"
         distribution_reason = routing_reason
     else:
