@@ -109,22 +109,26 @@ Pour modifier un nom, dire :
 - [x] **Code formulaire** : Non modifiable après création
 - [x] **Clé API formulaire** : Non supprimable une fois définie
 - [x] **Clé API RDZ** : Permanente, non régénérable
+- [x] **Noyau critique verrouillé** : Fonctions d'intégration protégées
 
 ### Template brief amélioré
 - [x] Template complet avec tous les noms de champs corrects
 - [x] Avertissement `departement` (pas `department`)
 - [x] Liste des champs interdits dans le script généré
 
-### Migration code_postal → departement
-- [x] Backend : Tous les fichiers migrés
-- [x] Frontend : Affichage mis à jour
-- [x] Scripts : Template avec `departement`
+### Fonctionnalités Admin (NOUVEAU)
+- [x] **Modifier un lead** : PUT /api/leads/{id}
+- [x] **Supprimer un lead** : DELETE /api/leads/{id}
+- [x] **Forcer envoi CRM** : POST /api/leads/{id}/force-send
+- [x] **Reset stats formulaire** : POST /api/forms/{id}/reset-stats (sans supprimer les leads)
+- [x] **6 clés API redistribution** : Interface dans Paramètres
 
-### Autres fonctionnalités
-- [x] Bibliothèque Médias (upload/gestion images)
-- [x] Menu sidebar réorganisé en catégories
-- [x] Fallback CRM (si échec primaire → essai secondaire)
-- [x] Compteur "Terminé" = tous les leads créés
+### Système de redistribution (NOUVEAU)
+- [x] Lead TOUJOURS sauvegardé (plus jamais de `no_crm` perdu)
+- [x] Statut `pending_no_order` : En attente de commande
+- [x] Auto-reprise < 8 jours : Quand commande s'active
+- [x] Manual only > 8 jours : Admin seulement après 8 jours
+- [x] Service `lead_redistributor.py` : Logique de redistribution
 
 ---
 
