@@ -260,6 +260,15 @@ async def submit_lead(data: LeadData, request: Request):
                 is_transferred = True  # Transfert inter-CRM !
                 routing_reason = f"cross_crm_{other}"
     
+    # Déterminer le statut initial
+    # RÈGLE: Lead TOUJOURS sauvegardé, même sans commande
+    if final_crm and final_key:
+        initial_status = "pending"
+        distribution_reason = routing_reason
+    else:
+        initial_status = "pending_no_order"  # En attente de redistribution
+        distribution_reason = "NO_ELIGIBLE_ORDER"
+    
     # Récupérer session
     session = await db.visitor_sessions.find_one({"id": data.session_id}, {"_id": 0})
     lp_code = session.get("lp_code", "") if session else ""
@@ -269,7 +278,7 @@ async def submit_lead(data: LeadData, request: Request):
         "campaign": session.get("utm_campaign", "") if session else ""
     }
     
-    # Créer le lead
+    # Créer le lead - TOUJOURS SAUVEGARDÉ
     lead_id = str(uuid.uuid4())
     lead = {
         "id": lead_id,
@@ -311,11 +320,15 @@ async def submit_lead(data: LeadData, request: Request):
         "target_crm": final_crm or "none",  # CRM de destination final (slug)
         "is_transferred": is_transferred,  # Transféré vers autre CRM ?
         "routing_reason": routing_reason,  # Raison du routing
+        "distribution_reason": distribution_reason,  # Raison de la distribution
         "allow_cross_crm": allow_cross_crm,  # Cross-CRM autorisé ?
-        "api_status": "pending" if final_crm else "no_crm",
-        "sent_to_crm": False
+        "api_status": initial_status,  # pending, pending_no_order
+        "sent_to_crm": False,
+        "manual_only": False,  # Pour redistribution auto
+        "retry_count": 0
     }
     
+    # TOUJOURS sauvegarder le lead
     await db.leads.insert_one(lead)
     
     # Envoyer au CRM
