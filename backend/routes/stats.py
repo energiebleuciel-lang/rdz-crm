@@ -150,7 +150,7 @@ async def get_stats_timeline(
         form_codes = [f["code"] for f in forms]
         query["form_code"] = {"$in": form_codes}
     
-    leads = await db.leads.find(query, {"_id": 0, "created_at": 1, "product_type": 1}).to_list(10000)
+    leads = await db.leads.find(query, {"_id": 0, "created_at": 1, "product_type": 1}).to_list(5000)
     
     # Agréger par jour
     by_day = {}
