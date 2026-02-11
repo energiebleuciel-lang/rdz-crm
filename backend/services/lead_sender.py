@@ -1,4 +1,17 @@
 """
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  🔒🔒🔒  FICHIER CRITIQUE VERROUILLÉ - NE PAS MODIFIER  🔒🔒🔒               ║
+║                                                                              ║
+║  Ce fichier contient les fonctions CRITIQUES d'envoi vers CRMs:              ║
+║  - send_to_crm_v2()  : Envoi effectif vers ZR7/MDL                           ║
+║  - add_to_queue()    : File d'attente retry automatique                      ║
+║                                                                              ║
+║  Ces fonctions communiquent directement avec les CRMs externes.              ║
+║  Toute modification peut BLOQUER l'envoi de TOUS les leads.                  ║
+║                                                                              ║
+║  DÉVERROUILLAGE REQUIS: "Je déverrouille le noyau critique pour modifier X"  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
 Service d'envoi de leads vers les CRMs externes (ZR7, MDL)
 Gère l'envoi, les erreurs, et la mise en file d'attente
 
