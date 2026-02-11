@@ -431,4 +431,3 @@ async def submit_lead(data: LeadData, request: Request):
         response_data["stored"] = True  # Confirme que le lead est stocké dans RDZ
     
     return response_data
-    }
