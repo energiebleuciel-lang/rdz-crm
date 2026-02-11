@@ -544,12 +544,52 @@ async def generate_brief(lp_id: str) -> dict:
     await track("form_start");
   }};
 
+  // ========================================
+  // VALIDATION DES CHAMPS OBLIGATOIRES
+  // ========================================
+  function validateLeadData(data) {{
+    var errors = [];
+    
+    // Téléphone OBLIGATOIRE (10 chiffres)
+    var phone = (data.phone || "").replace(/\\D/g, "");
+    if (!phone || phone.length !== 10) {{
+      errors.push("Téléphone invalide (10 chiffres requis)");
+    }}
+    
+    // Nom OBLIGATOIRE
+    var nom = (data.nom || "").trim();
+    if (!nom) {{
+      errors.push("Nom obligatoire");
+    }}
+    
+    // Département OBLIGATOIRE
+    var dept = (data.departement || "").trim();
+    if (!dept) {{
+      errors.push("Département obligatoire");
+    }}
+    
+    return {{
+      valid: errors.length === 0,
+      errors: errors
+    }};
+  }}
+
   window.rdzSubmitLead = async function(data) {{
     var sid = RDZ.session || await initSession();
     if (!sid) {{
       log("Erreur: pas de session");
       return {{success: false, error: "Pas de session"}};
     }}
+    
+    // VALIDATION CÔTÉ CLIENT
+    var validation = validateLeadData(data);
+    if (!validation.valid) {{
+      log("Validation échouée:", validation.errors);
+      // On envoie quand même pour que RDZ stocke le lead (avec warning)
+      // mais on log l'erreur pour debug
+      console.warn("[RDZ] Champs obligatoires manquants:", validation.errors.join(", "));
+    }}
+    
     try {{
       log("Envoi lead...", data);
       var res = await fetch(RDZ.api + "/leads", {{
@@ -562,6 +602,12 @@ async def generate_brief(lp_id: str) -> dict:
       }});
       var result = await res.json();
       log("Réponse lead:", result);
+      
+      // Ajouter les erreurs de validation au résultat
+      if (!validation.valid) {{
+        result.validation_errors = validation.errors;
+      }}
+      
       if (result.success || result.lead_id) {{{post_submit}
       }}
       return result;
@@ -570,6 +616,9 @@ async def generate_brief(lp_id: str) -> dict:
       return {{success: false, error: e.message}};
     }}
   }};
+  
+  // Fonction de validation exposée pour usage dans le formulaire
+  window.rdzValidate = validateLeadData;
 
   window.RDZ_FORM = RDZ;
 }})();
