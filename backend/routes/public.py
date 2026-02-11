@@ -198,9 +198,12 @@ async def submit_lead(data: LeadData, request: Request):
     
     RÈGLE ABSOLUE : Le lead est TOUJOURS créé dans RDZ, peu importe :
     - Si le téléphone est invalide → lead créé avec flag phone_invalid
+    - Si nom/département manquant → lead créé avec flag missing_required
     - Si le formulaire n'existe pas → lead orphelin créé
     - Si la clé API est manquante → lead créé avec status no_api_key
     - Si pas de commande → lead créé avec status pending_no_order
+    
+    CHAMPS OBLIGATOIRES : phone, nom, departement
     """
     
     # Valider téléphone - mais NE PAS bloquer si invalide
@@ -208,8 +211,12 @@ async def submit_lead(data: LeadData, request: Request):
     phone = phone_result if is_valid else data.phone  # Garder le téléphone brut si invalide
     phone_invalid = not is_valid
     
-    # Récupérer département (directement depuis les données)
-    dept = data.departement or ""
+    # Valider champs obligatoires (nom, departement)
+    nom = (data.nom or "").strip()
+    dept = (data.departement or "").strip()
+    missing_nom = not nom
+    missing_dept = not dept
+    missing_required = missing_nom or missing_dept
     
     # Récupérer formulaire
     form = await db.forms.find_one(
