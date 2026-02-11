@@ -10,117 +10,107 @@ CRM multi-tenant pour la gestion et distribution de leads vers ZR7 Digital et Ma
 Visiteur → LP → Form → RDZ (collecte) → ZR7 ou MDL (distribution)
 ```
 
-### Clés API
-- **Clé API RDZ** : unique, non modifiable, pour récupérer les leads (`GET /api/leads/export`)
-- **Clés API ZR7/MDL** : par formulaire, pour envoyer les leads
-- **Clés de redistribution** : 6 clés (ZR7/MDL × PV/PAC/ITE) pour envoi inter-CRM
+## RÈGLE ABSOLUE : Lead TOUJOURS sauvegardé dans RDZ
 
-### Règle critique : Lead TOUJOURS sauvegardé (Février 2026)
 ```
-AVANT: Clé API vide → return error → Lead PERDU ❌
-APRÈS: Clé API vide → Lead sauvegardé avec status "no_api_key" → Envoi manuel possible ✅
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  🔐 PRINCIPE FONDAMENTAL                                                      ║
+║                                                                              ║
+║  TOUT lead soumis est TOUJOURS créé dans RDZ, peu importe les erreurs :      ║
+║  - Formulaire non trouvé → lead "orphelin"                                   ║
+║  - Téléphone invalide → lead avec flag "phone_invalid"                       ║
+║  - Clé API manquante → lead "no_api_key"                                     ║
+║  - CRM non configuré → lead "no_crm"                                         ║
+║  - Pas de commande → lead "pending_no_order"                                 ║
+║                                                                              ║
+║  Le visiteur voit TOUJOURS une redirection normale (success: true)           ║
+║  L'admin peut TOUJOURS "Forcer envoi" plus tard                             ║
+╚══════════════════════════════════════════════════════════════════════════════╝
 ```
 
-## Statuts de Lead
+## Statuts de Lead (api_status)
 
-| Statut | Description | Action admin |
-|--------|-------------|--------------|
-| `success` | Envoyé au CRM avec succès | - |
-| `duplicate` | Doublon détecté par le CRM | - |
-| `queued` | En file d'attente (retry) | Automatique |
-| `failed` | Erreur d'envoi CRM | Forcer envoi |
-| `no_crm` | CRM non configuré sur le formulaire | Configurer CRM |
-| `no_api_key` | **NOUVEAU** - Clé API manquante | Forcer envoi |
-| `pending_no_order` | Pas de commande active (<8j) | Redistribution auto |
-| `pending_manual` | Pas de commande active (>8j) | Redistribution manuelle |
+| Statut | Description | Badge UI | Action admin |
+|--------|-------------|----------|--------------|
+| `success` | Envoyé au CRM | ✅ Vert | - |
+| `duplicate` | Doublon CRM | ⚠️ Orange | - |
+| `queued` | En file d'attente | 🔵 Bleu | Automatique |
+| `failed` | Erreur d'envoi | ❌ Rouge | Forcer envoi |
+| `no_crm` | CRM non configuré | ⚪ Gris | Configurer CRM |
+| `no_api_key` | Clé API manquante | ⚠️ Jaune | Forcer envoi |
+| `orphan` | Formulaire non trouvé | ❌ Rouge | Audit |
+| `invalid_phone` | Téléphone invalide | ❌ Rouge | Éditer + Forcer |
+| `pending_no_order` | Pas de commande (<8j) | ⚠️ Orange | Auto-redistribution |
+| `pending_manual` | Pas de commande (>8j) | 🔵 Bleu | Redistribution manuelle |
 
-## Fonctionnalités Implémentées
+## Flags de diagnostic (sur chaque lead)
 
-### ✅ Correction critique : Lead toujours sauvegardé (Février 2026)
+```json
+{
+  "phone_invalid": true/false,    // Téléphone non valide (format FR)
+  "form_not_found": true/false,   // Formulaire non trouvé en DB
+  "distribution_reason": "..."    // Raison détaillée du statut
+}
+```
 
-**Problème résolu :**
-- Les leads n'étaient PAS créés si la clé API du formulaire était vide
-- Le visiteur voyait une erreur sur le formulaire
+## API Réponses POST /api/public/leads
 
-**Solution implémentée :**
-- Le lead est TOUJOURS sauvegardé dans RDZ
-- Nouveau statut `no_api_key` pour identifier ces cas
-- Réponse API toujours `success: true` pour le formulaire
-- Badge orange "Sans clé" visible dans l'admin
-- Admin peut utiliser "Forcer envoi" pour envoyer manuellement
+**Réponse TOUJOURS `success: true` + `stored: true`** (sauf erreur serveur)
 
-### ✅ Fonctionnalités Admin (Février 2026)
+```json
+// Cas normal
+{"success": true, "lead_id": "...", "status": "success", "crm": "zr7"}
 
-**Page Leads - Actions individuelles:**
-- Édition lead (PUT /api/leads/{id}) : phone, email, nom, prenom, departement, ville, notes_admin
-- Suppression lead (DELETE /api/leads/{id}) : suppression définitive
-- Forcer envoi CRM (POST /api/leads/{id}/force-send) : vers ZR7 ou MDL
+// Clé API manquante
+{"success": true, "lead_id": "...", "status": "no_api_key", "warning": "API_KEY_MISSING", "stored": true}
 
-**Page Leads - Actions de masse:**
+// Formulaire non trouvé
+{"success": true, "lead_id": "...", "status": "orphan", "warning": "FORM_NOT_FOUND", "stored": true}
+
+// Téléphone invalide
+{"success": true, "lead_id": "...", "status": "invalid_phone", "warning": "PHONE_INVALID", "stored": true}
+```
+
+## Scripts LP & Formulaire
+
+Les scripts générés par le Brief gèrent automatiquement :
+1. Création de session (`/api/public/track/session`)
+2. Tracking d'événements (`/api/public/track/event`)
+3. Soumission lead (`/api/public/leads`)
+4. Redirection post-soumission (même si `warning` retourné)
+
+**Le visiteur ne voit JAMAIS d'erreur** - il est toujours redirigé.
+
+## Fonctionnalités Admin
+
+### Actions sur Leads
+- **Voir** : Détails complets du lead
+- **Éditer** : Modifier phone, email, nom, departement, notes_admin
+- **Forcer envoi** : Envoyer vers ZR7 ou MDL (utilise clés redistribution)
+- **Supprimer** : Suppression définitive
+
+### Actions de Masse
 - Sélection multiple via checkboxes
-- Barre d'actions apparaît quand sélection active
-- Édition masse : modifier département, ville, notes pour X leads
-- Suppression masse : supprimer X leads
-- Envoi masse : forcer envoi de X leads vers un CRM
+- Édition masse
+- Suppression masse
+- Envoi masse vers CRM
 
-**Page Forms - Reset Stats:**
-- Bouton Reset Stats (admin only) sur chaque carte formulaire
-- Modal de confirmation avec warning
-- Crée un snapshot avant reset
-- Marque les leads comme `stats_reset: true`
-- Les leads ne sont PAS supprimés, juste exclus des stats
+### Reset Stats Formulaire
+- Remet les compteurs à zéro
+- Les leads ne sont PAS supprimés
+- Snapshot créé avant reset
 
-### ✅ Scheduler (APScheduler)
-- **3h UTC** : Vérification nocturne des leads
+## Scheduler (APScheduler)
+- **3h UTC** : Vérification nocturne
 - **4h UTC** : Marquage leads > 8 jours comme `pending_manual`
-- **Toutes les 5 min** : Traitement de la file d'attente
-
-## API Réponses
-
-### POST /api/public/leads
-
-**Cas 1: Envoi réussi**
-```json
-{"success": true, "lead_id": "...", "status": "success", "crm": "zr7", "message": "Envoyé vers ZR7"}
-```
-
-**Cas 2: Clé API manquante (NOUVEAU)**
-```json
-{"success": true, "lead_id": "...", "status": "no_api_key", "crm": "zr7", "message": "Lead enregistré - Clé API manquante", "warning": "API_KEY_MISSING", "stored": true}
-```
-
-**Cas 3: En attente de commande**
-```json
-{"success": true, "lead_id": "...", "status": "pending_no_order", "message": "Lead enregistré - En attente de commande active"}
-```
+- **5 min** : Traitement file d'attente
 
 ## 🔒 SCHEMA VERROUILLÉ
 
-**Champs lead normalisés:**
-```
-origin_crm      : slug CRM d'origine (compte)
-target_crm      : slug CRM de destination
-is_transferred  : boolean (transfert inter-CRM)
-routing_reason  : raison du routing
-distribution_reason: raison détaillée (API_KEY_MISSING, NO_ELIGIBLE_ORDER, etc.)
-allow_cross_crm : boolean
-api_status      : Enum (voir tableau ci-dessus)
-sent_to_crm     : boolean
-departement     : code département (01-95, 2A, 2B)
-```
-
-## À Faire
-
-### 🔶 Priorité Haute
-- Tests end-to-end complets du nouveau cycle de vie
-
-### 🔷 Priorité Moyenne
-- Sous-comptes
-- Configuration détaillée des Types de Produits
-
-### ⬜ Backlog
-- Alertes email (SendGrid)
-- A/B Testing ("Mode Campagne")
+Champs obligatoires normalisés (NE PAS MODIFIER) :
+- `departement` (pas "code_postal", pas "department")
+- `target_crm` (slug: "zr7" ou "mdl")
+- `api_status` (enum ci-dessus)
 
 ## Credentials Test
 - **UI Login** : `energiebleuciel@gmail.com` / `92Ruemarxdormoy`
@@ -130,4 +120,4 @@ departement     : code département (01-95, 2A, 2B)
 - **MDL** : `https://maison-du-lead.com/lead/api/create_lead/`
 
 ## Dernière Mise à Jour
-Février 2026 - Correction critique : Lead TOUJOURS sauvegardé même sans clé API
+Février 2026 - RÈGLE ABSOLUE : Lead TOUJOURS sauvegardé dans RDZ
