@@ -216,13 +216,15 @@ Février 2026 - Système complet sécurisé :
 - Backend compatible sendBeacon (parse_beacon_body)
 - Tests de fiabilité : 7/7 PASS, 100/100 funnel E2E
 
-### Détection Doublons Interne v2.2 (NEW)
+### Détection Doublons Interne v2.2 (VALIDÉ)
 - Critères : phone + département + fenêtre 30 jours
 - Statuts : `doublon_recent` (déjà livré), `non_livre` (redistribuable), `double_submit` (anti double-clic)
 - Protection anti double-submit : 5 secondes
 - Lead TOUJOURS créé (traçabilité) mais non envoyé si doublon
 - Index MongoDB optimisés pour performance
+- **TEST E2E VOLUME : 100 leads, 100% succès, 0 doublon livré**
 - Documentation : `/app/memory/DUPLICATE_DETECTION_v2.2.md`
+- Rapport de test : `/app/memory/TEST_VOLUME_REPORT_2026-02-12.md`
 
 ### Liaison LP ↔ Form Obligatoire
 - Création LP génère automatiquement Form lié
