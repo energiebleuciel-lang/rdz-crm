@@ -165,6 +165,10 @@ async def _generate_mode_a(
     
     try {{
       var params = new URLSearchParams(window.location.search);
+      
+      // Capturer utm_campaign depuis URL
+      RDZ.utm_campaign = params.get("utm_campaign") || "";
+      
       var res = await fetch(RDZ.api + "/track/session", {{
         method: "POST",
         headers: {{"Content-Type": "application/json"}},
@@ -175,7 +179,7 @@ async def _generate_mode_a(
           referrer: document.referrer,
           utm_source: params.get("utm_source") || "",
           utm_medium: params.get("utm_medium") || "",
-          utm_campaign: params.get("utm_campaign") || ""
+          utm_campaign: RDZ.utm_campaign
         }})
       }});
       if (!res.ok) throw new Error("HTTP " + res.status);
@@ -186,6 +190,10 @@ async def _generate_mode_a(
         sessionStorage.setItem("rdz_session", RDZ.session);
         sessionStorage.setItem("rdz_lp", RDZ.lp);
         sessionStorage.setItem("rdz_liaison", RDZ.liaison);
+        // Stocker utm_campaign pour transmission au form
+        if (RDZ.utm_campaign) {{
+          sessionStorage.setItem("rdz_utm_campaign", RDZ.utm_campaign);
+        }}
       }} catch(e) {{}}
       return RDZ.session;
     }} catch(e) {{
