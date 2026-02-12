@@ -282,7 +282,7 @@ async def force_send_lead(lead_id: str, target_crm: str, admin_user: str) -> dic
             "success": status == "success",
             "message": f"Envoyé vers {target_crm.upper()}" if status == "success" else str(response),
             "status": status,
-            "response": response
+            "response": str(response)[:500] if response else ""  # Sérialiser la réponse en string
         }
         
     except Exception as e:
