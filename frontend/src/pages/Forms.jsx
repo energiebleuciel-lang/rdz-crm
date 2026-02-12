@@ -102,7 +102,10 @@ export default function Forms() {
       crm_api_key: '',
       allow_cross_crm: true,
       tracking_type: 'redirect',
-      redirect_url: '/merci'
+      redirect_url: '/merci',
+      redirect_url_pv: '',
+      redirect_url_pac: '',
+      redirect_url_ite: ''
     });
     setShowApiKey(false);
     setShowModal(true);
