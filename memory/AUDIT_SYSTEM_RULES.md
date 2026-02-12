@@ -1,81 +1,70 @@
 # 🔍 AUDIT COMPLET - RÈGLES SYSTÈME RDZ
 
 **Date**: 12 février 2026  
-**Version**: 1.0  
+**Version**: 2.2 (mise à jour)  
 **Objectif**: Documenter toutes les règles métier effectives du système RDZ
 
 ---
 
 ## 📋 1. AUDIT RÈGLES DOUBLONS
 
-### 1.1 Architecture de détection
+### 1.1 Architecture de détection (v2.2)
 
-**IMPORTANT**: Le système RDZ ne gère **PAS** de détection de doublons en interne. La détection de doublons est déléguée aux CRMs externes (ZR7, MDL).
+**✅ MISE À JOUR v2.2**: Le système RDZ dispose maintenant d'une **détection de doublons interne** en plus de la détection CRM externe.
 
-| Couche | Détection | Comportement |
-|--------|-----------|--------------|
-| RDZ (interne) | ❌ Non | Tous les leads sont créés, même si même téléphone |
-| CRM externe (ZR7/MDL) | ✅ Oui | Retourne "doublon" si le lead existe déjà |
+| Couche | Détection | Critères | Comportement |
+|--------|-----------|----------|--------------|
+| **RDZ interne (v2.2)** | ✅ Oui | phone + dept + 30 jours | Bloque l'envoi CRM, marque le statut |
+| CRM externe (ZR7/MDL) | ✅ Oui | phone (selon leur config) | Retourne "doublon" si existe |
 
-### 1.2 Champs utilisés pour détection (CRM externe)
+### 1.2 Champs utilisés pour détection RDZ interne
 
-Les CRMs externes (ZR7, MDL) détectent les doublons sur :
-- **Téléphone** : Champ principal de déduplication
-- **Période** : Définie par le CRM (généralement 30 jours)
+```
+Source: /app/backend/services/duplicate_detector.py
+```
+
+| Critère | Valeur | Description |
+|---------|--------|-------------|
+| **Téléphone** | Exact | Numéro normalisé (format français 10 chiffres) |
+| **Département** | Exact | Code département (01-95, 2A, 2B) |
+| **Fenêtre** | 30 jours | `DUPLICATE_WINDOW_DAYS = 30` |
 
 ### 1.3 Fenêtre de temps
 
-La fenêtre de temps est gérée **uniquement** par le CRM externe. RDZ ne connait pas cette fenêtre.
+**RDZ interne** : 30 jours (configurable via `DUPLICATE_WINDOW_DAYS`)  
+**CRM externe** : Définie par le CRM (généralement 30 jours aussi)
 
-**Comportement observé** :
-- Si un lead avec le même téléphone est soumis dans la fenêtre du CRM → Retour `status: "duplicate"`
-- Si hors fenêtre → Le lead est accepté comme nouveau
+### 1.4 Statuts liés aux doublons (v2.2)
 
-### 1.4 Statuts liés aux doublons
+| Statut | Détecté par | Signification | Livrable? |
+|--------|-------------|---------------|-----------|
+| `doublon_recent` | **RDZ interne** | Lead existant déjà livré | ❌ Non |
+| `non_livre` | **RDZ interne** | Lead existant non livré | ❌ Non (original redistribuable) |
+| `double_submit` | **RDZ interne** | Double-clic (< 5 sec) | ❌ Non |
+| `duplicate` | CRM externe | CRM a détecté un doublon | ✅ Oui (déjà envoyé) |
 
-| Statut | Signification | Qui l'assigne |
-|--------|---------------|---------------|
-| `duplicate` | CRM a détecté un doublon | CRM externe via API |
-| `success` | Lead accepté (pas doublon) | CRM externe via API |
+### 1.5 Comportement de détection (v2.2)
 
-### 1.5 Comportement quand doublon détecté
+**Ordre de vérification** :
+1. **Double-submit** : Même session + phone dans les 5 dernières secondes
+2. **Doublon récent** : Même phone + dept, déjà livré dans les 30 jours
+3. **Non livré** : Même phone + dept, existe mais non livré
 
-```
-Source: /app/backend/services/lead_sender.py (ligne 134-136)
-```
-
-```python
-elif resp.status_code == 200 and "doublon" in str(response).lower():
-    status = "duplicate"
-    logger.info(f"Lead {lead_doc.get('id')} est un doublon")
-```
-
-**Comportement** :
-1. Lead **créé dans RDZ** (toujours)
-2. Envoyé au CRM
-3. CRM retourne "doublon"
-4. Lead marqué `api_status: "duplicate"` et `sent_to_crm: True`
-5. Le lead **reste** dans RDZ (pas de livraison facturée)
+**Si doublon détecté** :
+- Lead **créé dans RDZ** (toujours, pour traçabilité)
+- Lead **non envoyé** au CRM externe
+- Flags ajoutés : `is_internal_duplicate`, `duplicate_type`, `original_lead_id`
 
 ### 1.6 Protection contre livraison doublon
 
-**Mécanisme** : Le CRM externe refuse le lead. Côté RDZ, le lead est marqué `duplicate` mais n'est **pas** compté comme livré facturé dans les stats de facturation.
+**Double protection** :
+1. **RDZ interne (v2.2)** : Bloque l'envoi AVANT appel CRM → Économie d'appels API
+2. **CRM externe** : Dernière ligne de défense si le doublon passe
 
-```
-Source: /app/backend/services/billing.py (ligne 128)
-```
+### 1.7 ✅ IMPLÉMENTÉ v2.2
 
-```python
-"api_status": {"$in": ["success", "duplicate"]}  # Seulement success pour facturation
-```
-
-### 1.7 ⚠️ POINT D'ATTENTION
-
-**Il n'y a pas de détection de doublons interne à RDZ**. Si le même lead est soumis 2 fois rapidement :
-- 2 leads sont créés dans RDZ
-- Seul le 2ème sera marqué `duplicate` par le CRM
-
-**Recommandation** : Implémenter une détection de doublons interne basée sur `phone + departement + product_type + fenêtre 30 jours`.
+La détection de doublons interne est maintenant active. Voir documentation complète :
+`/app/memory/DUPLICATE_DETECTION_v2.2.md`
 
 ---
 
