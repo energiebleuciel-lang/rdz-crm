@@ -213,15 +213,15 @@ async def get_lp_brief(
     user: dict = Depends(get_current_user)
 ):
     """
-    Génère le brief V2 avec choix du mode
+    Génère le brief avec choix du mode
     
     Args:
         lp_id: ID de la LP
         mode: "separate" (Mode A) ou "integrated" (Mode B)
         selected_product: Produit sélectionné (PV, PAC, ITE) pour URL de redirection
     """
-    from services.brief_generator_v2 import generate_brief_v2
-    return await generate_brief_v2(lp_id, mode, selected_product)
+    from services.brief_generator import generate_brief
+    return await generate_brief(lp_id, mode, selected_product)
 
 
 @router.put("/{lp_id}")

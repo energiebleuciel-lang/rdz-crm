@@ -216,15 +216,15 @@ async def get_form_brief(
     selected_product: str = None,
     user: dict = Depends(get_current_user)
 ):
-    """Génère le brief V2 pour un formulaire
+    """Génère le brief pour un formulaire
     
     Args:
         form_id: ID du formulaire
         mode: "separate" (Mode A) ou "integrated" (Mode B)
         selected_product: Produit sélectionné (PV, PAC, ITE) pour URL de redirection
     """
-    from services.brief_generator_v2 import generate_form_brief_v2
-    return await generate_form_brief_v2(form_id, mode, selected_product)
+    from services.brief_generator import generate_form_brief
+    return await generate_form_brief(form_id, mode, selected_product)
 
 
 @router.get("")
