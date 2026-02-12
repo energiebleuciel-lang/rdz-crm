@@ -1,41 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "../components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "../components/ui/alert-dialog";
-import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Search, ArrowUpDown } from "lucide-react";
+import { Card, Loading, Badge, Button, Modal, Input, Select } from '../components/UI';
+import { toast } from 'sonner';
+import { Plus, Pencil, Trash2, Search, ArrowUpDown, AlertTriangle } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -217,7 +183,7 @@ export default function QualityMappings() {
         return;
       }
       
-      const renamed = data.renamed ? ` (renommé depuis ${selectedMapping.utm_campaign})` : '';
+      const renamed = data.renamed ? ` (renommé)` : '';
       toast.success(`Mapping mis à jour : ${formUtmCampaign} → Tier ${formQualityTier}${renamed}`);
       setShowEditModal(false);
       fetchMappings();
@@ -252,253 +218,234 @@ export default function QualityMappings() {
 
   // Quality tier badge
   const QualityBadge = ({ tier }) => {
-    const colors = {
-      1: 'bg-green-100 text-green-800 border-green-300',
-      2: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-      3: 'bg-red-100 text-red-800 border-red-300'
+    const variants = {
+      1: 'success',
+      2: 'warning',
+      3: 'danger'
     };
-    return (
-      <span className={`px-3 py-1 rounded-full text-sm font-medium border ${colors[tier] || 'bg-gray-100'}`}>
-        Tier {tier}
-      </span>
-    );
+    const labels = {
+      1: 'Tier 1 - Premium',
+      2: 'Tier 2 - Standard',
+      3: 'Tier 3 - Low cost'
+    };
+    return <Badge variant={variants[tier] || 'default'}>{labels[tier] || `Tier ${tier}`}</Badge>;
   };
+
+  const tierOptions = [
+    { value: '', label: 'Sélectionner un tier' },
+    { value: '1', label: 'Tier 1 - Premium' },
+    { value: '2', label: 'Tier 2 - Standard' },
+    { value: '3', label: 'Tier 3 - Low cost' }
+  ];
+
+  if (loading) return <Loading />;
 
   return (
     <div className="p-6 space-y-6" data-testid="quality-mappings-page">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold">Mappings Qualité</h1>
-          <p className="text-gray-500 text-sm mt-1">
+          <h1 className="text-2xl font-bold text-slate-800">Mappings Qualité</h1>
+          <p className="text-slate-500 text-sm mt-1">
             utm_campaign → quality_tier (1/2/3)
           </p>
         </div>
         <Button onClick={openAddModal} data-testid="add-mapping-btn">
-          <Plus className="w-4 h-4 mr-2" />
+          <Plus className="w-4 h-4" />
           Ajouter un mapping
         </Button>
       </div>
 
       {/* Search */}
       <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-        <Input
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+        <input
+          type="text"
           placeholder="Rechercher par utm_campaign..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-10"
+          className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none"
           data-testid="search-input"
         />
       </div>
 
       {/* Table */}
-      <div className="border rounded-lg overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-gray-50">
-              <TableHead 
-                className="cursor-pointer hover:bg-gray-100"
-                onClick={() => toggleSort('utm_campaign')}
-              >
-                <div className="flex items-center gap-2">
-                  utm_campaign
-                  <ArrowUpDown className="w-4 h-4" />
-                </div>
-              </TableHead>
-              <TableHead 
-                className="cursor-pointer hover:bg-gray-100 w-40"
-                onClick={() => toggleSort('quality_tier')}
-              >
-                <div className="flex items-center gap-2">
-                  quality_tier
-                  <ArrowUpDown className="w-4 h-4" />
-                </div>
-              </TableHead>
-              <TableHead className="w-32 text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={3} className="text-center py-8 text-gray-500">
-                  Chargement...
-                </TableCell>
-              </TableRow>
-            ) : filteredMappings.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={3} className="text-center py-8 text-gray-500">
-                  {search ? "Aucun mapping trouvé" : "Aucun mapping configuré"}
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredMappings.map((mapping) => (
-                <TableRow key={mapping.utm_campaign} data-testid={`mapping-row-${mapping.utm_campaign}`}>
-                  <TableCell className="font-mono text-sm">
-                    {mapping.utm_campaign}
-                  </TableCell>
-                  <TableCell>
-                    <QualityBadge tier={mapping.quality_tier} />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => openEditModal(mapping)}
-                        data-testid={`edit-${mapping.utm_campaign}`}
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        onClick={() => openDeleteConfirm(mapping)}
-                        data-testid={`delete-${mapping.utm_campaign}`}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <Card>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-slate-50 border-b">
+              <tr>
+                <th 
+                  className="text-left px-6 py-3 text-sm font-semibold text-slate-600 cursor-pointer hover:bg-slate-100"
+                  onClick={() => toggleSort('utm_campaign')}
+                >
+                  <div className="flex items-center gap-2">
+                    utm_campaign
+                    <ArrowUpDown className="w-4 h-4" />
+                  </div>
+                </th>
+                <th 
+                  className="text-left px-6 py-3 text-sm font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 w-48"
+                  onClick={() => toggleSort('quality_tier')}
+                >
+                  <div className="flex items-center gap-2">
+                    quality_tier
+                    <ArrowUpDown className="w-4 h-4" />
+                  </div>
+                </th>
+                <th className="text-right px-6 py-3 text-sm font-semibold text-slate-600 w-32">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {filteredMappings.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="text-center py-8 text-slate-500">
+                    {search ? "Aucun mapping trouvé" : "Aucun mapping configuré"}
+                  </td>
+                </tr>
+              ) : (
+                filteredMappings.map((mapping) => (
+                  <tr key={mapping.utm_campaign} className="hover:bg-slate-50" data-testid={`mapping-row-${mapping.utm_campaign}`}>
+                    <td className="px-6 py-4 font-mono text-sm text-slate-700">
+                      {mapping.utm_campaign}
+                    </td>
+                    <td className="px-6 py-4">
+                      <QualityBadge tier={mapping.quality_tier} />
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => openEditModal(mapping)}
+                          data-testid={`edit-${mapping.utm_campaign}`}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => openDeleteConfirm(mapping)}
+                          data-testid={`delete-${mapping.utm_campaign}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
 
       {/* Stats */}
-      <div className="text-sm text-gray-500">
+      <p className="text-sm text-slate-500">
         {filteredMappings.length} mapping{filteredMappings.length > 1 ? 's' : ''} 
         {search && ` (sur ${mappings.length} total)`}
-      </div>
+      </p>
 
       {/* Add Modal */}
-      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-        <DialogContent data-testid="add-modal">
-          <DialogHeader>
-            <DialogTitle>Ajouter un mapping</DialogTitle>
-            <DialogDescription>
-              Associer un utm_campaign à un niveau de qualité
-            </DialogDescription>
-          </DialogHeader>
+      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Ajouter un mapping">
+        <div className="space-y-4">
+          <Input
+            label="utm_campaign"
+            placeholder="ex: premium_google_ads_2026"
+            value={formUtmCampaign}
+            onChange={(e) => setFormUtmCampaign(e.target.value)}
+            data-testid="form-utm-campaign"
+          />
           
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">utm_campaign</label>
-              <Input
-                placeholder="ex: premium_google_ads_2026"
-                value={formUtmCampaign}
-                onChange={(e) => setFormUtmCampaign(e.target.value)}
-                data-testid="form-utm-campaign"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm font-medium">quality_tier</label>
-              <Select value={formQualityTier} onValueChange={setFormQualityTier}>
-                <SelectTrigger data-testid="form-quality-tier">
-                  <SelectValue placeholder="Sélectionner un tier" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">Tier 1 - Premium</SelectItem>
-                  <SelectItem value="2">Tier 2 - Standard</SelectItem>
-                  <SelectItem value="3">Tier 3 - Low cost</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            {formError && (
-              <p className="text-sm text-red-600" data-testid="form-error">{formError}</p>
-            )}
-          </div>
+          <Select
+            label="quality_tier"
+            options={tierOptions}
+            value={formQualityTier}
+            onChange={(e) => setFormQualityTier(e.target.value)}
+            data-testid="form-quality-tier"
+          />
           
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddModal(false)}>
+          {formError && (
+            <p className="text-sm text-red-600" data-testid="form-error">{formError}</p>
+          )}
+          
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="secondary" onClick={() => setShowAddModal(false)}>
               Annuler
             </Button>
-            <Button onClick={handleCreate} disabled={saving} data-testid="submit-add">
-              {saving ? "Création..." : "Créer"}
+            <Button onClick={handleCreate} loading={saving} data-testid="submit-add">
+              Créer
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+        </div>
+      </Modal>
 
       {/* Edit Modal */}
-      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-        <DialogContent data-testid="edit-modal">
-          <DialogHeader>
-            <DialogTitle>Modifier le mapping</DialogTitle>
-            <DialogDescription>
-              Vous pouvez renommer le utm_campaign ou changer le tier
-            </DialogDescription>
-          </DialogHeader>
+      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="Modifier le mapping">
+        <div className="space-y-4">
+          <p className="text-sm text-slate-500">
+            Vous pouvez renommer le utm_campaign ou changer le tier
+          </p>
           
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">utm_campaign</label>
-              <Input
-                placeholder="ex: premium_google_ads_2026"
-                value={formUtmCampaign}
-                onChange={(e) => setFormUtmCampaign(e.target.value)}
-                data-testid="edit-utm-campaign"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm font-medium">quality_tier</label>
-              <Select value={formQualityTier} onValueChange={setFormQualityTier}>
-                <SelectTrigger data-testid="edit-quality-tier">
-                  <SelectValue placeholder="Sélectionner un tier" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">Tier 1 - Premium</SelectItem>
-                  <SelectItem value="2">Tier 2 - Standard</SelectItem>
-                  <SelectItem value="3">Tier 3 - Low cost</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            {formError && (
-              <p className="text-sm text-red-600" data-testid="edit-form-error">{formError}</p>
-            )}
-          </div>
+          <Input
+            label="utm_campaign"
+            placeholder="ex: premium_google_ads_2026"
+            value={formUtmCampaign}
+            onChange={(e) => setFormUtmCampaign(e.target.value)}
+            data-testid="edit-utm-campaign"
+          />
           
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditModal(false)}>
+          <Select
+            label="quality_tier"
+            options={tierOptions}
+            value={formQualityTier}
+            onChange={(e) => setFormQualityTier(e.target.value)}
+            data-testid="edit-quality-tier"
+          />
+          
+          {formError && (
+            <p className="text-sm text-red-600" data-testid="edit-form-error">{formError}</p>
+          )}
+          
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="secondary" onClick={() => setShowEditModal(false)}>
               Annuler
             </Button>
-            <Button onClick={handleUpdate} disabled={saving} data-testid="submit-edit">
-              {saving ? "Sauvegarde..." : "Sauvegarder"}
+            <Button onClick={handleUpdate} loading={saving} data-testid="submit-edit">
+              Sauvegarder
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+        </div>
+      </Modal>
 
-      {/* Delete Confirmation */}
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent data-testid="delete-confirm">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
-            <AlertDialogDescription>
-              Voulez-vous vraiment supprimer le mapping pour <strong>{selectedMapping?.utm_campaign}</strong> ?
-              <br />
-              Les leads existants avec ce utm_campaign garderont leur quality_tier actuel.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDelete}
-              className="bg-red-600 hover:bg-red-700"
-              data-testid="confirm-delete"
-            >
+      {/* Delete Confirmation Modal */}
+      <Modal isOpen={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title="Confirmer la suppression" size="sm">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 p-4 bg-red-50 rounded-lg">
+            <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm text-red-800">
+                Voulez-vous vraiment supprimer le mapping pour <strong>{selectedMapping?.utm_campaign}</strong> ?
+              </p>
+              <p className="text-xs text-red-600 mt-1">
+                Les leads existants garderont leur quality_tier actuel.
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)}>
+              Annuler
+            </Button>
+            <Button variant="danger" onClick={handleDelete} data-testid="confirm-delete">
               Supprimer
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
