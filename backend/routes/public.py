@@ -667,8 +667,31 @@ async def submit_lead(data: LeadData, request: Request):
         # Retourner l'ID du lead original au lieu du nouveau
         lead_id = original_lead_id
     elif initial_status == "doublon_recent":
-        message = f"Doublon détecté - lead déjà livré (original: {original_lead_id[:8]}...)"
-        warning = "DUPLICATE_DELIVERED"
+        # === LOGIQUE LB (Lead Backup) ===
+        # Quand un doublon est détecté, on cherche un LB de remplacement
+        from services.lead_replacement import process_doublon_with_replacement
+        
+        lb_result = None
+        if final_crm and final_key:
+            # Tenter le remplacement par LB
+            lb_result = await process_doublon_with_replacement(
+                doublon_lead=lead,
+                target_crm=final_crm,
+                crm_api_key=final_key
+            )
+        
+        if lb_result and lb_result.get("lb_sent"):
+            # LB envoyé avec succès
+            message = f"Doublon remplacé par LB ({lb_result.get('lb_id', '')[:8]}...) - {lb_result.get('lb_status')}"
+            warning = "DUPLICATE_REPLACED_BY_LB"
+            # Ajouter les infos LB à la réponse
+            status = "doublon_recent"  # Le doublon reste doublon
+            # Mais on indique qu'un LB a été envoyé
+        else:
+            # Pas de LB disponible ou échec
+            lb_reason = lb_result.get("message", "Aucun LB disponible") if lb_result else "LB non configuré"
+            message = f"Doublon détecté - {lb_reason}"
+            warning = "DUPLICATE_NO_LB"
     elif initial_status == "non_livre":
         message = f"Doublon détecté - lead existant non livré (original: {original_lead_id[:8]}...)"
         warning = "DUPLICATE_NOT_SENT"
