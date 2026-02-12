@@ -302,12 +302,12 @@ export default function LandingPages() {
           <h1 className="text-2xl font-bold text-slate-800">Landing Pages</h1>
           <p className="text-sm text-slate-500">
             CRM: <span className="font-medium text-slate-700">{currentCRM?.name}</span>
-            <span className="ml-4 text-xs text-amber-600">1 LP = 1 Form (créés ensemble)</span>
+            <span className="ml-4 text-xs text-green-600">✨ Création rapide en 3 clics</span>
           </p>
         </div>
-        <Button onClick={openCreate}>
+        <Button onClick={openCreate} className="bg-green-600 hover:bg-green-700">
           <Plus className="w-4 h-4" />
-          Nouvelle LP + Form
+          ⚡ Nouvelle LP
         </Button>
       </div>
 
@@ -316,8 +316,8 @@ export default function LandingPages() {
           <EmptyState 
             icon={Globe}
             title="Aucune Landing Page"
-            description="Créez votre première LP (le formulaire sera créé automatiquement)"
-            action={<Button onClick={openCreate}>Créer LP + Form</Button>}
+            description="Créez votre première LP en quelques secondes (le formulaire est créé automatiquement)"
+            action={<Button onClick={openCreate} className="bg-green-600 hover:bg-green-700">⚡ Créer LP + Form</Button>}
           />
         </Card>
       ) : (
