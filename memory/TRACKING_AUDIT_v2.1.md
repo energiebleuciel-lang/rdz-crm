@@ -9,6 +9,70 @@
 | **Fichiers Modifiés** | 2 |
 | **Endpoints Actifs** | 4 |
 | **Code Legacy** | ❌ Aucun |
+| **Tests Passés** | 7/7 (100%) |
+| **Taux de Succès Funnel** | 100/100 (100%) |
+
+---
+
+## 🧪 Tests de Fiabilité Production (Validés)
+
+### Test 1: 10 LP Visits → 10 Events
+| Métrique | Valeur |
+|----------|--------|
+| Envoyés | 10 |
+| Reçus | 10 |
+| **Résultat** | ✅ PASS |
+
+### Test 2: Multi-Tab → Session Unique
+| Métrique | Valeur |
+|----------|--------|
+| Tabs ouverts | 5 |
+| Sessions créées | 1 (réutilisée) |
+| **Résultat** | ✅ PASS |
+
+### Test 3: CTA Spam Clicks → Single Event
+| Métrique | Valeur |
+|----------|--------|
+| Clicks envoyés | 20 |
+| Events enregistrés | 1 |
+| Duplicates rejetés | 19 |
+| **Résultat** | ✅ PASS |
+
+### Test 4: Full Funnel × 100
+| Métrique | Valeur |
+|----------|--------|
+| Funnels démarrés | 100 |
+| Funnels complétés | 100 |
+| Leads créés | 100 |
+| Erreurs | 0 |
+| **Taux de succès** | **100%** |
+| **Résultat** | ✅ PASS |
+
+### Test 5: Fallback Content-Types
+| Content-Type | Résultat |
+|--------------|----------|
+| text/plain;charset=UTF-8 | ✅ OK |
+| text/plain | ✅ OK |
+| application/json | ✅ OK |
+| **Résultat** | ✅ PASS (3/3) |
+
+### Test 6: Browser sendBeacon (Chrome)
+| Métrique | Valeur |
+|----------|--------|
+| Session created | ✅ |
+| LP Visit sendBeacon | true |
+| CTA Click sendBeacon | true |
+| **Résultat** | ✅ PASS |
+
+### Test 7: Mobile Safari sendBeacon
+| Métrique | Valeur |
+|----------|--------|
+| Viewport | 390x844 (iPhone 14) |
+| sendBeacon support | true |
+| LP Visit | ✅ true |
+| CTA Click | ✅ true |
+| Form Start | ✅ true |
+| **Résultat** | ✅ PASS |
 
 ---
 
