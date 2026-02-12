@@ -87,6 +87,10 @@ class LeadData(BaseModel):
     budget: Optional[str] = ""
     rgpd_consent: Optional[bool] = True
     newsletter: Optional[bool] = False
+    # Attribution
+    lp_code: Optional[str] = ""
+    liaison_code: Optional[str] = ""
+    utm_campaign: Optional[str] = ""
 
 
 # ==================== ENDPOINTS ====================
