@@ -351,17 +351,37 @@ async def get_form(form_id: str, user: dict = Depends(get_current_user)):
 
 @router.post("")
 async def create_form(data: FormCreate, user: dict = Depends(get_current_user)):
-    """Créer un nouveau formulaire"""
+    """
+    Créer un nouveau formulaire
+    
+    RÈGLE PRODUIT : Un Form doit TOUJOURS être lié à une LP.
+    Pour créer un Form, utilisez la création de LP qui génère automatiquement le duo LP+Form.
+    """
+    # RÈGLE : Pas de Form standalone
+    if not data.lp_id:
+        raise HTTPException(
+            status_code=400, 
+            detail="Un formulaire doit obligatoirement être lié à une Landing Page. Créez une LP pour générer automatiquement le duo LP+Form."
+        )
+    
     # Vérifier que le compte existe
     account = await db.accounts.find_one({"id": data.account_id})
     if not account:
         raise HTTPException(status_code=400, detail="Compte non trouvé")
     
-    # Vérifier la LP si fournie
-    if data.lp_id:
-        lp = await db.lps.find_one({"id": data.lp_id})
-        if not lp:
-            raise HTTPException(status_code=400, detail="LP non trouvée")
+    # Vérifier que la LP existe
+    lp = await db.lps.find_one({"id": data.lp_id})
+    if not lp:
+        raise HTTPException(status_code=400, detail="LP non trouvée")
+    
+    # Vérifier que la LP n'a pas déjà un Form lié
+    if lp.get("form_id"):
+        existing_form = await db.forms.find_one({"id": lp["form_id"], "status": "active"})
+        if existing_form:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Cette LP est déjà liée au formulaire {existing_form.get('code')}. Utilisez ce formulaire ou archivez-le d'abord."
+            )
     
     # Générer code unique
     code = await generate_form_code(data.product_type)
@@ -373,8 +393,8 @@ async def create_form(data: FormCreate, user: dict = Depends(get_current_user)):
         "name": data.name,
         "url": data.url,  # OBLIGATOIRE
         "product_type": data.product_type.upper(),
-        "lp_id": data.lp_id or "",
-        "target_crm": data.target_crm or "",  # CRM cible (zr7/mdl)
+        "lp_id": data.lp_id,  # OBLIGATOIRE
+        "target_crm": data.target_crm or "",
         "crm_api_key": data.crm_api_key or "",
         "allow_cross_crm": data.allow_cross_crm if data.allow_cross_crm is not None else True,
         "tracking_type": data.tracking_type or "redirect",
@@ -387,10 +407,17 @@ async def create_form(data: FormCreate, user: dict = Depends(get_current_user)):
     
     await db.forms.insert_one(form)
     
+    # Mettre à jour la LP avec le form_id
+    await db.lps.update_one(
+        {"id": data.lp_id},
+        {"$set": {"form_id": form["id"], "updated_at": now_iso()}}
+    )
+    
     return {
         "success": True,
         "form": {k: v for k, v in form.items() if k != "_id"},
-        "code": code
+        "code": code,
+        "liaison_code": f"{lp.get('code')}_{code}"
     }
 
 
