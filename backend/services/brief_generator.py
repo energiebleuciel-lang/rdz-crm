@@ -345,7 +345,7 @@ async def _generate_mode_a(
     script_lp = f'''<!-- ═══════════════════════════════════════════════════════════════════════════ -->
 <!-- RDZ TRACKING - LANDING PAGE {lp_code}                                       -->
 <!-- À coller AVANT </body>                                                       -->
-<!-- Version: 2.0 - Tracking complet avec anti-doublon et sendBeacon             -->
+<!-- Version: 2.1 - Tracking complet, sendBeacon compatible, URL normalisée      -->
 <!-- ═══════════════════════════════════════════════════════════════════════════ -->
 <script>
 (function() {{
@@ -365,6 +365,24 @@ async def _generate_mode_a(
     initialized: false,
     initFailed: false
   }};
+
+  // ══════════════════════════════════════════════════════════
+  // UTILS - Normalisation URL pour matching CTA
+  // ══════════════════════════════════════════════════════════
+  function normalizeUrl(url) {{
+    if (!url) return "";
+    try {{
+      // Supprimer protocole, query params, hash, trailing slash
+      return url
+        .replace(/^https?:\\/\\//i, "")  // Supprimer http:// ou https://
+        .split("?")[0]                   // Supprimer query params
+        .split("#")[0]                   // Supprimer hash
+        .replace(/\\/+$/, "")            // Supprimer trailing slashes
+        .toLowerCase();
+    }} catch(e) {{
+      return url.toLowerCase();
+    }}
+  }}
 
   // ══════════════════════════════════════════════════════════
   // 3. CAMPAIGN CAPTURE - URL puis sessionStorage
@@ -387,13 +405,13 @@ async def _generate_mode_a(
   }}
 
   // ══════════════════════════════════════════════════════════
-  // 1. SESSION INITIALIZATION - Anti-doublon intégré
+  // 1. SESSION INITIALIZATION - Anti-doublon côté serveur
   // ══════════════════════════════════════════════════════════
   async function initSession() {{
     if (RDZ.session) return RDZ.session;
     if (RDZ.initFailed) return null;
     
-    // Vérifier session existante
+    // Vérifier session existante pour cette LP
     try {{
       var stored = sessionStorage.getItem("rdz_session");
       var storedLp = sessionStorage.getItem("rdz_lp");
@@ -447,13 +465,10 @@ async def _generate_mode_a(
   }}
 
   // ══════════════════════════════════════════════════════════
-  // 2. LP VISIT TRACKING - Endpoint dédié avec UTM complet
+  // 2. LP VISIT TRACKING - TOUJOURS envoyé (anti-doublon serveur)
   // ══════════════════════════════════════════════════════════
-  var visitTracked = false;
-  
-  async function trackLPVisit() {{
-    if (visitTracked || !RDZ.session) return;
-    visitTracked = true;
+  function trackLPVisit() {{
+    if (!RDZ.session) return;
     
     var payload = JSON.stringify({{
       session_id: RDZ.session,
@@ -514,7 +529,7 @@ async def _generate_mode_a(
   var ctaClicked = false;
   
   function handleCtaClick(e) {{
-    // Track 1 seule fois
+    // Track 1 seule fois (anti-doublon serveur aussi)
     if (!ctaClicked) {{
       ctaClicked = true;
       trackEvent("cta_click");
@@ -551,12 +566,11 @@ async def _generate_mode_a(
   window.rdzCtaClick = handleCtaClick;
 
   // ══════════════════════════════════════════════════════════
-  // 5. AUTO BINDING - Détection automatique des liens form
+  // 5. AUTO BINDING - Matching URL normalisé (http/https, slash, params)
   // ══════════════════════════════════════════════════════════
   function autoBindCTA() {{
-    var formUrlBase = RDZ.formUrl.split("?")[0].replace(/\\/$/, "").toLowerCase();
+    var formUrlNormalized = normalizeUrl(RDZ.formUrl);
     
-    // Observer pour les CTA ajoutés dynamiquement
     function bindLink(el) {{
       if (el._rdzBound) return;
       el._rdzBound = true;
@@ -567,10 +581,14 @@ async def _generate_mode_a(
         return;
       }}
       
-      // Auto-détection des liens vers le form
-      if (el.href) {{
-        var linkHref = el.href.split("?")[0].replace(/\\/$/, "").toLowerCase();
-        if (linkHref === formUrlBase || linkHref.includes(formUrlBase)) {{
+      // Auto-détection des liens vers le form (URL normalisée)
+      var linkHref = el.getAttribute("href");
+      if (linkHref && !linkHref.startsWith("#")) {{
+        var linkNormalized = normalizeUrl(linkHref);
+        // Match exact ou contenu
+        if (linkNormalized === formUrlNormalized || 
+            linkNormalized.indexOf(formUrlNormalized) !== -1 ||
+            formUrlNormalized.indexOf(linkNormalized) !== -1) {{
           el.addEventListener("click", handleCtaClick);
         }}
       }}
@@ -585,7 +603,7 @@ async def _generate_mode_a(
         mutations.forEach(function(m) {{
           m.addedNodes.forEach(function(node) {{
             if (node.nodeType === 1) {{
-              if (node.tagName === "A" || node.hasAttribute && node.hasAttribute("data-rdz-cta")) {{
+              if (node.tagName === "A" || (node.hasAttribute && node.hasAttribute("data-rdz-cta"))) {{
                 bindLink(node);
               }}
               if (node.querySelectorAll) {{
@@ -605,9 +623,8 @@ async def _generate_mode_a(
   document.addEventListener("DOMContentLoaded", async function() {{
     captureUTM();
     await initSession();
-    if (RDZ.session) {{
-      trackLPVisit();
-    }}
+    // LP Visit part TOUJOURS (anti-doublon géré côté serveur)
+    trackLPVisit();
     autoBindCTA();
   }});
 
@@ -615,7 +632,7 @@ async def _generate_mode_a(
   if (document.readyState !== "loading") {{
     captureUTM();
     initSession().then(function() {{
-      if (RDZ.session) trackLPVisit();
+      trackLPVisit();
       autoBindCTA();
     }});
   }}
