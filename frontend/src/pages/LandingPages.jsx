@@ -436,176 +436,216 @@ export default function LandingPages() {
       <Modal 
         isOpen={showModal} 
         onClose={() => setShowModal(false)}
-        title={editingLp ? 'Modifier LP + Form' : 'Nouvelle LP + Form'}
-        size="lg"
+        title={editingLp ? 'Modifier LP + Form' : '⚡ Nouvelle LP + Form'}
+        size={editingLp ? "lg" : "md"}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          <Select
-            label="Compte"
-            value={form.account_id}
-            onChange={e => setForm({...form, account_id: e.target.value})}
-            options={accounts.map(a => ({ value: a.id, label: a.name }))}
-            required
-          />
-          
-          <Input
-            label="Nom de la LP"
-            value={form.name}
-            onChange={e => setForm({...form, name: e.target.value})}
-            placeholder="LP PAC Île-de-France"
-            required
-          />
-          
-          <Input
-            label="URL de la LP"
-            value={form.url}
-            onChange={e => setForm({...form, url: e.target.value})}
-            placeholder="https://monsite.com/offre-pac"
-            required
-          />
-
-          <Select
-            label="Type de produit"
-            value={form.product_type}
-            onChange={e => setForm({...form, product_type: e.target.value})}
-            options={[
-              { value: 'PV', label: 'PV - Panneaux solaires' },
-              { value: 'PAC', label: 'PAC - Pompe à chaleur' },
-              { value: 'ITE', label: 'ITE - Isolation' }
-            ]}
-          />
-
-          {/* Mode LP+Form */}
-          <div className="border-t pt-4 mt-4">
-            <h4 className="font-medium text-slate-700 mb-3">Mode d'affichage du formulaire</h4>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <label 
-                className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                  form.form_mode === 'embedded' 
-                    ? 'border-green-500 bg-green-50' 
-                    : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="form_mode"
-                  value="embedded"
-                  checked={form.form_mode === 'embedded'}
-                  onChange={e => setForm({...form, form_mode: e.target.value, form_url: ''})}
-                  className="sr-only"
-                />
-                <div className="font-medium text-slate-800">Embedded (même page)</div>
-                <p className="text-xs text-slate-500 mt-1">
-                  Le formulaire est intégré dans la LP.<br/>
-                  → 1 seul script à installer
+          {/* CRÉATION SIMPLIFIÉE - Seulement 3 champs */}
+          {!editingLp && (
+            <>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                <p className="text-sm text-green-700">
+                  ✨ Création rapide en 3 clics. Tout est automatique !
                 </p>
-              </label>
+              </div>
               
-              <label 
-                className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                  form.form_mode === 'redirect' 
-                    ? 'border-blue-500 bg-blue-50' 
-                    : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="form_mode"
-                  value="redirect"
-                  checked={form.form_mode === 'redirect'}
-                  onChange={e => setForm({...form, form_mode: e.target.value})}
-                  className="sr-only"
+              {accounts.length > 1 && (
+                <Select
+                  label="Compte"
+                  value={form.account_id}
+                  onChange={e => setForm({...form, account_id: e.target.value})}
+                  options={accounts.map(a => ({ value: a.id, label: a.name }))}
+                  required
                 />
-                <div className="font-medium text-slate-800">Redirect (page séparée)</div>
-                <p className="text-xs text-slate-500 mt-1">
-                  CTA redirige vers une autre page.<br/>
-                  → 2 scripts (LP + Form)
-                </p>
-              </label>
-            </div>
-
-            {form.form_mode === 'redirect' && (
+              )}
+              
               <Input
-                label="URL du formulaire (page séparée)"
-                value={form.form_url}
-                onChange={e => setForm({...form, form_url: e.target.value})}
-                placeholder="https://monsite.com/formulaire-pac"
-                className="mt-4"
+                label="Nom de la LP"
+                value={form.name}
+                onChange={e => setForm({...form, name: e.target.value})}
+                placeholder="Ex: LP PAC Île-de-France"
+                required
+                autoFocus
+              />
+              
+              <Input
+                label="URL de la LP"
+                value={form.url}
+                onChange={e => setForm({...form, url: e.target.value})}
+                placeholder="https://monsite.com/offre-pac"
                 required
               />
-            )}
-          </div>
 
-          {/* Tracking post-submit */}
-          <div className="border-t pt-4 mt-4">
-            <h4 className="font-medium text-slate-700 mb-3">Après soumission du formulaire</h4>
-            
-            <Select
-              label="Action après submit"
-              value={form.tracking_type}
-              onChange={e => setForm({...form, tracking_type: e.target.value})}
-              options={[
-                { value: 'redirect', label: 'Redirection vers page merci' },
-                { value: 'gtm', label: 'Déclencher GTM conversion (pas de redirection)' },
-                { value: 'both', label: 'GTM + Redirection' },
-                { value: 'none', label: 'Rien (le formulaire gère)' }
-              ]}
-            />
-
-            {(form.tracking_type === 'redirect' || form.tracking_type === 'both') && (
-              <Input
-                label="URL de redirection"
-                value={form.redirect_url}
-                onChange={e => setForm({...form, redirect_url: e.target.value})}
-                placeholder="/merci"
-                className="mt-3"
-              />
-            )}
-          </div>
-
-          {/* Source */}
-          <div className="border-t pt-4 mt-4">
-            <h4 className="font-medium text-slate-700 mb-3">Source de trafic</h4>
-            
-            <div className="grid grid-cols-2 gap-4">
               <Select
-                label="Type de source"
-                value={form.source_type}
-                onChange={e => setForm({...form, source_type: e.target.value})}
+                label="Type de produit"
+                value={form.product_type}
+                onChange={e => setForm({...form, product_type: e.target.value})}
                 options={[
-                  { value: 'native', label: 'Native / Organique' },
-                  { value: 'google', label: 'Google Ads' },
-                  { value: 'facebook', label: 'Facebook Ads' },
-                  { value: 'other', label: 'Autre' }
+                  { value: 'PV', label: '☀️ PV - Panneaux solaires' },
+                  { value: 'PAC', label: '❄️ PAC - Pompe à chaleur' },
+                  { value: 'ITE', label: '🏠 ITE - Isolation' }
                 ]}
+              />
+
+              <div className="bg-slate-50 rounded-lg p-4 text-sm text-slate-600 space-y-1">
+                <p className="font-medium text-slate-700">✅ Créé automatiquement :</p>
+                <p>• LP avec code unique (LP-XXX)</p>
+                <p>• Formulaire lié (PV/PAC/ITE-XXX)</p>
+                <p>• Liaison LP ↔ Form</p>
+                <p>• Scripts de tracking prêts</p>
+              </div>
+            </>
+          )}
+
+          {/* ÉDITION AVANCÉE - Plus d'options */}
+          {editingLp && (
+            <>
+              <Select
+                label="Compte"
+                value={form.account_id}
+                onChange={e => setForm({...form, account_id: e.target.value})}
+                options={accounts.map(a => ({ value: a.id, label: a.name }))}
+                required
+                disabled
               />
               
               <Input
-                label="Nom de la source (optionnel)"
-                value={form.source_name}
-                onChange={e => setForm({...form, source_name: e.target.value})}
-                placeholder="Taboola, Outbrain..."
+                label="Nom de la LP"
+                value={form.name}
+                onChange={e => setForm({...form, name: e.target.value})}
+                placeholder="LP PAC Île-de-France"
+                required
               />
-            </div>
-          </div>
+              
+              <Input
+                label="URL de la LP"
+                value={form.url}
+                onChange={e => setForm({...form, url: e.target.value})}
+                placeholder="https://monsite.com/offre-pac"
+                required
+              />
 
-          {/* CRM API Key */}
-          <div className="border-t pt-4 mt-4">
-            <Input
-              label="Clé API CRM (ZR7/MDL)"
-              value={form.crm_api_key}
-              onChange={e => setForm({...form, crm_api_key: e.target.value})}
-              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-            />
-          </div>
+              <Select
+                label="Type de produit"
+                value={form.product_type}
+                onChange={e => setForm({...form, product_type: e.target.value})}
+                options={[
+                  { value: 'PV', label: 'PV - Panneaux solaires' },
+                  { value: 'PAC', label: 'PAC - Pompe à chaleur' },
+                  { value: 'ITE', label: 'ITE - Isolation' }
+                ]}
+              />
+
+              {/* Mode LP+Form */}
+              <div className="border-t pt-4 mt-4">
+                <h4 className="font-medium text-slate-700 mb-3">Mode d'affichage du formulaire</h4>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <label 
+                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                      form.form_mode === 'embedded' 
+                        ? 'border-green-500 bg-green-50' 
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="form_mode"
+                      value="embedded"
+                      checked={form.form_mode === 'embedded'}
+                      onChange={e => setForm({...form, form_mode: e.target.value, form_url: ''})}
+                      className="sr-only"
+                    />
+                    <div className="font-medium text-slate-800">Embedded (même page)</div>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Le formulaire est intégré dans la LP.<br/>
+                      → 1 seul script à installer
+                    </p>
+                  </label>
+                  
+                  <label 
+                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                      form.form_mode === 'redirect' 
+                        ? 'border-blue-500 bg-blue-50' 
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="form_mode"
+                      value="redirect"
+                      checked={form.form_mode === 'redirect'}
+                      onChange={e => setForm({...form, form_mode: e.target.value})}
+                      className="sr-only"
+                    />
+                    <div className="font-medium text-slate-800">Redirect (page séparée)</div>
+                    <p className="text-xs text-slate-500 mt-1">
+                      CTA redirige vers une autre page.<br/>
+                      → 2 scripts (LP + Form)
+                    </p>
+                  </label>
+                </div>
+
+                {form.form_mode === 'redirect' && (
+                  <Input
+                    label="URL du formulaire (page séparée)"
+                    value={form.form_url}
+                    onChange={e => setForm({...form, form_url: e.target.value})}
+                    placeholder="https://monsite.com/formulaire-pac"
+                    className="mt-4"
+                    required
+                  />
+                )}
+              </div>
+
+              {/* Tracking post-submit */}
+              <div className="border-t pt-4 mt-4">
+                <h4 className="font-medium text-slate-700 mb-3">Après soumission du formulaire</h4>
+                
+                <Select
+                  label="Action après submit"
+                  value={form.tracking_type}
+                  onChange={e => setForm({...form, tracking_type: e.target.value})}
+                  options={[
+                    { value: 'redirect', label: 'Redirection vers page merci' },
+                    { value: 'gtm', label: 'Déclencher GTM conversion (pas de redirection)' },
+                    { value: 'both', label: 'GTM + Redirection' },
+                    { value: 'none', label: 'Rien (le formulaire gère)' }
+                  ]}
+                />
+
+                {(form.tracking_type === 'redirect' || form.tracking_type === 'both') && (
+                  <Input
+                    label="URL de redirection"
+                    value={form.redirect_url}
+                    onChange={e => setForm({...form, redirect_url: e.target.value})}
+                    placeholder="/merci"
+                    className="mt-3"
+                  />
+                )}
+              </div>
+
+              {/* CRM API Key */}
+              <div className="border-t pt-4 mt-4">
+                <Input
+                  label="Clé API CRM (optionnel)"
+                  value={form.crm_api_key}
+                  onChange={e => setForm({...form, crm_api_key: e.target.value})}
+                  placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Laissez vide pour utiliser la clé du compte
+                </p>
+              </div>
+            </>
+          )}
 
           <div className="flex justify-end gap-3 pt-4">
             <Button variant="secondary" type="button" onClick={() => setShowModal(false)}>
               Annuler
             </Button>
             <Button type="submit">
-              {editingLp ? 'Enregistrer' : 'Créer LP + Form'}
+              {editingLp ? 'Enregistrer' : '⚡ Créer LP + Form'}
             </Button>
           </div>
         </form>
