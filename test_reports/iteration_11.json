@@ -29,7 +29,7 @@
   },
   "test_credentials": {
     "form_code": "TEST-FORM-001",
-    "api_url": "https://leadlifecycle.preview.emergentagent.com"
+    "api_url": "https://mode-builder-1.preview.emergentagent.com"
   },
   "seed_data_creation": "None - used existing TEST-FORM-001 form",
   "retest_needed": false,
