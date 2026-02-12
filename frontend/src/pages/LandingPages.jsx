@@ -21,6 +21,7 @@ export default function LandingPages() {
   const [showBriefModal, setShowBriefModal] = useState(false);
   const [editingLp, setEditingLp] = useState(null);
   const [briefData, setBriefData] = useState(null);
+  const [selectedBriefProduct, setSelectedBriefProduct] = useState('');
   
   const [form, setForm] = useState({
     account_id: '',
