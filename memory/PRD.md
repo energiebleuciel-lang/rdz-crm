@@ -71,13 +71,34 @@ Visiteur → LP → Form → RDZ (collecte) → ZR7 ou MDL (distribution)
 {"success": true, "lead_id": "...", "status": "invalid_phone", "warning": "PHONE_INVALID", "stored": true}
 ```
 
-## Scripts LP & Formulaire
+## Scripts LP & Formulaire - RDZ Tracking Layer v2.0
 
-Les scripts générés par le Brief gèrent automatiquement :
-1. Création de session (`/api/public/track/session`)
-2. Tracking d'événements (`/api/public/track/event`)
-3. Soumission lead (`/api/public/leads`)
-4. Redirection post-soumission (même si `warning` retourné)
+### Endpoints de Tracking
+| Endpoint | Méthode | Description | Anti-doublon |
+|----------|---------|-------------|--------------|
+| `/api/public/track/session` | POST | Création session visiteur | ✅ 30min |
+| `/api/public/track/lp-visit` | POST | Visite LP avec UTM complet | ✅ 1/session |
+| `/api/public/track/event` | POST | Events (cta_click, form_start) | ✅ 1/session |
+| `/api/public/leads` | POST | Soumission lead | - |
+
+### Paramètres UTM Capturés
+- `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term`
+- `gclid` (Google Click ID)
+- `fbclid` (Facebook Click ID)
+- `referrer`, `user_agent`
+
+### Fonctionnalités du Script LP (v2.0)
+1. **Session Initialization** : Création/réutilisation session avec anti-doublon
+2. **LP Visit Tracking** : Endpoint dédié `/track/lp-visit` avec UTM complet
+3. **Campaign Capture** : URL > sessionStorage, persistance toute la session
+4. **CTA Click Tracking** : sendBeacon + injection params URL (`?session=...&lp=...&liaison=...&utm_campaign=...`)
+5. **Auto Binding** : Détection automatique liens vers form, MutationObserver pour CTA dynamiques
+6. **Reliability** : sendBeacon prioritaire, fail silently, keepalive, ne bloque jamais la redirection
+
+### Script Form (Mode A)
+- Récupération session depuis URL (`?session=`) ou sessionStorage
+- Tracking form_start au premier clic/focus
+- Soumission lead avec `rdzSubmitLead({data})`
 
 **Le visiteur ne voit JAMAIS d'erreur** - il est toujours redirigé.
 
