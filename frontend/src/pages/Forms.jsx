@@ -22,6 +22,8 @@ export default function Forms() {
   const [editingForm, setEditingForm] = useState(null);
   const [selectedFormForReset, setSelectedFormForReset] = useState(null);
   const [briefData, setBriefData] = useState(null);
+  const [selectedBriefProduct, setSelectedBriefProduct] = useState('');
+  const [currentBriefForm, setCurrentBriefForm] = useState(null);
   const [filter, setFilter] = useState('all');
   const [showApiKey, setShowApiKey] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
