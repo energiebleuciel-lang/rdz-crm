@@ -175,6 +175,12 @@ export default function Forms() {
       return;
     }
     
+    // RÈGLE PRODUIT : LP obligatoire pour les nouveaux Forms
+    if (!editingForm && !form.lp_id) {
+      alert('Un formulaire doit obligatoirement être lié à une Landing Page.\n\nPour créer un nouveau duo LP + Form, utilisez la page "Landing Pages".');
+      return;
+    }
+    
     try {
       const url = editingForm 
         ? `${API}/api/forms/${editingForm.id}`
