@@ -1,9 +1,26 @@
 """
 Service de génération de Brief
+Version fusionnée avec Mode A/B et transmission utm_campaign
+
+Modes supportés:
+- Mode A (separate): LP et Formulaire sur pages séparées
+- Mode B (integrated): Formulaire intégré dans la LP
+
+Règles utm_campaign:
+- Mode B: lire utm_campaign dans URL, envoyer dans track/session + /leads
+- Mode A LP: lire utm_campaign, envoyer dans track/session, stocker sessionStorage, ajouter à URL form
+- Mode A Form: récupérer utm_campaign (URL priorité, sinon sessionStorage), envoyer dans /leads
 """
 
 from config import db, BACKEND_URL
 
+API_URL = BACKEND_URL.rstrip("/")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MINI BRIEF - Pour les comptes (logos, GTM, textes légaux)
+# Utilisé par: routes/accounts.py
+# ══════════════════════════════════════════════════════════════════════════════
 
 async def generate_mini_brief(account_id: str, selections: list) -> dict:
     """
@@ -21,7 +38,6 @@ async def generate_mini_brief(account_id: str, selections: list) -> dict:
     - url_redirection
     """
     
-    # Récupérer le compte
     account = await db.accounts.find_one({"id": account_id}, {"_id": 0})
     if not account:
         return {"error": "Compte non trouvé"}
@@ -142,134 +158,49 @@ async def get_account_brief_options(account_id: str) -> dict:
     
     # Logos
     if account.get("logo_main_url") or account.get("logo_left_url"):
-        options.append({
-            "key": "logo_principal",
-            "label": "Logo Principal",
-            "category": "Logos",
-            "has_value": True
-        })
+        options.append({"key": "logo_principal", "label": "Logo Principal", "category": "Logos", "has_value": True})
     else:
-        options.append({
-            "key": "logo_principal",
-            "label": "Logo Principal",
-            "category": "Logos",
-            "has_value": False
-        })
+        options.append({"key": "logo_principal", "label": "Logo Principal", "category": "Logos", "has_value": False})
     
     if account.get("logo_secondary_url") or account.get("logo_right_url"):
-        options.append({
-            "key": "logo_secondaire",
-            "label": "Logo Secondaire",
-            "category": "Logos",
-            "has_value": True
-        })
+        options.append({"key": "logo_secondaire", "label": "Logo Secondaire", "category": "Logos", "has_value": True})
     else:
-        options.append({
-            "key": "logo_secondaire",
-            "label": "Logo Secondaire",
-            "category": "Logos",
-            "has_value": False
-        })
+        options.append({"key": "logo_secondaire", "label": "Logo Secondaire", "category": "Logos", "has_value": False})
     
     # GTM
     if account.get("gtm_head") or account.get("gtm_pixel_header"):
-        options.append({
-            "key": "gtm_head",
-            "label": "Code GTM (Head)",
-            "category": "GTM & Tracking",
-            "has_value": True
-        })
+        options.append({"key": "gtm_head", "label": "Code GTM (Head)", "category": "GTM & Tracking", "has_value": True})
     else:
-        options.append({
-            "key": "gtm_head",
-            "label": "Code GTM (Head)",
-            "category": "GTM & Tracking",
-            "has_value": False
-        })
+        options.append({"key": "gtm_head", "label": "Code GTM (Head)", "category": "GTM & Tracking", "has_value": False})
     
     if account.get("gtm_body"):
-        options.append({
-            "key": "gtm_body",
-            "label": "Code GTM (Body)",
-            "category": "GTM & Tracking",
-            "has_value": True
-        })
+        options.append({"key": "gtm_body", "label": "Code GTM (Body)", "category": "GTM & Tracking", "has_value": True})
     else:
-        options.append({
-            "key": "gtm_body",
-            "label": "Code GTM (Body)",
-            "category": "GTM & Tracking",
-            "has_value": False
-        })
+        options.append({"key": "gtm_body", "label": "Code GTM (Body)", "category": "GTM & Tracking", "has_value": False})
     
     if account.get("gtm_conversion") or account.get("gtm_conversion_code"):
-        options.append({
-            "key": "gtm_conversion",
-            "label": "Code de Tracking Conversion",
-            "category": "GTM & Tracking",
-            "has_value": True
-        })
+        options.append({"key": "gtm_conversion", "label": "Code de Tracking Conversion", "category": "GTM & Tracking", "has_value": True})
     else:
-        options.append({
-            "key": "gtm_conversion",
-            "label": "Code de Tracking Conversion",
-            "category": "GTM & Tracking",
-            "has_value": False
-        })
+        options.append({"key": "gtm_conversion", "label": "Code de Tracking Conversion", "category": "GTM & Tracking", "has_value": False})
     
     # Textes légaux
     if account.get("legal_mentions_text"):
-        options.append({
-            "key": "mentions_legales_texte",
-            "label": "Texte Mentions Légales",
-            "category": "Textes Légaux",
-            "has_value": True
-        })
+        options.append({"key": "mentions_legales_texte", "label": "Texte Mentions Légales", "category": "Textes Légaux", "has_value": True})
     else:
-        options.append({
-            "key": "mentions_legales_texte",
-            "label": "Texte Mentions Légales",
-            "category": "Textes Légaux",
-            "has_value": False
-        })
+        options.append({"key": "mentions_legales_texte", "label": "Texte Mentions Légales", "category": "Textes Légaux", "has_value": False})
     
     if account.get("privacy_policy_text"):
-        options.append({
-            "key": "confidentialite_texte",
-            "label": "Texte Politique de Confidentialité",
-            "category": "Textes Légaux",
-            "has_value": True
-        })
+        options.append({"key": "confidentialite_texte", "label": "Texte Politique de Confidentialité", "category": "Textes Légaux", "has_value": True})
     else:
-        options.append({
-            "key": "confidentialite_texte",
-            "label": "Texte Politique de Confidentialité",
-            "category": "Textes Légaux",
-            "has_value": False
-        })
+        options.append({"key": "confidentialite_texte", "label": "Texte Politique de Confidentialité", "category": "Textes Légaux", "has_value": False})
     
     if account.get("cgu_text"):
-        options.append({
-            "key": "cgu_texte",
-            "label": "Texte CGU",
-            "category": "Textes Légaux",
-            "has_value": True
-        })
+        options.append({"key": "cgu_texte", "label": "Texte CGU", "category": "Textes Légaux", "has_value": True})
     else:
-        options.append({
-            "key": "cgu_texte",
-            "label": "Texte CGU",
-            "category": "Textes Légaux",
-            "has_value": False
-        })
+        options.append({"key": "cgu_texte", "label": "Texte CGU", "category": "Textes Légaux", "has_value": False})
     
     # URL de redirection
-    options.append({
-        "key": "url_redirection",
-        "label": "URL de Redirection",
-        "category": "Autres",
-        "has_value": True  # toujours disponible avec valeur par défaut
-    })
+    options.append({"key": "url_redirection", "label": "URL de Redirection", "category": "Autres", "has_value": True})
     
     return {
         "account_id": account_id,
@@ -278,12 +209,22 @@ async def get_account_brief_options(account_id: str) -> dict:
     }
 
 
-async def generate_brief(lp_id: str, selected_product: str = None) -> dict:
-    """Génère le brief complet avec scripts + infos compte
+# ══════════════════════════════════════════════════════════════════════════════
+# BRIEF PRINCIPAL - Mode A (séparé) / Mode B (intégré)
+# Utilisé par: routes/lps.py, routes/forms.py
+# ══════════════════════════════════════════════════════════════════════════════
+
+async def generate_brief(lp_id: str, mode: str = "separate", selected_product: str = None) -> dict:
+    """
+    Génère le brief complet pour une liaison LP/Form
     
     Args:
         lp_id: ID de la LP
+        mode: "separate" (Mode A) ou "integrated" (Mode B)
         selected_product: Produit sélectionné (PV, PAC, ITE) pour URL de redirection
+    
+    Returns:
+        Brief complet avec métadonnées, GTM, scripts et instructions
     """
     
     # Récupérer la LP
@@ -295,667 +236,926 @@ async def generate_brief(lp_id: str, selected_product: str = None) -> dict:
     lp_url = lp.get("url", "")
     lp_name = lp.get("name", "")
     form_id = lp.get("form_id")
-    tracking_type = lp.get("tracking_type", "redirect")
-    redirect_url = lp.get("redirect_url", "/merci")
     
     # Récupérer le Form lié
     form = None
-    form_code = ""
-    form_url = ""
-    
     if form_id:
         form = await db.forms.find_one({"id": form_id}, {"_id": 0})
     if not form:
         form = await db.forms.find_one({"lp_id": lp_id}, {"_id": 0})
     
-    if form:
-        form_code = form.get("code", "")
-        form_url = form.get("url", "")
-        if not tracking_type or tracking_type == "redirect":
-            tracking_type = form.get("tracking_type", "redirect")
-        if not redirect_url or redirect_url == "/merci":
-            redirect_url = form.get("redirect_url", "/merci")
-    
     if not form:
-        return {"error": "Form lié non trouvé"}
+        return {"error": "Formulaire lié non trouvé. Veuillez lier un formulaire à cette LP."}
     
-    # Récupérer le compte pour les URLs de redirection par produit
+    form_code = form.get("code", "")
+    form_url = form.get("url", "")
+    form_name = form.get("name", "")
+    product_type = form.get("product_type", "PV")
+    
+    # Liaison code
+    liaison_code = f"{lp_code}_{form_code}"
+    
+    # Récupérer le compte
     account_id = form.get("account_id") or lp.get("account_id")
     account = None
     if account_id:
         account = await db.accounts.find_one({"id": account_id}, {"_id": 0})
     
-    # Déterminer l'URL de redirection selon le produit sélectionné
-    redirect_urls = {
-        "pv": account.get("redirect_url_pv", "") if account else "",
-        "pac": account.get("redirect_url_pac", "") if account else "",
-        "ite": account.get("redirect_url_ite", "") if account else "",
-        "default": redirect_url
-    }
+    account_name = account.get("name", "") if account else ""
     
+    # GTM (HEAD uniquement)
+    gtm_head = ""
+    if account:
+        gtm_head = account.get("gtm_head", "") or account.get("gtm_pixel_header", "") or ""
+    
+    # URL de redirection
+    redirect_url = form.get("redirect_url", "/merci")
     if selected_product and account:
         product_key = f"redirect_url_{selected_product.lower()}"
         product_redirect_url = account.get(product_key, "")
         if product_redirect_url:
             redirect_url = product_redirect_url
     
-    # Récupérer le compte
-    account_id = lp.get("account_id") or form.get("account_id")
-    account = None
-    if account_id:
-        account = await db.accounts.find_one({"id": account_id}, {"_id": 0})
+    # Sélecteur form
+    form_selector = "#rdz-form, form, [data-rdz-form]"
+    form_anchor = "#formulaire"
     
-    # Infos du compte
-    account_name = ""
-    logos = {}
-    gtm = {}
-    liens = {}
-    
-    if account:
-        account_name = account.get("name", "")
-        
-        # Logos
-        logos = {
-            "principal": account.get("logo_main_url") or account.get("logo_left_url") or "",
-            "secondaire": account.get("logo_secondary_url") or account.get("logo_right_url") or "",
-            "mini": account.get("logo_mini_url") or account.get("logo_small_url") or "",
-            "favicon": account.get("favicon_url") or ""
-        }
-        
-        # GTM
-        gtm = {
-            "head": account.get("gtm_head") or account.get("gtm_pixel_header") or "",
-            "body": account.get("gtm_body") or "",
-            "conversion": account.get("gtm_conversion") or account.get("gtm_conversion_code") or ""
-        }
-        
-        # Liens
-        liens = {
-            "redirection": redirect_url or account.get("default_redirect_url") or "/merci",
-            "confidentialite": account.get("privacy_policy_url") or "",
-            "mentions_legales": account.get("legal_mentions_url") or ""
-        }
-        
-        # Textes légaux (si URLs vides, on met les textes)
-        if not liens["confidentialite"] and account.get("privacy_policy_text"):
-            liens["confidentialite_texte"] = account.get("privacy_policy_text")
-        if not liens["mentions_legales"] and account.get("legal_mentions_text"):
-            liens["mentions_legales_texte"] = account.get("legal_mentions_text")
-    
-    api_url = BACKEND_URL
-    liaison_code = f"{lp_code}_{form_code}"
-    
-    # Post submit actions
-    post_submit = ""
-    if tracking_type in ["gtm", "both"] and gtm.get("conversion"):
-        post_submit += f"\n        {gtm['conversion']}"
-    final_redirect = liens.get("redirection", "/merci")
-    if tracking_type in ["redirect", "both"] and final_redirect:
-        post_submit += f"\n        setTimeout(function() {{ window.location.href = '{final_redirect}'; }}, 500);"
-    
-    # ==================== SCRIPT LP ====================
-    script_lp = f'''<!--
-╔══════════════════════════════════════════════════════════════════════════════╗
-║                                                                              ║
-║   📋 INSTALLATION SCRIPT LP - {lp_code}                                       ║
-║                                                                              ║
-║   1. Copiez les codes GTM dans <head> et <body> de votre LP                 ║
-║   2. Copiez ce script dans la balise <head>                                  ║
-║   3. Sur CHAQUE bouton CTA, ajoutez : onclick="rdzCtaClick()"               ║
-║                                                                              ║
-║   Exemple de bouton CTA :                                                    ║
-║   <a href="https://..." onclick="rdzCtaClick()" class="btn">Simuler</a>     ║
-║                                                                              ║
-║   ✅ Visite LP    → Trackée automatiquement au chargement                    ║
-║   ✅ Clic CTA     → Tracké via onclick="rdzCtaClick()"                       ║
-║                                                                              ║
-╚══════════════════════════════════════════════════════════════════════════════╝
--->
+    # Générer le brief selon le mode
+    if mode == "integrated":
+        return await _generate_mode_b(
+            lp_code=lp_code,
+            lp_url=lp_url,
+            lp_name=lp_name,
+            form_code=form_code,
+            form_url=form_url,
+            form_name=form_name,
+            liaison_code=liaison_code,
+            product_type=product_type,
+            account_name=account_name,
+            gtm_head=gtm_head,
+            redirect_url=redirect_url,
+            form_selector=form_selector,
+            form_anchor=form_anchor,
+            selected_product=selected_product
+        )
+    else:
+        return await _generate_mode_a(
+            lp_code=lp_code,
+            lp_url=lp_url,
+            lp_name=lp_name,
+            form_code=form_code,
+            form_url=form_url,
+            form_name=form_name,
+            liaison_code=liaison_code,
+            product_type=product_type,
+            account_name=account_name,
+            gtm_head=gtm_head,
+            redirect_url=redirect_url,
+            form_selector=form_selector,
+            selected_product=selected_product
+        )
 
-<!-- RDZ TRACKING LP - {lp_code} -->
+
+async def _generate_mode_a(
+    lp_code: str,
+    lp_url: str,
+    lp_name: str,
+    form_code: str,
+    form_url: str,
+    form_name: str,
+    liaison_code: str,
+    product_type: str,
+    account_name: str,
+    gtm_head: str,
+    redirect_url: str,
+    form_selector: str,
+    selected_product: str = None
+) -> dict:
+    """
+    Génère le brief Mode A (LP + Form séparés)
+    
+    utm_campaign:
+    - Script LP: lire depuis URL, envoyer dans track/session, stocker sessionStorage, ajouter à URL form
+    - Script Form: récupérer (URL priorité, sinon sessionStorage), envoyer dans /leads
+    """
+    
+    # ══════════════════════════════════════════════════════════
+    # SCRIPT LP - Mode A
+    # ══════════════════════════════════════════════════════════
+    script_lp = f'''<!-- RDZ TRACKING - LANDING PAGE {lp_code} -->
+<!-- À coller en fin de <body>, avant </body> -->
 <script>
 (function() {{
+  "use strict";
+  
   var RDZ = {{
-    api: "{api_url}/api/public",
+    api: "{API_URL}/api/public",
     lp: "{lp_code}",
     form: "{form_code}",
+    liaison: "{liaison_code}",
+    formUrl: "{form_url}",
     session: null,
-    debug: false
+    utm_campaign: "",
+    initialized: false,
+    initFailed: false
   }};
 
-  function log(msg, data) {{
-    if (RDZ.debug) console.log("[RDZ LP]", msg, data || "");
-  }}
-
+  // ══════════════════════════════════════════════════════════
+  // SESSION + UTM_CAMPAIGN - Création automatique au chargement
+  // ══════════════════════════════════════════════════════════
   async function initSession() {{
     if (RDZ.session) return RDZ.session;
-    var params = new URLSearchParams(window.location.search);
+    if (RDZ.initFailed) return null;
+    
     try {{
-      log("Création session...");
+      var params = new URLSearchParams(window.location.search);
+      
+      // Capturer utm_campaign depuis URL
+      RDZ.utm_campaign = params.get("utm_campaign") || "";
+      
       var res = await fetch(RDZ.api + "/track/session", {{
         method: "POST",
         headers: {{"Content-Type": "application/json"}},
         body: JSON.stringify({{
           lp_code: RDZ.lp,
           form_code: RDZ.form,
+          liaison_code: RDZ.liaison,
           referrer: document.referrer,
           utm_source: params.get("utm_source") || "",
           utm_medium: params.get("utm_medium") || "",
-          utm_campaign: params.get("utm_campaign") || ""
+          utm_campaign: RDZ.utm_campaign
         }})
       }});
+      if (!res.ok) throw new Error("HTTP " + res.status);
       var data = await res.json();
       RDZ.session = data.session_id;
-      log("Session créée:", RDZ.session);
+      RDZ.initialized = true;
+      
+      // Stocker en sessionStorage pour transmission au form
+      try {{
+        sessionStorage.setItem("rdz_session", RDZ.session);
+        sessionStorage.setItem("rdz_lp", RDZ.lp);
+        sessionStorage.setItem("rdz_liaison", RDZ.liaison);
+        if (RDZ.utm_campaign) {{
+          sessionStorage.setItem("rdz_utm_campaign", RDZ.utm_campaign);
+        }}
+      }} catch(e) {{}}
+      
       return RDZ.session;
     }} catch(e) {{
-      log("Erreur session:", e.message);
+      console.warn("[RDZ] Session init failed:", e.message);
+      RDZ.initFailed = true;
       return null;
     }}
   }}
 
-  async function track(type) {{
-    if (!RDZ.session) {{
-      log("Pas de session pour track:", type);
-      return;
-    }}
-    try {{
-      log("Track:", type);
-      await fetch(RDZ.api + "/track/event", {{
+  // Tracking best-effort (sendBeacon prioritaire)
+  function track(eventType) {{
+    if (!RDZ.session) return;
+    var payload = JSON.stringify({{
+      session_id: RDZ.session,
+      event_type: eventType,
+      lp_code: RDZ.lp,
+      form_code: RDZ.form,
+      liaison_code: RDZ.liaison
+    }});
+    
+    if (navigator.sendBeacon) {{
+      navigator.sendBeacon(RDZ.api + "/track/event", new Blob([payload], {{type: "application/json"}}));
+    }} else {{
+      fetch(RDZ.api + "/track/event", {{
         method: "POST",
         headers: {{"Content-Type": "application/json"}},
-        body: JSON.stringify({{
-          session_id: RDZ.session,
-          event_type: type,
-          lp_code: RDZ.lp,
-          form_code: RDZ.form
-        }})
-      }});
-      log("Track OK:", type);
-    }} catch(e) {{
-      log("Erreur track:", e.message);
+        body: payload,
+        keepalive: true
+      }}).catch(function() {{}});
     }}
   }}
 
   // ══════════════════════════════════════════════════════════
-  // TRACKING VISITE LP - Automatique au chargement
+  // VISITE LP - Automatique au chargement
   // ══════════════════════════════════════════════════════════
   document.addEventListener("DOMContentLoaded", async function() {{
     await initSession();
-    await track("lp_visit");
+    if (RDZ.session) track("lp_visit");
+    autoBindCTA();
   }});
 
   // ══════════════════════════════════════════════════════════
-  // TRACKING CLIC CTA - À appeler sur chaque bouton CTA
-  // Usage: onclick="rdzCtaClick()"
+  // CTA CLICK - Transmet session + lp + liaison + utm_campaign
   // ══════════════════════════════════════════════════════════
   var ctaClicked = false;
   
-  window.rdzCtaClick = async function() {{
-    if (ctaClicked) return;  // Protection anti-doublon
+  window.rdzCtaClick = function(e) {{
+    if (ctaClicked) return;
     ctaClicked = true;
-    await initSession();
-    await track("cta_click");
-    // Pas de redirection - le href du lien gère ça
+    
+    track("cta_click");
+    
+    // Construire URL avec tous les params
+    if (e && e.currentTarget && e.currentTarget.tagName === "A") {{
+      var link = e.currentTarget;
+      var href = link.getAttribute("href");
+      
+      if (href && !href.startsWith("#") && RDZ.session) {{
+        try {{
+          var url = new URL(href, window.location.origin);
+          url.searchParams.set("session", RDZ.session);
+          url.searchParams.set("lp", RDZ.lp);
+          url.searchParams.set("liaison", RDZ.liaison);
+          // Transmettre utm_campaign au form
+          if (RDZ.utm_campaign) {{
+            url.searchParams.set("utm_campaign", RDZ.utm_campaign);
+          }}
+          link.href = url.toString();
+        }} catch(err) {{}}
+      }}
+    }}
   }};
 
-  window.RDZ_LP = RDZ;
+  // ══════════════════════════════════════════════════════════
+  // AUTO-BIND CTA - Match strict sur formUrl OU data-rdz-cta
+  // ══════════════════════════════════════════════════════════
+  function autoBindCTA() {{
+    var formUrlBase = RDZ.formUrl.split("?")[0].replace(/\\/$/, "").toLowerCase();
+    var links = document.querySelectorAll("a[href], [data-rdz-cta]");
+    
+    links.forEach(function(el) {{
+      if (el.hasAttribute("data-rdz-cta")) {{
+        el.addEventListener("click", function(e) {{ rdzCtaClick(e); }});
+        return;
+      }}
+      
+      if (el.href) {{
+        var linkHref = el.href.split("?")[0].replace(/\\/$/, "").toLowerCase();
+        if (linkHref === formUrlBase) {{
+          el.addEventListener("click", function(e) {{ rdzCtaClick(e); }});
+        }}
+      }}
+    }});
+  }}
+
 }})();
 </script>'''
 
-    # ==================== SCRIPT FORM ====================
-    script_form = f'''<!--
-╔══════════════════════════════════════════════════════════════════════════════╗
-║                                                                              ║
-║   ⚠️⚠️⚠️  RAPPEL IMPORTANT - CHAMPS OBLIGATOIRES  ⚠️⚠️⚠️                      ║
-║                                                                              ║
-║   Lors de la création de votre formulaire, vous DEVEZ collecter :            ║
-║                                                                              ║
-║   🔴 TÉLÉPHONE  → Champ "phone" (10 chiffres, format FR)                     ║
-║   🔴 NOM        → Champ "nom" (nom de famille)                               ║
-║   🔴 DÉPARTEMENT → Champ "departement" (code 01-95, 2A, 2B)                  ║
-║                                                                              ║
-║   Sans ces 3 champs, le lead sera marqué comme INCOMPLET dans RDZ            ║
-║   et ne pourra pas être envoyé vers ZR7/MDL automatiquement.                 ║
-║                                                                              ║
-║   ✅ Vérifiez que votre formulaire HTML contient ces champs                  ║
-║   ✅ Vérifiez que les valeurs sont passées à rdzSubmitLead()                 ║
-║                                                                              ║
-╚══════════════════════════════════════════════════════════════════════════════╝
--->
-
-<!-- RDZ TRACKING FORM - {form_code} -->
+    # ══════════════════════════════════════════════════════════
+    # SCRIPT FORM - Mode A
+    # ══════════════════════════════════════════════════════════
+    script_form = f'''<!-- RDZ TRACKING - FORMULAIRE {form_code} -->
+<!-- À coller en fin de <body>, avant </body> -->
 <script>
 (function() {{
+  "use strict";
+  
   var RDZ = {{
-    api: "{api_url}/api/public",
-    lp: "{lp_code}",
+    api: "{API_URL}/api/public",
     form: "{form_code}",
+    formSelector: "{form_selector}",
     session: null,
-    debug: false
+    lp: "",
+    liaison: "",
+    utm_campaign: "",
+    redirectUrl: "{redirect_url}",
+    initialized: false,
+    initFailed: false
   }};
 
-  function log(msg, data) {{
-    if (RDZ.debug) console.log("[RDZ FORM]", msg, data || "");
-  }}
-
+  // ══════════════════════════════════════════════════════════
+  // SESSION + UTM_CAMPAIGN - Priorité: URL → sessionStorage → création
+  // ══════════════════════════════════════════════════════════
   async function initSession() {{
     if (RDZ.session) return RDZ.session;
+    if (RDZ.initFailed) return null;
+    
     var params = new URLSearchParams(window.location.search);
-    var sessionFromUrl = params.get("session");
-    if (sessionFromUrl) {{
-      RDZ.session = sessionFromUrl;
-      log("Session récupérée depuis URL:", RDZ.session);
+    
+    // 1. Priorité : paramètres URL (venant de la LP)
+    var urlSession = params.get("session");
+    var urlLp = params.get("lp");
+    var urlLiaison = params.get("liaison");
+    var urlUtmCampaign = params.get("utm_campaign");
+    
+    if (urlSession) {{
+      RDZ.session = urlSession;
+      RDZ.lp = urlLp || "";
+      RDZ.liaison = urlLiaison || "";
+      // utm_campaign: URL priorité
+      RDZ.utm_campaign = urlUtmCampaign || "";
+      RDZ.initialized = true;
+      
+      // Stocker pour persistance
+      try {{
+        sessionStorage.setItem("rdz_session", RDZ.session);
+        if (RDZ.lp) sessionStorage.setItem("rdz_lp", RDZ.lp);
+        if (RDZ.liaison) sessionStorage.setItem("rdz_liaison", RDZ.liaison);
+        if (RDZ.utm_campaign) sessionStorage.setItem("rdz_utm_campaign", RDZ.utm_campaign);
+      }} catch(e) {{}}
+      
       return RDZ.session;
     }}
+    
+    // 2. Fallback : sessionStorage
     try {{
-      log("Création nouvelle session...");
+      var storedSession = sessionStorage.getItem("rdz_session");
+      if (storedSession) {{
+        RDZ.session = storedSession;
+        RDZ.lp = sessionStorage.getItem("rdz_lp") || "";
+        RDZ.liaison = sessionStorage.getItem("rdz_liaison") || "";
+        // utm_campaign depuis sessionStorage si pas dans URL
+        RDZ.utm_campaign = urlUtmCampaign || sessionStorage.getItem("rdz_utm_campaign") || "";
+        RDZ.initialized = true;
+        return RDZ.session;
+      }}
+    }} catch(e) {{}}
+    
+    // 3. Dernière option : créer nouvelle session
+    try {{
+      // utm_campaign depuis URL même sans session existante
+      RDZ.utm_campaign = urlUtmCampaign || "";
+      
       var res = await fetch(RDZ.api + "/track/session", {{
         method: "POST",
         headers: {{"Content-Type": "application/json"}},
         body: JSON.stringify({{
-          lp_code: params.get("lp") || RDZ.lp,
           form_code: RDZ.form,
+          lp_code: urlLp || "",
+          liaison_code: urlLiaison || "",
           referrer: document.referrer,
           utm_source: params.get("utm_source") || "",
           utm_medium: params.get("utm_medium") || "",
-          utm_campaign: params.get("utm_campaign") || ""
+          utm_campaign: RDZ.utm_campaign
         }})
       }});
+      if (!res.ok) throw new Error("HTTP " + res.status);
       var data = await res.json();
       RDZ.session = data.session_id;
-      log("Session créée:", RDZ.session);
+      RDZ.lp = urlLp || "";
+      RDZ.liaison = urlLiaison || "";
+      RDZ.initialized = true;
+      
+      try {{
+        sessionStorage.setItem("rdz_session", RDZ.session);
+        if (RDZ.utm_campaign) sessionStorage.setItem("rdz_utm_campaign", RDZ.utm_campaign);
+      }} catch(e) {{}}
+      
       return RDZ.session;
     }} catch(e) {{
-      log("Erreur session:", e.message);
+      console.warn("[RDZ] Session init failed:", e.message);
+      RDZ.initFailed = true;
       return null;
     }}
   }}
 
-  async function track(type) {{
-    if (!RDZ.session) {{
-      log("Pas de session pour track:", type);
-      return;
-    }}
-    try {{
-      log("Track:", type);
-      var res = await fetch(RDZ.api + "/track/event", {{
+  // Tracking best-effort
+  function track(eventType) {{
+    if (!RDZ.session) return;
+    var payload = JSON.stringify({{
+      session_id: RDZ.session,
+      event_type: eventType,
+      lp_code: RDZ.lp,
+      form_code: RDZ.form,
+      liaison_code: RDZ.liaison
+    }});
+    
+    if (navigator.sendBeacon) {{
+      navigator.sendBeacon(RDZ.api + "/track/event", new Blob([payload], {{type: "application/json"}}));
+    }} else {{
+      fetch(RDZ.api + "/track/event", {{
         method: "POST",
         headers: {{"Content-Type": "application/json"}},
-        body: JSON.stringify({{
-          session_id: RDZ.session,
-          event_type: type,
-          lp_code: RDZ.lp,
-          form_code: RDZ.form
-        }})
-      }});
-      var data = await res.json();
-      log("Track réponse:", data);
-    }} catch(e) {{
-      log("Erreur track:", e.message);
+        body: payload,
+        keepalive: true
+      }}).catch(function() {{}});
     }}
   }}
 
-  document.addEventListener("DOMContentLoaded", function() {{
-    initSession();
-  }});
-
+  // ══════════════════════════════════════════════════════════
+  // FORM START - Premier clic/focus dans le formulaire
+  // ══════════════════════════════════════════════════════════
   var formStarted = false;
+  
   window.rdzFormStart = async function() {{
     if (formStarted) return;
     formStarted = true;
     await initSession();
-    await track("form_start");
+    track("form_start");
   }};
 
-  // ========================================
-  // VALIDATION DES CHAMPS OBLIGATOIRES
-  // ========================================
-  function validateLeadData(data) {{
-    var errors = [];
-    
-    // Téléphone OBLIGATOIRE (10 chiffres)
-    var phone = (data.phone || "").replace(/\\D/g, "");
-    if (!phone || phone.length !== 10) {{
-      errors.push("Téléphone invalide (10 chiffres requis)");
+  function autoBindFormStart() {{
+    var formEl = document.querySelector(RDZ.formSelector);
+    if (formEl) {{
+      var trigger = function() {{ rdzFormStart(); }};
+      formEl.addEventListener("click", trigger, {{ once: true }});
+      formEl.addEventListener("focusin", trigger, {{ once: true }});
     }}
-    
-    // Nom OBLIGATOIRE
-    var nom = (data.nom || "").trim();
-    if (!nom) {{
-      errors.push("Nom obligatoire");
-    }}
-    
-    // Département OBLIGATOIRE
-    var dept = (data.departement || "").trim();
-    if (!dept) {{
-      errors.push("Département obligatoire");
-    }}
-    
-    return {{
-      valid: errors.length === 0,
-      errors: errors
-    }};
   }}
 
+  // ══════════════════════════════════════════════════════════
+  // SUBMIT LEAD - Envoi avec utm_campaign
+  // ══════════════════════════════════════════════════════════
   window.rdzSubmitLead = async function(data) {{
-    var sid = RDZ.session || await initSession();
-    if (!sid) {{
-      log("Erreur: pas de session");
-      return {{success: false, error: "Pas de session"}};
+    await initSession();
+    if (!RDZ.session) {{
+      return {{ success: false, error: "Pas de session" }};
     }}
-    
-    // VALIDATION CÔTÉ CLIENT
-    var validation = validateLeadData(data);
-    if (!validation.valid) {{
-      log("Validation échouée:", validation.errors);
-      // On envoie quand même pour que RDZ stocke le lead (avec warning)
-      // mais on log l'erreur pour debug
-      console.warn("[RDZ] Champs obligatoires manquants:", validation.errors.join(", "));
+
+    var phone = (data.phone || "").replace(/\\D/g, "");
+    if (phone.length !== 10) {{
+      return {{ success: false, error: "Téléphone invalide (10 chiffres requis)" }};
     }}
-    
+
     try {{
-      log("Envoi lead...", data);
       var res = await fetch(RDZ.api + "/leads", {{
         method: "POST",
         headers: {{"Content-Type": "application/json"}},
-        body: JSON.stringify(Object.assign({{
-          session_id: sid,
-          form_code: RDZ.form
-        }}, data))
+        body: JSON.stringify({{
+          session_id: RDZ.session,
+          form_code: RDZ.form,
+          lp_code: RDZ.lp,
+          liaison_code: RDZ.liaison,
+          utm_campaign: RDZ.utm_campaign,
+          phone: phone,
+          nom: data.nom || "",
+          prenom: data.prenom || "",
+          civilite: data.civilite || "",
+          email: data.email || "",
+          departement: data.departement || "",
+          ville: data.ville || "",
+          adresse: data.adresse || "",
+          type_logement: data.type_logement || "",
+          statut_occupant: data.statut_occupant || "",
+          surface_habitable: data.surface_habitable || "",
+          annee_construction: data.annee_construction || "",
+          type_chauffage: data.type_chauffage || "",
+          facture_electricite: data.facture_electricite || "",
+          facture_chauffage: data.facture_chauffage || "",
+          type_projet: data.type_projet || "",
+          delai_projet: data.delai_projet || "",
+          budget: data.budget || "",
+          rgpd_consent: data.rgpd_consent || false,
+          newsletter: data.newsletter || false
+        }})
       }});
+      
       var result = await res.json();
-      log("Réponse lead:", result);
       
-      // Ajouter les erreurs de validation au résultat
-      if (!validation.valid) {{
-        result.validation_errors = validation.errors;
+      if (result.success) {{
+        if (window.dataLayer) {{
+          window.dataLayer.push({{
+            event: "form_submitted",
+            lead_id: result.lead_id,
+            lp_code: RDZ.lp,
+            form_code: RDZ.form,
+            liaison_code: RDZ.liaison,
+            utm_campaign: RDZ.utm_campaign
+          }});
+        }}
+        
+        if (RDZ.redirectUrl) {{
+          window.location.href = RDZ.redirectUrl;
+        }}
       }}
       
-      if (result.success || result.lead_id) {{{post_submit}
-      }}
       return result;
     }} catch(e) {{
-      log("Erreur envoi lead:", e.message);
-      return {{success: false, error: e.message}};
+      console.error("[RDZ] Submit error:", e.message);
+      return {{ success: false, error: e.message }};
     }}
   }};
-  
-  // Fonction de validation exposée pour usage dans le formulaire
-  window.rdzValidate = validateLeadData;
 
-  window.RDZ_FORM = RDZ;
-}})();
-</script>
+  // Init au chargement
+  document.addEventListener("DOMContentLoaded", function() {{
+    initSession();
+    autoBindFormStart();
+  }});
 
-<!-- ============================================================
-     📋 TEMPLATE D'UTILISATION - COPIEZ ET ADAPTEZ CE CODE
-     ⚠️  UTILISEZ EXACTEMENT CES NOMS DE CHAMPS (ne pas modifier)
-     ============================================================ -->
-<script>
-/*
- * EXEMPLE D'INTÉGRATION - Adaptez les sélecteurs à votre formulaire
- * 
- * ⚠️ CHAMPS OBLIGATOIRES : phone, nom, departement
- * Sans ces champs, le lead sera marqué comme "invalide" dans RDZ
- */
-
-// Fonction à appeler lors de la soumission de votre formulaire
-async function envoyerLead() {{
-  // Template des données - UTILISEZ EXACTEMENT CES NOMS
-  var leadData = {{
-    // ══════════════════════════════════════════════════════════
-    // 🔴 CHAMPS OBLIGATOIRES - Le lead sera invalide sans eux
-    // ══════════════════════════════════════════════════════════
-    phone: document.getElementById('phone').value,             // ⚠️ OBLIGATOIRE - Téléphone (10 chiffres)
-    nom: document.getElementById('nom').value,                 // ⚠️ OBLIGATOIRE - Nom de famille
-    departement: document.getElementById('departement').value, // ⚠️ OBLIGATOIRE - Code département (01-95)
-    
-    // ══════════════════════════════════════════════════════════
-    // 🟡 CHAMPS RECOMMANDÉS
-    // ══════════════════════════════════════════════════════════
-    prenom: document.getElementById('prenom').value,           // Prénom
-    email: document.getElementById('email').value,             // Email
-    ville: document.getElementById('ville').value,             // Ville
-    
-    // ══════════════════════════════════════════════════════════
-    // ⚪ CHAMPS OPTIONNELS (selon votre formulaire)
-    // ══════════════════════════════════════════════════════════
-    civilite: document.getElementById('civilite').value,       // M., Mme, Mlle
-    type_logement: document.getElementById('type_logement').value,       // Maison, Appartement
-    statut_occupant: document.getElementById('statut_occupant').value,   // Propriétaire, Locataire
-    facture_electricite: document.getElementById('facture_electricite').value, // Tranche facture
-    type_chauffage: document.getElementById('type_chauffage').value,     // Type de chauffage
-    surface_habitable: document.getElementById('surface_habitable').value, // Surface m²
-    type_projet: document.getElementById('type_projet').value,   // Installation, Remplacement
-    delai_projet: document.getElementById('delai_projet').value, // Délai souhaité
-    budget: document.getElementById('budget').value              // Budget prévu
-  }};
-  
-  // OPTIONNEL: Validation côté client AVANT envoi
-  var validation = rdzValidate(leadData);
-  if (!validation.valid) {{
-    alert("Veuillez remplir les champs obligatoires:\\n" + validation.errors.join("\\n"));
-    return; // Ne pas envoyer si validation échoue
-  }}
-  
-  // Envoi du lead
-  var result = await rdzSubmitLead(leadData);
-  
-  if (result.success) {{
-    console.log("Lead envoyé avec succès!");
-    // Redirection automatique gérée par le script RDZ
-  }} else {{
-    console.error("Erreur:", result.error);
-  }}
-}}
-
-/*
- * 🚫 CHAMPS INTERDITS - NE JAMAIS UTILISER:
- *    - code_postal    → Utilisez "departement"
- *    - department     → Utilisez "departement" (français)
- *    - cp             → Utilisez "departement"
- *    - zipcode        → Utilisez "departement"
- *    - postal_code    → Utilisez "departement"
- */
-</script>'''
-
-    return {
-        "lp": {
-            "id": lp_id,
-            "code": lp_code,
-            "name": lp_name,
-            "url": lp_url
-        },
-        "form": {
-            "id": form.get("id") if form else None,
-            "code": form_code,
-            "name": form.get("name", "") if form else "",
-            "url": form_url
-        },
-        "account": account_name,
-        "liaison_code": liaison_code,
-        "logos": logos,
-        "gtm": gtm,
-        "liens": liens,
-        "script_lp": script_lp,
-        "script_form": script_form,
-        "champs": ["phone", "nom", "prenom", "email", "departement", "ville", "type_logement", "statut_occupant", "facture_electricite"],
-        "selected_product": selected_product,
-        "redirect_urls": redirect_urls
-    }
-
-
-# Alias pour le frontend
-async def generate_brief_v2(lp_id: str, selected_product: str = None) -> dict:
-    result = await generate_brief(lp_id, selected_product)
-    if "error" in result:
-        return result
-    return {
-        "lp": result["lp"],
-        "form": result["form"],
-        "account": result["account"],
-        "liaison_code": result["liaison_code"],
-        "logos": result["logos"],
-        "gtm": result["gtm"],
-        "liens": result["liens"],
-        "scripts": {
-            "lp": result["script_lp"],
-            "form": result["script_form"]
-        },
-        "champs": result["champs"],
-        "selected_product": result.get("selected_product"),
-        "redirect_urls": result.get("redirect_urls", {})
-    }
-
-
-async def generate_form_brief(form_id: str, selected_product: str = None) -> dict:
-    """Génère le brief complet pour un formulaire (point d'entrée alternatif)
-    
-    Args:
-        form_id: ID du formulaire
-        selected_product: Produit sélectionné (PV, PAC, ITE) pour URL de redirection
-    """
-    
-    # Récupérer le Form
-    form = await db.forms.find_one({"id": form_id}, {"_id": 0})
-    if not form:
-        return {"error": "Formulaire non trouvé"}
-    
-    form_code = form.get("code", "")
-    form_url = form.get("url", "")
-    tracking_type = form.get("tracking_type", "redirect")
-    redirect_url = form.get("redirect_url", "/merci")
-    
-    # Chercher la LP liée
-    lp = None
-    lp_id = form.get("lp_id")
-    if lp_id:
-        lp = await db.lps.find_one({"id": lp_id}, {"_id": 0})
-    if not lp:
-        # Chercher une LP qui référence ce form
-        lp = await db.lps.find_one({"form_id": form_id}, {"_id": 0})
-    
-    lp_code = lp.get("code", "") if lp else ""
-    lp_url = lp.get("url", "") if lp else ""
-    lp_name = lp.get("name", "") if lp else ""
-    
-    # Récupérer le compte pour les URLs de redirection par produit
-    account_id = form.get("account_id")
-    account = None
-    if account_id:
-        account = await db.accounts.find_one({"id": account_id}, {"_id": 0})
-    
-    # Déterminer l'URL de redirection selon le produit sélectionné
-    redirect_urls = {
-        "pv": account.get("redirect_url_pv", "") if account else "",
-        "pac": account.get("redirect_url_pac", "") if account else "",
-        "ite": account.get("redirect_url_ite", "") if account else "",
-        "default": redirect_url
-    }
-    
-    if selected_product and account:
-        product_key = f"redirect_url_{selected_product.lower()}"
-        product_redirect_url = account.get(product_key, "")
-        if product_redirect_url:
-            redirect_url = product_redirect_url
-    
-    # Infos du compte
-    account_name = account.get("name", "") if account else ""
-    logos = {}
-    gtm = {}
-    if account:
-        logos = {
-            "main": account.get("logo_main_url", ""),
-            "secondary": account.get("logo_secondary_url", ""),
-            "mini": account.get("logo_mini_url", "")
-        }
-        gtm = {
-            "head": account.get("gtm_head", ""),
-            "body": account.get("gtm_body", ""),
-            "conversion": account.get("gtm_conversion", "")
-        }
-    
-    # Construire le liaison_code
-    liaison_code = f"{lp_code}_{form_code}" if lp_code else form_code
-    
-    # Générer les scripts
-    from config import API_URL
-    api_url = API_URL
-    
-    # Script Form simplifié
-    script_form = f'''<!-- RDZ TRACKING - FORMULAIRE {form_code} -->
-<script>
-(function() {{
-  var RDZ_CONFIG = {{
-    api: "{api_url}/api/public",
-    form_code: "{form_code}",
-    lp_code: "{lp_code}",
-    redirect_url: "{redirect_url}"
-  }};
-  
-  // Session cookie
-  function getSessionId() {{
-    var match = document.cookie.match(/rdz_session=([^;]+)/);
-    return match ? match[1] : null;
-  }}
-  
-  // Soumission formulaire
-  window.rdzSubmitForm = function(formData) {{
-    var sessionId = getSessionId();
-    var data = Object.assign({{}}, formData, {{
-      form_code: RDZ_CONFIG.form_code,
-      lp_code: RDZ_CONFIG.lp_code,
-      session_id: sessionId
-    }});
-    
-    fetch(RDZ_CONFIG.api + "/leads", {{
-      method: "POST",
-      headers: {{ "Content-Type": "application/json" }},
-      body: JSON.stringify(data)
-    }})
-    .then(function(r) {{ return r.json(); }})
-    .then(function(result) {{
-      console.log("[RDZ] Lead envoyé:", result);
-      if (RDZ_CONFIG.redirect_url) {{
-        window.location.href = RDZ_CONFIG.redirect_url;
-      }}
-    }})
-    .catch(function(e) {{
-      console.error("[RDZ] Erreur:", e);
-    }});
-  }};
-  
-  console.log("[RDZ] Form tracker ready - " + RDZ_CONFIG.form_code);
 }})();
 </script>'''
 
+    # Construire le brief complet
     return {
-        "form": {
-            "id": form_id,
-            "code": form_code,
-            "url": form_url,
-            "product_type": form.get("product_type", ""),
-            "tracking_type": tracking_type,
-            "redirect_url": redirect_url
+        "mode": "separate",
+        "mode_label": "Mode A - LP et Formulaire sur pages séparées",
+        
+        "metadata": {
+            "lp_code": lp_code,
+            "form_code": form_code,
+            "liaison_code": liaison_code,
+            "product_type": product_type,
+            "account_name": account_name,
+            "selected_product": selected_product
         },
+        
         "lp": {
-            "linked": lp is not None,
-            "id": lp.get("id", "") if lp else "",
             "code": lp_code,
             "url": lp_url,
             "name": lp_name
         },
-        "account": {
-            "id": account_id or "",
-            "name": account_name
+        
+        "form": {
+            "code": form_code,
+            "url": form_url,
+            "name": form_name,
+            "selector": form_selector
         },
-        "liaison_code": liaison_code,
-        "logos": logos,
-        "gtm": gtm,
-        "api_url": api_url,
-        "script_form": script_form,
-        "champs": ["phone", "nom", "prenom", "email", "departement", "ville", "type_logement", "statut_occupant", "facture_electricite"],
-        "selected_product": selected_product,
-        "redirect_urls": redirect_urls
+        
+        "gtm": {
+            "head": gtm_head
+        },
+        
+        "scripts": {
+            "lp": {
+                "code": script_lp,
+                "placement": "end_body"
+            },
+            "form": {
+                "code": script_form,
+                "placement": "end_body"
+            }
+        },
+        
+        "instructions": {
+            "summary": "Mode A : 2 pages distinctes. Transmission session + utm_campaign via URL. Auto-bind CTA et Form start.",
+            
+            "lp_page": {
+                "title": "PAGE LP (Landing Page)",
+                "steps": [
+                    {"step": 1, "action": "GTM dans <head> uniquement", "code_ref": "gtm.head"},
+                    {"step": 2, "action": "Script RDZ LP en fin de <body>", "code_ref": "scripts.lp.code"},
+                    {"step": 3, "action": "AUTO-BIND: liens vers form détectés automatiquement, ou ajouter data-rdz-cta"}
+                ]
+            },
+            
+            "form_page": {
+                "title": "PAGE FORMULAIRE",
+                "steps": [
+                    {"step": 1, "action": "GTM dans <head> uniquement", "code_ref": "gtm.head"},
+                    {"step": 2, "action": "Script RDZ Form en fin de <body>", "code_ref": "scripts.form.code"},
+                    {"step": 3, "action": "AUTO-BIND FORM START: premier clic/focus détecté"},
+                    {"step": 4, "action": "Soumission: rdzSubmitLead({phone, nom, departement, ...})"}
+                ]
+            },
+            
+            "session_transmission": {
+                "title": "TRANSMISSION LP → FORM",
+                "url_example": form_url + "?session=xxx&lp=" + lp_code + "&liaison=" + liaison_code + "&utm_campaign=xxx",
+                "priority": ["1. Paramètres URL", "2. sessionStorage (fallback)", "3. Nouvelle session"]
+            },
+            
+            "field_names": {
+                "title": "NOMS DES CHAMPS (NE PAS MODIFIER)",
+                "required": ["phone", "nom", "departement"],
+                "optional": ["prenom", "civilite", "email", "ville", "adresse", "type_logement", "statut_occupant", "surface_habitable", "annee_construction", "type_chauffage", "facture_electricite", "facture_chauffage", "type_projet", "delai_projet", "budget", "rgpd_consent", "newsletter"]
+            }
+        }
     }
+
+
+async def _generate_mode_b(
+    lp_code: str,
+    lp_url: str,
+    lp_name: str,
+    form_code: str,
+    form_url: str,
+    form_name: str,
+    liaison_code: str,
+    product_type: str,
+    account_name: str,
+    gtm_head: str,
+    redirect_url: str,
+    form_selector: str,
+    form_anchor: str,
+    selected_product: str = None
+) -> dict:
+    """
+    Génère le brief Mode B (Form intégré dans LP)
+    
+    utm_campaign: lire dans URL, envoyer dans track/session + /leads au submit
+    """
+    
+    script_unique = f'''<!-- RDZ TRACKING - LP + FORMULAIRE INTÉGRÉS -->
+<!-- {lp_code} + {form_code} -->
+<!-- À coller en fin de <body>, avant </body> -->
+<script>
+(function() {{
+  "use strict";
+  
+  var RDZ = {{
+    api: "{API_URL}/api/public",
+    lp: "{lp_code}",
+    form: "{form_code}",
+    liaison: "{liaison_code}",
+    formSelector: "{form_selector}",
+    formAnchor: "{form_anchor}",
+    session: null,
+    utm_campaign: "",
+    redirectUrl: "{redirect_url}",
+    initialized: false,
+    initFailed: false
+  }};
+
+  // ══════════════════════════════════════════════════════════
+  // SESSION + UTM_CAMPAIGN - Création/récupération automatique
+  // ══════════════════════════════════════════════════════════
+  async function initSession() {{
+    if (RDZ.session) return RDZ.session;
+    if (RDZ.initFailed) return null;
+    
+    // Récupérer session existante
+    try {{
+      RDZ.session = sessionStorage.getItem("rdz_session");
+      RDZ.utm_campaign = sessionStorage.getItem("rdz_utm_campaign") || "";
+      if (RDZ.session) {{
+        RDZ.initialized = true;
+        return RDZ.session;
+      }}
+    }} catch(e) {{}}
+    
+    try {{
+      var params = new URLSearchParams(window.location.search);
+      
+      // Capturer utm_campaign depuis URL
+      RDZ.utm_campaign = params.get("utm_campaign") || "";
+      
+      var res = await fetch(RDZ.api + "/track/session", {{
+        method: "POST",
+        headers: {{"Content-Type": "application/json"}},
+        body: JSON.stringify({{
+          lp_code: RDZ.lp,
+          form_code: RDZ.form,
+          liaison_code: RDZ.liaison,
+          referrer: document.referrer,
+          utm_source: params.get("utm_source") || "",
+          utm_medium: params.get("utm_medium") || "",
+          utm_campaign: RDZ.utm_campaign
+        }})
+      }});
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      var data = await res.json();
+      RDZ.session = data.session_id;
+      RDZ.initialized = true;
+      
+      try {{
+        sessionStorage.setItem("rdz_session", RDZ.session);
+        if (RDZ.utm_campaign) sessionStorage.setItem("rdz_utm_campaign", RDZ.utm_campaign);
+      }} catch(e) {{}}
+      
+      return RDZ.session;
+    }} catch(e) {{
+      console.warn("[RDZ] Session init failed:", e.message);
+      RDZ.initFailed = true;
+      return null;
+    }}
+  }}
+
+  // Tracking best-effort
+  function track(eventType) {{
+    if (!RDZ.session) return;
+    var payload = JSON.stringify({{
+      session_id: RDZ.session,
+      event_type: eventType,
+      lp_code: RDZ.lp,
+      form_code: RDZ.form,
+      liaison_code: RDZ.liaison
+    }});
+    
+    if (navigator.sendBeacon) {{
+      navigator.sendBeacon(RDZ.api + "/track/event", new Blob([payload], {{type: "application/json"}}));
+    }} else {{
+      fetch(RDZ.api + "/track/event", {{
+        method: "POST",
+        headers: {{"Content-Type": "application/json"}},
+        body: payload,
+        keepalive: true
+      }}).catch(function() {{}});
+    }}
+  }}
+
+  // ══════════════════════════════════════════════════════════
+  // VISITE LP - Automatique au chargement
+  // ══════════════════════════════════════════════════════════
+  document.addEventListener("DOMContentLoaded", async function() {{
+    await initSession();
+    if (RDZ.session) track("lp_visit");
+    autoBindCTA();
+    autoBindFormStart();
+  }});
+
+  // ══════════════════════════════════════════════════════════
+  // CTA CLICK - 1 seule fois par session
+  // ══════════════════════════════════════════════════════════
+  var ctaClicked = false;
+  
+  window.rdzCtaClick = function() {{
+    if (ctaClicked) return;
+    ctaClicked = true;
+    track("cta_click");
+  }};
+
+  function autoBindCTA() {{
+    var anchors = [RDZ.formAnchor, "#form", "#formulaire", "#contact", "#devis"];
+    var links = document.querySelectorAll("a[href], [data-rdz-cta]");
+    
+    links.forEach(function(el) {{
+      if (el.hasAttribute("data-rdz-cta")) {{
+        el.addEventListener("click", function() {{ rdzCtaClick(); }});
+        return;
+      }}
+      
+      var href = el.getAttribute("href");
+      if (href && anchors.indexOf(href) !== -1) {{
+        el.addEventListener("click", function() {{ rdzCtaClick(); }});
+      }}
+    }});
+  }}
+
+  // ══════════════════════════════════════════════════════════
+  // FORM START - Premier clic/focus
+  // ══════════════════════════════════════════════════════════
+  var formStarted = false;
+  
+  window.rdzFormStart = async function() {{
+    if (formStarted) return;
+    formStarted = true;
+    await initSession();
+    track("form_start");
+  }};
+
+  function autoBindFormStart() {{
+    var formEl = document.querySelector(RDZ.formSelector);
+    if (formEl) {{
+      var trigger = function() {{ rdzFormStart(); }};
+      formEl.addEventListener("click", trigger, {{ once: true }});
+      formEl.addEventListener("focusin", trigger, {{ once: true }});
+    }}
+  }}
+
+  // ══════════════════════════════════════════════════════════
+  // SUBMIT LEAD - Envoi avec utm_campaign
+  // ══════════════════════════════════════════════════════════
+  window.rdzSubmitLead = async function(data) {{
+    await initSession();
+    if (!RDZ.session) {{
+      return {{ success: false, error: "Pas de session" }};
+    }}
+
+    var phone = (data.phone || "").replace(/\\D/g, "");
+    if (phone.length !== 10) {{
+      return {{ success: false, error: "Téléphone invalide (10 chiffres requis)" }};
+    }}
+
+    try {{
+      var res = await fetch(RDZ.api + "/leads", {{
+        method: "POST",
+        headers: {{"Content-Type": "application/json"}},
+        body: JSON.stringify({{
+          session_id: RDZ.session,
+          form_code: RDZ.form,
+          lp_code: RDZ.lp,
+          liaison_code: RDZ.liaison,
+          utm_campaign: RDZ.utm_campaign,
+          phone: phone,
+          nom: data.nom || "",
+          prenom: data.prenom || "",
+          civilite: data.civilite || "",
+          email: data.email || "",
+          departement: data.departement || "",
+          ville: data.ville || "",
+          adresse: data.adresse || "",
+          type_logement: data.type_logement || "",
+          statut_occupant: data.statut_occupant || "",
+          surface_habitable: data.surface_habitable || "",
+          annee_construction: data.annee_construction || "",
+          type_chauffage: data.type_chauffage || "",
+          facture_electricite: data.facture_electricite || "",
+          facture_chauffage: data.facture_chauffage || "",
+          type_projet: data.type_projet || "",
+          delai_projet: data.delai_projet || "",
+          budget: data.budget || "",
+          rgpd_consent: data.rgpd_consent || false,
+          newsletter: data.newsletter || false
+        }})
+      }});
+      
+      var result = await res.json();
+      
+      if (result.success) {{
+        if (window.dataLayer) {{
+          window.dataLayer.push({{
+            event: "form_submitted",
+            lead_id: result.lead_id,
+            lp_code: RDZ.lp,
+            form_code: RDZ.form,
+            liaison_code: RDZ.liaison,
+            utm_campaign: RDZ.utm_campaign
+          }});
+        }}
+        
+        if (RDZ.redirectUrl) {{
+          window.location.href = RDZ.redirectUrl;
+        }}
+      }}
+      
+      return result;
+    }} catch(e) {{
+      console.error("[RDZ] Submit error:", e.message);
+      return {{ success: false, error: e.message }};
+    }}
+  }};
+
+}})();
+</script>'''
+
+    return {
+        "mode": "integrated",
+        "mode_label": "Mode B - Formulaire intégré dans la Landing Page",
+        
+        "metadata": {
+            "lp_code": lp_code,
+            "form_code": form_code,
+            "liaison_code": liaison_code,
+            "product_type": product_type,
+            "account_name": account_name,
+            "selected_product": selected_product
+        },
+        
+        "lp": {
+            "code": lp_code,
+            "url": lp_url,
+            "name": lp_name
+        },
+        
+        "form": {
+            "code": form_code,
+            "url": form_url,
+            "name": form_name,
+            "selector": form_selector,
+            "anchor": form_anchor
+        },
+        
+        "gtm": {
+            "head": gtm_head
+        },
+        
+        "scripts": {
+            "unique": {
+                "code": script_unique,
+                "placement": "end_body"
+            }
+        },
+        
+        "instructions": {
+            "summary": "Mode B : 1 page avec LP + Form intégrés. 1 seul GTM. 1 seul script. utm_campaign lu depuis URL.",
+            
+            "single_page": {
+                "title": "PAGE UNIQUE (LP + Formulaire)",
+                "steps": [
+                    {"step": 1, "action": "GTM dans <head> uniquement", "code_ref": "gtm.head"},
+                    {"step": 2, "action": "Script RDZ unique en fin de <body>", "code_ref": "scripts.unique.code"},
+                    {"step": 3, "action": "AUTO-BIND CTA: anchors détectés automatiquement"},
+                    {"step": 4, "action": "AUTO-BIND FORM START: premier clic/focus détecté"},
+                    {"step": 5, "action": "Soumission: rdzSubmitLead({phone, nom, departement, ...})"}
+                ]
+            },
+            
+            "field_names": {
+                "title": "NOMS DES CHAMPS (NE PAS MODIFIER)",
+                "required": ["phone", "nom", "departement"],
+                "optional": ["prenom", "civilite", "email", "ville", "adresse", "type_logement", "statut_occupant", "surface_habitable", "annee_construction", "type_chauffage", "facture_electricite", "facture_chauffage", "type_projet", "delai_projet", "budget", "rgpd_consent", "newsletter"]
+            }
+        }
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# BRIEF DEPUIS FORM - Point d'entrée alternatif
+# ══════════════════════════════════════════════════════════════════════════════
+
+async def generate_form_brief(form_id: str, mode: str = "separate", selected_product: str = None) -> dict:
+    """
+    Génère le brief depuis un Form (cherche la LP liée)
+    
+    Args:
+        form_id: ID du formulaire
+        mode: "separate" ou "integrated"
+        selected_product: Produit sélectionné pour URL de redirection
+    """
+    
+    form = await db.forms.find_one({"id": form_id}, {"_id": 0})
+    if not form:
+        return {"error": "Formulaire non trouvé"}
+    
+    # Chercher la LP liée
+    lp_id = form.get("lp_id")
+    lp = None
+    
+    if lp_id:
+        lp = await db.lps.find_one({"id": lp_id}, {"_id": 0})
+    
+    if not lp:
+        lp = await db.lps.find_one({"form_id": form_id}, {"_id": 0})
+    
+    if not lp:
+        return {"error": "Aucune LP liée à ce formulaire. Veuillez d'abord lier une LP."}
+    
+    return await generate_brief(lp["id"], mode, selected_product)
