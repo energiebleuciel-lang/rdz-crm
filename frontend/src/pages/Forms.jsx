@@ -125,16 +125,45 @@ export default function Forms() {
     setShowModal(true);
   };
 
-  const openBrief = async (formItem) => {
+  const openBrief = async (formItem, product = null) => {
     try {
-      const res = await authFetch(`${API}/api/forms/${formItem.id}/brief`);
+      setCurrentBriefForm(formItem);
+      let url = `${API}/api/forms/brief/${formItem.id}`;
+      if (product) {
+        url += `?selected_product=${product}`;
+      }
+      const res = await authFetch(url);
       if (res.ok) {
         const data = await res.json();
         setBriefData(data);
+        setSelectedBriefProduct(product || formItem.product_type || '');
         setShowBriefModal(true);
       }
     } catch (e) {
       alert('Erreur: ' + e.message);
+    }
+  };
+  
+  // Recharger le brief avec un nouveau produit sélectionné
+  const reloadBriefWithProduct = async (product) => {
+    if (!currentBriefForm) return;
+    setSelectedBriefProduct(product);
+    
+    try {
+      let url = `${API}/api/forms/brief/${currentBriefForm.id}`;
+      if (product) {
+        url += `?selected_product=${product}`;
+      }
+      
+      const res = await authFetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        if (!data.error) {
+          setBriefData(data);
+        }
+      }
+    } catch (e) {
+      console.error('Error reloading brief:', e);
     }
   };
 
