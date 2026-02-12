@@ -323,12 +323,17 @@ async def submit_lead(data: LeadData, request: Request):
     
     # Récupérer session
     session = await db.visitor_sessions.find_one({"id": data.session_id}, {"_id": 0})
-    lp_code = session.get("lp_code", "") if session else ""
+    lp_code_from_session = session.get("lp_code", "") if session else ""
     utm = {
         "source": session.get("utm_source", "") if session else "",
         "medium": session.get("utm_medium", "") if session else "",
         "campaign": session.get("utm_campaign", "") if session else ""
     }
+    
+    # Priorité: données du formulaire > session
+    final_lp_code = data.lp_code or lp_code_from_session
+    final_liaison_code = data.liaison_code or (f"{final_lp_code}_{form_code}" if final_lp_code else form_code)
+    final_utm_campaign = data.utm_campaign or utm["campaign"]
     
     # Créer le lead - TOUJOURS SAUVEGARDÉ
     lead_id = str(uuid.uuid4())
@@ -357,11 +362,11 @@ async def submit_lead(data: LeadData, request: Request):
         "type_projet": data.type_projet or "",
         "delai_projet": data.delai_projet or "",
         "budget": data.budget or "",
-        "lp_code": lp_code,
-        "liaison_code": f"{lp_code}_{form_code}" if lp_code else form_code,
+        "lp_code": final_lp_code,
+        "liaison_code": final_liaison_code,
         "utm_source": utm["source"],
         "utm_medium": utm["medium"],
-        "utm_campaign": utm["campaign"],
+        "utm_campaign": final_utm_campaign,
         "rgpd_consent": data.rgpd_consent,
         "newsletter": data.newsletter,
         "ip": request.headers.get("x-forwarded-for", request.client.host if request.client else ""),
