@@ -596,6 +596,20 @@ export default function Leads() {
                     <span className="text-sm font-mono text-purple-600">{lead.form_code}</span>
                   </td>
                   <td className="px-4 py-3">
+                    {lead.quality_tier === 1 && (
+                      <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full">Premium</span>
+                    )}
+                    {lead.quality_tier === 2 && (
+                      <span className="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-700 rounded-full">Standard</span>
+                    )}
+                    {lead.quality_tier === 3 && (
+                      <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded-full">Low</span>
+                    )}
+                    {!lead.quality_tier && (
+                      <span className="px-2 py-1 text-xs font-medium bg-slate-100 text-slate-500 rounded-full">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
                     <div className="flex items-center gap-1 text-xs">
                       <span className="px-2 py-0.5 bg-slate-100 rounded">{lead.origin_crm || '?'}</span>
                       <ArrowRightLeft className="w-3 h-3 text-slate-400" />
