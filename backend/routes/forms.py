@@ -423,16 +423,49 @@ async def create_form(data: FormCreate, user: dict = Depends(get_current_user)):
 
 @router.put("/{form_id}")
 async def update_form(form_id: str, data: FormUpdate, user: dict = Depends(get_current_user)):
-    """Modifier un formulaire"""
+    """
+    Modifier un formulaire
+    
+    RÈGLE PRODUIT : Le lien LP ↔ Form ne peut pas être supprimé.
+    """
     form = await db.forms.find_one({"id": form_id})
     if not form:
         raise HTTPException(status_code=404, detail="Formulaire non trouvé")
     
-    # Vérifier la LP si fournie
-    if data.lp_id:
+    # RÈGLE : Empêcher la suppression du lien LP
+    if data.lp_id is not None and data.lp_id == "":
+        raise HTTPException(
+            status_code=400, 
+            detail="Impossible de dissocier un formulaire de sa Landing Page. Le lien LP ↔ Form est obligatoire."
+        )
+    
+    # Vérifier la nouvelle LP si fournie (changement de LP)
+    if data.lp_id and data.lp_id != form.get("lp_id"):
         lp = await db.lps.find_one({"id": data.lp_id})
         if not lp:
             raise HTTPException(status_code=400, detail="LP non trouvée")
+        
+        # Vérifier que la nouvelle LP n'a pas déjà un Form
+        if lp.get("form_id") and lp["form_id"] != form_id:
+            existing_form = await db.forms.find_one({"id": lp["form_id"], "status": "active"})
+            if existing_form:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Cette LP est déjà liée au formulaire {existing_form.get('code')}."
+                )
+        
+        # Mettre à jour l'ancienne LP (retirer le form_id)
+        if form.get("lp_id"):
+            await db.lps.update_one(
+                {"id": form["lp_id"]},
+                {"$set": {"form_id": None, "updated_at": now_iso()}}
+            )
+        
+        # Mettre à jour la nouvelle LP
+        await db.lps.update_one(
+            {"id": data.lp_id},
+            {"$set": {"form_id": form_id, "updated_at": now_iso()}}
+        )
     
     # SÉCURITÉ : Empêcher la suppression de la clé API une fois enregistrée
     existing_api_key = form.get("crm_api_key", "")
