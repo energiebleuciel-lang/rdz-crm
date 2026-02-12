@@ -190,7 +190,8 @@ async def execute_lb_replacement(
     Returns:
         Tuple (success: bool, status: str, message: str)
     """
-    from services.lead_sender import send_lead_to_crm
+    from services.lead_sender import send_to_crm_v2
+    from routes.public import get_crm_url
     
     lb_id = lb_lead.get("id")
     
@@ -198,12 +199,19 @@ async def execute_lb_replacement(
     # IMPORTANT: On ne modifie PAS les données du lead, on l'envoie tel quel
     
     try:
+        # Récupérer l'URL du CRM
+        api_url = await get_crm_url(target_crm)
+        if not api_url:
+            return False, "no_crm_url", f"URL CRM non configurée pour {target_crm}"
+        
         # Envoyer au CRM
-        success, status, response = await send_lead_to_crm(
+        status, response, should_queue = await send_to_crm_v2(
             lead_doc=lb_lead,
-            crm_slug=target_crm,
+            api_url=api_url,
             api_key=crm_api_key
         )
+        
+        success = status in ["success", "duplicate"]
         
         now_iso = datetime.now(timezone.utc).isoformat()
         
