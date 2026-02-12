@@ -615,7 +615,7 @@ export default function LandingPages() {
       <Modal 
         isOpen={showBriefModal} 
         onClose={() => { setShowBriefModal(false); setCopySuccess(null); }}
-        title={`Brief - ${briefData?.lp?.code || ''}`}
+        title={`Brief - ${briefData?.metadata?.liaison_code || briefData?.lp?.code || ''}`}
         size="xl"
       >
         {briefData && (
@@ -628,15 +628,51 @@ export default function LandingPages() {
               </div>
             )}
             
+            {/* Sélecteur de MODE */}
+            <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+              <h4 className="font-medium text-indigo-800 mb-2">📐 Mode d'intégration</h4>
+              <p className="text-sm text-indigo-700 mb-3">
+                Choisissez selon votre architecture de pages :
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => reloadBrief('separate')}
+                  className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all border-2 ${
+                    selectedBriefMode === 'separate'
+                      ? 'bg-indigo-500 text-white border-indigo-500'
+                      : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'
+                  }`}
+                >
+                  <div className="text-left">
+                    <div className="font-semibold">Mode A - Séparé</div>
+                    <div className={`text-xs mt-1 ${selectedBriefMode === 'separate' ? 'text-indigo-100' : 'text-slate-500'}`}>
+                      LP et Formulaire sur pages distinctes
+                    </div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => reloadBrief('integrated')}
+                  className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all border-2 ${
+                    selectedBriefMode === 'integrated'
+                      ? 'bg-indigo-500 text-white border-indigo-500'
+                      : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'
+                  }`}
+                >
+                  <div className="text-left">
+                    <div className="font-semibold">Mode B - Intégré</div>
+                    <div className={`text-xs mt-1 ${selectedBriefMode === 'integrated' ? 'text-indigo-100' : 'text-slate-500'}`}>
+                      Formulaire intégré dans la LP
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </div>
+            
             {/* Sélecteur de produit */}
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-              <h4 className="font-medium text-amber-800 mb-2">🎯 Sélectionner le type de produit</h4>
-              <p className="text-sm text-amber-700 mb-3">
-                Choisissez le produit pour générer le script avec l'URL de redirection correspondante.
-              </p>
+              <h4 className="font-medium text-amber-800 mb-2">🎯 Type de produit (URL de redirection)</h4>
               <div className="flex gap-2">
                 {['PV', 'PAC', 'ITE'].map(product => {
-                  const hasUrl = briefData.redirect_urls?.[product.toLowerCase()];
                   const isSelected = selectedBriefProduct === product;
                   return (
                     <button
@@ -651,103 +687,158 @@ export default function LandingPages() {
                       }`}
                     >
                       {product}
-                      {hasUrl && <span className="ml-1 text-xs opacity-75">✓</span>}
                     </button>
                   );
                 })}
               </div>
-              {selectedBriefProduct && (
-                <div className="mt-3 text-sm">
-                  <span className="text-amber-700">URL de redirection : </span>
-                  <code className="bg-white px-2 py-1 rounded text-xs">
-                    {briefData.redirect_urls?.[selectedBriefProduct.toLowerCase()] || briefData.redirect_urls?.default || '/merci'}
-                  </code>
-                  {!briefData.redirect_urls?.[selectedBriefProduct.toLowerCase()] && (
-                    <span className="ml-2 text-amber-600 text-xs">(URL par défaut)</span>
-                  )}
-                </div>
-              )}
             </div>
             
-            {/* Info */}
+            {/* Métadonnées */}
             <div className="bg-slate-50 p-4 rounded-lg">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-slate-500">LP:</span>
-                  <span className="ml-2 font-medium">{briefData.lp.code}</span>
-                  <a href={briefData.lp.url} target="_blank" rel="noopener noreferrer" className="ml-2 text-blue-600">
-                    <ExternalLink className="w-3 h-3 inline" />
-                  </a>
+                  <span className="ml-2 font-medium">{briefData.lp?.code}</span>
+                  {briefData.lp?.url && (
+                    <a href={briefData.lp.url} target="_blank" rel="noopener noreferrer" className="ml-2 text-blue-600">
+                      <ExternalLink className="w-3 h-3 inline" />
+                    </a>
+                  )}
                 </div>
                 <div>
                   <span className="text-slate-500">Form:</span>
-                  <span className="ml-2 font-medium">{briefData.form.code}</span>
-                  <a href={briefData.form.url} target="_blank" rel="noopener noreferrer" className="ml-2 text-blue-600">
-                    <ExternalLink className="w-3 h-3 inline" />
-                  </a>
+                  <span className="ml-2 font-medium">{briefData.form?.code}</span>
+                  {briefData.form?.url && (
+                    <a href={briefData.form.url} target="_blank" rel="noopener noreferrer" className="ml-2 text-blue-600">
+                      <ExternalLink className="w-3 h-3 inline" />
+                    </a>
+                  )}
                 </div>
                 <div className="col-span-2">
                   <span className="text-slate-500">Liaison:</span>
-                  <code className="ml-2 bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs">{briefData.liaison_code}</code>
+                  <code className="ml-2 bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs">{briefData.metadata?.liaison_code}</code>
                 </div>
               </div>
             </div>
 
-            {/* Script LP */}
-            <div className="border-2 border-blue-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-blue-800">1. Script LP</h3>
-                <button
-                  onClick={() => copyScript(briefData.scripts?.lp)}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
-                >
-                  <Clipboard className="w-4 h-4" />
-                  Copier
-                </button>
+            {/* GTM HEAD */}
+            {briefData.gtm?.head && (
+              <div className="border-2 border-purple-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold text-purple-800">GTM - À coller dans &lt;head&gt; uniquement</h3>
+                  <button
+                    onClick={() => copyScript(briefData.gtm.head)}
+                    className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-medium transition-colors"
+                  >
+                    <Clipboard className="w-4 h-4" />
+                    Copier
+                  </button>
+                </div>
+                <div className="bg-red-50 border border-red-200 rounded p-2 mb-2 text-xs text-red-700">
+                  ⚠️ Ne jamais mettre ce code dans &lt;body&gt; ou &lt;noscript&gt;
+                </div>
+                <pre className="bg-slate-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto max-h-32">
+                  {briefData.gtm.head}
+                </pre>
               </div>
-              <p className="text-sm text-slate-600 mb-2">
-                À coller sur : <code className="bg-slate-100 px-2 py-0.5 rounded">{briefData.lp.url}</code>
-              </p>
-              <pre className="bg-slate-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto max-h-48">
-                {briefData.scripts?.lp}
-              </pre>
-              <div className="mt-2 text-xs text-blue-700 bg-blue-50 p-2 rounded">
-                <strong>Bouton CTA :</strong> <code>onclick="rdzClickCTA()"</code>
-              </div>
-            </div>
+            )}
 
-            {/* Script Form */}
-            <div className="border-2 border-orange-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-orange-800">2. Script Form</h3>
-                <button
-                  onClick={() => copyScript(briefData.scripts?.form)}
-                  className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium transition-colors"
-                >
-                  <Clipboard className="w-4 h-4" />
-                  Copier
-                </button>
-              </div>
-              <p className="text-sm text-slate-600 mb-2">
-                À coller sur : <code className="bg-slate-100 px-2 py-0.5 rounded">{briefData.form.url}</code>
-              </p>
-              <pre className="bg-slate-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto max-h-48">
-                {briefData.scripts?.form}
-              </pre>
-              <div className="mt-2 text-xs text-orange-700 bg-orange-50 p-2 rounded space-y-1">
-                <p><strong>Premier bouton :</strong> <code>onclick="rdzFormStart()"</code></p>
-                <p><strong>Soumission :</strong> <code>rdzSubmitLead(&#123;phone, nom, departement, ...&#125;)</code></p>
-              </div>
-            </div>
+            {/* Scripts selon le mode */}
+            {selectedBriefMode === 'separate' ? (
+              <>
+                {/* Mode A - Script LP */}
+                <div className="border-2 border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-semibold text-blue-800">Script LP - fin de &lt;body&gt;</h3>
+                    <button
+                      onClick={() => copyScript(briefData.scripts?.lp?.code)}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
+                    >
+                      <Clipboard className="w-4 h-4" />
+                      Copier
+                    </button>
+                  </div>
+                  <p className="text-sm text-slate-600 mb-2">
+                    À coller sur : <code className="bg-slate-100 px-2 py-0.5 rounded">{briefData.lp?.url}</code>
+                  </p>
+                  <pre className="bg-slate-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto max-h-48">
+                    {briefData.scripts?.lp?.code}
+                  </pre>
+                  <div className="mt-2 text-xs text-blue-700 bg-blue-50 p-2 rounded">
+                    <strong>Auto-bind CTA :</strong> Les liens vers le formulaire sont détectés automatiquement, ou ajoutez <code>data-rdz-cta</code>
+                  </div>
+                </div>
 
-            {/* Champs disponibles */}
-            <div>
-              <h3 className="font-semibold text-slate-800 mb-3">Champs de lead</h3>
-              <div className="grid grid-cols-3 gap-2 text-xs">
-                {Object.entries(briefData.lead_fields || {}).map(([category, fields]) => (
-                  <div key={category} className="border rounded p-2">
-                    <h4 className="font-medium text-slate-700 capitalize mb-1">{category}</h4>
-                    {fields.map(f => (
+                {/* Mode A - Script Form */}
+                <div className="border-2 border-orange-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-semibold text-orange-800">Script Form - fin de &lt;body&gt;</h3>
+                    <button
+                      onClick={() => copyScript(briefData.scripts?.form?.code)}
+                      className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium transition-colors"
+                    >
+                      <Clipboard className="w-4 h-4" />
+                      Copier
+                    </button>
+                  </div>
+                  <p className="text-sm text-slate-600 mb-2">
+                    À coller sur : <code className="bg-slate-100 px-2 py-0.5 rounded">{briefData.form?.url}</code>
+                  </p>
+                  <pre className="bg-slate-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto max-h-48">
+                    {briefData.scripts?.form?.code}
+                  </pre>
+                  <div className="mt-2 text-xs text-orange-700 bg-orange-50 p-2 rounded space-y-1">
+                    <p><strong>Auto-bind Form Start :</strong> Premier clic/focus détecté automatiquement</p>
+                    <p><strong>Soumission :</strong> <code>rdzSubmitLead(&#123;phone, nom, departement, ...&#125;)</code></p>
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* Mode B - Script unique */
+              <div className="border-2 border-green-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold text-green-800">Script unique LP+Form - fin de &lt;body&gt;</h3>
+                  <button
+                    onClick={() => copyScript(briefData.scripts?.unique?.code)}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors"
+                  >
+                    <Clipboard className="w-4 h-4" />
+                    Copier
+                  </button>
+                </div>
+                <p className="text-sm text-slate-600 mb-2">
+                  À coller sur : <code className="bg-slate-100 px-2 py-0.5 rounded">{briefData.lp?.url}</code>
+                </p>
+                <pre className="bg-slate-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto max-h-64">
+                  {briefData.scripts?.unique?.code}
+                </pre>
+                <div className="mt-2 text-xs text-green-700 bg-green-50 p-2 rounded space-y-1">
+                  <p><strong>Auto-bind CTA :</strong> Les liens anchor (#formulaire, etc.) sont détectés automatiquement</p>
+                  <p><strong>Auto-bind Form Start :</strong> Premier clic/focus détecté automatiquement</p>
+                  <p><strong>Soumission :</strong> <code>rdzSubmitLead(&#123;phone, nom, departement, ...&#125;)</code></p>
+                </div>
+              </div>
+            )}
+
+            {/* Instructions */}
+            {briefData.instructions && (
+              <div className="border rounded-lg p-4 bg-slate-50">
+                <h3 className="font-semibold text-slate-800 mb-3">📋 Instructions d'intégration</h3>
+                <p className="text-sm text-slate-600 mb-3">{briefData.instructions.summary}</p>
+                
+                <div className="text-xs space-y-2">
+                  <div className="bg-white p-2 rounded border">
+                    <strong>Champs requis :</strong> {briefData.instructions.field_names?.required?.join(', ')}
+                  </div>
+                  <div className="bg-white p-2 rounded border">
+                    <strong>Validation téléphone :</strong> 10 chiffres exactement
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
                       <div key={f.key} className="text-slate-500">
                         <code>{f.key}</code>
                         {f.required && <span className="text-red-500">*</span>}
