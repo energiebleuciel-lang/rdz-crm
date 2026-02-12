@@ -313,20 +313,31 @@ async def generate_brief(lp_id: str, selected_product: str = None) -> dict:
         form_url = form.get("url", "")
         if not tracking_type or tracking_type == "redirect":
             tracking_type = form.get("tracking_type", "redirect")
-        
-        # Déterminer l'URL de redirection selon le produit sélectionné
-        if selected_product:
-            product_key = f"redirect_url_{selected_product.lower()}"
-            product_redirect_url = form.get(product_key, "")
-            if product_redirect_url:
-                redirect_url = product_redirect_url
-            elif not redirect_url or redirect_url == "/merci":
-                redirect_url = form.get("redirect_url", "/merci")
-        elif not redirect_url or redirect_url == "/merci":
+        if not redirect_url or redirect_url == "/merci":
             redirect_url = form.get("redirect_url", "/merci")
     
     if not form:
         return {"error": "Form lié non trouvé"}
+    
+    # Récupérer le compte pour les URLs de redirection par produit
+    account_id = form.get("account_id") or lp.get("account_id")
+    account = None
+    if account_id:
+        account = await db.accounts.find_one({"id": account_id}, {"_id": 0})
+    
+    # Déterminer l'URL de redirection selon le produit sélectionné
+    redirect_urls = {
+        "pv": account.get("redirect_url_pv", "") if account else "",
+        "pac": account.get("redirect_url_pac", "") if account else "",
+        "ite": account.get("redirect_url_ite", "") if account else "",
+        "default": redirect_url
+    }
+    
+    if selected_product and account:
+        product_key = f"redirect_url_{selected_product.lower()}"
+        product_redirect_url = account.get(product_key, "")
+        if product_redirect_url:
+            redirect_url = product_redirect_url
     
     # Récupérer le compte
     account_id = lp.get("account_id") or form.get("account_id")
