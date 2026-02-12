@@ -781,8 +781,8 @@ async function envoyerLead() {{
 
 
 # Alias pour le frontend
-async def generate_brief_v2(lp_id: str) -> dict:
-    result = await generate_brief(lp_id)
+async def generate_brief_v2(lp_id: str, selected_product: str = None) -> dict:
+    result = await generate_brief(lp_id, selected_product)
     if "error" in result:
         return result
     return {
@@ -797,5 +797,7 @@ async def generate_brief_v2(lp_id: str) -> dict:
             "lp": result["script_lp"],
             "form": result["script_form"]
         },
-        "champs": result["champs"]
+        "champs": result["champs"],
+        "selected_product": result.get("selected_product"),
+        "redirect_urls": result.get("redirect_urls", {})
     }
