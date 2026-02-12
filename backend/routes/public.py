@@ -617,7 +617,7 @@ async def submit_lead(data: LeadData, request: Request):
         "routing_reason": routing_reason,  # Raison du routing
         "distribution_reason": distribution_reason,  # Raison de la distribution
         "allow_cross_crm": allow_cross_crm,  # Cross-CRM autorisé ?
-        "api_status": initial_status,  # pending, pending_no_order, no_api_key, no_crm, orphan, invalid_phone, missing_required
+        "api_status": initial_status,  # pending, pending_no_order, no_api_key, no_crm, orphan, invalid_phone, missing_required, doublon_recent, non_livre, double_submit
         "sent_to_crm": False,
         "manual_only": False,  # Pour redistribution auto
         "retry_count": 0,
@@ -625,13 +625,20 @@ async def submit_lead(data: LeadData, request: Request):
         "phone_invalid": phone_invalid,  # True si téléphone non valide
         "missing_nom": missing_nom,  # True si nom manquant
         "missing_dept": missing_dept,  # True si département manquant
-        "form_not_found": form_not_found  # True si formulaire non trouvé
+        "form_not_found": form_not_found,  # True si formulaire non trouvé
+        # FLAGS doublons internes RDZ (v2.2)
+        "is_internal_duplicate": is_internal_duplicate,  # True si doublon détecté par RDZ
+        "duplicate_type": duplicate_result.duplicate_type if duplicate_result and is_internal_duplicate else None,
+        "original_lead_id": original_lead_id,  # ID du lead original si doublon
+        "is_doublon_recent": is_doublon_recent,  # True si doublon déjà livré (non livrable)
+        "is_non_livre": is_non_livre,  # True si doublon non livré (redistribuable)
+        "is_double_submit": is_double_submit  # True si double-clic bloqué
     }
     
     # TOUJOURS sauvegarder le lead
     await db.leads.insert_one(lead)
     
-    # Envoyer au CRM (seulement si on a un CRM et une clé ET pas de problème de données)
+    # Envoyer au CRM (seulement si on a un CRM et une clé ET pas de problème de données ET pas doublon)
     status = initial_status  # Garder le statut initial par défaut
     message = ""
     actual_crm_sent = None
@@ -652,6 +659,20 @@ async def submit_lead(data: LeadData, request: Request):
             missing_list.append("département")
         message = f"Lead enregistré - Champs manquants: {', '.join(missing_list)}"
         warning = "MISSING_REQUIRED"
+    # === NOUVEAU: Gestion doublons internes RDZ ===
+    elif initial_status == "double_submit":
+        # Double-clic bloqué - on retourne l'ID du lead existant
+        message = "Double soumission détectée - lead déjà créé"
+        warning = "DOUBLE_SUBMIT"
+        # Retourner l'ID du lead original au lieu du nouveau
+        lead_id = original_lead_id
+    elif initial_status == "doublon_recent":
+        message = f"Doublon détecté - lead déjà livré (original: {original_lead_id[:8]}...)"
+        warning = "DUPLICATE_DELIVERED"
+    elif initial_status == "non_livre":
+        message = f"Doublon détecté - lead existant non livré (original: {original_lead_id[:8]}...)"
+        warning = "DUPLICATE_NOT_SENT"
+    # === FIN Gestion doublons ===
     elif initial_status == "no_crm":
         message = "Lead enregistré - CRM non configuré"
         warning = "CRM_NOT_CONFIGURED"
