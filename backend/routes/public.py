@@ -496,6 +496,14 @@ async def submit_lead(data: LeadData, request: Request):
     
     # Déterminer le statut initial
     # RÈGLE: Lead TOUJOURS sauvegardé, peu importe la config
+    # PRIORITÉ: Doublons internes RDZ > Erreurs de données > Config CRM
+    
+    # Variables pour tracking doublon
+    is_doublon_recent = False
+    is_non_livre = False
+    is_double_submit = False
+    original_lead_id = None
+    
     if form_not_found:
         initial_status = "orphan"  # Lead orphelin - formulaire non trouvé
         distribution_reason = "FORM_NOT_FOUND"
@@ -510,6 +518,26 @@ async def submit_lead(data: LeadData, request: Request):
         if missing_dept:
             missing_fields.append("departement")
         distribution_reason = f"MISSING_REQUIRED:{','.join(missing_fields)}"
+    # === NOUVEAU: Détection doublons internes RDZ ===
+    elif is_internal_duplicate and duplicate_result:
+        original_lead_id = duplicate_result.original_lead_id
+        
+        if duplicate_result.duplicate_type == "double_submit":
+            # Double-clic / soumission multiple rapide
+            is_double_submit = True
+            initial_status = "double_submit"
+            distribution_reason = "DOUBLE_SUBMIT_BLOCKED"
+        elif duplicate_result.duplicate_type == "doublon_recent":
+            # Déjà livré dans les 30 jours → NON LIVRABLE
+            is_doublon_recent = True
+            initial_status = "doublon_recent"
+            distribution_reason = f"DUPLICATE_DELIVERED:{original_lead_id}"
+        elif duplicate_result.duplicate_type == "non_livre":
+            # Existe mais non livré → REDISTRIBUABLE (on le conserve mais ne l'envoie pas)
+            is_non_livre = True
+            initial_status = "non_livre"
+            distribution_reason = f"DUPLICATE_NOT_SENT:{original_lead_id}"
+    # === FIN Détection doublons ===
     elif not has_crm_config:
         initial_status = "no_crm"
         distribution_reason = "CRM_NOT_CONFIGURED"
