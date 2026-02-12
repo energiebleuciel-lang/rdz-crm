@@ -74,6 +74,10 @@ class AccountCreate(BaseModel):
     # Couleurs
     primary_color: Optional[str] = "#3B82F6"
     secondary_color: Optional[str] = "#1E40AF"
+    # URLs de redirection par produit
+    redirect_url_pv: Optional[str] = ""
+    redirect_url_pac: Optional[str] = ""
+    redirect_url_ite: Optional[str] = ""
     # Textes légaux
     cgu_text: Optional[str] = ""           # CGU séparées
     privacy_policy_text: Optional[str] = ""
@@ -93,6 +97,10 @@ class AccountUpdate(BaseModel):
     logo_mini_url: Optional[str] = None
     primary_color: Optional[str] = None
     secondary_color: Optional[str] = None
+    # URLs de redirection par produit
+    redirect_url_pv: Optional[str] = None
+    redirect_url_pac: Optional[str] = None
+    redirect_url_ite: Optional[str] = None
     cgu_text: Optional[str] = None
     privacy_policy_text: Optional[str] = None
     legal_mentions_text: Optional[str] = None
