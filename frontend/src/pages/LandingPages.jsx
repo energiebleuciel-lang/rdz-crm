@@ -172,7 +172,7 @@ export default function LandingPages() {
     }
   };
 
-  const openBrief = async (lp, product = null) => {
+  const openBrief = async (lp, product = null, mode = null) => {
     try {
       // Vérifier si la LP a le nouveau format (form_id)
       if (!lp.form_id && !lp.form) {
@@ -180,10 +180,15 @@ export default function LandingPages() {
         return;
       }
       
-      // Construire l'URL avec le produit sélectionné si fourni
-      let url = `${API}/api/lps/${lp.id}/brief`;
+      setCurrentBriefLp(lp);
+      
+      // Déterminer le mode par défaut : si même URL → Mode B suggéré
+      const defaultMode = mode || (lp.url === lp.form?.url ? 'integrated' : 'separate');
+      
+      // Construire l'URL avec le mode et le produit
+      let url = `${API}/api/lps/${lp.id}/brief?mode=${defaultMode}`;
       if (product) {
-        url += `?selected_product=${product}`;
+        url += `&selected_product=${product}`;
       }
       
       const res = await authFetch(url);
@@ -195,6 +200,7 @@ export default function LandingPages() {
         }
         setBriefData(data);
         setSelectedBriefProduct(product || lp.product_type || '');
+        setSelectedBriefMode(defaultMode);
         setShowBriefModal(true);
       } else {
         const err = await res.json();
@@ -205,15 +211,20 @@ export default function LandingPages() {
     }
   };
   
-  // Recharger le brief avec un nouveau produit sélectionné
-  const reloadBriefWithProduct = async (product) => {
-    if (!briefData?.lp?.id) return;
-    setSelectedBriefProduct(product);
+  // Recharger le brief avec un nouveau mode ou produit
+  const reloadBrief = async (mode = null, product = null) => {
+    if (!currentBriefLp) return;
+    
+    const newMode = mode || selectedBriefMode;
+    const newProduct = product !== undefined ? product : selectedBriefProduct;
+    
+    if (mode) setSelectedBriefMode(newMode);
+    if (product !== undefined) setSelectedBriefProduct(newProduct);
     
     try {
-      let url = `${API}/api/lps/${briefData.lp.id}/brief`;
-      if (product) {
-        url += `?selected_product=${product}`;
+      let url = `${API}/api/lps/${currentBriefLp.id}/brief?mode=${newMode}`;
+      if (newProduct) {
+        url += `&selected_product=${newProduct}`;
       }
       
       const res = await authFetch(url);
@@ -227,6 +238,9 @@ export default function LandingPages() {
       console.error('Error reloading brief:', e);
     }
   };
+  
+  // Alias pour compatibilité
+  const reloadBriefWithProduct = (product) => reloadBrief(null, product);
 
   const [copySuccess, setCopySuccess] = useState(null);
 
