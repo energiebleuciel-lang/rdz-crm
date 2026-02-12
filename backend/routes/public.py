@@ -368,7 +368,7 @@ async def submit_lead(data: LeadData, request: Request):
         "departement": dept,
         "ville": data.ville or "",
         "adresse": data.adresse or "",
-        "type_logement": data.type_logement or "",
+        "type_logement": data.type_logement or "Propriétaire de maison",
         "statut_occupant": data.statut_occupant or "",
         "surface_habitable": data.surface_habitable or "",
         "annee_construction": data.annee_construction or "",
