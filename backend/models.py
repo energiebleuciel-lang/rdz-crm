@@ -172,10 +172,6 @@ class FormCreate(BaseModel):
     # Tracking
     tracking_type: str = "redirect"  # gtm, redirect, both
     redirect_url: Optional[str] = "/merci"
-    # URLs de redirection par produit
-    redirect_url_pv: Optional[str] = ""
-    redirect_url_pac: Optional[str] = ""
-    redirect_url_ite: Optional[str] = ""
     notes: Optional[str] = ""
 
 class FormUpdate(BaseModel):
@@ -188,10 +184,6 @@ class FormUpdate(BaseModel):
     allow_cross_crm: Optional[bool] = None
     tracking_type: Optional[str] = None
     redirect_url: Optional[str] = None
-    # URLs de redirection par produit
-    redirect_url_pv: Optional[str] = None
-    redirect_url_pac: Optional[str] = None
-    redirect_url_ite: Optional[str] = None
     notes: Optional[str] = None
     status: Optional[str] = None
 
