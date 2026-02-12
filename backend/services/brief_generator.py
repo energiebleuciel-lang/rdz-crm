@@ -646,7 +646,7 @@ async def _generate_mode_a(
     script_form = f'''<!-- ═══════════════════════════════════════════════════════════════════════════ -->
 <!-- RDZ TRACKING - FORMULAIRE {form_code}                                       -->
 <!-- À coller AVANT </body>                                                       -->
-<!-- Version: 2.0 - Récupération session LP + UTM                                -->
+<!-- Version: 2.1 - Récupération session LP + UTM, persistance rdz_lp/liaison    -->
 <!-- ═══════════════════════════════════════════════════════════════════════════ -->
 <script>
 (function() {{
