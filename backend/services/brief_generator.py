@@ -463,8 +463,8 @@ async def _generate_mode_a(
           url.searchParams.set("session", RDZ.session);
           url.searchParams.set("lp", RDZ.lp);
           url.searchParams.set("liaison", RDZ.liaison);
-          // Transmettre utm_campaign au form
-          if (RDZ.utm_campaign) {{
+          // Transmettre utm_campaign au form SANS écraser si déjà présent
+          if (RDZ.utm_campaign && !url.searchParams.has("utm_campaign")) {{
             url.searchParams.set("utm_campaign", RDZ.utm_campaign);
           }}
           link.href = url.toString();
