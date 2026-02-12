@@ -55,6 +55,18 @@ async def lifespan(app: FastAPI):
         await db.visitor_sessions.create_index("lp_code", background=True)
         await db.visitor_sessions.create_index("form_code", background=True)
         await db.visitor_sessions.create_index("status", background=True)
+        # Index composite pour détection doublons (v2.2)
+        await db.leads.create_index(
+            [("phone", 1), ("departement", 1), ("created_at", -1)],
+            background=True,
+            name="idx_duplicate_detection"
+        )
+        # Index pour double-submit (session + phone + created_at)
+        await db.leads.create_index(
+            [("session_id", 1), ("phone", 1), ("created_at", -1)],
+            background=True,
+            name="idx_double_submit_detection"
+        )
         logger.info("✅ Index MongoDB créés/vérifiés")
     except Exception as e:
         logger.warning(f"⚠️ Index MongoDB: {str(e)}")
