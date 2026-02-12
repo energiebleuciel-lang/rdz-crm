@@ -523,17 +523,29 @@ export default function Forms() {
           />
           
           <Select
-            label="LP liée (optionnel)"
+            label={editingForm ? "LP liée" : "LP liée (obligatoire)"}
             value={form.lp_id}
             onChange={e => setForm({...form, lp_id: e.target.value})}
             options={[
-              { value: '', label: 'Aucune LP liée' },
+              ...(editingForm ? [] : [{ value: '', label: '-- Sélectionner une LP --' }]),
               ...lps.filter(l => l.account_id === form.account_id).map(l => ({ 
                 value: l.id, 
                 label: `${l.code} - ${l.name}` 
               }))
             ]}
+            required={!editingForm}
+            disabled={editingForm && form.lp_id}
           />
+          {!editingForm && (
+            <p className="text-xs text-amber-600 mt-1">
+              ⚠️ Un formulaire doit obligatoirement être lié à une LP. Pour créer un duo LP+Form, utilisez la page "Landing Pages".
+            </p>
+          )}
+          {editingForm && form.lp_id && (
+            <p className="text-xs text-slate-500 mt-1">
+              🔒 Le lien LP ↔ Form ne peut pas être modifié.
+            </p>
+          )}
 
           <div className="border-t pt-4 mt-4">
             <h4 className="font-medium text-slate-700 mb-3 flex items-center gap-2">
