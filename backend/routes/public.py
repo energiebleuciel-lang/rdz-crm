@@ -374,6 +374,7 @@ async def submit_lead(data: LeadData, request: Request):
         "utm_source": utm["source"],
         "utm_medium": utm["medium"],
         "utm_campaign": final_utm_campaign,
+        "quality_tier": quality_tier,  # 1/2/3 ou null si pas de mapping
         "rgpd_consent": data.rgpd_consent,
         "newsletter": data.newsletter,
         "ip": request.headers.get("x-forwarded-for", request.client.host if request.client else ""),
