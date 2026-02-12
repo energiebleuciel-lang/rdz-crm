@@ -170,7 +170,7 @@ export default function LandingPages() {
     }
   };
 
-  const openBrief = async (lp) => {
+  const openBrief = async (lp, product = null) => {
     try {
       // Vérifier si la LP a le nouveau format (form_id)
       if (!lp.form_id && !lp.form) {
@@ -178,7 +178,13 @@ export default function LandingPages() {
         return;
       }
       
-      const res = await authFetch(`${API}/api/lps/${lp.id}/brief`);
+      // Construire l'URL avec le produit sélectionné si fourni
+      let url = `${API}/api/lps/${lp.id}/brief`;
+      if (product) {
+        url += `?selected_product=${product}`;
+      }
+      
+      const res = await authFetch(url);
       if (res.ok) {
         const data = await res.json();
         if (data.error) {
@@ -186,6 +192,7 @@ export default function LandingPages() {
           return;
         }
         setBriefData(data);
+        setSelectedBriefProduct(product || lp.product_type || '');
         setShowBriefModal(true);
       } else {
         const err = await res.json();
@@ -193,6 +200,29 @@ export default function LandingPages() {
       }
     } catch (e) {
       alert('Erreur: ' + e.message);
+    }
+  };
+  
+  // Recharger le brief avec un nouveau produit sélectionné
+  const reloadBriefWithProduct = async (product) => {
+    if (!briefData?.lp?.id) return;
+    setSelectedBriefProduct(product);
+    
+    try {
+      let url = `${API}/api/lps/${briefData.lp.id}/brief`;
+      if (product) {
+        url += `?selected_product=${product}`;
+      }
+      
+      const res = await authFetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        if (!data.error) {
+          setBriefData(data);
+        }
+      }
+    } catch (e) {
+      console.error('Error reloading brief:', e);
     }
   };
 
