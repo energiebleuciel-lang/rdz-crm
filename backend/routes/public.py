@@ -19,11 +19,28 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional
 import uuid
+import json
 
 from config import db, now_iso, timestamp, validate_phone_fr
 from routes.commandes import has_commande  # Import centralisé - PAS DE DUPLICATION
 
 router = APIRouter(prefix="/public", tags=["Public"])
+
+
+# ==================== SENDBEACON COMPATIBLE PARSER ====================
+
+async def parse_beacon_body(request: Request) -> dict:
+    """
+    Parse le body de manière tolérante pour sendBeacon
+    sendBeacon peut envoyer avec content-type: text/plain ou application/json
+    """
+    try:
+        body = await request.body()
+        if not body:
+            return {}
+        return json.loads(body.decode("utf-8"))
+    except Exception:
+        return {}
 
 
 # ==================== HELPERS ====================
