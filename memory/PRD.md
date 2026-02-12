@@ -141,4 +141,9 @@ Champs obligatoires normalisés (NE PAS MODIFIER) :
 - **MDL** : `https://maison-du-lead.com/lead/api/create_lead/`
 
 ## Dernière Mise à Jour
-Février 2026 - RÈGLE ABSOLUE : Lead TOUJOURS sauvegardé dans RDZ
+Février 2026 - RDZ Tracking Layer v2.0 implémenté avec :
+- Endpoint `/track/lp-visit` dédié avec UTM complet
+- Capture UTM complète (source, medium, campaign, content, term, gclid, fbclid)
+- sendBeacon pour fiabilité tracking
+- MutationObserver pour CTA dynamiques
+- Anti-doublon server-side pour tous les events
