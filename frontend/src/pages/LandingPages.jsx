@@ -612,6 +612,47 @@ export default function LandingPages() {
               </div>
             )}
             
+            {/* Sélecteur de produit */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <h4 className="font-medium text-amber-800 mb-2">🎯 Sélectionner le type de produit</h4>
+              <p className="text-sm text-amber-700 mb-3">
+                Choisissez le produit pour générer le script avec l'URL de redirection correspondante.
+              </p>
+              <div className="flex gap-2">
+                {['PV', 'PAC', 'ITE'].map(product => {
+                  const hasUrl = briefData.redirect_urls?.[product.toLowerCase()];
+                  const isSelected = selectedBriefProduct === product;
+                  return (
+                    <button
+                      key={product}
+                      onClick={() => reloadBriefWithProduct(product)}
+                      className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                        isSelected
+                          ? product === 'PV' ? 'bg-amber-500 text-white' 
+                          : product === 'PAC' ? 'bg-blue-500 text-white'
+                          : 'bg-green-500 text-white'
+                          : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-400'
+                      }`}
+                    >
+                      {product}
+                      {hasUrl && <span className="ml-1 text-xs opacity-75">✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
+              {selectedBriefProduct && (
+                <div className="mt-3 text-sm">
+                  <span className="text-amber-700">URL de redirection : </span>
+                  <code className="bg-white px-2 py-1 rounded text-xs">
+                    {briefData.redirect_urls?.[selectedBriefProduct.toLowerCase()] || briefData.redirect_urls?.default || '/merci'}
+                  </code>
+                  {!briefData.redirect_urls?.[selectedBriefProduct.toLowerCase()] && (
+                    <span className="ml-2 text-amber-600 text-xs">(URL par défaut)</span>
+                  )}
+                </div>
+              )}
+            </div>
+            
             {/* Info */}
             <div className="bg-slate-50 p-4 rounded-lg">
               <div className="grid grid-cols-2 gap-4 text-sm">
