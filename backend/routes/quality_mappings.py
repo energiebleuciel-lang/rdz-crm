@@ -18,6 +18,7 @@ class QualityMappingCreate(BaseModel):
 
 
 class QualityMappingUpdate(BaseModel):
+    utm_campaign: Optional[str] = None  # Optionnel pour rename
     quality_tier: int  # 1, 2 ou 3
 
 
@@ -62,26 +63,40 @@ async def create_mapping(data: QualityMappingCreate, user: dict = Depends(get_cu
 
 @router.put("/{utm_campaign}")
 async def update_mapping(utm_campaign: str, data: QualityMappingUpdate, user: dict = Depends(get_current_user)):
-    """Modifier un mapping existant"""
+    """Modifier un mapping existant (peut renommer utm_campaign)"""
     
     # Valider quality_tier
     if data.quality_tier not in [1, 2, 3]:
         raise HTTPException(status_code=400, detail="quality_tier doit être 1, 2 ou 3")
     
+    # Vérifier que le mapping existe
+    existing = await db.quality_mappings.find_one({"utm_campaign": utm_campaign})
+    if not existing:
+        raise HTTPException(status_code=404, detail=f"Mapping pour '{utm_campaign}' non trouvé")
+    
+    # Si rename, vérifier que le nouveau nom n'existe pas déjà
+    new_utm = data.utm_campaign if data.utm_campaign else utm_campaign
+    if new_utm != utm_campaign:
+        conflict = await db.quality_mappings.find_one({"utm_campaign": new_utm})
+        if conflict:
+            raise HTTPException(status_code=400, detail=f"Mapping pour '{new_utm}' existe déjà")
+    
+    # Mise à jour
     result = await db.quality_mappings.update_one(
         {"utm_campaign": utm_campaign},
-        {"$set": {"quality_tier": data.quality_tier}}
+        {"$set": {
+            "utm_campaign": new_utm,
+            "quality_tier": data.quality_tier
+        }}
     )
-    
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail=f"Mapping pour '{utm_campaign}' non trouvé")
     
     return {
         "success": True,
         "mapping": {
-            "utm_campaign": utm_campaign,
+            "utm_campaign": new_utm,
             "quality_tier": data.quality_tier
-        }
+        },
+        "renamed": new_utm != utm_campaign
     }
 
 
