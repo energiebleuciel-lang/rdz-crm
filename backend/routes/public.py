@@ -82,33 +82,11 @@ class SessionData(BaseModel):
     fbclid: Optional[str] = ""
 
 
-class LPVisitData(BaseModel):
-    """Données pour tracking visite LP - endpoint dédié"""
-    session_id: str
-    lp_code: str
-    # UTM complet
-    utm_source: Optional[str] = ""
-    utm_medium: Optional[str] = ""
-    utm_campaign: Optional[str] = ""
-    utm_content: Optional[str] = ""
-    utm_term: Optional[str] = ""
-    # Tracking publicitaire
-    gclid: Optional[str] = ""
-    fbclid: Optional[str] = ""
-    # Contexte
-    referrer: Optional[str] = ""
-    user_agent: Optional[str] = ""
-
-
-class EventData(BaseModel):
-    session_id: str
-    event_type: str
-    lp_code: Optional[str] = ""
-    form_code: Optional[str] = ""
-    liaison_code: Optional[str] = ""
-
-
 class LeadData(BaseModel):
+    """
+    Modèle pour soumission de lead
+    Utilisé par POST /leads
+    """
     session_id: str
     form_code: str
     phone: str
