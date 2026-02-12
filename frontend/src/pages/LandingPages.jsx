@@ -839,38 +839,6 @@ export default function LandingPages() {
           </div>
         )}
       </Modal>
-                      <div key={f.key} className="text-slate-500">
-                        <code>{f.key}</code>
-                        {f.required && <span className="text-red-500">*</span>}
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Bouton Mini Brief Compte */}
-            <div className="border-t pt-4">
-              <div className="flex items-center justify-between bg-purple-50 p-4 rounded-lg border border-purple-200">
-                <div>
-                  <h4 className="font-medium text-purple-800">Mini Brief Compte</h4>
-                  <p className="text-sm text-purple-600">Logos, GTM, Textes légaux, Code de conversion...</p>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowBriefModal(false);
-                    navigate('/accounts');
-                  }}
-                  className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-medium transition-colors"
-                >
-                  <FileDown className="w-4 h-4" />
-                  Générer Mini Brief
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </Modal>
     </div>
   );
 }
