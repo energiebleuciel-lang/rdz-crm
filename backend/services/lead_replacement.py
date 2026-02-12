@@ -99,12 +99,16 @@ async def find_replacement_lead(
     lb_cutoff = (now - timedelta(days=LB_MIN_AGE_DAYS)).isoformat()
     
     # Base query pour leads redistribuables
+    # IMPORTANT: Le lead LB doit avoir des données complètes pour être envoyable
     base_query = {
         "departement": departement,
         "product_type": product_type,
         "api_status": {"$in": REDISTRIBUTABLE_STATUSES},
         "sent_to_crm": False,  # Jamais livré
         "phone_invalid": {"$ne": True},  # Téléphone valide
+        # Données obligatoires pour être envoyable au CRM
+        "phone": {"$exists": True, "$ne": None, "$ne": ""},
+        "nom": {"$exists": True, "$ne": None, "$ne": ""},
     }
     
     # Exclure le lead doublon lui-même
