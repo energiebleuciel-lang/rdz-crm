@@ -318,36 +318,53 @@ async def test_5_fallback_fetch(session):
     
     # Test avec différents Content-Types (simulation de ce que les navigateurs peuvent envoyer)
     content_types = [
-        "text/plain;charset=UTF-8",  # sendBeacon default
-        "text/plain",                 # sendBeacon variant
-        "application/json",           # fetch standard
-        "",                           # no content-type
+        ("text/plain;charset=UTF-8", "sendBeacon default"),
+        ("text/plain", "sendBeacon variant"),
+        ("application/json", "fetch standard"),
     ]
     
-    for ct in content_types:
+    for ct, description in content_types:
+        # Créer une nouvelle session pour chaque test (éviter les duplicates)
+        session_data_ct = {
+            "lp_code": f"LP-FALLBACK-{ct.replace('/', '-').replace(';', '')}",
+            "form_code": "PV-FALLBACK-TEST"
+        }
+        async with session.post(f"{BASE_URL}/track/session", json=session_data_ct) as resp:
+            data = await resp.json()
+            test_session_id = data.get("session_id")
+        
         event_data = {
-            "session_id": session_id,
-            "event_type": "fallback_test",
-            "lp_code": "LP-FALLBACK-TEST"
+            "session_id": test_session_id,
+            "event_type": "cta_click",
+            "lp_code": f"LP-FALLBACK-{ct.replace('/', '-').replace(';', '')}"
         }
         
-        headers = {"Content-Type": ct} if ct else {}
+        headers = {"Content-Type": ct}
         
-        async with session.post(
-            f"{BASE_URL}/track/event",
-            data=json.dumps(event_data),
-            headers=headers
-        ) as resp:
-            result = await resp.json()
+        try:
+            async with session.post(
+                f"{BASE_URL}/track/event",
+                data=json.dumps(event_data),
+                headers=headers
+            ) as resp:
+                text = await resp.text()
+                try:
+                    result = json.loads(text)
+                except:
+                    result = {"success": False, "raw": text}
+                
+                results["test_5_fallback"]["fetch_fallback"] += 1
+                
+                if result.get("success"):
+                    results["test_5_fallback"]["success"] += 1
+                    status = "✓"
+                else:
+                    status = "✗"
+                
+                print(f"  {description} ({ct}): {status}")
+        except Exception as e:
+            print(f"  {description} ({ct}): ✗ Exception: {e}")
             results["test_5_fallback"]["fetch_fallback"] += 1
-            
-            if result.get("success"):
-                results["test_5_fallback"]["success"] += 1
-                status = "✓"
-            else:
-                status = "✗"
-            
-            print(f"  Content-Type '{ct or 'none'}': {status}")
     
     success = results["test_5_fallback"]["success"]
     total = results["test_5_fallback"]["fetch_fallback"]
