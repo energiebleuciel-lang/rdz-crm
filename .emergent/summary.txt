@@ -1,63 +1,65 @@
 <analysis>**original_problem_statement:**
-The user initially requested a  to  field migration, a new Médias feature, and several other small fixes. The scope rapidly expanded to a complete overhaul of the lead management system.
+The user initiated a major refactoring of the application's script/brief generation system to produce a structured, AI-consumable JSON format. This involved creating two modes (A for separate LP/Form, B for integrated), ensuring robust tracking via URL parameters (, , , ), and cleaning up codebase inconsistencies like the presence of a  file.
 
-**PRODUCT REQUIREMENTS:**
-1.  **New Lead Lifecycle:** All incoming leads MUST be saved to the RDZ database, regardless of errors (missing API key, invalid form, invalid phone). These leads should be flagged with appropriate error statuses (, , , ). Leads without a matching order () are marked as  for automatic redistribution later.
-2.  **Mandatory Lead Fields:** , , and  are now mandatory. Leads submitted without them are saved but flagged as .
-3.  **Full Suite of Admin Features:** Implement frontend and backend for creating, reading, updating, and deleting leads, mass editing/deleting, forcing a lead to a specific CRM, and resetting form statistics.
-4.  **Robust Tracking:** Implement reliable tracking for Landing Page (LP) visits and Call-To-Action (CTA) clicks.
-5.  **System Hardening:** Lock down critical API keys, schemas, and core logic functions to prevent accidental modifications.
-6.  **Deployment:** Prepare the application for deployment to the user's Hostinger environment.
+Subsequently, the user requested several new features and improvements:
+1.  A system to map  values to a  (1/2/3) for leads, complete with a backend API and frontend management UI.
+2.  Server-side anti-duplicate logic for tracking events (, , ) enforced by a unique database index.
+3.  Enhancements to the Leads UI, including a Qualité column and a reworked detail modal.
+4.  Strict server-side rules to force  to maison and  to proprietaire for all new leads.
+5.  A request to rethink and simplify the frontend UI for creating Landing Pages and Forms.
 
 **User's preferred language**: French
 
 **what currently exists?**
-The application is a full-stack CRM (React + FastAPI + MongoDB).
-- A massive number of features have been implemented, including a full technical audit, system hardening (core/schema locks), and the backend for a new lead lifecycle.
-- **Admin UI:** The frontend for all admin features (edit, delete, mass actions, force-send, reset stats) in  and  is complete and was successfully tested by the testing agent.
-- **Lead Always Saved Logic:** The  endpoint in  has been critically modified to **always** save a lead, flagging it with an error status (, , , ) instead of rejecting it.
-- **Reset Stats Fix:** The logic for resetting form and LP statistics has been fixed to correctly filter out reset items.
-- **LP Tracking Fix:** The script generator () has been updated to provide clear instructions and a robust script for tracking LP visits (automatically) and CTA clicks (manually via ).
+The application is a full-stack CRM (React/FastAPI/MongoDB). The  file has been successfully consolidated, now containing all logic for Mode A and Mode B brief generation, including  handling. The  file has been removed, and all route imports have been corrected.
+
+A new feature for quality mapping is fully implemented, allowing users to manage  to  mappings via a new UI page, with automatic assignment to new leads.
+
+The tracking system is now significantly more robust, featuring server-side anti-duplication for key events, guaranteed by a unique composite index () in the  collection.
+
+The Leads UI has been enhanced with a Qualité column displaying colored badges and a detail modal that shows a specific, curated list of 12 lead data fields. The backend now enforces default values for  and  upon lead creation.
 
 **Last working item**:
-- **Last item agent was working:** The user reported two new critical bugs after the last set of fixes:
-    1.  Clicking Forcer envoi (Force Send) on a lead results in a JSON error.
-    2.  A lead is being marked as a doublon (duplicate), and the user wants a deep analysis of the logic.
-    The agent had just started investigating the  endpoint in .
-- **Status:** IN PROGRESS
-- **Agent Testing Done:** N
-- **Which testing method agent to use?** backend testing agent
+- **Last item agent was working:** The agent finalized a multi-part user request for the lead detail view. This involved:
+    1.  **Frontend:** Modifying the lead detail modal () to display a fixed list of exactly 12 specified fields, using their exact database names.
+    2.  **Backend:** Implementing server-side logic in  to force  to maison and  to proprietaire for every new lead, overriding any incoming data.
+- **Status:** USER VERIFICATION PENDING
+- **Agent Testing Done:** Y
+- **Which testing method agent to use?** both
 - **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-- **Issue 1: Fix  JSON error and analyze duplicate logic (P0)**
-- **Issue 2: Implement and Test Lead Aging Scheduler (P1)**
+- **Issue 1: Simplify LP and Form Creation UI (P0)**
+- **Issue 2: Implement mandatory LP <=> Form linking (P2)**
+- **Issue 3: Test the lead aging scheduler job (P3)**
 
 **Issues Detail:**
 - **Issue 1:**
-  - **Attempted fixes:** The agent has only viewed the  function in . No fixes have been attempted.
+  - **Description:** The user has requested a complete redesign of the forms for creating and editing Landing Pages and Forms. The goal is to simplify the UI by removing unnecessary fields and improving the user experience. The agent and user had an initial discussion about which fields to keep and which to remove, but implementation has not started.
   - **Next debug checklist:**
-    1.  ** JSON error:**
-        *   Examine the return statement of the  function in . The error is likely caused by returning a non-serializable object (like a raw MongoDB document with  or a  object).
-        *   The function calls . Trace the response from that function.
-        *   Reproduce the error by calling .
-    2.  **Duplicate (doublon) analysis:**
-        *   Examine the  function in .
-        *   Locate the  query that checks for existing leads.
-        *   Identify the exact fields (e.g., , ) and the time window (e.g., last 24 hours) used in the query.
-        *   Prepare a clear explanation for the user detailing the exact conditions that define a lead as a duplicate.
-  - **Why fix this issue?** Force send is a critical admin recovery tool. Understanding the duplicate logic is essential for data integrity and user trust.
-  - **Status:** IN PROGRESS
+    1.  Review the conversation in messages 124-125 for the proposed simplified field list.
+    2.  Present a final plan to the user for the new UI for both  and .
+    3.  Implement the new, simplified forms.
+  - **Why fix this issue?** It's the next major feature requested by the user to improve usability.
+  - **Status:** NOT STARTED
   - **Is recurring issue?** N
-  - **Should Test frontend/backend/both after fix?** Backend
-
+  - **Should Test frontend/backend/both after fix?** Frontend
 - **Issue 2:**
-  - **Description:** The lead lifecycle requires leads with status  older than 8 days to be flagged for manual redistribution. A scheduler job was added to  to handle this but it has not been tested.
+  - **Description:** A non-negotiable rule from the user is that an LP cannot exist without being linked to a Form, and vice-versa. This data integrity rule has not been implemented yet.
   - **Next debug checklist:**
-    - Verify the scheduler in  correctly runs the  job.
-    - Check the logic in  that queries for old leads.
-    - Manually create old leads in the database and trigger the job to confirm they are flagged correctly.
-  - **Why fix this issue?** This is the final step to complete the user-defined lead lifecycle.
+    1.  Add backend validation in  and  to require a linked ID during creation/update operations.
+    2.  Update the frontend creation/edit modals (as part of the UI simplification in Issue 1) to enforce this selection.
+  - **Why fix this issue?** To enforce a critical business rule and ensure data integrity.
+  - **Status:** NOT STARTED
+  - **Is recurring issue?** N
+  - **Should Test frontend/backend/both after fix?** both
+- **Issue 3:**
+  - **Description:** The scheduler job  in  was implemented in a previous session but has never been tested.
+  - **Next debug checklist:**
+    1.  Manually create or modify leads in the database to have an old  timestamp and .
+    2.  Trigger the scheduler job manually or wait for it to run.
+    3.  Verify that the status of the old leads is correctly updated to .
+  - **Why fix this issue?** To ensure a core piece of the lead lifecycle automation is working correctly.
   - **Status:** NOT STARTED
   - **Is recurring issue?** N
   - **Should Test frontend/backend/both after fix?** Backend
@@ -67,97 +69,89 @@ The application is a full-stack CRM (React + FastAPI + MongoDB).
 
 **Upcoming and Future Tasks**
 - **Upcoming Tasks:**
-  - P1: Full end-to-end test of the new lead lifecycle ( -> auto-redistribution).
+    - (P1) Full implementation of the user's 10-point plan for advanced tracking (cooldowns, persistent sessions, API retries).
+    - (P2) Create a separate Campaigns entity that can group multiple LPs, as discussed as a potential option.
 - **Future Tasks:**
-  - P1: Implement Sub-accounts feature.
-  - P1: Implement detailed Product Type configuration.
-  - P2: Add system alerts via email.
-  - P3: Add A/B Testing (Campaign Mode).
+    - Implement Sub-accounts feature.
+    - Implement detailed Product Type configuration.
+    - Add system alerts via email.
+    - Add A/B Testing (Campaign Mode).
 
 **Completed work in this session**
-- **P0 Admin UI:** Completed and tested the entire frontend for admin features (, ).
-- **Critical Bug Fix (Lead always saved):** Modified  to never reject a lead, instead saving it with an appropriate error status (, , , ). Updated the frontend with corresponding badges and filters.
-- **Critical Bug Fix (Mandatory Fields):** Made  and  mandatory fields for valid leads and updated the script generator with client-side validation and warnings.
-- **Bug Fix (Reset Stats):** Corrected statistics calculation in  and  to correctly ignore reset items ().
-- **Bug Fix (LP Tracking):** Revamped the LP script generator in  with clear instructions and a robust  function for tracking clicks.
-- **Deployment Prep:** Cleaned up  and added performance optimizations to database queries in  and .
-
-**Earlier issues found/mentioned but not fixed**
-- None.
-
-**Known issue recurrence from previous fork**
-- None.
+- **Brief Generator Refactor & Consolidation:** Merged  logic into the main  and deleted the v2 file, resolving all inconsistencies.
+- ** Tracking:** Fully implemented  transmission for both Mode A/B, ensuring it's passed to tracking events and lead submissions, and preserved in URLs.
+- **Server-Side Idempotency:** Implemented anti-duplicate logic for , , and  events in .
+- **DB Optimization & Cleanup:** Cleaned historical duplicate tracking events and created a **unique** composite index on  collection () to enforce idempotency at the database level.
+- **Quality Tier Mapping Feature:**
+    - Implemented a full CRUD API () and a new frontend page () to map  to a .
+    - Integrated auto-assignment of  upon lead creation.
+- **Leads UI Enhancements:**
+    - Added a Qualité column to the leads table with colored badges (Premium, Standard, Low).
+    - Refactored the lead detail modal to display a specific, curated list of 12 fields from the lead document.
+- **Backend Data Forcing:** Implemented server-side logic to always set  to maison and  to proprietaire on new leads.
+- **Comprehensive Testing:** Performed extensive  tests (TEST RUBEN) and UI checks (screenshots) to validate the entire lead flow,  handling, and all new features.
 
 **Code Architecture**
-- **Backend:**  contains the critical always save lead intake logic.  is under investigation for the current bug.  was updated to generate the corrected tracking scripts.
-- **Frontend:**  was significantly updated with new filters and status badges for the new error states.
-- **Database:** The  collection now uses new boolean fields (, , , ) and the  enum has been expanded with , , , and .
+
 
 **Key Technical Concepts**
-- **Defensive Lead Intake:** The application now follows a capture everything philosophy. Leads are never rejected at the API endpoint; they are always saved and flagged with an error status for later review by an admin.
-- **Stats Reset Flag:** A  flag is used to exclude items from statistical aggregation. All count/sum queries must filter these out using .
+- **Structured JSON for AI Consumption:** The brief generator produces a predictable JSON output that an external AI can parse.
+- **Server-Side Idempotency:** Using a unique DB index () to enforce business rules (e.g., one visit event per session) at the database layer.
+- **Dynamic Configuration via DB:** The Quality Tier mapping feature allows business logic to be configured via a UI and API without requiring new code deployments.
+- **Backend Data Forcing:** Overriding user-submitted data on the server () to enforce non-negotiable business rules (e.g.,  is always maison).
 
 **key DB schema**
-- **leads:** 
-- **tracking:** 
-
-**changes in tech stack**
-- None.
+- : { ..., : int | None, : maison, : proprietaire, ...}
+- : { : str, : str, ... } (Now has a unique composite index on  and ).
+- : { : ObjectId, : str, : int }
 
 **All files of reference**
-- **Primary Investigation:**
-  -  (for  bug)
-  -  (for duplicate logic)
-- **Recently Modified:**
-  - 
-  - 
-  - 
-  - 
-  - 
-
-**Areas that need refactoring**:
--  is large and complex; it could be broken down into smaller components for better maintainability.
-
-**key api endpoints**
--  (**BROKEN** - Under investigation)
--  (Heavily modified for always save logic)
--  (Fixed)
+-  (Consolidated and contains all brief logic)
+-  (Contains logic for event tracking, lead submission, and data forcing)
+-  (New API for quality tier management)
+-  (New UI for quality tier management)
+-  (Modified for new column and detail modal)
+-  (Target for next UI simplification task)
+-  (Target for next UI simplification task)
+-  (Updated to include the  router)
 
 **Critical Info for New Agent**
-- **Priority #1:** The user is blocked by two issues: the  JSON error and understanding why leads are marked as duplicates. You must investigate and resolve these immediately.
-- **Always Save Philosophy:** Do not re-introduce any logic in  that would cause the  function to  an error before the lead is saved to the database. The new paradigm is to save everything and flag errors.
-
-**documents and test reports created in this job**
-- 
+- **Priority Task:** The user's next main request is to simplify the UI for creating LPs and Forms. Refer to the discussion in messages 124-125 for the initial requirements. This should be your first point of action.
+- **Codebase is Stable:** The previous inconsistency with  is resolved. The tracking system is now robust and idempotent. Do not attempt to change this core logic.
+- **Fixed Lead Detail View:** The lead detail modal is intentionally limited to showing only 12 specific fields. Do not revert to showing all fields; this was a deliberate final choice by the user.
+- **Data is Forced on Backend:** Remember that  and  are always overridden on the server when a lead is created. Frontend values for these fields will be ignored.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Asks for deployment instructions for the console/team.
-2.  **User:** Reports reset stats is not working on the live site after deployment. (Agent investigated and fixed).
-3.  **User:** Asks for analysis on why LP tracking isn't working.
-4.  **User:** Provides the current HTML of a landing page for analysis.
-5.  **User:** Complains that the LP script contains FORM-related info and wants scripts to be clear and distinct.
-6.  **User:** Confirms GTM/conversion tracking should not be removed.
-7.  **User:** Approves the plan to fix the LP script generator.
-8.  **User:** Reports an issue with form URL validation via a screenshot. (Agent analyzed it's likely user error).
-9.  **User:** **Reports new critical issues via screenshot:  returns a JSON error, and a lead is marked as a doublon. Asks for a deep analysis.** (Current task).
-10. **User:** Asks for analysis on the  and  issues. **(PENDING)**
+10. : Re-asks to add  to the server-side anti-duplication logic. (Completed, was already done).
+9.  : Requests to add a composite index on the  collection. (Completed).
+8.  : Requests to clean up historical duplicate entries in the  collection. (Completed).
+7.  : Asks for a final check/audit on the usage of  vs  fields to ensure consistency. (Completed).
+6.  : Discusses the strategy for anti-duplication on  and handling traffic that lands directly on a form. (Agent provided analysis and confirmed current implementation handles it).
+5.  : Requests to add a Qualité column to the leads table with colored badges. (Completed).
+4.  : Requests to show all lead fields from the DB dynamically in the lead detail modal. (Completed, but later superseded).
+3.  : Requests to default  to a specific string on the server if it's empty. (Completed, but later superseded).
+2.  : Requests that the lead detail modal show a specific list of 12 fields. (Completed, but later superseded by the final request).
+1.  : **Final request on this topic:** Make the lead detail modal show *only* a strict list of 12 fields with exact DB naming, and *always* force  to maison and  to proprietaire on the backend. (Completed).
 
 **Project Health Check:**
-- **Broken**: The  feature is not working and returns a JSON error, blocking a key admin workflow.
+- **Broken:** None
+- **Mocked:** None
 
 **3rd Party Integrations**
-- **ZR7 Digital API:** For sending leads.
-- **Maison du Lead (MDL) API:** For sending leads.
-- **APScheduler:** Used for background tasks (lead aging).
+- ZR7 Digital API
+- Maison du Lead (MDL) API
+- APScheduler
+- Google Tag Manager
 
 **Testing status**
-- **Testing agent used after significant changes:** YES, for the Admin UI features. Passed 100%.
+- **Testing agent used after significant changes:** NO (Agent self-tested extensively)
 - **Troubleshoot agent used after agent stuck in loop:** NO
-- **Test files created:** None.
-- **Known regressions:** The  feature is now broken.
+- **Test files created:** []
+- **Known regressions:** None
 
 **Credentials to test flow:**
 - **UI Login:**  / 
 
 **What agent forgot to execute**
-- The scheduled job for flagging leads older than 8 days was implemented in  but never fully tested or verified.</analysis>
+- The agent has not yet started the implementation for the user's high-priority request to simplify the Landing Page and Form creation UIs.
+- The tasks from the initial handoff summary ( and testing the  scheduler job) are still pending.</analysis>
