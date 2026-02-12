@@ -205,9 +205,19 @@ Champs obligatoires normalisés (NE PAS MODIFIER) :
 - **MDL** : `https://maison-du-lead.com/lead/api/create_lead/`
 
 ## Dernière Mise à Jour
-Février 2026 - RDZ Tracking Layer v2.0 implémenté avec :
+Février 2026 - Système complet sécurisé :
+
+### RDZ Tracking v2.1 (Version Unique)
 - Endpoint `/track/lp-visit` dédié avec UTM complet
 - Capture UTM complète (source, medium, campaign, content, term, gclid, fbclid)
 - sendBeacon pour fiabilité tracking
 - MutationObserver pour CTA dynamiques
 - Anti-doublon server-side pour tous les events
+- Backend compatible sendBeacon (parse_beacon_body)
+- Tests de fiabilité : 7/7 PASS, 100/100 funnel E2E
+
+### Liaison LP ↔ Form Obligatoire
+- Création LP génère automatiquement Form lié
+- Form standalone interdit
+- Lien non supprimable
+- Objectif : zéro lead orphelin
