@@ -226,12 +226,25 @@ async def get_lp_brief(
 
 @router.put("/{lp_id}")
 async def update_lp(lp_id: str, data: LPUpdate, user: dict = Depends(get_current_user)):
-    """Modifier une LP (et son Form lié si nécessaire)"""
+    """
+    Modifier une LP (et son Form lié si nécessaire)
+    
+    RÈGLE PRODUIT : Le lien LP ↔ Form ne peut pas être supprimé.
+    """
     lp = await db.lps.find_one({"id": lp_id})
     if not lp:
         raise HTTPException(status_code=404, detail="LP non trouvée")
     
-    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    # RÈGLE : Empêcher la suppression du lien Form
+    # Note: form_id n'est normalement pas dans LPUpdate, mais on vérifie quand même
+    update_dict = data.model_dump()
+    if "form_id" in update_dict and update_dict["form_id"] in [None, ""]:
+        raise HTTPException(
+            status_code=400, 
+            detail="Impossible de dissocier une Landing Page de son formulaire. Le lien LP ↔ Form est obligatoire."
+        )
+    
+    update_data = {k: v for k, v in update_dict.items() if v is not None}
     update_data["updated_at"] = now_iso()
     update_data["updated_by"] = user["id"]
     
