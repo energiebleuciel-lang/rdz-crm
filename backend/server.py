@@ -147,6 +147,7 @@ app.include_router(billing.router, prefix="/api")
 app.include_router(verification.router, prefix="/api")
 app.include_router(public.router, prefix="/api")
 app.include_router(media.router, prefix="/api")
+app.include_router(quality_mappings.router, prefix="/api")
 
 # ==================== ROUTE RACINE ====================
 
