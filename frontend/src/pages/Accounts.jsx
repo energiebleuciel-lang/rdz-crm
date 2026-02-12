@@ -452,6 +452,60 @@ export default function Accounts() {
             </div>
           </div>
 
+          {/* URLs de redirection par produit */}
+          <div className="border-t pt-4 mt-4">
+            <h4 className="font-medium text-slate-700 mb-2">URLs de redirection par type de produit</h4>
+            <p className="text-xs text-slate-500 mb-4">
+              Définissez une URL de redirection pour chaque type de produit. 
+              Ces URLs seront utilisées lors de la génération du Brief selon le produit choisi.
+            </p>
+            
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <span className="w-16 px-2 py-1.5 bg-amber-100 text-amber-700 text-xs font-medium rounded text-center">PV</span>
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={form.redirect_url_pv}
+                    onChange={e => setForm({...form, redirect_url_pv: e.target.value})}
+                    placeholder="https://monsite.com/merci-solaire"
+                    className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <span className="w-16 px-2 py-1.5 bg-blue-100 text-blue-700 text-xs font-medium rounded text-center">PAC</span>
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={form.redirect_url_pac}
+                    onChange={e => setForm({...form, redirect_url_pac: e.target.value})}
+                    placeholder="https://monsite.com/merci-pompe-a-chaleur"
+                    className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <span className="w-16 px-2 py-1.5 bg-green-100 text-green-700 text-xs font-medium rounded text-center">ITE</span>
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={form.redirect_url_ite}
+                    onChange={e => setForm({...form, redirect_url_ite: e.target.value})}
+                    placeholder="https://monsite.com/merci-isolation"
+                    className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <p className="text-xs text-slate-400 mt-3">
+              💡 Laissez vide si vous n'avez pas besoin de redirection spécifique pour ce produit
+            </p>
+          </div>
+
           {/* Section GTM */}
           <div className="border-t pt-4 mt-4">
             <button
