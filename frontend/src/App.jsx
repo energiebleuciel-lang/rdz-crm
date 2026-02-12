@@ -20,6 +20,7 @@ import Billing from './pages/Billing';
 import Settings from './pages/Settings';
 import UsersPage from './pages/UsersPage';
 import Media from './pages/Media';
+import QualityMappings from './pages/QualityMappings';
 
 // Components
 import Layout from './components/Layout';
