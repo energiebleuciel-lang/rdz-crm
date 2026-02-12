@@ -1011,7 +1011,7 @@ async def _generate_mode_b(
 <!-- RDZ TRACKING - LP + FORMULAIRE INTÉGRÉS                                     -->
 <!-- {lp_code} + {form_code}                                                      -->
 <!-- À coller AVANT </body>                                                       -->
-<!-- Version: 2.0 - Tracking complet avec anti-doublon et sendBeacon             -->
+<!-- Version: 2.1 - Tracking complet, sendBeacon compatible, URL normalisée      -->
 <!-- ═══════════════════════════════════════════════════════════════════════════ -->
 <script>
 (function() {{
@@ -1053,7 +1053,7 @@ async def _generate_mode_b(
   }}
 
   // ══════════════════════════════════════════════════════════
-  // 1. SESSION INITIALIZATION - Anti-doublon intégré
+  // 1. SESSION INITIALIZATION - Anti-doublon côté serveur
   // ══════════════════════════════════════════════════════════
   async function initSession() {{
     if (RDZ.session) return RDZ.session;
@@ -1111,13 +1111,10 @@ async def _generate_mode_b(
   }}
 
   // ══════════════════════════════════════════════════════════
-  // 2. LP VISIT TRACKING - Endpoint dédié avec UTM complet
+  // 2. LP VISIT TRACKING - TOUJOURS envoyé (anti-doublon serveur)
   // ══════════════════════════════════════════════════════════
-  var visitTracked = false;
-  
-  async function trackLPVisit() {{
-    if (visitTracked || !RDZ.session) return;
-    visitTracked = true;
+  function trackLPVisit() {{
+    if (!RDZ.session) return;
     
     var payload = JSON.stringify({{
       session_id: RDZ.session,
