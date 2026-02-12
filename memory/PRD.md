@@ -1,5 +1,69 @@
 # RDZ CRM - Product Requirements Document
 
+## 🔒 STANDARDS PERMANENTS (À RESPECTER POUR TOUTES LES ÉVOLUTIONS)
+
+### 1. UI - Simplicité Maximale
+```
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  RÈGLE UI                                                                    ║
+║                                                                              ║
+║  • Toujours simplifier au maximum l'interface                               ║
+║  • Création LP + Form : automatique, rapide, en quelques clics              ║
+║  • Zéro configuration technique visible                                      ║
+║  • Zéro champ inutile                                                        ║
+║  • Objectif : utilisation la plus simple possible                           ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+```
+
+### 2. Tracking & Versioning - Une Seule Version
+```
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  RÈGLE VERSIONING                                                            ║
+║                                                                              ║
+║  • Une seule version active (actuellement v2.1)                              ║
+║  • Aucun code legacy conservé                                                ║
+║  • Aucun ancien script ou endpoint                                           ║
+║  • JAMAIS plusieurs versions en parallèle                                    ║
+║  • Objectif : une seule source, zéro risque                                  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+```
+
+### 3. Tests E2E Obligatoires - Avant Chaque Mise en Production
+```
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  RÈGLE TESTS                                                                 ║
+║                                                                              ║
+║  À chaque modification, test complet du flux :                               ║
+║  LP → Session → CTA → Form → Submit → Backend → CRM → Routing → Livraison   ║
+║                                                                              ║
+║  Confirmer systématiquement :                                                ║
+║  • 0 perte de données                                                        ║
+║  • 0 doublon                                                                 ║
+║  • 0 champ manquant                                                          ║
+║  • 0 incohérence                                                             ║
+║  • 100% des leads reçus correctement                                         ║
+║                                                                              ║
+║  Objectif : cohérence totale avant production                                ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+```
+
+### 4. Liaison LP ↔ Form - Obligatoire
+```
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  RÈGLE LIAISON                                                               ║
+║                                                                              ║
+║  • Une LP doit TOUJOURS être liée à un Form                                  ║
+║  • Un Form doit TOUJOURS avoir une LP                                        ║
+║  • Pas de Form standalone                                                    ║
+║  • Pas de LP sans Form                                                       ║
+║  • Lien non supprimable une fois créé                                        ║
+║                                                                              ║
+║  Objectif : zéro lead orphelin, attribution parfaite                         ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+```
+
+---
+
 ## Description
 CRM multi-tenant pour la gestion et distribution de leads vers ZR7 Digital et Maison du Lead (MDL).
 
