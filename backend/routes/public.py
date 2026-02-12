@@ -330,26 +330,37 @@ async def track_lp_visit(request: Request):
 
 
 @router.post("/track/event")
-async def track_event(data: EventData, request: Request):
-    """Enregistrer un événement de tracking"""
+async def track_event(request: Request):
+    """
+    Enregistrer un événement de tracking
+    Compatible sendBeacon (content-type tolérant)
+    """
     
-    session = await db.visitor_sessions.find_one({"id": data.session_id})
+    # Parse body de manière tolérante (sendBeacon compatible)
+    data = await parse_beacon_body(request)
+    session_id = data.get("session_id", "")
+    event_type = data.get("event_type", "")
+    
+    if not session_id or not event_type:
+        return {"success": False, "error": "session_id et event_type requis"}
+    
+    session = await db.visitor_sessions.find_one({"id": session_id})
     if not session:
         return {"success": False, "error": "Session invalide"}
     
     # Anti-doublon: lp_visit, cta_click et form_start = 1x par session maximum
-    if data.event_type in ["lp_visit", "cta_click", "form_start"]:
+    if event_type in ["lp_visit", "cta_click", "form_start"]:
         existing = await db.tracking.find_one({
-            "session_id": data.session_id,
-            "event": data.event_type
+            "session_id": session_id,
+            "event": event_type
         })
         if existing:
             return {"success": True, "event_id": existing.get("id"), "duplicate": True}
     
     event_id = str(uuid.uuid4())
-    lp_code = data.lp_code or session.get("lp_code", "")
-    form_code = data.form_code or session.get("form_code", "")
-    liaison_code = data.liaison_code or session.get("liaison_code", "")
+    lp_code = data.get("lp_code") or session.get("lp_code", "")
+    form_code = data.get("form_code") or session.get("form_code", "")
+    liaison_code = data.get("liaison_code") or session.get("liaison_code", "")
     
     # Construire liaison_code si non fourni
     if not liaison_code and lp_code and form_code:
@@ -358,9 +369,9 @@ async def track_event(data: EventData, request: Request):
     # Stocker dans tracking
     event = {
         "id": event_id,
-        "session_id": data.session_id,
+        "session_id": session_id,
         "visitor_id": session.get("visitor_id"),
-        "event": data.event_type,
+        "event": event_type,
         "lp_code": lp_code,
         "form_code": form_code,
         "liaison_code": liaison_code,
