@@ -160,8 +160,8 @@ async def track_event(data: EventData, request: Request):
     if not session:
         return {"success": False, "error": "Session invalide"}
     
-    # Anti-doublon: cta_click et form_start = 1x par session maximum
-    if data.event_type in ["cta_click", "form_start"]:
+    # Anti-doublon: lp_visit, cta_click et form_start = 1x par session maximum
+    if data.event_type in ["lp_visit", "cta_click", "form_start"]:
         existing = await db.tracking.find_one({
             "session_id": data.session_id,
             "event": data.event_type
