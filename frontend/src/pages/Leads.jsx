@@ -669,95 +669,19 @@ export default function Leads() {
       {/* Detail Modal */}
       <Modal isOpen={showDetailModal} onClose={() => setShowDetailModal(false)} title="Détail du lead" size="lg">
         {selectedLead && (
-          <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+          <div className="space-y-4">
             <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-              {Object.entries(selectedLead)
-                .filter(([key]) => !['_id', 'tracking', 'internal'].includes(key))
-                .sort(([a], [b]) => a.localeCompare(b))
-                .map(([key, value]) => {
-                  // Labels lisibles
-                  const labels = {
-                    id: 'ID',
-                    session_id: 'Session ID',
-                    form_id: 'Form ID',
-                    form_code: 'Code Formulaire',
-                    lp_code: 'Code LP',
-                    liaison_code: 'Code Liaison',
-                    account_id: 'Compte ID',
-                    product_type: 'Type Produit',
-                    phone: 'Téléphone',
-                    nom: 'Nom',
-                    prenom: 'Prénom',
-                    civilite: 'Civilité',
-                    email: 'Email',
-                    departement: 'Département',
-                    ville: 'Ville',
-                    adresse: 'Adresse',
-                    type_logement: 'Type Logement',
-                    statut_occupant: 'Statut Occupant',
-                    surface_habitable: 'Surface Habitable',
-                    annee_construction: 'Année Construction',
-                    type_chauffage: 'Type Chauffage',
-                    facture_electricite: 'Facture Électricité',
-                    facture_chauffage: 'Facture Chauffage',
-                    type_projet: 'Type Projet',
-                    delai_projet: 'Délai Projet',
-                    budget: 'Budget',
-                    utm_source: 'UTM Source',
-                    utm_medium: 'UTM Medium',
-                    utm_campaign: 'UTM Campaign',
-                    quality_tier: 'Qualité',
-                    rgpd_consent: 'Consentement RGPD',
-                    newsletter: 'Newsletter',
-                    ip: 'Adresse IP',
-                    register_date: 'Date Inscription',
-                    created_at: 'Créé le',
-                    origin_crm: 'CRM Origine',
-                    target_crm: 'CRM Destination',
-                    is_transferred: 'Transféré',
-                    routing_reason: 'Raison Routage',
-                    distribution_reason: 'Raison Distribution',
-                    allow_cross_crm: 'Cross-CRM',
-                    api_status: 'Statut API',
-                    sent_to_crm: 'Envoyé CRM',
-                    manual_only: 'Manuel Uniquement',
-                    retry_count: 'Tentatives',
-                    phone_invalid: 'Téléphone Invalide',
-                    missing_nom: 'Nom Manquant',
-                    missing_dept: 'Dept Manquant',
-                    form_not_found: 'Form Non Trouvé',
-                    notes_admin: 'Notes Admin',
-                    crm_response: 'Réponse CRM',
-                    last_retry_at: 'Dernier Retry',
-                    sent_at: 'Envoyé le'
-                  };
-                  
-                  const label = labels[key] || key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-                  
-                  // Formatage valeur
-                  let displayValue = '—';
-                  if (value !== null && value !== undefined && value !== '') {
-                    if (typeof value === 'boolean') {
-                      displayValue = value ? 'Oui' : 'Non';
-                    } else if (key === 'quality_tier') {
-                      const tiers = { 1: 'Premium', 2: 'Standard', 3: 'Low' };
-                      displayValue = tiers[value] || value;
-                    } else if (typeof value === 'object') {
-                      displayValue = JSON.stringify(value);
-                    } else {
-                      displayValue = String(value);
-                    }
-                  }
-                  
-                  return (
-                    <div key={key} className="flex justify-between py-1 border-b border-slate-100">
-                      <span className="text-sm text-slate-500">{label}</span>
-                      <span className="text-sm font-medium text-slate-700 text-right max-w-[60%] truncate" title={displayValue}>
-                        {displayValue}
-                      </span>
-                    </div>
-                  );
-                })}
+              {['phone', 'nom', 'prenom', 'email', 'departement', 'type_logement', 'statut_occupant', 'surface_habitable', 'annee_construction', 'type_chauffage', 'facture_electricite', 'facture_chauffage'].map((key) => {
+                const value = selectedLead[key];
+                const displayValue = (value !== null && value !== undefined && value !== '') ? String(value) : '—';
+                
+                return (
+                  <div key={key} className="flex justify-between py-2 border-b border-slate-100">
+                    <span className="text-sm text-slate-500 font-mono">{key}</span>
+                    <span className="text-sm font-medium text-slate-700">{displayValue}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
