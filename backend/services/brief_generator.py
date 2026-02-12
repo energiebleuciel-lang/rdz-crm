@@ -1323,9 +1323,8 @@ async def _generate_mode_b(
   document.addEventListener("DOMContentLoaded", async function() {{
     captureUTM();
     await initSession();
-    if (RDZ.session) {{
-      trackLPVisit();
-    }}
+    // LP Visit part TOUJOURS (anti-doublon géré côté serveur)
+    trackLPVisit();
     autoBindCTA();
     autoBindFormStart();
   }});
@@ -1333,7 +1332,7 @@ async def _generate_mode_b(
   if (document.readyState !== "loading") {{
     captureUTM();
     initSession().then(function() {{
-      if (RDZ.session) trackLPVisit();
+      trackLPVisit();
       autoBindCTA();
       autoBindFormStart();
     }});
