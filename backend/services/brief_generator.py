@@ -624,14 +624,20 @@ async def _generate_mode_a(
 </script>'''
 
     # ══════════════════════════════════════════════════════════
-    # SCRIPT FORM - Mode A
+    # SCRIPT FORM - Mode A - Récupération session + UTM
     # ══════════════════════════════════════════════════════════
-    script_form = f'''<!-- RDZ TRACKING - FORMULAIRE {form_code} -->
-<!-- À coller en fin de <body>, avant </body> -->
+    script_form = f'''<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!-- RDZ TRACKING - FORMULAIRE {form_code}                                       -->
+<!-- À coller AVANT </body>                                                       -->
+<!-- Version: 2.0 - Récupération session LP + UTM                                -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
 <script>
 (function() {{
   "use strict";
   
+  // ══════════════════════════════════════════════════════════
+  // CONFIGURATION
+  // ══════════════════════════════════════════════════════════
   var RDZ = {{
     api: "{API_URL}/api/public",
     form: "{form_code}",
@@ -639,33 +645,49 @@ async def _generate_mode_a(
     session: null,
     lp: "",
     liaison: "",
-    utm_campaign: "",
+    utm: {{}},
     redirectUrl: "{redirect_url}",
     initialized: false,
     initFailed: false
   }};
 
   // ══════════════════════════════════════════════════════════
-  // SESSION + UTM_CAMPAIGN - Priorité: URL → sessionStorage → création
+  // CAMPAIGN CAPTURE - URL puis sessionStorage
+  // ══════════════════════════════════════════════════════════
+  function captureUTM() {{
+    var params = new URLSearchParams(window.location.search);
+    var keys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "gclid", "fbclid"];
+    
+    keys.forEach(function(key) {{
+      var val = params.get(key);
+      if (val) {{
+        RDZ.utm[key] = val;
+        try {{ sessionStorage.setItem("rdz_" + key, val); }} catch(e) {{}}
+      }} else {{
+        try {{ RDZ.utm[key] = sessionStorage.getItem("rdz_" + key) || ""; }} catch(e) {{ RDZ.utm[key] = ""; }}
+      }}
+    }});
+  }}
+
+  // ══════════════════════════════════════════════════════════
+  // SESSION - Priorité: URL → sessionStorage → création
   // ══════════════════════════════════════════════════════════
   async function initSession() {{
     if (RDZ.session) return RDZ.session;
     if (RDZ.initFailed) return null;
     
     var params = new URLSearchParams(window.location.search);
+    captureUTM();
     
     // 1. Priorité : paramètres URL (venant de la LP)
     var urlSession = params.get("session");
     var urlLp = params.get("lp");
     var urlLiaison = params.get("liaison");
-    var urlUtmCampaign = params.get("utm_campaign");
     
     if (urlSession) {{
       RDZ.session = urlSession;
       RDZ.lp = urlLp || "";
       RDZ.liaison = urlLiaison || "";
-      // utm_campaign: URL priorité
-      RDZ.utm_campaign = urlUtmCampaign || "";
       RDZ.initialized = true;
       
       // Stocker pour persistance
@@ -673,7 +695,6 @@ async def _generate_mode_a(
         sessionStorage.setItem("rdz_session", RDZ.session);
         if (RDZ.lp) sessionStorage.setItem("rdz_lp", RDZ.lp);
         if (RDZ.liaison) sessionStorage.setItem("rdz_liaison", RDZ.liaison);
-        if (RDZ.utm_campaign) sessionStorage.setItem("rdz_utm_campaign", RDZ.utm_campaign);
       }} catch(e) {{}}
       
       return RDZ.session;
@@ -686,8 +707,6 @@ async def _generate_mode_a(
         RDZ.session = storedSession;
         RDZ.lp = sessionStorage.getItem("rdz_lp") || "";
         RDZ.liaison = sessionStorage.getItem("rdz_liaison") || "";
-        // utm_campaign depuis sessionStorage si pas dans URL
-        RDZ.utm_campaign = urlUtmCampaign || sessionStorage.getItem("rdz_utm_campaign") || "";
         RDZ.initialized = true;
         return RDZ.session;
       }}
@@ -695,9 +714,6 @@ async def _generate_mode_a(
     
     // 3. Dernière option : créer nouvelle session
     try {{
-      // utm_campaign depuis URL même sans session existante
-      RDZ.utm_campaign = urlUtmCampaign || "";
-      
       var res = await fetch(RDZ.api + "/track/session", {{
         method: "POST",
         headers: {{"Content-Type": "application/json"}},
@@ -706,11 +722,17 @@ async def _generate_mode_a(
           lp_code: urlLp || "",
           liaison_code: urlLiaison || "",
           referrer: document.referrer,
-          utm_source: params.get("utm_source") || "",
-          utm_medium: params.get("utm_medium") || "",
-          utm_campaign: RDZ.utm_campaign
+          user_agent: navigator.userAgent,
+          utm_source: RDZ.utm.utm_source || "",
+          utm_medium: RDZ.utm.utm_medium || "",
+          utm_campaign: RDZ.utm.utm_campaign || "",
+          utm_content: RDZ.utm.utm_content || "",
+          utm_term: RDZ.utm.utm_term || "",
+          gclid: RDZ.utm.gclid || "",
+          fbclid: RDZ.utm.fbclid || ""
         }})
       }});
+      
       if (!res.ok) throw new Error("HTTP " + res.status);
       var data = await res.json();
       RDZ.session = data.session_id;
@@ -720,20 +742,21 @@ async def _generate_mode_a(
       
       try {{
         sessionStorage.setItem("rdz_session", RDZ.session);
-        if (RDZ.utm_campaign) sessionStorage.setItem("rdz_utm_campaign", RDZ.utm_campaign);
       }} catch(e) {{}}
       
       return RDZ.session;
     }} catch(e) {{
-      console.warn("[RDZ] Session init failed:", e.message);
       RDZ.initFailed = true;
       return null;
     }}
   }}
 
-  // Tracking best-effort
-  function track(eventType) {{
+  // ══════════════════════════════════════════════════════════
+  // TRACKING avec sendBeacon
+  // ══════════════════════════════════════════════════════════
+  function trackEvent(eventType) {{
     if (!RDZ.session) return;
+    
     var payload = JSON.stringify({{
       session_id: RDZ.session,
       event_type: eventType,
@@ -755,7 +778,7 @@ async def _generate_mode_a(
   }}
 
   // ══════════════════════════════════════════════════════════
-  // FORM START - Premier clic/focus dans le formulaire
+  // FORM START - Premier clic/focus
   // ══════════════════════════════════════════════════════════
   var formStarted = false;
   
@@ -763,7 +786,7 @@ async def _generate_mode_a(
     if (formStarted) return;
     formStarted = true;
     await initSession();
-    track("form_start");
+    trackEvent("form_start");
   }};
 
   function autoBindFormStart() {{
@@ -776,7 +799,7 @@ async def _generate_mode_a(
   }}
 
   // ══════════════════════════════════════════════════════════
-  // SUBMIT LEAD - Envoi avec utm_campaign
+  // SUBMIT LEAD
   // ══════════════════════════════════════════════════════════
   window.rdzSubmitLead = async function(data) {{
     await initSession();
@@ -798,7 +821,7 @@ async def _generate_mode_a(
           form_code: RDZ.form,
           lp_code: RDZ.lp,
           liaison_code: RDZ.liaison,
-          utm_campaign: RDZ.utm_campaign,
+          utm_campaign: RDZ.utm.utm_campaign || "",
           phone: phone,
           nom: data.nom || "",
           prenom: data.prenom || "",
@@ -832,7 +855,7 @@ async def _generate_mode_a(
             lp_code: RDZ.lp,
             form_code: RDZ.form,
             liaison_code: RDZ.liaison,
-            utm_campaign: RDZ.utm_campaign
+            utm_campaign: RDZ.utm.utm_campaign || ""
           }});
         }}
         
@@ -843,16 +866,22 @@ async def _generate_mode_a(
       
       return result;
     }} catch(e) {{
-      console.error("[RDZ] Submit error:", e.message);
       return {{ success: false, error: e.message }};
     }}
   }};
 
-  // Init au chargement
+  // ══════════════════════════════════════════════════════════
+  // INITIALISATION
+  // ══════════════════════════════════════════════════════════
   document.addEventListener("DOMContentLoaded", function() {{
     initSession();
     autoBindFormStart();
   }});
+
+  if (document.readyState !== "loading") {{
+    initSession();
+    autoBindFormStart();
+  }}
 
 }})();
 </script>'''
