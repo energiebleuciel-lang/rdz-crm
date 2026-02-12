@@ -335,6 +335,13 @@ async def submit_lead(data: LeadData, request: Request):
     final_liaison_code = data.liaison_code or (f"{final_lp_code}_{form_code}" if final_lp_code else form_code)
     final_utm_campaign = data.utm_campaign or utm["campaign"]
     
+    # Mapping utm_campaign → quality_tier (1/2/3)
+    quality_tier = None
+    if final_utm_campaign:
+        mapping = await db.quality_mappings.find_one({"utm_campaign": final_utm_campaign}, {"_id": 0})
+        if mapping:
+            quality_tier = mapping.get("quality_tier")
+    
     # Créer le lead - TOUJOURS SAUVEGARDÉ
     lead_id = str(uuid.uuid4())
     lead = {
