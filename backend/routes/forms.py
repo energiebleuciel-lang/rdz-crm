@@ -210,10 +210,19 @@ async def get_departements():
 
 
 @router.get("/brief/{form_id}")
-async def get_form_brief(form_id: str, user: dict = Depends(get_current_user)):
-    """Génère le brief complet pour un formulaire"""
-    from services.brief_generator import generate_brief
-    return await generate_brief(form_id)
+async def get_form_brief(
+    form_id: str, 
+    selected_product: str = None,
+    user: dict = Depends(get_current_user)
+):
+    """Génère le brief complet pour un formulaire
+    
+    Args:
+        form_id: ID du formulaire
+        selected_product: Produit sélectionné (PV, PAC, ITE) pour URL de redirection
+    """
+    from services.brief_generator import generate_form_brief
+    return await generate_form_brief(form_id, selected_product)
 
 
 @router.get("")
