@@ -51,10 +51,36 @@ async def get_crm_url(slug: str) -> str:
 class SessionData(BaseModel):
     lp_code: Optional[str] = ""
     form_code: Optional[str] = ""
+    liaison_code: Optional[str] = ""
     referrer: Optional[str] = ""
+    user_agent: Optional[str] = ""
+    # UTM complet
     utm_source: Optional[str] = ""
     utm_medium: Optional[str] = ""
     utm_campaign: Optional[str] = ""
+    utm_content: Optional[str] = ""
+    utm_term: Optional[str] = ""
+    # Tracking publicitaire
+    gclid: Optional[str] = ""
+    fbclid: Optional[str] = ""
+
+
+class LPVisitData(BaseModel):
+    """Données pour tracking visite LP - endpoint dédié"""
+    session_id: str
+    lp_code: str
+    # UTM complet
+    utm_source: Optional[str] = ""
+    utm_medium: Optional[str] = ""
+    utm_campaign: Optional[str] = ""
+    utm_content: Optional[str] = ""
+    utm_term: Optional[str] = ""
+    # Tracking publicitaire
+    gclid: Optional[str] = ""
+    fbclid: Optional[str] = ""
+    # Contexte
+    referrer: Optional[str] = ""
+    user_agent: Optional[str] = ""
 
 
 class EventData(BaseModel):
@@ -62,6 +88,7 @@ class EventData(BaseModel):
     event_type: str
     lp_code: Optional[str] = ""
     form_code: Optional[str] = ""
+    liaison_code: Optional[str] = ""
 
 
 class LeadData(BaseModel):
