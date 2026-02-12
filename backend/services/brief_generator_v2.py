@@ -240,6 +240,7 @@ async def _generate_mode_a(
   // ══════════════════════════════════════════════════════════
   // CTA CLICK - 1 seule fois par session
   // Utilise sendBeacon pour ne pas bloquer la navigation
+  // Transmet session + lp + liaison + utm_campaign dans l'URL
   // ══════════════════════════════════════════════════════════
   var ctaClicked = false;
   
@@ -250,7 +251,7 @@ async def _generate_mode_a(
     // Track sans bloquer
     track("cta_click");
     
-    // Construire URL avec params session
+    // Construire URL avec params session + utm_campaign
     if (e && e.currentTarget && e.currentTarget.tagName === "A") {{
       var link = e.currentTarget;
       var href = link.getAttribute("href");
@@ -262,6 +263,10 @@ async def _generate_mode_a(
           url.searchParams.set("session", RDZ.session);
           url.searchParams.set("lp", RDZ.lp);
           url.searchParams.set("liaison", RDZ.liaison);
+          // Transmettre utm_campaign au form
+          if (RDZ.utm_campaign) {{
+            url.searchParams.set("utm_campaign", RDZ.utm_campaign);
+          }}
           link.href = url.toString();
         }} catch(err) {{}}
       }}
