@@ -124,16 +124,21 @@ class LeadData(BaseModel):
 
 @router.post("/track/session")
 async def create_session(data: SessionData, request: Request):
-    """Créer une session visiteur"""
+    """
+    Créer une session visiteur
+    
+    Retourne session_id existante si déjà créée pour ce visiteur + LP
+    pour éviter les doublons de session
+    """
     
     visitor_id = request.cookies.get("_rdz_vid")
     is_new = not visitor_id
     if is_new:
         visitor_id = str(uuid.uuid4())
     
-    session_id = str(uuid.uuid4())
     lp_code = data.lp_code or ""
     form_code = data.form_code or ""
+    liaison_code = data.liaison_code or ""
     
     # Si LP sans form, chercher le form lié
     if lp_code and not form_code:
@@ -142,16 +147,50 @@ async def create_session(data: SessionData, request: Request):
             form = await db.forms.find_one({"id": lp["form_id"]}, {"_id": 0})
             if form:
                 form_code = form.get("code", "")
+                if not liaison_code:
+                    liaison_code = f"{lp_code}_{form_code}"
+    
+    # Anti-doublon: vérifier si une session existe déjà pour ce visiteur + LP
+    # (dans les dernières 30 minutes)
+    if visitor_id and lp_code:
+        from datetime import datetime, timedelta, timezone
+        thirty_min_ago = (datetime.now(timezone.utc) - timedelta(minutes=30)).isoformat()
+        existing = await db.visitor_sessions.find_one({
+            "visitor_id": visitor_id,
+            "lp_code": lp_code,
+            "created_at": {"$gte": thirty_min_ago}
+        }, {"_id": 0})
+        if existing:
+            # Retourner la session existante
+            response = JSONResponse({
+                "success": True,
+                "session_id": existing["id"],
+                "visitor_id": visitor_id,
+                "lp_code": lp_code,
+                "form_code": existing.get("form_code", form_code),
+                "reused": True
+            })
+            return response
+    
+    session_id = str(uuid.uuid4())
     
     session = {
         "id": session_id,
         "visitor_id": visitor_id,
         "lp_code": lp_code,
         "form_code": form_code,
+        "liaison_code": liaison_code,
         "referrer": data.referrer or "",
+        "user_agent": data.user_agent or request.headers.get("user-agent", ""),
+        # UTM complet
         "utm_source": data.utm_source or "",
         "utm_medium": data.utm_medium or "",
         "utm_campaign": data.utm_campaign or "",
+        "utm_content": data.utm_content or "",
+        "utm_term": data.utm_term or "",
+        # Tracking publicitaire
+        "gclid": data.gclid or "",
+        "fbclid": data.fbclid or "",
         "ip": request.headers.get("x-forwarded-for", request.client.host if request.client else ""),
         "created_at": now_iso(),
         "status": "active"
@@ -177,6 +216,92 @@ async def create_session(data: SessionData, request: Request):
         )
     
     return response
+
+
+@router.post("/track/lp-visit")
+async def track_lp_visit(data: LPVisitData, request: Request):
+    """
+    Endpoint dédié pour tracking visite LP
+    
+    Anti-doublon: 1 seule visite par session
+    Enregistre tous les paramètres UTM et tracking
+    """
+    
+    # Vérifier que la session existe
+    session = await db.visitor_sessions.find_one({"id": data.session_id})
+    if not session:
+        return {"success": False, "error": "Session invalide"}
+    
+    # Anti-doublon: 1 seule lp_visit par session
+    existing = await db.tracking.find_one({
+        "session_id": data.session_id,
+        "event": "lp_visit"
+    })
+    if existing:
+        return {"success": True, "event_id": existing.get("id"), "duplicate": True}
+    
+    event_id = str(uuid.uuid4())
+    lp_code = data.lp_code or session.get("lp_code", "")
+    
+    # Récupérer infos LP
+    account_id = None
+    lp_id = None
+    if lp_code:
+        lp = await db.lps.find_one({"code": lp_code}, {"_id": 0})
+        if lp:
+            lp_id = lp.get("id")
+            account_id = lp.get("account_id")
+    
+    event = {
+        "id": event_id,
+        "session_id": data.session_id,
+        "visitor_id": session.get("visitor_id"),
+        "event": "lp_visit",
+        "lp_code": lp_code,
+        "lp_id": lp_id,
+        "account_id": account_id,
+        # UTM complet
+        "utm_source": data.utm_source or "",
+        "utm_medium": data.utm_medium or "",
+        "utm_campaign": data.utm_campaign or "",
+        "utm_content": data.utm_content or "",
+        "utm_term": data.utm_term or "",
+        # Tracking publicitaire
+        "gclid": data.gclid or "",
+        "fbclid": data.fbclid or "",
+        # Contexte
+        "referrer": data.referrer or "",
+        "user_agent": data.user_agent or request.headers.get("user-agent", ""),
+        "ip": request.headers.get("x-forwarded-for", request.client.host if request.client else ""),
+        "created_at": now_iso()
+    }
+    
+    await db.tracking.insert_one(event)
+    
+    # Mettre à jour la session avec les UTM si non renseignés
+    update_session = {}
+    if data.utm_source and not session.get("utm_source"):
+        update_session["utm_source"] = data.utm_source
+    if data.utm_medium and not session.get("utm_medium"):
+        update_session["utm_medium"] = data.utm_medium
+    if data.utm_campaign and not session.get("utm_campaign"):
+        update_session["utm_campaign"] = data.utm_campaign
+    if data.utm_content and not session.get("utm_content"):
+        update_session["utm_content"] = data.utm_content
+    if data.utm_term and not session.get("utm_term"):
+        update_session["utm_term"] = data.utm_term
+    if data.gclid and not session.get("gclid"):
+        update_session["gclid"] = data.gclid
+    if data.fbclid and not session.get("fbclid"):
+        update_session["fbclid"] = data.fbclid
+    
+    if update_session:
+        await db.visitor_sessions.update_one(
+            {"id": data.session_id},
+            {"$set": update_session}
+        )
+    
+    return {"success": True, "event_id": event_id}
 
 
 @router.post("/track/event")
