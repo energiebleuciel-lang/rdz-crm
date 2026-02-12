@@ -769,7 +769,14 @@ async function envoyerLead() {{
         "liens": liens,
         "script_lp": script_lp,
         "script_form": script_form,
-        "champs": ["phone", "nom", "prenom", "email", "departement", "ville", "type_logement", "statut_occupant", "facture_electricite"]
+        "champs": ["phone", "nom", "prenom", "email", "departement", "ville", "type_logement", "statut_occupant", "facture_electricite"],
+        "selected_product": selected_product,
+        "redirect_urls": {
+            "pv": form.get("redirect_url_pv", "") if form else "",
+            "pac": form.get("redirect_url_pac", "") if form else "",
+            "ite": form.get("redirect_url_ite", "") if form else "",
+            "default": form.get("redirect_url", "/merci") if form else "/merci"
+        }
     }
 
 
