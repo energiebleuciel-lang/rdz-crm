@@ -324,6 +324,11 @@ async def track_event(data: EventData, request: Request):
     event_id = str(uuid.uuid4())
     lp_code = data.lp_code or session.get("lp_code", "")
     form_code = data.form_code or session.get("form_code", "")
+    liaison_code = data.liaison_code or session.get("liaison_code", "")
+    
+    # Construire liaison_code si non fourni
+    if not liaison_code and lp_code and form_code:
+        liaison_code = f"{lp_code}_{form_code}"
     
     # Stocker dans tracking
     event = {
@@ -333,6 +338,7 @@ async def track_event(data: EventData, request: Request):
         "event": data.event_type,
         "lp_code": lp_code,
         "form_code": form_code,
+        "liaison_code": liaison_code,
         "ip": request.headers.get("x-forwarded-for", request.client.host if request.client else ""),
         "created_at": now_iso()
     }
