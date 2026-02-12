@@ -8,7 +8,7 @@ import { useCRM } from '../hooks/useCRM';
 import { 
   Home, Layers, FileText, Users, Settings, LogOut, 
   Building, Globe, Zap, ChevronDown, Database, Package, UserCog, MapPin, DollarSign, Image,
-  TrendingUp, GitBranch, FolderOpen, Wallet, Shield
+  TrendingUp, GitBranch, FolderOpen, Wallet, Shield, Target
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -27,6 +27,7 @@ const menuSections = [
       { path: '/lps', icon: Globe, label: 'Landing Pages' },
       { path: '/forms', icon: FileText, label: 'Formulaires' },
       { path: '/leads', icon: Users, label: 'Leads' },
+      { path: '/quality-mappings', icon: Target, label: 'Mappings Qualité' },
     ]
   },
   {
