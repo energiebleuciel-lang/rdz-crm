@@ -206,15 +206,23 @@ async def create_lp(data: LPCreate, user: dict = Depends(get_current_user)):
 
 
 @router.get("/{lp_id}/brief")
-async def get_lp_brief(lp_id: str, user: dict = Depends(get_current_user)):
+async def get_lp_brief(
+    lp_id: str, 
+    selected_product: str = None,
+    user: dict = Depends(get_current_user)
+):
     """
     Génère le brief avec script simplifié
     - 1 seul script universel (~50 lignes)
     - Pas de clé API visible
     - Cookie de session automatique
+    
+    Args:
+        lp_id: ID de la LP
+        selected_product: Produit sélectionné (PV, PAC, ITE) pour URL de redirection
     """
     from services.brief_generator import generate_brief_v2
-    return await generate_brief_v2(lp_id)
+    return await generate_brief_v2(lp_id, selected_product)
 
 
 @router.put("/{lp_id}")
