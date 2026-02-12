@@ -340,14 +340,20 @@ async def _generate_mode_a(
     """
     
     # ══════════════════════════════════════════════════════════
-    # SCRIPT LP - Mode A
+    # SCRIPT LP - Mode A - RDZ TRACKING COMPLET
     # ══════════════════════════════════════════════════════════
-    script_lp = f'''<!-- RDZ TRACKING - LANDING PAGE {lp_code} -->
-<!-- À coller en fin de <body>, avant </body> -->
+    script_lp = f'''<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!-- RDZ TRACKING - LANDING PAGE {lp_code}                                       -->
+<!-- À coller AVANT </body>                                                       -->
+<!-- Version: 2.0 - Tracking complet avec anti-doublon et sendBeacon             -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
 <script>
 (function() {{
   "use strict";
   
+  // ══════════════════════════════════════════════════════════
+  // CONFIGURATION
+  // ══════════════════════════════════════════════════════════
   var RDZ = {{
     api: "{API_URL}/api/public",
     lp: "{lp_code}",
@@ -355,23 +361,51 @@ async def _generate_mode_a(
     liaison: "{liaison_code}",
     formUrl: "{form_url}",
     session: null,
-    utm_campaign: "",
+    utm: {{}},
     initialized: false,
     initFailed: false
   }};
 
   // ══════════════════════════════════════════════════════════
-  // SESSION + UTM_CAMPAIGN - Création automatique au chargement
+  // 3. CAMPAIGN CAPTURE - URL puis sessionStorage
+  // ══════════════════════════════════════════════════════════
+  function captureUTM() {{
+    var params = new URLSearchParams(window.location.search);
+    var keys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "gclid", "fbclid"];
+    
+    keys.forEach(function(key) {{
+      // Priorité 1: URL
+      var val = params.get(key);
+      if (val) {{
+        RDZ.utm[key] = val;
+        try {{ sessionStorage.setItem("rdz_" + key, val); }} catch(e) {{}}
+      }} else {{
+        // Priorité 2: sessionStorage
+        try {{ RDZ.utm[key] = sessionStorage.getItem("rdz_" + key) || ""; }} catch(e) {{ RDZ.utm[key] = ""; }}
+      }}
+    }});
+  }}
+
+  // ══════════════════════════════════════════════════════════
+  // 1. SESSION INITIALIZATION - Anti-doublon intégré
   // ══════════════════════════════════════════════════════════
   async function initSession() {{
     if (RDZ.session) return RDZ.session;
     if (RDZ.initFailed) return null;
     
+    // Vérifier session existante
     try {{
-      var params = new URLSearchParams(window.location.search);
-      
-      // Capturer utm_campaign depuis URL
-      RDZ.utm_campaign = params.get("utm_campaign") || "";
+      var stored = sessionStorage.getItem("rdz_session");
+      var storedLp = sessionStorage.getItem("rdz_lp");
+      if (stored && storedLp === RDZ.lp) {{
+        RDZ.session = stored;
+        RDZ.initialized = true;
+        return RDZ.session;
+      }}
+    }} catch(e) {{}}
+    
+    try {{
+      captureUTM();
       
       var res = await fetch(RDZ.api + "/track/session", {{
         method: "POST",
@@ -381,37 +415,79 @@ async def _generate_mode_a(
           form_code: RDZ.form,
           liaison_code: RDZ.liaison,
           referrer: document.referrer,
-          utm_source: params.get("utm_source") || "",
-          utm_medium: params.get("utm_medium") || "",
-          utm_campaign: RDZ.utm_campaign
+          user_agent: navigator.userAgent,
+          utm_source: RDZ.utm.utm_source || "",
+          utm_medium: RDZ.utm.utm_medium || "",
+          utm_campaign: RDZ.utm.utm_campaign || "",
+          utm_content: RDZ.utm.utm_content || "",
+          utm_term: RDZ.utm.utm_term || "",
+          gclid: RDZ.utm.gclid || "",
+          fbclid: RDZ.utm.fbclid || ""
         }})
       }});
+      
       if (!res.ok) throw new Error("HTTP " + res.status);
       var data = await res.json();
       RDZ.session = data.session_id;
       RDZ.initialized = true;
       
-      // Stocker en sessionStorage pour transmission au form
+      // Stocker pour persistance et transmission au form
       try {{
         sessionStorage.setItem("rdz_session", RDZ.session);
         sessionStorage.setItem("rdz_lp", RDZ.lp);
         sessionStorage.setItem("rdz_liaison", RDZ.liaison);
-        if (RDZ.utm_campaign) {{
-          sessionStorage.setItem("rdz_utm_campaign", RDZ.utm_campaign);
-        }}
       }} catch(e) {{}}
       
       return RDZ.session;
     }} catch(e) {{
-      console.warn("[RDZ] Session init failed:", e.message);
+      // Fail silently - ne pas bloquer le site
       RDZ.initFailed = true;
       return null;
     }}
   }}
 
-  // Tracking best-effort (sendBeacon prioritaire)
-  function track(eventType) {{
+  // ══════════════════════════════════════════════════════════
+  // 2. LP VISIT TRACKING - Endpoint dédié avec UTM complet
+  // ══════════════════════════════════════════════════════════
+  var visitTracked = false;
+  
+  async function trackLPVisit() {{
+    if (visitTracked || !RDZ.session) return;
+    visitTracked = true;
+    
+    var payload = JSON.stringify({{
+      session_id: RDZ.session,
+      lp_code: RDZ.lp,
+      utm_source: RDZ.utm.utm_source || "",
+      utm_medium: RDZ.utm.utm_medium || "",
+      utm_campaign: RDZ.utm.utm_campaign || "",
+      utm_content: RDZ.utm.utm_content || "",
+      utm_term: RDZ.utm.utm_term || "",
+      gclid: RDZ.utm.gclid || "",
+      fbclid: RDZ.utm.fbclid || "",
+      referrer: document.referrer,
+      user_agent: navigator.userAgent
+    }});
+    
+    // sendBeacon pour fiabilité (fonctionne même si page fermée)
+    if (navigator.sendBeacon) {{
+      navigator.sendBeacon(RDZ.api + "/track/lp-visit", new Blob([payload], {{type: "application/json"}}));
+    }} else {{
+      fetch(RDZ.api + "/track/lp-visit", {{
+        method: "POST",
+        headers: {{"Content-Type": "application/json"}},
+        body: payload,
+        keepalive: true
+      }}).catch(function() {{}});
+    }}
+  }}
+
+  // ══════════════════════════════════════════════════════════
+  // 7. RELIABILITY - sendBeacon pour tous les events
+  // ══════════════════════════════════════════════════════════
+  function trackEvent(eventType) {{
     if (!RDZ.session) return;
+    
     var payload = JSON.stringify({{
       session_id: RDZ.session,
       event_type: eventType,
@@ -433,65 +509,114 @@ async def _generate_mode_a(
   }}
 
   // ══════════════════════════════════════════════════════════
-  // VISITE LP - Automatique au chargement
-  // ══════════════════════════════════════════════════════════
-  document.addEventListener("DOMContentLoaded", async function() {{
-    await initSession();
-    if (RDZ.session) track("lp_visit");
-    autoBindCTA();
-  }});
-
-  // ══════════════════════════════════════════════════════════
-  // CTA CLICK - Transmet session + lp + liaison + utm_campaign
+  // 4. CTA CLICK - sendBeacon + URL params transmission
   // ══════════════════════════════════════════════════════════
   var ctaClicked = false;
   
-  window.rdzCtaClick = function(e) {{
-    if (ctaClicked) return;
-    ctaClicked = true;
-    
-    track("cta_click");
-    
-    // Construire URL avec tous les params
-    if (e && e.currentTarget && e.currentTarget.tagName === "A") {{
-      var link = e.currentTarget;
-      var href = link.getAttribute("href");
-      
-      if (href && !href.startsWith("#") && RDZ.session) {{
-        try {{
-          var url = new URL(href, window.location.origin);
-          url.searchParams.set("session", RDZ.session);
-          url.searchParams.set("lp", RDZ.lp);
-          url.searchParams.set("liaison", RDZ.liaison);
-          // Transmettre utm_campaign au form SANS écraser si déjà présent
-          if (RDZ.utm_campaign && !url.searchParams.has("utm_campaign")) {{
-            url.searchParams.set("utm_campaign", RDZ.utm_campaign);
-          }}
-          link.href = url.toString();
-        }} catch(err) {{}}
-      }}
+  function handleCtaClick(e) {{
+    // Track 1 seule fois
+    if (!ctaClicked) {{
+      ctaClicked = true;
+      trackEvent("cta_click");
     }}
-  }};
+    
+    // Ne JAMAIS bloquer la redirection
+    if (!e || !e.currentTarget) return;
+    
+    var link = e.currentTarget;
+    var href = link.getAttribute("href");
+    
+    if (!href || href.startsWith("#") || !RDZ.session) return;
+    
+    try {{
+      var url = new URL(href, window.location.origin);
+      
+      // Ajouter les params obligatoires
+      url.searchParams.set("session", RDZ.session);
+      url.searchParams.set("lp", RDZ.lp);
+      url.searchParams.set("liaison", RDZ.liaison);
+      
+      // Transmettre utm_campaign (ne pas écraser si déjà présent)
+      if (RDZ.utm.utm_campaign && !url.searchParams.has("utm_campaign")) {{
+        url.searchParams.set("utm_campaign", RDZ.utm.utm_campaign);
+      }}
+      
+      link.href = url.toString();
+    }} catch(err) {{
+      // Fail silently - ne pas bloquer la redirection
+    }}
+  }}
+  
+  // Exposer globalement pour usage manuel
+  window.rdzCtaClick = handleCtaClick;
 
   // ══════════════════════════════════════════════════════════
-  // AUTO-BIND CTA - Match strict sur formUrl OU data-rdz-cta
+  // 5. AUTO BINDING - Détection automatique des liens form
   // ══════════════════════════════════════════════════════════
   function autoBindCTA() {{
     var formUrlBase = RDZ.formUrl.split("?")[0].replace(/\\/$/, "").toLowerCase();
-    var links = document.querySelectorAll("a[href], [data-rdz-cta]");
     
-    links.forEach(function(el) {{
+    // Observer pour les CTA ajoutés dynamiquement
+    function bindLink(el) {{
+      if (el._rdzBound) return;
+      el._rdzBound = true;
+      
+      // data-rdz-cta = binding manuel explicite
       if (el.hasAttribute("data-rdz-cta")) {{
-        el.addEventListener("click", function(e) {{ rdzCtaClick(e); }});
+        el.addEventListener("click", handleCtaClick);
         return;
       }}
       
+      // Auto-détection des liens vers le form
       if (el.href) {{
         var linkHref = el.href.split("?")[0].replace(/\\/$/, "").toLowerCase();
-        if (linkHref === formUrlBase) {{
-          el.addEventListener("click", function(e) {{ rdzCtaClick(e); }});
+        if (linkHref === formUrlBase || linkHref.includes(formUrlBase)) {{
+          el.addEventListener("click", handleCtaClick);
         }}
       }}
+    }}
+    
+    // Bind initial
+    document.querySelectorAll("a[href], [data-rdz-cta]").forEach(bindLink);
+    
+    // MutationObserver pour les CTA ajoutés après chargement
+    if (window.MutationObserver) {{
+      var observer = new MutationObserver(function(mutations) {{
+        mutations.forEach(function(m) {{
+          m.addedNodes.forEach(function(node) {{
+            if (node.nodeType === 1) {{
+              if (node.tagName === "A" || node.hasAttribute && node.hasAttribute("data-rdz-cta")) {{
+                bindLink(node);
+              }}
+              if (node.querySelectorAll) {{
+                node.querySelectorAll("a[href], [data-rdz-cta]").forEach(bindLink);
+              }}
+            }}
+          }});
+        }});
+      }});
+      observer.observe(document.body, {{ childList: true, subtree: true }});
+    }}
+  }}
+
+  // ══════════════════════════════════════════════════════════
+  // INITIALISATION AU CHARGEMENT
+  // ══════════════════════════════════════════════════════════
+  document.addEventListener("DOMContentLoaded", async function() {{
+    captureUTM();
+    await initSession();
+    if (RDZ.session) {{
+      trackLPVisit();
+    }}
+    autoBindCTA();
+  }});
+
+  // Backup: si DOMContentLoaded déjà passé
+  if (document.readyState !== "loading") {{
+    captureUTM();
+    initSession().then(function() {{
+      if (RDZ.session) trackLPVisit();
+      autoBindCTA();
     }});
   }}
 
