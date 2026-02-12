@@ -556,6 +556,7 @@ export default function Leads() {
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Contact</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Dept</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Formulaire</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Qualité</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Routage</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Statut</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
