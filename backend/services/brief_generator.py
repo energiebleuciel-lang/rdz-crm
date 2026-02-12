@@ -278,8 +278,13 @@ async def get_account_brief_options(account_id: str) -> dict:
     }
 
 
-async def generate_brief(lp_id: str) -> dict:
-    """Génère le brief complet avec scripts + infos compte"""
+async def generate_brief(lp_id: str, selected_product: str = None) -> dict:
+    """Génère le brief complet avec scripts + infos compte
+    
+    Args:
+        lp_id: ID de la LP
+        selected_product: Produit sélectionné (PV, PAC, ITE) pour URL de redirection
+    """
     
     # Récupérer la LP
     lp = await db.lps.find_one({"id": lp_id}, {"_id": 0})
@@ -308,7 +313,16 @@ async def generate_brief(lp_id: str) -> dict:
         form_url = form.get("url", "")
         if not tracking_type or tracking_type == "redirect":
             tracking_type = form.get("tracking_type", "redirect")
-        if not redirect_url or redirect_url == "/merci":
+        
+        # Déterminer l'URL de redirection selon le produit sélectionné
+        if selected_product:
+            product_key = f"redirect_url_{selected_product.lower()}"
+            product_redirect_url = form.get(product_key, "")
+            if product_redirect_url:
+                redirect_url = product_redirect_url
+            elif not redirect_url or redirect_url == "/merci":
+                redirect_url = form.get("redirect_url", "/merci")
+        elif not redirect_url or redirect_url == "/merci":
             redirect_url = form.get("redirect_url", "/merci")
     
     if not form:
