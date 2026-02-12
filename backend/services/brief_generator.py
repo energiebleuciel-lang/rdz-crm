@@ -753,12 +753,15 @@ async def _generate_mode_a(
       if (!res.ok) throw new Error("HTTP " + res.status);
       var data = await res.json();
       RDZ.session = data.session_id;
-      RDZ.lp = urlLp || "";
+      RDZ.lp = urlLp || data.lp_code || "";
       RDZ.liaison = urlLiaison || "";
       RDZ.initialized = true;
       
+      // IMPORTANT: Persister rdz_lp et rdz_liaison aussi
       try {{
         sessionStorage.setItem("rdz_session", RDZ.session);
+        if (RDZ.lp) sessionStorage.setItem("rdz_lp", RDZ.lp);
+        if (RDZ.liaison) sessionStorage.setItem("rdz_liaison", RDZ.liaison);
       }} catch(e) {{}}
       
       return RDZ.session;
