@@ -39,10 +39,7 @@ export default function Forms() {
     crm_api_key: '', // Clé API pour ce formulaire
     allow_cross_crm: true,
     tracking_type: 'redirect',
-    redirect_url: '/merci',
-    redirect_url_pv: '',
-    redirect_url_pac: '',
-    redirect_url_ite: ''
+    redirect_url: '/merci'
   });
 
   useEffect(() => {
@@ -102,10 +99,7 @@ export default function Forms() {
       crm_api_key: '',
       allow_cross_crm: true,
       tracking_type: 'redirect',
-      redirect_url: '/merci',
-      redirect_url_pv: '',
-      redirect_url_pac: '',
-      redirect_url_ite: ''
+      redirect_url: '/merci'
     });
     setShowApiKey(false);
     setShowModal(true);
@@ -123,10 +117,7 @@ export default function Forms() {
       crm_api_key: formItem.crm_api_key || '',
       allow_cross_crm: formItem.allow_cross_crm !== false,
       tracking_type: formItem.tracking_type || 'redirect',
-      redirect_url: formItem.redirect_url || '/merci',
-      redirect_url_pv: formItem.redirect_url_pv || '',
-      redirect_url_pac: formItem.redirect_url_pac || '',
-      redirect_url_ite: formItem.redirect_url_ite || ''
+      redirect_url: formItem.redirect_url || '/merci'
     });
     setShowApiKey(false);
     setShowModal(true);
