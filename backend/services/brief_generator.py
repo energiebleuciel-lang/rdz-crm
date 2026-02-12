@@ -807,3 +807,155 @@ async def generate_brief_v2(lp_id: str, selected_product: str = None) -> dict:
         "selected_product": result.get("selected_product"),
         "redirect_urls": result.get("redirect_urls", {})
     }
+
+
+async def generate_form_brief(form_id: str, selected_product: str = None) -> dict:
+    """Génère le brief complet pour un formulaire (point d'entrée alternatif)
+    
+    Args:
+        form_id: ID du formulaire
+        selected_product: Produit sélectionné (PV, PAC, ITE) pour URL de redirection
+    """
+    
+    # Récupérer le Form
+    form = await db.forms.find_one({"id": form_id}, {"_id": 0})
+    if not form:
+        return {"error": "Formulaire non trouvé"}
+    
+    form_code = form.get("code", "")
+    form_url = form.get("url", "")
+    tracking_type = form.get("tracking_type", "redirect")
+    redirect_url = form.get("redirect_url", "/merci")
+    
+    # Chercher la LP liée
+    lp = None
+    lp_id = form.get("lp_id")
+    if lp_id:
+        lp = await db.lps.find_one({"id": lp_id}, {"_id": 0})
+    if not lp:
+        # Chercher une LP qui référence ce form
+        lp = await db.lps.find_one({"form_id": form_id}, {"_id": 0})
+    
+    lp_code = lp.get("code", "") if lp else ""
+    lp_url = lp.get("url", "") if lp else ""
+    lp_name = lp.get("name", "") if lp else ""
+    
+    # Récupérer le compte pour les URLs de redirection par produit
+    account_id = form.get("account_id")
+    account = None
+    if account_id:
+        account = await db.accounts.find_one({"id": account_id}, {"_id": 0})
+    
+    # Déterminer l'URL de redirection selon le produit sélectionné
+    redirect_urls = {
+        "pv": account.get("redirect_url_pv", "") if account else "",
+        "pac": account.get("redirect_url_pac", "") if account else "",
+        "ite": account.get("redirect_url_ite", "") if account else "",
+        "default": redirect_url
+    }
+    
+    if selected_product and account:
+        product_key = f"redirect_url_{selected_product.lower()}"
+        product_redirect_url = account.get(product_key, "")
+        if product_redirect_url:
+            redirect_url = product_redirect_url
+    
+    # Infos du compte
+    account_name = account.get("name", "") if account else ""
+    logos = {}
+    gtm = {}
+    if account:
+        logos = {
+            "main": account.get("logo_main_url", ""),
+            "secondary": account.get("logo_secondary_url", ""),
+            "mini": account.get("logo_mini_url", "")
+        }
+        gtm = {
+            "head": account.get("gtm_head", ""),
+            "body": account.get("gtm_body", ""),
+            "conversion": account.get("gtm_conversion", "")
+        }
+    
+    # Construire le liaison_code
+    liaison_code = f"{lp_code}_{form_code}" if lp_code else form_code
+    
+    # Générer les scripts
+    from config import API_URL
+    api_url = API_URL
+    
+    # Script Form simplifié
+    script_form = f'''<!-- RDZ TRACKING - FORMULAIRE {form_code} -->
+<script>
+(function() {{
+  var RDZ_CONFIG = {{
+    api: "{api_url}/api/public",
+    form_code: "{form_code}",
+    lp_code: "{lp_code}",
+    redirect_url: "{redirect_url}"
+  }};
+  
+  // Session cookie
+  function getSessionId() {{
+    var match = document.cookie.match(/rdz_session=([^;]+)/);
+    return match ? match[1] : null;
+  }}
+  
+  // Soumission formulaire
+  window.rdzSubmitForm = function(formData) {{
+    var sessionId = getSessionId();
+    var data = Object.assign({{}}, formData, {{
+      form_code: RDZ_CONFIG.form_code,
+      lp_code: RDZ_CONFIG.lp_code,
+      session_id: sessionId
+    }});
+    
+    fetch(RDZ_CONFIG.api + "/leads", {{
+      method: "POST",
+      headers: {{ "Content-Type": "application/json" }},
+      body: JSON.stringify(data)
+    }})
+    .then(function(r) {{ return r.json(); }})
+    .then(function(result) {{
+      console.log("[RDZ] Lead envoyé:", result);
+      if (RDZ_CONFIG.redirect_url) {{
+        window.location.href = RDZ_CONFIG.redirect_url;
+      }}
+    }})
+    .catch(function(e) {{
+      console.error("[RDZ] Erreur:", e);
+    }});
+  }};
+  
+  console.log("[RDZ] Form tracker ready - " + RDZ_CONFIG.form_code);
+}})();
+</script>'''
+
+    return {
+        "form": {
+            "id": form_id,
+            "code": form_code,
+            "url": form_url,
+            "product_type": form.get("product_type", ""),
+            "tracking_type": tracking_type,
+            "redirect_url": redirect_url
+        },
+        "lp": {
+            "linked": lp is not None,
+            "id": lp.get("id", "") if lp else "",
+            "code": lp_code,
+            "url": lp_url,
+            "name": lp_name
+        },
+        "account": {
+            "id": account_id or "",
+            "name": account_name
+        },
+        "liaison_code": liaison_code,
+        "logos": logos,
+        "gtm": gtm,
+        "api_url": api_url,
+        "script_form": script_form,
+        "champs": ["phone", "nom", "prenom", "email", "departement", "ville", "type_logement", "statut_occupant", "facture_electricite"],
+        "selected_product": selected_product,
+        "redirect_urls": redirect_urls
+    }
