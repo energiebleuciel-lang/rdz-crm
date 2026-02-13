@@ -469,22 +469,37 @@ async def submit_lead(data: LeadData, request: Request):
     import logging
     routing_logger = logging.getLogger("routing")
     
+    VALID_TARGET_CRMS = {"zr7", "mdl"}
+    
     target_crm = ""
     crm_api_key = ""
     routing_source = "none"  # Traçabilité: d'où vient la config
     
-    # Étape 1: Vérifier l'override formulaire
-    has_form_override = bool(form_target_crm and form_crm_api_key)
+    # Étape 1: Vérifier l'override formulaire (whitelist obligatoire)
+    form_override_valid = bool(
+        form_target_crm and form_crm_api_key
+        and form_target_crm in VALID_TARGET_CRMS
+    )
+    has_form_override = form_override_valid
+    
+    if form_target_crm and form_target_crm not in VALID_TARGET_CRMS:
+        routing_logger.warning(
+            f"[ROUTING_WARN] form override rejeté: target_crm='{form_target_crm}' "
+            f"not in whitelist {VALID_TARGET_CRMS} form_code={form_code}"
+        )
     
     # Étape 2: Vérifier la config account
     account_routing = {}
     if account:
         account_routing = account.get("crm_routing") or {}
     account_product_config = account_routing.get(product_type, {})
-    has_account_config = bool(
-        account_product_config.get("target_crm", "").strip()
-        and account_product_config.get("api_key", "").strip()
-    )
+    if isinstance(account_product_config, dict):
+        acct_crm = account_product_config.get("target_crm", "").lower().strip()
+        acct_key = account_product_config.get("api_key", "").strip()
+    else:
+        acct_crm = ""
+        acct_key = ""
+    has_account_config = bool(acct_crm and acct_key and acct_crm in VALID_TARGET_CRMS)
     
     # Résolution: override form > config account
     if has_form_override:
@@ -492,8 +507,8 @@ async def submit_lead(data: LeadData, request: Request):
         crm_api_key = form_crm_api_key
         routing_source = "form_override"
     elif has_account_config:
-        target_crm = account_product_config["target_crm"].lower().strip()
-        crm_api_key = account_product_config["api_key"].strip()
+        target_crm = acct_crm
+        crm_api_key = acct_key
         routing_source = "account_routing"
     
     routing_logger.info(
