@@ -184,7 +184,7 @@ async def get_commande_stats_delivery(commande_id: str, week_start: str) -> Dict
             }
         }
     ]
-    
+
     result = await db.leads.aggregate(pipeline).to_list(1)
     if result:
         return {
