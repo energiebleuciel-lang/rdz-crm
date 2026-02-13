@@ -787,7 +787,7 @@ async def process_pending_csv_deliveries() -> Dict:
             
             # Générer et envoyer CSV
             lb_count = sum(1 for lead in leads if lead.get("is_lb"))
-            csv_content = generate_csv_content(leads, entity)
+            csv_content = generate_csv_content(leads, produit, entity)
             
             now = now_iso()
             csv_filename = f"leads_{entity}_{produit}_{now[:10].replace('-', '')}_{len(leads)}.csv"
