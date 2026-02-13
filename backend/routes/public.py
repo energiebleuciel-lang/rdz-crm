@@ -385,14 +385,22 @@ async def submit_lead(data: LeadData, request: Request):
             {"$set": {"status": "converted", "lead_id": lead_id}}
         )
 
-    logger.info(
+    log_msg = (
         f"[LEAD_CREATED] id={lead_id} phone=***{phone[-4:] if len(phone) >= 4 else phone} "
-        f"entity={entity or 'TBD'} produit={produit or 'TBD'} dept={dept}"
+        f"entity={entity or 'TBD'} produit={produit or 'TBD'} dept={dept} "
+        f"status={initial_status}"
     )
+    if source_blocked:
+        log_msg += f" HOLD_SOURCE={source_name}"
+    logger.info(log_msg)
+
+    msg = "Lead enregistre"
+    if source_blocked:
+        msg = "Lead stocke - source en attente"
 
     return {
         "success": True,
         "lead_id": lead_id,
-        "status": "new",
-        "message": "Lead enregistre"
+        "status": initial_status,
+        "message": msg
     }
