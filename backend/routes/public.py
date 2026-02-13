@@ -703,41 +703,9 @@ async def submit_lead(data: LeadData, request: Request):
         warning = "MISSING_REQUIRED"
     # === NOUVEAU: Gestion doublons internes RDZ ===
     elif initial_status == "double_submit":
-        # Double-clic bloqué - on retourne l'ID du lead existant
         message = "Double soumission détectée - lead déjà créé"
         warning = "DOUBLE_SUBMIT"
-        # Retourner l'ID du lead original au lieu du nouveau
         lead_id = original_lead_id
-    elif initial_status == "doublon_recent":
-        # === LOGIQUE LB (Lead Backup) - DÉSACTIVÉE ===
-        # Feature flag: ENABLE_LB_REPLACEMENT = False
-        # Quand activé: cherche un LB de remplacement automatiquement
-        # Actuellement: doublon simplement marqué, pas de remplacement
-        from config import ENABLE_LB_REPLACEMENT
-        
-        lb_result = None
-        if ENABLE_LB_REPLACEMENT and final_crm and final_key:
-            # Tenter le remplacement par LB (DÉSACTIVÉ PAR DÉFAUT)
-            from services.lead_replacement import process_doublon_with_replacement
-            lb_result = await process_doublon_with_replacement(
-                doublon_lead=lead,
-                target_crm=final_crm,
-                crm_api_key=final_key
-            )
-        
-        if lb_result and lb_result.get("lb_sent"):
-            # LB envoyé avec succès
-            message = f"Doublon remplacé par LB ({lb_result.get('lb_id', '')[:8]}...) - {lb_result.get('lb_status')}"
-            warning = "DUPLICATE_REPLACED_BY_LB"
-            status = "doublon_recent"
-        else:
-            # Mode actuel: Doublon détecté, pas de remplacement (LB désactivé)
-            message = f"Doublon détecté - lead déjà livré (original: {original_lead_id[:8]}...)"
-            warning = "DUPLICATE_DELIVERED"
-    elif initial_status == "non_livre":
-        message = f"Doublon détecté - lead existant non livré (original: {original_lead_id[:8]}...)"
-        warning = "DUPLICATE_NOT_SENT"
-    # === FIN Gestion doublons ===
     elif initial_status == "no_crm":
         message = "Lead enregistré - CRM non configuré"
         warning = "CRM_NOT_CONFIGURED"
