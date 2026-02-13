@@ -2,48 +2,22 @@
 
 ## OBJECTIF GLOBAL
 
-Construire un CRM central unique **RDZ** qui :
-- Recupere 100% des leads
-- Ne perd jamais aucun lead
-- Stocke tout avant toute distribution
-- Separe strictement **ZR7** et **MDL**
-- Distribue automatiquement selon commandes
-- Livre automatiquement chaque matin **09h30 Europe/Paris**
-- Envoi automatique CSV par email
-- **Zero manipulation humaine**
-
----
-
-## ARCHITECTURE MULTI-TENANT
-
-### Entites
-- **ZR7** - ZR7 Digital
-- **MDL** - Maison du Lead
-
-### Regle fondamentale
-TOUS les leads passent par RDZ avant toute distribution.
-
-### Separation stricte
-Chaque entite possede ses propres :
-- Clients (acheteurs de leads)
-- Commandes (ordres d'achat)
-- Prix, Emails SMTP, Stats
-
-Champ `entity` obligatoire partout.
+CRM central unique **RDZ** :
+- Recupere 100% des leads, zero perte
+- Separation stricte **ZR7** / **MDL** (multi-tenant)
+- Distribution automatique selon commandes OPEN
+- Livraison quotidienne 09h30 Europe/Paris (CSV email)
+- Zero manipulation humaine
 
 ---
 
 ## NAMING STRICT
 
-- `phone` (jamais telephone)
-- `departement` (jamais code_postal)
-- `produit` (jamais product_type)
-- `nom` (jamais name pour un lead)
-- `entity` (ZR7 ou MDL)
+`phone`, `departement`, `produit`, `nom`, `entity` (ZR7|MDL)
 
 ---
 
-## MODELES DE DONNEES
+## MODELES
 
 ### Client
 `{id, entity, name, email, delivery_emails, default_prix_lead, active}`
@@ -52,36 +26,48 @@ Champ `entity` obligatoire partout.
 `{id, entity, client_id, produit, departements, quota_semaine, prix_lead, lb_percent_max, priorite, active}`
 
 ### Lead Statuts
-| Statut | Description |
-|--------|-------------|
-| `new` | Nouveau, pas encore traite |
-| `non_livre` | Non livre |
-| `livre` | Livre a un client |
-| `doublon` | Doublon 30 jours |
-| `rejet_client` | Rejete par le client |
-| `lb` | Lead Backlog (>8 jours) |
+`new` | `non_livre` | `livre` | `doublon` | `rejet_client` | `lb` | `hold_source`
+
+### Settings (collection `settings`, key-based)
+- `cross_entity`: toggle global + per-entity in/out
+- `source_gating`: blacklist de sources
 
 ---
 
 ## REGLES METIER
 
-1. Lead TOUJOURS insere si telephone present
-2. Doublon 30j: meme phone + produit + client = bloque, remplace automatiquement
-3. LB: non livre > 8 jours, exporte comme lead normal
-4. CSV: ZR7 (7 cols), MDL (8 cols)
-5. Livraison 09h30 Europe/Paris
+### Commande OPEN
+OPEN = `active=true` AND `semaine courante` AND `delivered_this_week < quota_semaine`
+- Quota 0 = illimite (toujours OPEN)
+- Commande remplie = CLOSED, ne recoit plus de leads
+
+### Cross-entity fallback
+- ZR7->MDL ou MDL->ZR7 si aucune commande OPEN dans l'entite principale
+- Controle par settings: global ON/OFF + per-entity in/out
+- Log `no_open_orders` si fallback impossible
+
+### Source gating
+- Blacklist de sources dans settings
+- Source bloquee: lead stocke avec `status=hold_source`, jamais route
+- Uniquement si lead minimal valide (phone+departement+nom)
+
+### Doublon 30 jours
+Meme phone + produit + client = bloque, remplacement automatique
+
+### LB (Lead Backlog)
+Non livre > 8 jours, exporte comme lead normal
 
 ---
 
-## ARCHITECTURE CODE (v4.0 POST-AUDIT)
+## ARCHITECTURE (v4.1)
 
 ```
 /app/backend/
   config.py
   server.py
   models/ (auth, client, commande, delivery, entity, lead)
-  routes/ (auth, clients, commandes, public)
-  services/ (activity_logger, csv_delivery, daily_delivery, duplicate_detector, routing_engine)
+  routes/ (auth, clients, commandes, public, settings)
+  services/ (activity_logger, csv_delivery, daily_delivery, duplicate_detector, routing_engine, settings)
 ```
 
 ---
@@ -92,29 +78,28 @@ Champ `entity` obligatoire partout.
 - Modeles multi-tenant, routing, delivery 09h30, doublon 30j, CSV, SMTP
 
 ### Audit Technique (Decembre 2025)
-- 25+ fichiers legacy supprimes
-- Naming unifie (produit partout)
-- DB nettoyee (indexes, collections, champs)
-- Zero code mort, zero fallback
-- Lint 0 erreurs
+- 25+ fichiers legacy supprimes, naming unifie, DB nettoyee
+
+### Features Routing (Decembre 2025)
+- Commande OPEN (active + semaine + quota)
+- Cross-entity toggle (global + per-entity in/out)
+- Source gating (blacklist, hold_source)
+- Settings admin endpoints avec audit (updated_at/by)
 
 ---
 
 ## NEXT
 
 ### Phase 2 - Pipeline Public (P0)
-- Connecter /api/public/leads au routing engine
-- Determiner entity/produit automatiquement
+- Connecter /api/public/leads au routing engine automatiquement
+- Determiner entity/produit depuis la config formulaire
 
 ### Phase 3 - UI Admin (P1)
 - Gestion Clients + Commandes par entite
-- Dashboard livraison
-
-### Phase 4 - Dashboard (P2)
-- Stats quotidiennes, filtres
+- Dashboard livraison + settings UI
 
 ### Backlog
-- Livraison API, Tracking final, rejet_client
+- Dashboard stats, Livraison API, Tracking final, rejet_client
 
 ---
 
@@ -129,6 +114,9 @@ Champ `entity` obligatoire partout.
 | GET | /api/auth/me | Oui | Info user |
 | GET/POST | /api/clients | Oui | CRUD clients |
 | GET/POST | /api/commandes | Oui | CRUD commandes |
+| GET | /api/settings | Oui | Liste settings |
+| GET/PUT | /api/settings/cross-entity | Admin | Toggle cross-entity |
+| GET/PUT | /api/settings/source-gating | Admin | Source gating |
 | POST | /api/public/leads | Non | Soumettre lead |
 | POST | /api/public/track/session | Non | Session tracking |
 | POST | /api/public/track/lp-visit | Non | LP visit |
