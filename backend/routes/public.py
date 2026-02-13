@@ -542,4 +542,3 @@ async def submit_lead(data: LeadData, request: Request):
         response["message"] = "Lead enregistre"
 
     return response
-    }
