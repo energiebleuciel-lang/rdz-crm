@@ -142,7 +142,7 @@ app.add_middleware(
 
 # ==================== IMPORT DES ROUTES ====================
 
-from routes import auth, accounts, crms, lps, forms, leads, queue, config, commandes, stats, billing, verification, public, media, quality_mappings
+from routes import auth, accounts, crms, lps, forms, leads, queue, config, commandes, stats, billing, verification, public, media, quality_mappings, monitoring
 
 # Routes avec préfixe /api
 app.include_router(auth.router, prefix="/api")
@@ -160,6 +160,7 @@ app.include_router(verification.router, prefix="/api")
 app.include_router(public.router, prefix="/api")
 app.include_router(media.router, prefix="/api")
 app.include_router(quality_mappings.router, prefix="/api")
+app.include_router(monitoring.router, prefix="/api")
 
 # ==================== ROUTE RACINE ====================
 
