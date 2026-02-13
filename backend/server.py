@@ -158,12 +158,13 @@ app.add_middleware(
 )
 
 # Routes
-from routes import auth, public, clients, commandes
+from routes import auth, public, clients, commandes, settings
 
 app.include_router(auth.router, prefix="/api")
 app.include_router(public.router, prefix="/api")
 app.include_router(clients.router, prefix="/api")
 app.include_router(commandes.router, prefix="/api")
+app.include_router(settings.router, prefix="/api")
 
 
 @app.get("/")
