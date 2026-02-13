@@ -423,6 +423,8 @@ async def submit_lead(data: LeadData, request: Request):
         f"entity={entity or 'TBD'} produit={produit or 'TBD'} dept={dept} "
         f"status={initial_status}"
     )
+    if provider:
+        log_msg += f" provider={provider.get('slug')} entity_locked=True"
     if source_blocked:
         log_msg += f" HOLD_SOURCE={source_name}"
     logger.info(log_msg)
