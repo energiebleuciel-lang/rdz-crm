@@ -139,12 +139,13 @@ async def cleanup_account(headers, account_id):
 
 
 @pytest.mark.asyncio
-async def test_1_account_routing_pv(headers, crm_slugs):
+async def test_1_account_routing_pv():
     """
     Test 1: Routing via account.crm_routing pour PV
     Config: account.crm_routing.PV = zr7, form.target_crm = vide
     Attendu: routing_source = account_routing, target_crm = zr7
     """
+    headers, crm_slugs = await get_auth()
     zr7_id = crm_slugs.get("zr7", list(crm_slugs.values())[0])
 
     account = await create_test_account(headers, zr7_id, crm_routing={
@@ -158,7 +159,6 @@ async def test_1_account_routing_pv(headers, crm_slugs):
         assert result["success"] is True
         assert result["lead_id"]
 
-        # Vérifier le lead en DB
         lead = await get_lead(headers, result["lead_id"])
         assert lead is not None
         assert lead.get("routing_source") == "account_routing"
