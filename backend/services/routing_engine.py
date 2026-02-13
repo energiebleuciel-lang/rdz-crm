@@ -66,13 +66,19 @@ def get_week_key() -> str:
 
 
 async def get_commande_stats(commande_id: str, week_start: str) -> Dict[str, int]:
-    """Stats de la commande pour la semaine en cours"""
+    """
+    Stats de la commande pour la semaine en cours.
+    Supporte les deux formats (ancien: livre/delivered_at et nouveau: routed/routed_at).
+    """
     pipeline = [
         {
             "$match": {
                 "delivery_commande_id": commande_id,
-                "status": "livre",
-                "delivered_at": {"$gte": week_start}
+                "status": {"$in": ["livre", "routed"]},
+                "$or": [
+                    {"delivered_at": {"$gte": week_start}},
+                    {"routed_at": {"$gte": week_start}}
+                ]
             }
         },
         {
