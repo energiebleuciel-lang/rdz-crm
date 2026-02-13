@@ -302,6 +302,11 @@ async def process_commande_delivery(
     PASS 1 → Fresh
     PASS 2 → LB jamais livrés à ce client
     PASS 3 → LB déjà livrés à ce client (>30j) - dernier recours
+    
+    ⚠️ RÈGLE IMPORTANTE - REMPLACEMENT AUTOMATIQUE:
+    Si un lead est doublon pour ce client, il est SAUTÉ et REMPLACÉ
+    par le lead suivant compatible. On ne force JAMAIS un doublon.
+    On continue jusqu'à remplir le quota ou épuiser les leads disponibles.
     """
     client_id = cmd.get("client_id")
     client_name = cmd.get("client_name", "")
@@ -332,6 +337,7 @@ async def process_commande_delivery(
     
     to_deliver = []
     lb_count = 0
+    skipped_duplicates = 0  # Compteur de doublons sautés
     
     def matches_dept(lead):
         dept = lead.get("departement", "")
@@ -355,8 +361,10 @@ async def process_commande_delivery(
             continue
         
         # Vérifier doublon 30j pour ce client
+        # ⚠️ Si doublon → SAUTER et REMPLACER par le suivant
         if await is_duplicate_blocked(lead.get("phone"), produit, client_id):
-            continue
+            skipped_duplicates += 1
+            continue  # REMPLACEMENT: on passe au lead suivant
         
         to_deliver.append(lead)
         used_lead_ids.add(lead_id)
