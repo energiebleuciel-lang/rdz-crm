@@ -18,7 +18,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any, Tuple
 from config import db
-from services.duplicate_detector_v2 import check_duplicate_30_days, check_duplicate_for_any_client
+from services.duplicate_detector_v2 import check_duplicate_30_days
 
 logger = logging.getLogger("routing_engine")
 
@@ -214,7 +214,7 @@ async def route_lead(
     commandes = await find_eligible_commandes(entity, product_type, departement, is_lb)
     
     if not commandes:
-        logger.info(f"[ROUTING] Aucune commande éligible trouvée")
+        logger.info("[ROUTING] Aucune commande éligible trouvée")
         return RoutingResult(
             success=False,
             reason="no_eligible_commande"
@@ -251,7 +251,7 @@ async def route_lead(
         )
     
     # Toutes les commandes éligibles ont un doublon
-    logger.info(f"[ROUTING] Toutes les commandes ont doublon 30j")
+    logger.info("[ROUTING] Toutes les commandes ont doublon 30j")
     return RoutingResult(
         success=False,
         reason="all_commandes_duplicate"
