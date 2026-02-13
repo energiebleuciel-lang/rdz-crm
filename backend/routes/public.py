@@ -659,7 +659,7 @@ async def submit_lead(data: LeadData, request: Request):
         "routing_source": routing_source,  # D'où vient la config CRM: account_routing, form_override, none
         "distribution_reason": distribution_reason,  # Raison de la distribution
         "allow_cross_crm": allow_cross_crm,  # Cross-CRM autorisé ?
-        "api_status": initial_status,  # pending, pending_no_order, no_api_key, no_crm, orphan, invalid_phone, missing_required, doublon_recent, non_livre, double_submit
+        "api_status": initial_status,  # pending, pending_no_order, no_api_key, no_crm, orphan, invalid_phone, missing_required, double_submit
         "sent_to_crm": False,
         "manual_only": False,  # Pour redistribution auto
         "retry_count": 0,
