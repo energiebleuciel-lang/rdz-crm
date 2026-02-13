@@ -664,17 +664,12 @@ async def submit_lead(data: LeadData, request: Request):
         "manual_only": False,  # Pour redistribution auto
         "retry_count": 0,
         # FLAGS de diagnostic
-        "phone_invalid": phone_invalid,  # True si téléphone non valide
-        "missing_nom": missing_nom,  # True si nom manquant
-        "missing_dept": missing_dept,  # True si département manquant
-        "form_not_found": form_not_found,  # True si formulaire non trouvé
-        # FLAGS doublons internes RDZ (v2.2)
-        "is_internal_duplicate": is_internal_duplicate,  # True si doublon détecté par RDZ
-        "duplicate_type": duplicate_result.duplicate_type if duplicate_result and is_internal_duplicate else None,
-        "original_lead_id": original_lead_id,  # ID du lead original si doublon
-        "is_doublon_recent": is_doublon_recent,  # True si doublon déjà livré (non livrable)
-        "is_non_livre": is_non_livre,  # True si doublon non livré (redistribuable)
-        "is_double_submit": is_double_submit  # True si double-clic bloqué
+        "phone_invalid": phone_invalid,
+        "missing_nom": missing_nom,
+        "missing_dept": missing_dept,
+        "form_not_found": form_not_found,
+        "is_double_submit": is_double_submit,
+        "original_lead_id": original_lead_id,
     }
     
     # TOUJOURS sauvegarder le lead
