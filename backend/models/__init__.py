@@ -159,7 +159,7 @@ __all__ = [
     "CommandeUpdate",
     "CommandeResponse",
     "CommandeListResponse",
-    # Lead (VERROUILLÉ)
+    # Lead (VERROUILLÉ - SOURCE UNIQUE)
     "EntityType",
     "ProductType",
     "LeadStatus",
