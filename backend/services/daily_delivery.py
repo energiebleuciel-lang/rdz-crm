@@ -77,7 +77,7 @@ def is_lead_fresh(lead: dict) -> bool:
         created = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
         age = datetime.now(timezone.utc) - created
         return age.days < FRESH_MAX_AGE_DAYS
-    except:
+    except (ValueError, TypeError):
         return False
 
 
@@ -104,7 +104,7 @@ def is_lead_lb(lead: dict) -> bool:
             age = datetime.now(timezone.utc) - created
             if age.days >= FRESH_MAX_AGE_DAYS:
                 return True
-        except:
+        except (ValueError, TypeError):
             pass
     
     return False
