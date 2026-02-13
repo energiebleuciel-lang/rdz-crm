@@ -268,10 +268,21 @@ async def generate_brief(lp_id: str, mode: str = "separate", selected_product: s
     if account:
         gtm_head = account.get("gtm_head", "") or account.get("gtm_pixel_header", "") or ""
     
-    # URL de redirection
+    # Code conversion GTM (exécuté après submit valide)
+    gtm_conversion = ""
+    if account:
+        gtm_conversion = account.get("gtm_conversion", "") or ""
+    
+    # URL de redirection par produit
     redirect_url = form.get("redirect_url", "/merci")
     if selected_product and account:
         product_key = f"redirect_url_{selected_product.lower()}"
+        product_redirect_url = account.get(product_key, "")
+        if product_redirect_url:
+            redirect_url = product_redirect_url
+    # Fallback: utiliser aussi le product_type du form si selected_product n'est pas défini
+    elif product_type and account:
+        product_key = f"redirect_url_{product_type.lower()}"
         product_redirect_url = account.get(product_key, "")
         if product_redirect_url:
             redirect_url = product_redirect_url
@@ -293,6 +304,7 @@ async def generate_brief(lp_id: str, mode: str = "separate", selected_product: s
             product_type=product_type,
             account_name=account_name,
             gtm_head=gtm_head,
+            gtm_conversion=gtm_conversion,
             redirect_url=redirect_url,
             form_selector=form_selector,
             form_anchor=form_anchor,
@@ -310,6 +322,7 @@ async def generate_brief(lp_id: str, mode: str = "separate", selected_product: s
             product_type=product_type,
             account_name=account_name,
             gtm_head=gtm_head,
+            gtm_conversion=gtm_conversion,
             redirect_url=redirect_url,
             form_selector=form_selector,
             selected_product=selected_product
