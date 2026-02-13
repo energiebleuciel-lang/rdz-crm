@@ -313,7 +313,7 @@ async def process_commande_delivery(
     lb_max_percent = cmd.get("lb_percent_max", 0)
     
     # Stats actuelles
-    stats = await get_commande_stats(cmd.get("id"), week_start)
+    stats = await get_commande_stats_delivery(cmd.get("id"), week_start)
     already_delivered = stats.get("leads_delivered", 0)
     already_lb = stats.get("lb_delivered", 0)
     
