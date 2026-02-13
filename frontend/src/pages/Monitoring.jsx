@@ -8,7 +8,7 @@ import { API } from '../hooks/useApi';
 import { Card, Loading, Badge } from '../components/UI';
 import {
   Activity, AlertTriangle, CheckCircle, XCircle, RefreshCw,
-  ChevronDown, ChevronUp, Shield
+  ChevronDown, ChevronUp, Shield, RotateCcw
 } from 'lucide-react';
 
 const AlertsPanel = ({ criticals, warnings, threshold }) => {
