@@ -55,6 +55,7 @@ CSV_COLUMNS_MDL = [
     "telephone",
     "email",
     "departement",
+    "proprietaire",
     "type_logement",
     "produit"
 ]
