@@ -207,6 +207,14 @@ Champs obligatoires normalisés (NE PAS MODIFIER) :
 ## Dernière Mise à Jour
 Février 2026 - Système complet sécurisé :
 
+### Monitoring v1.0 (NEW - Février 2026)
+**Endpoint** : `GET /api/monitoring/stats`
+- Taux de succès par CRM / produit / compte (fenêtres 24h et 7j)
+- Alertes automatiques si `success_rate < 80%` ou spike de fails (>3x moyenne horaire)
+- Breakdown des raisons d'échec par catégorie (failed, doublon_recent, no_crm, orphan, etc.)
+- Page UI dédiée `/monitoring` avec KPI, alertes collapsables, tables par dimension
+- Détection spike : compare dernière heure vs moyenne horaire 24h
+
 ### RDZ Tracking v2.1 (Version Unique)
 - Endpoint `/track/lp-visit` dédié avec UTM complet
 - Capture UTM complète (source, medium, campaign, content, term, gclid, fbclid)
