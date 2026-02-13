@@ -120,7 +120,7 @@ def generate_csv_content(leads: List[Dict], product_type: str, entity: str) -> s
     output = io.StringIO()
     
     if entity == "MDL":
-        # MDL: 7 colonnes avec type_logement = maison
+        # MDL: 8 colonnes avec proprietaire = oui + type_logement = maison
         writer = csv.DictWriter(output, fieldnames=CSV_COLUMNS_MDL)
         writer.writeheader()
         
@@ -131,6 +131,7 @@ def generate_csv_content(leads: List[Dict], product_type: str, entity: str) -> s
                 "telephone": lead.get("phone", ""),
                 "email": lead.get("email", ""),
                 "departement": lead.get("departement", ""),
+                "proprietaire": "oui",  # CONSTANTE - toujours "oui"
                 "type_logement": "maison",  # CONSTANTE - toujours "maison"
                 "produit": product_type  # Produit de la COMMANDE (relabel LB)
             }
