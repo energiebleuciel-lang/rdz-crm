@@ -63,6 +63,7 @@ async def create_account(data: AccountCreate, user: dict = Depends(get_current_u
         "gtm_conversion": data.gtm_conversion or "",
         "default_tracking_type": data.default_tracking_type or "redirect",
         "notes": data.notes or "",
+        "crm_routing": {k: v.model_dump() for k, v in data.crm_routing.items()} if data.crm_routing else {},
         "created_at": now_iso(),
         "created_by": user["id"]
     }
