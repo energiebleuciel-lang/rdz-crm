@@ -39,6 +39,7 @@ from collections import defaultdict
 
 from config import db, now_iso
 from services.duplicate_detector_v2 import check_duplicate_30_days
+from services.routing_engine import get_week_start
 
 logger = logging.getLogger("daily_delivery")
 
@@ -163,14 +164,10 @@ async def mark_leads_as_lb():
 # ROUTING - 3 PASSES
 # ════════════════════════════════════════════════════════════════════════
 
-def get_week_start() -> str:
-    """Retourne le lundi de la semaine courante (ISO)"""
-    now = datetime.now(timezone.utc)
-    monday = now - timedelta(days=now.weekday())
-    return monday.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+# (get_week_start imported from routing_engine)
 
 
-async def get_commande_stats(commande_id: str, week_start: str) -> Dict[str, int]:
+async def get_commande_stats_delivery(commande_id: str, week_start: str) -> Dict[str, int]:
     """Stats de la commande pour la semaine en cours"""
     pipeline = [
         {
