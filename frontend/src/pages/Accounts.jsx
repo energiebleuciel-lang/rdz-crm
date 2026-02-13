@@ -75,6 +75,7 @@ export default function Accounts() {
     setEditingAccount(null);
     setShowGtmSection(false);
     setShowLegalSection(false);
+    setShowRoutingSection(false);
     setForm({
       name: '',
       crm_id: selectedCRM, // Utiliser le CRM sélectionné par défaut
@@ -93,7 +94,12 @@ export default function Accounts() {
       gtm_head: '',
       gtm_body: '',
       gtm_conversion: '',
-      default_tracking_type: 'redirect'
+      default_tracking_type: 'redirect',
+      crm_routing: {
+        PV: { target_crm: '', api_key: '', delivery_mode: 'api' },
+        PAC: { target_crm: '', api_key: '', delivery_mode: 'api' },
+        ITE: { target_crm: '', api_key: '', delivery_mode: 'api' }
+      }
     });
     setShowModal(true);
   };
