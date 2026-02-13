@@ -33,7 +33,6 @@ const menuSections = [
   {
     title: 'Distribution',
     items: [
-      { path: '/commandes', icon: Package, label: 'Commandes' },
       { path: '/departements', icon: MapPin, label: 'Départements' },
     ]
   },
