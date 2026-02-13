@@ -793,16 +793,6 @@ async def submit_lead(data: LeadData, request: Request):
     # Ajouter le warning si présent (pour debug/logs côté client)
     if warning:
         response_data["warning"] = warning
-        response_data["stored"] = True  # Confirme que le lead est stocké dans RDZ
-    
-    # Ajouter infos LB si remplacement effectué
-    if initial_status == "doublon_recent" and 'lb_result' in dir() and lb_result:
-        response_data["lb"] = {
-            "found": lb_result.get("lb_found", False),
-            "sent": lb_result.get("lb_sent", False),
-            "lb_id": lb_result.get("lb_id"),
-            "lb_status": lb_result.get("lb_status"),
-            "lb_type": lb_result.get("lb_type")
-        }
+        response_data["stored"] = True
     
     return response_data
