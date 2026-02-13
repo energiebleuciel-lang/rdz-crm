@@ -271,6 +271,7 @@ async def submit_lead(data: LeadData, request: Request):
     4. Retourner success
     """
     from services.duplicate_detector import check_double_submit
+    from services.settings import is_source_allowed
 
     # Valider telephone
     is_valid, phone_result = validate_phone_fr(data.phone)
@@ -279,6 +280,9 @@ async def submit_lead(data: LeadData, request: Request):
     # Champs obligatoires
     nom = (data.nom or "").strip()
     dept = (data.departement or "").strip()[:2] if data.departement else ""
+
+    # Champs minimaux valides (phone + departement + nom)
+    lead_minimal_valid = bool(is_valid and nom and dept)
 
     # Anti double-submit
     is_double_submit = False
@@ -302,12 +306,21 @@ async def submit_lead(data: LeadData, request: Request):
     entity = (data.entity or "").upper()
     produit = (data.produit or "").upper()
 
-    # Recuperer session
+    # Source gating: verifier si la source est autorisee
+    # Recuperer session pour connaitre la source
     session = await db.visitor_sessions.find_one({"id": data.session_id}, {"_id": 0})
-    lp_code = data.lp_code or (session.get("lp_code", "") if session else "")
     utm_source = session.get("utm_source", "") if session else ""
     utm_medium = session.get("utm_medium", "") if session else ""
     utm_campaign = data.utm_campaign or (session.get("utm_campaign", "") if session else "")
+    lp_code = data.lp_code or (session.get("lp_code", "") if session else "")
+
+    source_name = utm_source or lp_code or ""
+    source_blocked = False
+
+    if lead_minimal_valid and source_name:
+        allowed = await is_source_allowed(source_name)
+        if not allowed:
+            source_blocked = True
 
     # Creer le lead
     lead_id = str(uuid.uuid4())
