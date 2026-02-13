@@ -46,35 +46,77 @@ LB_NON_LIVRE_DAYS = 8   # Leads non livrés > 8 jours → LB
 LB_LIVRE_DAYS = 30      # Leads livrés > 30 jours → LB (revendables)
 
 
-async def mark_old_leads_as_lb():
+async def mark_leads_as_lb():
     """
-    Marque les leads non livrés depuis > 8 jours comme LB
+    Marque les leads éligibles comme LB (Lead Backlog = pool revendable)
     
-    Critères:
-    - status in (new, non_livre)
-    - created_at < maintenant - 8 jours
-    - is_lb = False
+    ╔══════════════════════════════════════════════════════════════════╗
+    ║  LOGIQUE LB - 2 CONDITIONS D'ENTRÉE                              ║
+    ╠══════════════════════════════════════════════════════════════════╣
+    ║  1. JAMAIS LIVRÉ:                                                ║
+    ║     - status = new ou non_livre                                  ║
+    ║     - register_date > 8 jours                                    ║
+    ║     → Devient LB                                                 ║
+    ║                                                                  ║
+    ║  2. DÉJÀ LIVRÉ (recyclable):                                     ║
+    ║     - status = livre                                             ║
+    ║     - delivered_at > 30 jours                                    ║
+    ║     → Devient LB (revendable à un AUTRE client)                  ║
+    ╚══════════════════════════════════════════════════════════════════╝
+    
+    Returns:
+        Tuple (nb_non_livres_to_lb, nb_livres_to_lb)
     """
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=8)).isoformat()
+    now = datetime.now(timezone.utc)
+    now_str = now_iso()
     
-    result = await db.leads.update_many(
+    # === CONDITION 1: Non livrés > 8 jours ===
+    cutoff_non_livre = (now - timedelta(days=LB_NON_LIVRE_DAYS)).isoformat()
+    
+    result_non_livre = await db.leads.update_many(
         {
             "status": {"$in": ["new", "non_livre"]},
-            "created_at": {"$lt": cutoff},
+            "created_at": {"$lt": cutoff_non_livre},
             "is_lb": {"$ne": True}
         },
         {"$set": {
             "is_lb": True,
             "status": "lb",
-            "lb_since": now_iso(),
-            "lb_original_product": "$produit"  # Sauvegarder le produit original
+            "lb_since": now_str,
+            "lb_reason": "non_livre_8_days"
         }}
     )
     
-    if result.modified_count > 0:
-        logger.info(f"[LB_MARKING] {result.modified_count} leads marqués comme LB")
+    nb_non_livres = result_non_livre.modified_count
+    if nb_non_livres > 0:
+        logger.info(f"[LB_MARKING] {nb_non_livres} leads non livrés > 8j → LB")
     
-    return result.modified_count
+    # === CONDITION 2: Livrés > 30 jours (recyclables) ===
+    cutoff_livre = (now - timedelta(days=LB_LIVRE_DAYS)).isoformat()
+    
+    result_livre = await db.leads.update_many(
+        {
+            "status": "livre",
+            "delivered_at": {"$lt": cutoff_livre},
+            "is_lb": {"$ne": True}
+        },
+        {"$set": {
+            "is_lb": True,
+            "status": "lb",
+            "lb_since": now_str,
+            "lb_reason": "livre_30_days_expired"
+        }}
+    )
+    
+    nb_livres = result_livre.modified_count
+    if nb_livres > 0:
+        logger.info(f"[LB_MARKING] {nb_livres} leads livrés > 30j → LB (recyclables)")
+    
+    total = nb_non_livres + nb_livres
+    if total > 0:
+        logger.info(f"[LB_MARKING] Total: {total} leads entrés en LB")
+    
+    return nb_non_livres, nb_livres
 
 
 async def get_leads_to_process(entity: str) -> Tuple[List[Dict], List[Dict]]:
