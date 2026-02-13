@@ -388,12 +388,7 @@ async def submit_lead(data: LeadData, request: Request):
     - Si la clé API est manquante → lead créé avec status no_api_key
     - Si pas de commande → lead créé avec status pending_no_order
     
-    DÉTECTION DOUBLONS INTERNE RDZ (v2.2):
-    - Critères: même phone + même département
-    - Fenêtre: 30 jours
-    - Si déjà livré → doublon_recent (non livrable)
-    - Si existe non livré → non_livre (redistribuable)
-    - Protection anti double-submit (5 secondes)
+    PROTECTION ANTI DOUBLE-SUBMIT: 5 secondes (même session + même phone)
     
     CHAMPS OBLIGATOIRES : phone, nom, departement
     """
@@ -401,7 +396,7 @@ async def submit_lead(data: LeadData, request: Request):
     
     # Valider téléphone - mais NE PAS bloquer si invalide
     is_valid, phone_result = validate_phone_fr(data.phone)
-    phone = phone_result if is_valid else data.phone  # Garder le téléphone brut si invalide
+    phone = phone_result if is_valid else data.phone
     phone_invalid = not is_valid
     
     # Valider champs obligatoires (nom, departement)
@@ -411,18 +406,17 @@ async def submit_lead(data: LeadData, request: Request):
     missing_dept = not dept
     missing_required = missing_nom or missing_dept
     
-    # === DÉTECTION DOUBLONS INTERNE RDZ ===
-    # Vérifier AVANT création si c'est un doublon (phone + dept + 30 jours)
+    # === ANTI DOUBLE-SUBMIT ===
     duplicate_result = None
-    is_internal_duplicate = False
+    is_double_submit = False
     
-    if is_valid and not missing_dept:  # Seulement si phone valide et dept présent
+    if is_valid:
         duplicate_result = await check_duplicate(
             phone=phone,
             departement=dept,
             session_id=data.session_id
         )
-        is_internal_duplicate = duplicate_result.is_duplicate
+        is_double_submit = duplicate_result.is_duplicate
     
     # Récupérer formulaire
     form = await db.forms.find_one(
