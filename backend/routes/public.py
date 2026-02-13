@@ -472,27 +472,39 @@ async def submit_lead(data: LeadData, request: Request):
     is_transferred = False  # Le lead sera-t-il transféré vers un autre CRM ?
     routing_reason = "no_crm"  # Raison du routing
     
+    # === ROUTING SIMPLIFIÉ (PRODUCTION) ===
+    # Feature flag: ENABLE_COMMANDES_ROUTING = False
+    # Pipeline actif: RDZ → API → ZR7/MDL (basé uniquement sur target_crm du formulaire)
+    from config import ENABLE_COMMANDES_ROUTING
+    
     if has_crm_config and has_api_key:
-        # Cas normal : CRM et clé configurés
-        crm_id = await get_crm_id(target_crm)
-        if crm_id and await has_commande(crm_id, product_type, dept):
+        if ENABLE_COMMANDES_ROUTING:
+            # Mode Commandes (DÉSACTIVÉ) - Routing basé sur les commandes actives
+            crm_id = await get_crm_id(target_crm)
+            if crm_id and await has_commande(crm_id, product_type, dept):
+                final_crm = target_crm
+                final_key = crm_api_key
+                routing_reason = f"commande_{target_crm}"
+            elif allow_cross_crm:
+                other = "mdl" if target_crm == "zr7" else "zr7"
+                other_id = await get_crm_id(other)
+                if other_id and await has_commande(other_id, product_type, dept):
+                    other_form = await db.forms.find_one({
+                        "account_id": account_id,
+                        "target_crm": other,
+                        "crm_api_key": {"$exists": True, "$ne": ""}
+                    }, {"_id": 0})
+                    if other_form:
+                        final_crm = other
+                        final_key = other_form.get("crm_api_key")
+                        is_transferred = True
+                        routing_reason = f"cross_crm_{other}"
+        else:
+            # Mode Production (ACTIF) - Routing direct basé sur target_crm du formulaire
+            # Pas de vérification des commandes, envoi direct au CRM configuré
             final_crm = target_crm
             final_key = crm_api_key
-            routing_reason = f"commande_{target_crm}"
-        elif allow_cross_crm:
-            other = "mdl" if target_crm == "zr7" else "zr7"
-            other_id = await get_crm_id(other)
-            if other_id and await has_commande(other_id, product_type, dept):
-                other_form = await db.forms.find_one({
-                    "account_id": account_id,
-                    "target_crm": other,
-                    "crm_api_key": {"$exists": True, "$ne": ""}
-                }, {"_id": 0})
-                if other_form:
-                    final_crm = other
-                    final_key = other_form.get("crm_api_key")
-                    is_transferred = True  # Transfert inter-CRM !
-                    routing_reason = f"cross_crm_{other}"
+            routing_reason = f"direct_{target_crm}"
     
     # Déterminer le statut initial
     # RÈGLE: Lead TOUJOURS sauvegardé, peu importe la config
