@@ -120,7 +120,7 @@ def send_test_email(entity: str, to_email: str, csv_content: str, product_type: 
         "ZR7": {
             "host": "ssl0.ovh.net",
             "port": 465,
-            "email": "livraison@zr7-digital.fr",
+            "email": "vos-leads@zr7-digital.fr",
             "password": os.environ.get("ZR7_SMTP_PASSWORD", "")
         },
         "MDL": {
