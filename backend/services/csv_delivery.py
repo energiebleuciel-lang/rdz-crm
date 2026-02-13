@@ -121,7 +121,7 @@ async def send_csv_email(
         "ZR7": {
             "host": "ssl0.ovh.net",
             "port": 465,
-            "email": "livraison@zr7-digital.fr",
+            "email": "vos-leads@zr7-digital.fr",
             "password_env": "ZR7_SMTP_PASSWORD"
         },
         "MDL": {
