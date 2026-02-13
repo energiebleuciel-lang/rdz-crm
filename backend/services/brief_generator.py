@@ -902,6 +902,7 @@ async def _generate_mode_a(
       var result = await res.json();
       
       if (result.success) {{
+        // 1. DataLayer standard (toujours)
         if (window.dataLayer) {{
           window.dataLayer.push({{
             event: "form_submitted",
@@ -913,8 +914,15 @@ async def _generate_mode_a(
           }});
         }}
         
+        // 2. Code conversion GTM personnalisé (si défini)
+        executeConversion(result.lead_id);
+        
+        // 3. Redirection (après conversion)
         if (RDZ.redirectUrl) {{
-          window.location.href = RDZ.redirectUrl;
+          // Petit délai pour laisser le temps aux pixels de s'exécuter
+          setTimeout(function() {{
+            window.location.href = RDZ.redirectUrl;
+          }}, 100);
         }}
       }}
       
