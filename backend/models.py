@@ -63,6 +63,12 @@ class ActivityLog(BaseModel):
 
 # ==================== COMPTES ====================
 
+class CRMProductConfig(BaseModel):
+    """Configuration CRM pour un type de produit"""
+    target_crm: str = ""         # slug: "zr7" ou "mdl"
+    api_key: str = ""            # Clé API pour ce CRM + produit
+    delivery_mode: str = "api"   # "api" (seul mode actif actuellement)
+
 class AccountCreate(BaseModel):
     name: str
     crm_id: str  # ZR7 ou MDL
@@ -88,6 +94,9 @@ class AccountCreate(BaseModel):
     gtm_conversion: Optional[str] = ""
     default_tracking_type: Optional[str] = "redirect"  # redirect, gtm, both
     notes: Optional[str] = ""
+    # Routing CRM par produit (Account-Centric)
+    # {"PV": {"target_crm": "zr7", "api_key": "xxx", "delivery_mode": "api"}, ...}
+    crm_routing: Optional[Dict[str, CRMProductConfig]] = None
 
 class AccountUpdate(BaseModel):
     name: Optional[str] = None
@@ -109,6 +118,8 @@ class AccountUpdate(BaseModel):
     gtm_conversion: Optional[str] = None
     default_tracking_type: Optional[str] = None
     notes: Optional[str] = None
+    # Routing CRM par produit (Account-Centric)
+    crm_routing: Optional[Dict[str, CRMProductConfig]] = None
 
 
 # ==================== CRMs EXTERNES ====================
