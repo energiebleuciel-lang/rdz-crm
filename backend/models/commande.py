@@ -35,7 +35,7 @@ class CommandeCreate(BaseModel):
     {
         "entity": "ZR7",
         "client_id": "xxx",
-        "product_type": "PV",
+        "produit": "PV",
         "departements": ["75", "92", "93", "94"],
         "quota_semaine": 50,
         "prix_lead": 25.0,
@@ -45,7 +45,7 @@ class CommandeCreate(BaseModel):
     """
     entity: EntityType  # OBLIGATOIRE - ZR7 ou MDL
     client_id: str  # Client acheteur
-    product_type: ProductType  # PV, PAC ou ITE
+    produit: ProductType  # PV, PAC ou ITE
     departements: List[str]  # Liste des départements couverts
     
     # Quotas et prix
@@ -118,7 +118,7 @@ class CommandeResponse(BaseModel):
     entity: str
     client_id: str
     client_name: str = ""  # Enrichi à la lecture
-    product_type: str
+    produit: str
     departements: List[str]
     quota_semaine: int = 0
     prix_lead: float = 0.0
