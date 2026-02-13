@@ -262,28 +262,51 @@ async def get_lb_leads(entity: str) -> List[Dict]:
 
 
 async def get_active_commandes(entity: str) -> List[Dict]:
-    """Récupère les commandes actives triées par priorité"""
+    """
+    Recupere les commandes OPEN pour une entite.
+    OPEN = active + semaine courante + delivered < quota + client actif
+    """
+    from services.routing_engine import is_commande_open
+
+    week_start = get_week_start()
+
     commandes = await db.commandes.find({
         "entity": entity,
         "active": True
     }, {"_id": 0}).sort("priorite", 1).to_list(500)
-    
-    # Enrichir avec nom client
+
+    open_commandes = []
+
     for cmd in commandes:
+        # Client actif ?
         client = await db.clients.find_one(
             {"id": cmd.get("client_id")},
             {"_id": 0, "name": 1, "active": 1, "email": 1, "delivery_emails": 1}
         )
-        if client:
-            cmd["client_name"] = client.get("name", "")
-            cmd["client_active"] = client.get("active", True)
-            cmd["client_email"] = client.get("email", "")
-            cmd["client_delivery_emails"] = client.get("delivery_emails", [])
-        else:
-            cmd["client_active"] = False
-    
-    # Filtrer clients inactifs
-    return [c for c in commandes if c.get("client_active", True)]
+        if not client or not client.get("active", True):
+            continue
+
+        cmd["client_name"] = client.get("name", "")
+        cmd["client_active"] = True
+        cmd["client_email"] = client.get("email", "")
+        cmd["client_delivery_emails"] = client.get("delivery_emails", [])
+
+        # OPEN ?
+        is_open, stats = await is_commande_open(cmd, week_start)
+        if not is_open:
+            logger.debug(
+                f"[DELIVERY] Commande {cmd.get('id')[:8]}... CLOSED "
+                f"({stats.get('leads_delivered', 0)}/{stats.get('quota_semaine', 0)})"
+            )
+            continue
+
+        cmd["quota_remaining"] = stats["quota_remaining"]
+        cmd["leads_delivered_this_week"] = stats["leads_delivered"]
+        cmd["lb_delivered_this_week"] = stats["lb_delivered"]
+
+        open_commandes.append(cmd)
+
+    return open_commandes
 
 
 async def process_commande_delivery(
