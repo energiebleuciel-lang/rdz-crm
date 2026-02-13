@@ -278,7 +278,10 @@ async def deliver_to_client(
     
     # 2. Générer le CSV
     csv_content = generate_csv_content(leads, product_type)
-    csv_filename = generate_csv_filename(entity, client_name, product_type)
+    csv_filename = generate_csv_filename(entity, product_type)
+    
+    # Compter les LB
+    lb_count = sum(1 for lead in leads if lead.get("is_lb", False))
     
     # 3. Envoyer par email
     send_result = await send_csv_email(
@@ -287,7 +290,7 @@ async def deliver_to_client(
         csv_content=csv_content,
         csv_filename=csv_filename,
         lead_count=len(leads),
-        client_name=client_name,
+        lb_count=lb_count,
         product_type=product_type
     )
     
