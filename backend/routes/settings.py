@@ -114,3 +114,67 @@ async def update_source_gating(
         updated_by=user.get("email", "admin")
     )
     return {"success": True, "setting": result}
+
+
+# ---- Forms Config ----
+
+class FormConfigItem(BaseModel):
+    form_code: str
+    entity: str
+    produit: str
+
+
+class FormsConfigUpdate(BaseModel):
+    forms: List[FormConfigItem]
+
+
+@router.get("/forms-config")
+async def get_forms_config(user: dict = Depends(get_current_user)):
+    """Recupere la config des formulaires (form_code -> entity + produit)"""
+    from services.settings import get_setting
+    
+    doc = await get_setting("forms_config")
+    if not doc:
+        return {"forms": {}, "count": 0}
+    
+    return {"forms": doc.get("forms", {}), "count": len(doc.get("forms", {}))}
+
+
+@router.put("/forms-config")
+async def update_forms_config(
+    data: FormsConfigUpdate,
+    user: dict = Depends(require_admin)
+):
+    """Met a jour la config des formulaires"""
+    forms_map = {}
+    for item in data.forms:
+        forms_map[item.form_code] = {
+            "entity": item.entity.upper(),
+            "produit": item.produit.upper()
+        }
+    
+    result = await upsert_setting(
+        "forms_config",
+        {"forms": forms_map},
+        updated_by=user.get("email", "admin")
+    )
+    return {"success": True, "setting": result}
+
+
+@router.post("/forms-config/{form_code}")
+async def upsert_single_form_config(
+    form_code: str,
+    entity: str,
+    produit: str,
+    user: dict = Depends(require_admin)
+):
+    """Ajoute ou met a jour un seul formulaire"""
+    from services.settings import upsert_form_config
+    
+    result = await upsert_form_config(
+        form_code=form_code,
+        entity=entity.upper(),
+        produit=produit.upper(),
+        updated_by=user.get("email", "admin")
+    )
+    return {"success": True, "form_code": form_code, "config": result.get("forms", {}).get(form_code)}
