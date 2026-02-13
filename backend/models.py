@@ -187,7 +187,7 @@ class FormCreate(BaseModel):
     # Config CRM destination
     target_crm: Optional[str] = ""  # "zr7" ou "mdl" - vers quel CRM envoyer
     crm_api_key: Optional[str] = ""  # Clé API du CRM pour ce formulaire
-    allow_cross_crm: Optional[bool] = True  # Si True, fallback vers autre CRM si pas de commande
+    allow_cross_crm: Optional[bool] = True
     # Tracking
     tracking_type: str = "redirect"  # gtm, redirect, both
     redirect_url: Optional[str] = "/merci"
