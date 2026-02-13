@@ -252,7 +252,9 @@ class TestSourceGatingLeadSubmission:
             json={"mode": "blacklist", "blocked_sources": []}
         )
         
-        unique_phone = f"+336{uuid.uuid4().hex[:8]}"
+        # Use valid French phone format (10 digits)
+        import random
+        unique_phone = f"06{random.randint(10000000, 99999999)}"
         response = requests.post(
             f"{BASE_URL}/api/public/leads",
             json={
@@ -282,7 +284,9 @@ class TestSourceGatingLeadSubmission:
             json={"mode": "blacklist", "blocked_sources": ["blocked_test_source"]}
         )
         
-        unique_phone = f"+336{uuid.uuid4().hex[:8]}"
+        # Use valid French phone format (10 digits)
+        import random
+        unique_phone = f"06{random.randint(10000000, 99999999)}"
         response = requests.post(
             f"{BASE_URL}/api/public/leads",
             json={
