@@ -194,7 +194,7 @@ async def execute_lb_replacement(
     Returns:
         Tuple (success: bool, status: str, message: str)
     """
-    from services.lead_sender import send_to_crm_v2
+    from services.lead_sender import send_to_crm
     from routes.public import get_crm_url
     
     lb_id = lb_lead.get("id")
@@ -209,7 +209,7 @@ async def execute_lb_replacement(
             return False, "no_crm_url", f"URL CRM non configurée pour {target_crm}"
         
         # Envoyer au CRM
-        status, response, should_queue = await send_to_crm_v2(
+        status, response, should_queue = await send_to_crm(
             lead_doc=lb_lead,
             api_url=api_url,
             api_key=crm_api_key
