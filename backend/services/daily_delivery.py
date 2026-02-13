@@ -52,7 +52,7 @@ async def mark_old_leads_as_lb():
             "is_lb": True,
             "status": "lb",
             "lb_since": now_iso(),
-            "lb_original_product": "$product_type"  # Sauvegarder le produit original
+            "lb_original_product": "$produit"  # Sauvegarder le produit original
         }}
     )
     
@@ -142,7 +142,7 @@ async def process_entity_deliveries(entity: str) -> Dict:
     # 4. Traiter chaque commande par priorité
     for cmd in commandes:
         client_id = cmd.get("client_id")
-        product_type = cmd.get("product_type")
+        produit = cmd.get("produit")
         departements = cmd.get("departements", [])
         quota = cmd.get("quota_semaine", 0)
         lb_max_percent = cmd.get("lb_percent_max", 0)
@@ -170,7 +170,7 @@ async def process_entity_deliveries(entity: str) -> Dict:
                 continue
             
             # Vérifier produit
-            if lead.get("product_type") != product_type:
+            if lead.get("produit") != produit:
                 continue
             
             # Vérifier département
@@ -181,7 +181,7 @@ async def process_entity_deliveries(entity: str) -> Dict:
             # Vérifier doublon 30 jours
             dup = await check_duplicate_30_days(
                 lead.get("phone"),
-                product_type,
+                produit,
                 client_id
             )
             if dup.is_duplicate:
@@ -219,7 +219,7 @@ async def process_entity_deliveries(entity: str) -> Dict:
                 # Vérifier doublon 30 jours
                 dup = await check_duplicate_30_days(
                     lead.get("phone"),
-                    product_type,  # Produit de la COMMANDE
+                    produit,  # Produit de la COMMANDE
                     client_id
                 )
                 if dup.is_duplicate:
@@ -246,14 +246,14 @@ async def process_entity_deliveries(entity: str) -> Dict:
             continue
         
         batch_id = str(uuid.uuid4())
-        product_type = cmd.get("product_type")
+        produit = cmd.get("produit")
         
         try:
             result = await deliver_to_client(
                 entity=entity,
                 client_id=client_id,
                 leads=leads,
-                product_type=product_type,
+                produit=produit,
                 batch_id=batch_id
             )
             
