@@ -7,7 +7,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useCRM } from '../hooks/useCRM';
 import { API } from '../hooks/useApi';
 import { Card, Modal, Button, Input, Select, Loading, EmptyState, Badge } from '../components/UI';
-import { Building, Plus, Edit, Trash2, Image, Code, ChevronDown, ChevronUp, FileText, Clipboard, Check, FileDown } from 'lucide-react';
+import { Building, Plus, Edit, Trash2, Image, Code, ChevronDown, ChevronUp, FileText, Clipboard, Check, FileDown, Shield, Key } from 'lucide-react';
 
 export default function Accounts() {
   const { authFetch } = useAuth();
