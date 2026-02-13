@@ -104,7 +104,7 @@ def generate_csv_content(leads: List[Dict], product_type: str) -> str:
             "telephone": lead.get("phone", ""),
             "email": lead.get("email", ""),
             "departement": lead.get("departement", ""),
-            "proprietaire_maison": "TRUE",  # Toujours TRUE
+            "proprietaire_maison": "oui",  # Toujours "oui"
             "produit": product_type  # Produit de la COMMANDE
         }
         writer.writerow(row)
