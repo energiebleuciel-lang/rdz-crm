@@ -226,14 +226,31 @@ Février 2026 - Système complet sécurisé :
 - Documentation : `/app/memory/DUPLICATE_DETECTION_v2.2.md`
 - Rapport de test : `/app/memory/TEST_VOLUME_REPORT_2026-02-12.md`
 
-### Système LB (Lead Backup) v1.0 (NEW)
+### Système LB (Lead Backup) v1.0 (EN DÉVELOPPEMENT - DÉSACTIVÉ)
+- ⚠️ **Feature flag: ENABLE_LB_REPLACEMENT = False**
 - Remplacement automatique des doublons par LB
 - LB = lead réel existant, > 30 jours, jamais livré à ce CRM, même dept/produit
 - Priorité: Fresh leads < 30j → LB aged > 30j → Crédit/report
 - Jamais de faux leads, données non modifiées
 - Traçabilité complète (doublon ↔ LB)
-- **TEST: 100% LB trouvés, système opérationnel**
+- TEST: 100% LB trouvés, système opérationnel
 - Documentation : `/app/memory/LB_REPLACEMENT_v1.0.md`
+- **ACTIVATION: Nécessite validation CTO**
+
+### Système Commandes/Distribution (EN DÉVELOPPEMENT - DÉSACTIVÉ)
+- ⚠️ **Feature flag: ENABLE_COMMANDES_ROUTING = False**
+- Routing basé sur les commandes actives
+- Cross-CRM automatique si pas de commande
+- **ACTIVATION: Nécessite validation CTO**
+
+### Pipeline Production ACTIF
+```
+RDZ → API → ZR7/MDL (basé sur target_crm du formulaire)
+```
+- Routing direct basé sur `target_crm` et `crm_api_key` du formulaire
+- Pas de vérification des commandes
+- Détection doublons v2.2 active
+- Scheduler mark_old_leads actif
 
 ### Liaison LP ↔ Form Obligatoire
 - Création LP génère automatiquement Form lié
