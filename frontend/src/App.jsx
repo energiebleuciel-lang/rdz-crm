@@ -22,6 +22,8 @@ import UsersPage from './pages/UsersPage';
 import Media from './pages/Media';
 import QualityMappings from './pages/QualityMappings';
 
+import Monitoring from './pages/Monitoring';
+
 // Components
 import Layout from './components/Layout';
 import { Loading } from './components/UI';
@@ -78,6 +80,7 @@ function AppRoutes() {
       <Route path="/billing" element={<PrivateRoute><Billing /></PrivateRoute>} />
       <Route path="/media" element={<PrivateRoute><Media /></PrivateRoute>} />
       <Route path="/quality-mappings" element={<PrivateRoute><QualityMappings /></PrivateRoute>} />
+      <Route path="/monitoring" element={<PrivateRoute><Monitoring /></PrivateRoute>} />
       <Route path="/users" element={<PrivateRoute><UsersPage /></PrivateRoute>} />
       <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
       

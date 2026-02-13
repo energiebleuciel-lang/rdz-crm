@@ -8,7 +8,7 @@ import { useCRM } from '../hooks/useCRM';
 import { 
   Home, Layers, FileText, Users, Settings, LogOut, 
   Building, Globe, Zap, ChevronDown, Database, Package, UserCog, MapPin, DollarSign, Image,
-  TrendingUp, GitBranch, FolderOpen, Wallet, Shield, Target
+  TrendingUp, GitBranch, FolderOpen, Wallet, Shield, Target, Activity
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -52,6 +52,7 @@ const menuSections = [
   {
     title: 'Administration',
     items: [
+      { path: '/monitoring', icon: Activity, label: 'Monitoring' },
       { path: '/users', icon: UserCog, label: 'Utilisateurs' },
       { path: '/settings', icon: Settings, label: 'Paramètres' },
     ]
