@@ -446,11 +446,13 @@ async def submit_lead(data: LeadData, request: Request):
     form_code = form.get("code", "")
     product_type = form.get("product_type", "PV")
     account_id = form.get("account_id", "")
-    target_crm = form.get("target_crm", "").lower()
-    crm_api_key = form.get("crm_api_key", "")
     allow_cross_crm = form.get("allow_cross_crm", True)
     
-    # Récupérer le compte pour déterminer le CRM d'origine
+    # Form-level CRM config (override optionnel)
+    form_target_crm = form.get("target_crm", "").lower().strip()
+    form_crm_api_key = form.get("crm_api_key", "").strip()
+    
+    # Récupérer le compte pour routing account-centric
     account = await db.accounts.find_one({"id": account_id}, {"_id": 0})
     origin_crm_id = account.get("crm_id") if account else None
     origin_crm_slug = None
@@ -458,28 +460,67 @@ async def submit_lead(data: LeadData, request: Request):
         origin_crm_doc = await db.crms.find_one({"id": origin_crm_id}, {"_id": 0})
         origin_crm_slug = origin_crm_doc.get("slug") if origin_crm_doc else None
     
+    # === ROUTING ACCOUNT-CENTRIC ===
+    # Hiérarchie:
+    #   1. form.target_crm + form.crm_api_key (override si les deux sont renseignés)
+    #   2. account.crm_routing[product_type] (config par défaut du compte)
+    #   3. Aucun CRM configuré → no_crm
+    
+    import logging
+    routing_logger = logging.getLogger("routing")
+    
+    target_crm = ""
+    crm_api_key = ""
+    routing_source = "none"  # Traçabilité: d'où vient la config
+    
+    # Étape 1: Vérifier l'override formulaire
+    has_form_override = bool(form_target_crm and form_crm_api_key)
+    
+    # Étape 2: Vérifier la config account
+    account_routing = {}
+    if account:
+        account_routing = account.get("crm_routing") or {}
+    account_product_config = account_routing.get(product_type, {})
+    has_account_config = bool(
+        account_product_config.get("target_crm", "").strip()
+        and account_product_config.get("api_key", "").strip()
+    )
+    
+    # Résolution: override form > config account
+    if has_form_override:
+        target_crm = form_target_crm
+        crm_api_key = form_crm_api_key
+        routing_source = "form_override"
+    elif has_account_config:
+        target_crm = account_product_config["target_crm"].lower().strip()
+        crm_api_key = account_product_config["api_key"].strip()
+        routing_source = "account_routing"
+    
+    routing_logger.info(
+        f"[ROUTING] lead_phone={phone[-4:] if len(phone) >= 4 else phone} "
+        f"account_id={account_id} product={product_type} "
+        f"source={routing_source} target_crm={target_crm or 'none'} "
+        f"has_form_override={has_form_override} has_account_config={has_account_config}"
+    )
+    
     # Vérifier que le CRM cible est configuré en DB
     target_crm_url = await get_crm_url(target_crm) if target_crm else None
     
-    # IMPORTANT: On ne bloque plus si clé API manquante !
-    # Le lead sera TOUJOURS créé, avec un statut approprié
-    has_api_key = bool(crm_api_key and crm_api_key.strip())
+    has_api_key = bool(crm_api_key)
     has_crm_config = bool(target_crm and target_crm_url)
     
     # Vérifier commandes et trouver le bon CRM
     final_crm = None
     final_key = None
-    is_transferred = False  # Le lead sera-t-il transféré vers un autre CRM ?
-    routing_reason = "no_crm"  # Raison du routing
+    is_transferred = False
+    routing_reason = "no_crm"
     
     # === ROUTING SIMPLIFIÉ (PRODUCTION) ===
-    # Feature flag: ENABLE_COMMANDES_ROUTING = False
-    # Pipeline actif: RDZ → API → ZR7/MDL (basé uniquement sur target_crm du formulaire)
     from config import ENABLE_COMMANDES_ROUTING
     
     if has_crm_config and has_api_key:
         if ENABLE_COMMANDES_ROUTING:
-            # Mode Commandes (DÉSACTIVÉ) - Routing basé sur les commandes actives
+            # Mode Commandes (DÉSACTIVÉ)
             crm_id = await get_crm_id(target_crm)
             if crm_id and await has_commande(crm_id, product_type, dept):
                 final_crm = target_crm
@@ -500,11 +541,10 @@ async def submit_lead(data: LeadData, request: Request):
                         is_transferred = True
                         routing_reason = f"cross_crm_{other}"
         else:
-            # Mode Production (ACTIF) - Routing direct basé sur target_crm du formulaire
-            # Pas de vérification des commandes, envoi direct au CRM configuré
+            # Mode Production (ACTIF) - Routing account-centric
             final_crm = target_crm
             final_key = crm_api_key
-            routing_reason = f"direct_{target_crm}"
+            routing_reason = f"{routing_source}_{target_crm}"
     
     # Déterminer le statut initial
     # RÈGLE: Lead TOUJOURS sauvegardé, peu importe la config
