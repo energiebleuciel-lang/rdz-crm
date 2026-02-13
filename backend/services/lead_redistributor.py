@@ -94,7 +94,7 @@ async def redistribute_leads_for_command(command: dict) -> dict:
     Retourne: {redistributed: int, failed: int, skipped: int}
     """
     from routes.commandes import has_commande
-    from services.lead_sender import send_to_crm_v2
+    from services.lead_sender import send_to_crm
     
     crm_id = command.get("crm_id", "")
     product_type = command.get("product_type", "*")
@@ -151,7 +151,7 @@ async def redistribute_leads_for_command(command: dict) -> dict:
         
         # Envoyer au CRM
         try:
-            status, response, should_queue = await send_to_crm_v2(lead, crm_url, api_key)
+            status, response, should_queue = await send_to_crm(lead, crm_url, api_key)
             
             if status == "success":
                 # Mettre à jour le lead
@@ -221,7 +221,7 @@ async def force_send_lead(lead_id: str, target_crm: str, admin_user: str) -> dic
     
     Retourne: {success: bool, message: str, status: str}
     """
-    from services.lead_sender import send_to_crm_v2
+    from services.lead_sender import send_to_crm
     
     # Récupérer le lead
     lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
@@ -259,7 +259,7 @@ async def force_send_lead(lead_id: str, target_crm: str, admin_user: str) -> dic
     
     # Envoyer au CRM
     try:
-        status, response, should_queue = await send_to_crm_v2(lead, crm_url, api_key)
+        status, response, should_queue = await send_to_crm(lead, crm_url, api_key)
         
         # Mettre à jour le lead
         update_data = {
