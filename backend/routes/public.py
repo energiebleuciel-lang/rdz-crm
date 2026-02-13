@@ -667,6 +667,7 @@ async def submit_lead(data: LeadData, request: Request):
         "target_crm": final_crm or "none",  # CRM de destination final (slug)
         "is_transferred": is_transferred,  # Transféré vers autre CRM ?
         "routing_reason": routing_reason,  # Raison du routing
+        "routing_source": routing_source,  # D'où vient la config CRM: account_routing, form_override, none
         "distribution_reason": distribution_reason,  # Raison de la distribution
         "allow_cross_crm": allow_cross_crm,  # Cross-CRM autorisé ?
         "api_status": initial_status,  # pending, pending_no_order, no_api_key, no_crm, orphan, invalid_phone, missing_required, doublon_recent, non_livre, double_submit
