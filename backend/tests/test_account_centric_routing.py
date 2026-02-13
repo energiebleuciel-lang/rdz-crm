@@ -170,11 +170,12 @@ async def test_1_account_routing_pv():
 
 
 @pytest.mark.asyncio
-async def test_2_account_routing_pac(headers, crm_slugs):
+async def test_2_account_routing_pac():
     """
     Test 2: Routing via account.crm_routing pour PAC
     Config: account.crm_routing.PAC = mdl
     """
+    headers, crm_slugs = await get_auth()
     crm_id = list(crm_slugs.values())[0]
 
     account = await create_test_account(headers, crm_id, crm_routing={
