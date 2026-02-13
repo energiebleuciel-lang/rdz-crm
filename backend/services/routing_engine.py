@@ -1,17 +1,8 @@
 """
-╔══════════════════════════════════════════════════════════════════════════════╗
-║  RDZ CRM - Moteur de Routing                                                 ║
-║                                                                              ║
-║  RÔLE: Trouver le meilleur client pour un lead selon:                        ║
-║  1. Entité (ZR7/MDL) - obligatoire                                           ║
-║  2. Produit (PV/PAC/ITE)                                                     ║
-║  3. Département                                                              ║
-║  4. Commandes actives avec quota disponible                                  ║
-║  5. Priorité des commandes                                                   ║
-║  6. Règle doublon 30 jours (éviter client déjà servi)                        ║
-║                                                                              ║
-║  RÉSULTAT: Client trouvé OU lead en statut "non_livre"                       ║
-╚══════════════════════════════════════════════════════════════════════════════╝
+RDZ CRM - Moteur de Routing
+
+COMMANDE OPEN = active=true AND semaine courante AND delivered_this_week < quota_semaine
+Cross-entity fallback uniquement si settings l'autorisent ET commande OPEN compatible existe.
 """
 
 import logging
@@ -24,8 +15,8 @@ logger = logging.getLogger("routing_engine")
 
 
 class RoutingResult:
-    """Résultat du routing d'un lead"""
-    
+    """Resultat du routing d'un lead"""
+
     def __init__(
         self,
         success: bool,
@@ -41,7 +32,7 @@ class RoutingResult:
         self.commande_id = commande_id
         self.is_lb = is_lb
         self.reason = reason
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "success": self.success,
@@ -60,11 +51,22 @@ def get_week_start() -> str:
     return monday.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
 
 
+def get_week_end() -> str:
+    """Retourne le dimanche 23:59:59 de la semaine courante (ISO)"""
+    now = datetime.now(timezone.utc)
+    sunday = now + timedelta(days=6 - now.weekday())
+    return sunday.replace(hour=23, minute=59, second=59, microsecond=0).isoformat()
+
+
+def get_week_key() -> str:
+    """Retourne la cle de semaine courante (ex: 2026-W07)"""
+    now = datetime.now(timezone.utc)
+    iso = now.isocalendar()
+    return f"{iso[0]}-W{iso[1]:02d}"
+
+
 async def get_commande_stats(commande_id: str, week_start: str) -> Dict[str, int]:
-    """
-    Récupère les stats de la commande pour la semaine en cours
-    """
-    # Compter les leads livrés cette semaine pour cette commande
+    """Stats de la commande pour la semaine en cours"""
     pipeline = [
         {
             "$match": {
@@ -81,9 +83,9 @@ async def get_commande_stats(commande_id: str, week_start: str) -> Dict[str, int
             }
         }
     ]
-    
+
     result = await db.leads.aggregate(pipeline).to_list(1)
-    
+
     if result:
         return {
             "leads_delivered": result[0].get("total_delivered", 0),
@@ -92,92 +94,112 @@ async def get_commande_stats(commande_id: str, week_start: str) -> Dict[str, int
     return {"leads_delivered": 0, "lb_delivered": 0}
 
 
-async def find_eligible_commandes(
+async def is_commande_open(cmd: Dict, week_start: str) -> Tuple[bool, Dict]:
+    """
+    COMMANDE OPEN = active=true AND semaine courante AND delivered_this_week < quota_semaine
+
+    Returns:
+        (is_open, stats_dict)
+        stats_dict contient: leads_delivered, lb_delivered, quota_remaining
+    """
+    if not cmd.get("active", False):
+        return False, {"reason": "inactive"}
+
+    cmd_id = cmd.get("id")
+    quota = cmd.get("quota_semaine", 0)
+
+    stats = await get_commande_stats(cmd_id, week_start)
+    delivered = stats.get("leads_delivered", 0)
+    lb_delivered = stats.get("lb_delivered", 0)
+
+    info = {
+        "leads_delivered": delivered,
+        "lb_delivered": lb_delivered,
+        "quota_semaine": quota,
+    }
+
+    # Quota 0 = illimite -> toujours open
+    if quota <= 0:
+        info["quota_remaining"] = 999999
+        return True, info
+
+    remaining = quota - delivered
+    info["quota_remaining"] = max(0, remaining)
+
+    if remaining <= 0:
+        return False, {**info, "reason": "quota_full"}
+
+    return True, info
+
+
+async def find_open_commandes(
     entity: str,
     produit: str,
     departement: str,
     is_lb: bool = False
 ) -> List[Dict]:
     """
-    Trouve toutes les commandes éligibles pour un lead
-    
-    Critères:
-    - Même entité
-    - Produit correspondant
-    - Département couvert
-    - Commande active
-    - Quota non atteint
-    - Si LB: lb_percent_max > 0
-    
-    Tri par priorité (1=haute)
+    Trouve les commandes OPEN pour un lead.
+
+    OPEN = active + semaine courante + delivered < quota
+    + departement compatible + client actif
+    + si LB: lb_percent_max > 0 et % LB non depasse
     """
     week_start = get_week_start()
-    
-    # Requête de base
+
     query = {
         "entity": entity,
         "produit": produit,
         "active": True,
         "$or": [
             {"departements": departement},
-            {"departements": "*"}  # Wildcard = tous
+            {"departements": "*"}
         ]
     }
-    
-    # Récupérer les commandes candidates
+
     commandes = await db.commandes.find(query, {"_id": 0}).sort("priorite", 1).to_list(100)
-    
-    eligible = []
-    
+
+    open_commandes = []
+
     for cmd in commandes:
-        cmd_id = cmd.get("id")
-        
-        # Récupérer le client
+        # Client actif ?
         client = await db.clients.find_one(
-            {"id": cmd.get("client_id")}, 
+            {"id": cmd.get("client_id")},
             {"_id": 0, "name": 1, "active": 1}
         )
         if not client or not client.get("active", True):
             continue
-        
+
         cmd["client_name"] = client.get("name", "")
-        
-        # Vérifier quota
-        quota = cmd.get("quota_semaine", 0)
-        if quota > 0:
-            stats = await get_commande_stats(cmd_id, week_start)
-            delivered = stats.get("leads_delivered", 0)
-            lb_delivered = stats.get("lb_delivered", 0)
-            
-            if delivered >= quota:
-                logger.debug(f"Commande {cmd_id}: quota atteint ({delivered}/{quota})")
-                continue
-            
-            cmd["quota_remaining"] = quota - delivered
-            cmd["leads_delivered_this_week"] = delivered
-            cmd["lb_delivered_this_week"] = lb_delivered
-        else:
-            cmd["quota_remaining"] = 999999  # Illimité
-        
-        # Si LB, vérifier % autorisé
+
+        # OPEN ?
+        is_open, stats = await is_commande_open(cmd, week_start)
+        if not is_open:
+            logger.debug(
+                f"[ROUTING] Commande {cmd.get('id')[:8]}... CLOSED: {stats.get('reason', 'quota_full')}"
+            )
+            continue
+
+        cmd["quota_remaining"] = stats["quota_remaining"]
+        cmd["leads_delivered_this_week"] = stats["leads_delivered"]
+        cmd["lb_delivered_this_week"] = stats["lb_delivered"]
+
+        # LB: verifier % autorise
         if is_lb:
             lb_max = cmd.get("lb_percent_max", 0)
             if lb_max <= 0:
-                logger.debug(f"Commande {cmd_id}: LB non autorisé")
                 continue
-            
-            # Calculer % LB actuel
-            total = cmd.get("leads_delivered_this_week", 0)
-            lb_count = cmd.get("lb_delivered_this_week", 0)
+
+            total = stats["leads_delivered"]
+            lb_count = stats["lb_delivered"]
             if total > 0:
-                current_lb_percent = (lb_count / total) * 100
-                if current_lb_percent >= lb_max:
-                    logger.debug(f"Commande {cmd_id}: % LB max atteint ({current_lb_percent:.1f}%/{lb_max}%)")
+                current_pct = (lb_count / total) * 100
+                if current_pct >= lb_max:
                     continue
-        
-        eligible.append(cmd)
-    
-    return eligible
+
+        open_commandes.append(cmd)
+
+    return open_commandes
 
 
 async def route_lead(
@@ -188,88 +210,129 @@ async def route_lead(
     is_lb: bool = False
 ) -> RoutingResult:
     """
-    Route un lead vers le meilleur client disponible
-    
-    Algorithme:
-    1. Trouver toutes les commandes éligibles
-    2. Filtrer celles où le lead serait doublon (30 jours)
-    3. Prendre la commande avec la meilleure priorité
-    
-    Args:
-        entity: ZR7 ou MDL
-        produit: PV, PAC, ITE
-        departement: Code département
-        phone: Téléphone du lead
-        is_lb: True si le lead est un LB
-    
-    Returns:
-        RoutingResult avec succès ou raison d'échec
+    Route un lead vers le meilleur client avec une commande OPEN.
+
+    1. Chercher commandes OPEN dans l'entite
+    2. Filtrer doublons 30 jours
+    3. Si aucune -> tenter cross-entity fallback (si autorise)
     """
     logger.info(
-        f"[ROUTING] entity={entity} product={produit} dept={departement} "
+        f"[ROUTING] entity={entity} produit={produit} dept={departement} "
         f"phone=***{phone[-4:] if len(phone) >= 4 else phone} is_lb={is_lb}"
     )
-    
-    # 1. Trouver les commandes éligibles
-    commandes = await find_eligible_commandes(entity, produit, departement, is_lb)
-    
+
+    # 1. Commandes OPEN dans l'entite principale
+    commandes = await find_open_commandes(entity, produit, departement, is_lb)
+
     if not commandes:
-        logger.info("[ROUTING] Aucune commande éligible trouvée")
-        return RoutingResult(
-            success=False,
-            reason="no_eligible_commande"
-        )
-    
-    # 2. Vérifier doublon 30 jours pour chaque commande
+        logger.info(f"[ROUTING] {entity}: aucune commande OPEN pour {produit}/{departement}")
+
+        # Tenter cross-entity fallback
+        fallback = await _try_cross_entity(entity, produit, departement, phone, is_lb)
+        if fallback:
+            return fallback
+
+        return RoutingResult(success=False, reason="no_open_orders")
+
+    # 2. Verifier doublon 30 jours pour chaque commande
     for cmd in commandes:
         client_id = cmd.get("client_id")
         client_name = cmd.get("client_name", "")
-        
-        # Vérifier si doublon pour ce client
-        dup_result = await check_duplicate_30_days(phone, produit, client_id)
-        
-        if dup_result.is_duplicate:
-            logger.debug(
-                f"[ROUTING] Skip client {client_name}: doublon 30j "
-                f"(livré le {dup_result.original_delivery_date})"
-            )
+
+        dup = await check_duplicate_30_days(phone, produit, client_id)
+        if dup.is_duplicate:
+            logger.debug(f"[ROUTING] Skip {client_name}: doublon 30j")
             continue
-        
-        # Client trouvé !
+
         logger.info(
-            f"[ROUTING_SUCCESS] client={client_name} commande={cmd.get('id')} "
+            f"[ROUTING_OK] -> {client_name} commande={cmd.get('id')[:8]}... "
             f"priorite={cmd.get('priorite')} is_lb={is_lb}"
         )
-        
         return RoutingResult(
             success=True,
             client_id=client_id,
             client_name=client_name,
             commande_id=cmd.get("id"),
             is_lb=is_lb,
-            reason="commande_found"
+            reason="open_commande_found"
         )
-    
-    # Toutes les commandes éligibles ont un doublon
-    logger.info("[ROUTING] Toutes les commandes ont doublon 30j")
-    return RoutingResult(
-        success=False,
-        reason="all_commandes_duplicate"
+
+    # Toutes doublons -> tenter cross-entity
+    logger.info(f"[ROUTING] {entity}: toutes commandes OPEN = doublon 30j")
+    fallback = await _try_cross_entity(entity, produit, departement, phone, is_lb)
+    if fallback:
+        return fallback
+
+    return RoutingResult(success=False, reason="all_commandes_duplicate")
+
+
+async def _try_cross_entity(
+    from_entity: str,
+    produit: str,
+    departement: str,
+    phone: str,
+    is_lb: bool
+) -> Optional[RoutingResult]:
+    """
+    Tente le fallback cross-entity.
+
+    Conditions:
+    1. Settings cross_entity autorisent le transfert
+    2. L'autre entite a au moins une commande OPEN compatible
+    3. Pas de doublon 30j chez le client cible
+    """
+    from services.settings import is_cross_entity_allowed
+
+    to_entity = "MDL" if from_entity == "ZR7" else "ZR7"
+
+    # Check settings
+    allowed = await is_cross_entity_allowed(from_entity, to_entity)
+    if not allowed:
+        logger.info(
+            f"[CROSS_ENTITY] {from_entity}->{to_entity} BLOQUE par settings"
+        )
+        return None
+
+    # Chercher commandes OPEN dans l'autre entite
+    commandes = await find_open_commandes(to_entity, produit, departement, is_lb)
+
+    if not commandes:
+        logger.info(
+            f"[CROSS_ENTITY] {to_entity}: no_open_orders pour {produit}/{departement}"
+        )
+        return None
+
+    # Verifier doublons
+    for cmd in commandes:
+        client_id = cmd.get("client_id")
+        client_name = cmd.get("client_name", "")
+
+        dup = await check_duplicate_30_days(phone, produit, client_id)
+        if dup.is_duplicate:
+            continue
+
+        logger.info(
+            f"[CROSS_ENTITY_OK] {from_entity}->{to_entity} -> {client_name} "
+            f"commande={cmd.get('id')[:8]}..."
+        )
+        return RoutingResult(
+            success=True,
+            client_id=client_id,
+            client_name=client_name,
+            commande_id=cmd.get("id"),
+            is_lb=is_lb,
+            reason=f"cross_entity_{from_entity}_to_{to_entity}"
+        )
+
+    logger.info(
+        f"[CROSS_ENTITY] {to_entity}: toutes commandes OPEN = doublon 30j"
     )
+    return None
 
 
 async def route_lead_batch(leads: List[Dict]) -> List[Tuple[Dict, RoutingResult]]:
-    """
-    Route un batch de leads (utilisé pour la livraison quotidienne)
-    
-    Args:
-        leads: Liste de documents lead
-    
-    Returns:
-        Liste de tuples (lead, RoutingResult)
-    """
+    """Route un batch de leads"""
     results = []
-    
     for lead in leads:
         result = await route_lead(
             entity=lead.get("entity", ""),
@@ -279,5 +342,4 @@ async def route_lead_batch(leads: List[Dict]) -> List[Tuple[Dict, RoutingResult]
             is_lb=lead.get("is_lb", False)
         )
         results.append((lead, result))
-    
     return results
