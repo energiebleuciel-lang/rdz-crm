@@ -216,6 +216,8 @@ export default function Monitoring() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [window, setWindow] = useState('24h');
+  const [retrying, setRetrying] = useState(false);
+  const [retryResult, setRetryResult] = useState(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -228,6 +230,27 @@ export default function Monitoring() {
       console.error('Monitoring load error:', e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const retryFailed = async () => {
+    if (!confirm('Relancer tous les leads en échec des dernières 24h ?')) return;
+    try {
+      setRetrying(true);
+      setRetryResult(null);
+      const res = await authFetch(`${API}/api/monitoring/retry`, {
+        method: 'POST',
+        body: JSON.stringify({ hours: 24 })
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setRetryResult(d.results);
+        loadData();
+      }
+    } catch (e) {
+      alert('Erreur: ' + e.message);
+    } finally {
+      setRetrying(false);
     }
   };
 
