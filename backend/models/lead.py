@@ -1,214 +1,246 @@
 """
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║  RDZ CRM - Modèle Lead (Refonte spec RDZ)                                    ║
+║  RDZ CRM - Modèle Lead (VERROUILLÉ)                                          ║
 ║                                                                              ║
-║  RÈGLES FONDAMENTALES:                                                       ║
-║  1. Un lead est TOUJOURS inséré si téléphone présent                         ║
-║  2. JAMAIS de perte de lead (même doublon, même rejeté)                      ║
-║  3. Statuts obligatoires: new, non_livre, livre, doublon, rejet_client, lb   ║
-║  4. Doublon 30 jours: même phone + même produit + même client = ne pas livrer║
-║  5. LB après 8 jours sans livraison                                          ║
+║  NAMING UNIQUE - AUCUN ALIAS - AUCUNE AMBIGUÏTÉ                              ║
+║                                                                              ║
+║  RÈGLE MÉTIER:                                                               ║
+║  Un lead est exploitable/vendable si: phone + departement + nom              ║
+║                                                                              ║
+║  CHAMPS OBLIGATOIRES (ROOT):                                                 ║
+║  - phone, departement, nom, register_date, entity, produit                   ║
+║                                                                              ║
+║  CHAMPS OPTIONNELS (ROOT):                                                   ║
+║  - prenom, email, session_id, lp_code, form_code, liaison_code, source, utm_*║
+║                                                                              ║
+║  CHAMPS SECONDAIRES: custom_fields.* uniquement                              ║
+║                                                                              ║
+║  ⚠️ departement EST EN ROOT - PAS dans custom_fields                         ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 """
 
-from typing import Optional, List
-from pydantic import BaseModel
+from typing import Optional, Dict, Any, List
+from pydantic import BaseModel, Field, validator
 from enum import Enum
-from .entity import EntityType
-from .commande import ProductType
+
+
+# ==================== ENUMS STRICTS ====================
+
+class EntityType(str, Enum):
+    """Entités - Multi-tenant strict"""
+    ZR7 = "ZR7"
+    MDL = "MDL"
+
+
+class ProductType(str, Enum):
+    """Types de produits"""
+    PV = "PV"    # Panneaux solaires
+    PAC = "PAC"  # Pompe à chaleur
+    ITE = "ITE"  # Isolation thermique extérieure
 
 
 class LeadStatus(str, Enum):
-    """
-    Statuts de lead - OBLIGATOIRES selon spec
-    """
-    NEW = "new"               # Nouveau lead, pas encore traité
-    NON_LIVRE = "non_livre"   # Non livré (pas de commande, etc.)
-    LIVRE = "livre"           # Livré avec succès à un client
-    DOUBLON = "doublon"       # Doublon 30 jours (non envoyé mais stocké)
-    REJET_CLIENT = "rejet_client"  # Rejeté par le client après livraison
-    LB = "lb"                 # Lead Backlog (>8 jours sans livraison)
+    """Statuts de lead"""
+    NEW = "new"
+    NON_LIVRE = "non_livre"
+    LIVRE = "livre"
+    DOUBLON = "doublon"
+    REJET_CLIENT = "rejet_client"
+    LB = "lb"
 
 
-# Pour validation
-VALID_LEAD_STATUSES = [s.value for s in LeadStatus]
+# ==================== MODÈLE LEAD PRINCIPAL ====================
 
-
-class LeadSubmitPublic(BaseModel):
+class LeadCreate(BaseModel):
     """
-    Lead soumis via l'API publique (formulaire LP)
-    Minimum requis: phone (le reste est optionnel mais recommandé)
-    """
-    # Identification formulaire/session
-    session_id: str
-    form_code: str
+    Création d'un lead via API publique
     
-    # OBLIGATOIRE
-    phone: str
+    CHAMPS OBLIGATOIRES:
+    - phone: numéro de téléphone
+    - departement: code département (2 chiffres)
+    - nom: nom de famille
+    - entity: ZR7 ou MDL
+    - produit: PV, PAC ou ITE
+    """
+    # === OBLIGATOIRES ===
+    phone: str = Field(..., min_length=1, description="Téléphone (obligatoire)")
+    departement: str = Field(..., min_length=2, max_length=2, description="Département 2 chiffres (obligatoire)")
+    nom: str = Field(..., min_length=1, description="Nom (obligatoire)")
+    entity: EntityType = Field(..., description="Entité ZR7 ou MDL (obligatoire)")
+    produit: ProductType = Field(..., description="Produit PV/PAC/ITE (obligatoire)")
     
-    # Identité
-    nom: Optional[str] = ""
+    # === OPTIONNELS (ROOT) ===
     prenom: Optional[str] = ""
-    civilite: Optional[str] = ""  # M., Mme
     email: Optional[str] = ""
-    
-    # Localisation
-    departement: Optional[str] = ""
-    ville: Optional[str] = ""
-    adresse: Optional[str] = ""
-    
-    # Logement
-    type_logement: Optional[str] = ""  # Maison, Appartement
-    statut_occupant: Optional[str] = ""  # Propriétaire, Locataire
-    surface_habitable: Optional[str] = ""
-    annee_construction: Optional[str] = ""
-    type_chauffage: Optional[str] = ""
-    
-    # Énergie
-    facture_electricite: Optional[str] = ""
-    facture_chauffage: Optional[str] = ""
-    
-    # Projet
-    type_projet: Optional[str] = ""
-    delai_projet: Optional[str] = ""
-    budget: Optional[str] = ""
-    
-    # Tracking
+    session_id: Optional[str] = ""
     lp_code: Optional[str] = ""
+    form_code: Optional[str] = ""
     liaison_code: Optional[str] = ""
+    source: Optional[str] = ""
     utm_source: Optional[str] = ""
     utm_medium: Optional[str] = ""
     utm_campaign: Optional[str] = ""
+    utm_term: Optional[str] = ""
+    utm_content: Optional[str] = ""
     
-    # Consentement
-    rgpd_consent: Optional[bool] = True
-    newsletter: Optional[bool] = False
+    # === CHAMPS SECONDAIRES ===
+    custom_fields: Optional[Dict[str, Any]] = {}
+    
+    @validator('departement')
+    def validate_departement(cls, v):
+        """Département = 2 chiffres"""
+        if not v.isdigit() or len(v) != 2:
+            raise ValueError("departement doit être 2 chiffres (ex: 75, 92)")
+        return v
+    
+    @validator('phone')
+    def validate_phone(cls, v):
+        """Phone ne doit pas être vide"""
+        if not v or not v.strip():
+            raise ValueError("phone est obligatoire")
+        return v.strip()
+    
+    @validator('nom')
+    def validate_nom(cls, v):
+        """Nom ne doit pas être vide"""
+        if not v or not v.strip():
+            raise ValueError("nom est obligatoire")
+        return v.strip()
 
 
 class LeadDocument(BaseModel):
     """
-    Structure complète d'un lead en base de données
+    Structure complète d'un lead en base MongoDB
+    
+    NAMING STRICT - AUCUN ALIAS
     """
+    # === ID ===
     id: str
     
-    # Multi-tenant
-    entity: str  # ZR7 ou MDL - OBLIGATOIRE
-    
-    # Statut
-    status: LeadStatus = LeadStatus.NEW
-    
-    # Source
-    session_id: str = ""
-    form_id: str = ""
-    form_code: str = ""
-    account_id: str = ""  # Account source (LP/Form)
-    product_type: str = ""  # PV, PAC, ITE
-    
-    # Contact
+    # === OBLIGATOIRES (ROOT) ===
     phone: str
-    nom: str = ""
+    departement: str  # ⚠️ TOUJOURS EN ROOT - jamais dans custom_fields
+    nom: str
+    register_date: int  # Unix timestamp ms
+    entity: str  # ZR7 ou MDL
+    produit: str  # PV, PAC, ITE
+    
+    # === OPTIONNELS (ROOT) ===
     prenom: str = ""
-    civilite: str = ""
     email: str = ""
-    
-    # Localisation
-    departement: str = ""
-    ville: str = ""
-    adresse: str = ""
-    
-    # Logement (toujours TRUE pour proprietaire_maison selon spec)
-    type_logement: str = "maison"
-    statut_occupant: str = "proprietaire"
-    surface_habitable: str = ""
-    annee_construction: str = ""
-    type_chauffage: str = ""
-    
-    # Énergie
-    facture_electricite: str = ""
-    facture_chauffage: str = ""
-    
-    # Projet
-    type_projet: str = ""
-    delai_projet: str = ""
-    budget: str = ""
-    
-    # Tracking UTM
+    session_id: str = ""
     lp_code: str = ""
+    form_code: str = ""
     liaison_code: str = ""
+    source: str = ""
     utm_source: str = ""
     utm_medium: str = ""
     utm_campaign: str = ""
+    utm_term: str = ""
+    utm_content: str = ""
     
-    # Consentement
-    rgpd_consent: bool = True
-    newsletter: bool = False
+    # === STATUT ===
+    status: str = "new"  # new, non_livre, livre, doublon, rejet_client, lb
     
-    # === DOUBLON INFO (si statut=doublon) ===
+    # === DOUBLON INFO ===
     is_duplicate: bool = False
-    duplicate_of_client_id: Optional[str] = None  # Client déjà livré
+    duplicate_of_client_id: Optional[str] = None
     duplicate_of_client_name: Optional[str] = None
-    duplicate_delivery_date: Optional[str] = None  # Date livraison précédente
+    duplicate_delivery_date: Optional[str] = None
     
     # === LIVRAISON INFO ===
-    delivered_to_client_id: Optional[str] = None  # Client à qui le lead a été livré
+    delivered_to_client_id: Optional[str] = None
     delivered_to_client_name: Optional[str] = None
     delivered_at: Optional[str] = None
-    delivery_method: Optional[str] = None  # "csv" ou "api"
-    delivery_batch_id: Optional[str] = None  # ID du batch de livraison
+    delivery_method: Optional[str] = None
+    delivery_batch_id: Optional[str] = None
+    delivery_commande_id: Optional[str] = None
     
     # === LB INFO ===
-    is_lb: bool = False  # True si lead devenu LB
-    lb_since: Optional[str] = None  # Date de passage en LB
-    lb_original_product: Optional[str] = None  # Produit original si redistribué
+    is_lb: bool = False
+    lb_since: Optional[str] = None
+    lb_original_produit: Optional[str] = None
     
     # === REJET CLIENT ===
     rejected_at: Optional[str] = None
     rejection_reason: Optional[str] = None
     
+    # === CHAMPS SECONDAIRES ===
+    custom_fields: Dict[str, Any] = {}
+    
     # === META ===
     ip: str = ""
-    register_date: int = 0  # Timestamp
     created_at: str = ""
     updated_at: str = ""
+
+
+class LeadPublicSubmit(BaseModel):
+    """
+    Lead soumis via formulaire public (LP)
+    Validation minimale côté API publique
+    """
+    # === OBLIGATOIRES ===
+    phone: str
+    departement: str
+    nom: str
     
-    # Flags techniques
-    phone_invalid: bool = False
-    missing_required: bool = False
+    # === OPTIONNELS ===
+    prenom: Optional[str] = ""
+    email: Optional[str] = ""
+    session_id: Optional[str] = ""
+    form_code: Optional[str] = ""
+    
+    # === TRACKING ===
+    lp_code: Optional[str] = ""
+    liaison_code: Optional[str] = ""
+    source: Optional[str] = ""
+    utm_source: Optional[str] = ""
+    utm_medium: Optional[str] = ""
+    utm_campaign: Optional[str] = ""
+    
+    # === SECONDAIRES ===
+    custom_fields: Optional[Dict[str, Any]] = {}
+    
+    @validator('phone')
+    def validate_phone(cls, v):
+        if not v or not v.strip():
+            raise ValueError("phone est obligatoire")
+        return v.strip()
+    
+    @validator('departement')
+    def validate_departement(cls, v):
+        if not v or len(v) < 2:
+            raise ValueError("departement est obligatoire (2 chiffres)")
+        return v[:2]  # Prendre les 2 premiers caractères
+    
+    @validator('nom')
+    def validate_nom(cls, v):
+        if not v or not v.strip():
+            raise ValueError("nom est obligatoire")
+        return v.strip()
 
 
-class LeadUpdate(BaseModel):
-    """Modification d'un lead par admin"""
-    phone: Optional[str] = None
-    nom: Optional[str] = None
-    prenom: Optional[str] = None
-    email: Optional[str] = None
-    departement: Optional[str] = None
-    status: Optional[LeadStatus] = None
-    notes_admin: Optional[str] = None
+# ==================== HELPERS ====================
 
-
-class LeadDeliveryInfo(BaseModel):
+def validate_lead_required_fields(lead: dict) -> tuple:
     """
-    Information de livraison d'un lead
-    Stockée après chaque livraison
+    Valide qu'un lead a les champs obligatoires
+    
+    Returns:
+        (is_valid: bool, missing_fields: list)
     """
-    lead_id: str
-    client_id: str
-    client_name: str
-    entity: str
-    product_type: str
-    delivery_method: str  # "csv" ou "api"
-    delivered_at: str
-    batch_id: str
-    is_lb: bool = False  # Ce lead était-il un LB ?
+    required = ["phone", "departement", "nom"]
+    missing = [f for f in required if not lead.get(f)]
+    return (len(missing) == 0, missing)
 
 
-class DuplicateCheckResult(BaseModel):
+def is_lead_exploitable(lead: dict) -> bool:
     """
-    Résultat de la vérification de doublon
+    Un lead est exploitable/vendable si:
+    phone + departement + nom sont présents
     """
-    is_duplicate: bool
-    reason: Optional[str] = None
-    original_client_id: Optional[str] = None
-    original_client_name: Optional[str] = None
-    original_delivery_date: Optional[str] = None
+    return bool(
+        lead.get("phone") and 
+        lead.get("departement") and 
+        lead.get("nom")
+    )
