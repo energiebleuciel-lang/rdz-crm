@@ -352,7 +352,8 @@ async def route_lead_batch(leads: List[Dict]) -> List[Tuple[Dict, RoutingResult]
             produit=lead.get("produit", ""),
             departement=lead.get("departement", ""),
             phone=lead.get("phone", ""),
-            is_lb=lead.get("is_lb", False)
+            is_lb=lead.get("is_lb", False),
+            entity_locked=lead.get("entity_locked", False)
         )
         results.append((lead, result))
     return results
