@@ -744,7 +744,6 @@ async def process_pending_csv_deliveries() -> Dict:
     logger.info(f"[PENDING_CSV] {len(pending)} deliveries à traiter")
     
     # Grouper par client_id + commande_id
-    from collections import defaultdict
     grouped = defaultdict(list)
     
     for delivery in pending:
