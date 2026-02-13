@@ -112,15 +112,17 @@ def generate_csv_content(leads: List[Dict], product_type: str) -> str:
     return output.getvalue()
 
 
-def generate_csv_filename(entity: str, client_name: str, product_type: str) -> str:
+def generate_csv_filename(entity: str, product_type: str) -> str:
     """
-    Génère un nom de fichier CSV standardisé
-    Format: {ENTITY}_{CLIENT}_{PRODUIT}_{DATE}.csv
+    Génère un nom de fichier CSV professionnel
+    Format: {ENTITY}_{PRODUIT}_{YYYY-MM-DD}.csv
+    
+    Exemples:
+    - ZR7_PV_2026-02-13.csv
+    - MDL_PAC_2026-02-13.csv
     """
-    date_str = datetime.now(timezone.utc).strftime("%Y%m%d")
-    # Nettoyer le nom client
-    clean_name = "".join(c if c.isalnum() else "_" for c in client_name)
-    return f"{entity}_{clean_name}_{product_type}_{date_str}.csv"
+    date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return f"{entity}_{product_type}_{date_str}.csv"
 
 
 async def send_csv_email(
