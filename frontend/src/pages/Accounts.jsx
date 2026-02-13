@@ -388,6 +388,30 @@ export default function Accounts() {
                   </div>
                 )}
               </div>
+
+              {/* CRM Routing summary */}
+              {account.crm_routing && Object.keys(account.crm_routing).length > 0 && (
+                <div className="mt-3 pt-3 border-t" data-testid={`account-routing-summary-${account.id}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Shield className="w-3.5 h-3.5 text-slate-500" />
+                    <span className="text-xs font-medium text-slate-600">Routing CRM</span>
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    {['PV', 'PAC', 'ITE'].map(pt => {
+                      const cfg = account.crm_routing[pt];
+                      if (!cfg?.target_crm) return null;
+                      const colors = { PV: 'amber', PAC: 'blue', ITE: 'green' };
+                      const c = colors[pt];
+                      return (
+                        <span key={pt} className={`inline-flex items-center gap-1 px-2 py-1 bg-${c}-50 text-${c}-700 text-xs rounded font-medium`}>
+                          {pt} → {cfg.target_crm.toUpperCase()}
+                          {cfg.api_key && <Key className="w-3 h-3" />}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </Card>
           ))}
         </div>
