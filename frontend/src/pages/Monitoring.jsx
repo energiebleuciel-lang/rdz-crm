@@ -171,7 +171,7 @@ const FailureLegend = () => {
   const [open, setOpen] = useState(false);
   const categories = [
     { title: 'Envoi CRM', keys: ['success', 'duplicate', 'failed', 'validation_error', 'auth_error', 'server_error', 'timeout', 'connection_error', 'queued'] },
-    { title: 'Doublons internes RDZ', keys: ['doublon_recent', 'double_submit', 'non_livre'] },
+    { title: 'Protection', keys: ['double_submit'] },
     { title: 'Données invalides', keys: ['invalid_phone', 'missing_required', 'orphan'] },
     { title: 'Configuration', keys: ['no_crm', 'no_api_key', 'pending_no_order'] },
   ];
