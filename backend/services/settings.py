@@ -116,3 +116,53 @@ async def is_source_allowed(source: str) -> bool:
         return True
 
     return source.lower() not in [s.lower() for s in blocked]
+
+
+# ---- Forms Config helpers ----
+
+async def get_form_config(form_code: str) -> Optional[Dict]:
+    """
+    Recupere la config d'un formulaire (entity + produit).
+    
+    Cherche dans:
+    1. settings.forms_config[form_code]
+    2. collection forms (si existante)
+    
+    Returns: {"entity": "ZR7", "produit": "PV"} ou None
+    """
+    # 1. Settings forms_config
+    settings = await get_setting("forms_config")
+    if settings:
+        forms_map = settings.get("forms", {})
+        if form_code in forms_map:
+            return forms_map[form_code]
+    
+    # 2. Collection forms (legacy)
+    form = await db.forms.find_one({"code": form_code}, {"_id": 0})
+    if form:
+        return {
+            "entity": form.get("entity", ""),
+            "produit": form.get("produit", form.get("product_type", ""))
+        }
+    
+    return None
+
+
+async def upsert_form_config(form_code: str, entity: str, produit: str, updated_by: str = "system") -> Dict:
+    """
+    Ajoute ou met a jour la config d'un formulaire.
+    """
+    settings = await get_setting("forms_config")
+    
+    if not settings:
+        settings = {"forms": {}}
+    
+    if "forms" not in settings:
+        settings["forms"] = {}
+    
+    settings["forms"][form_code] = {
+        "entity": entity.upper(),
+        "produit": produit.upper()
+    }
+    
+    return await upsert_setting("forms_config", settings, updated_by)
