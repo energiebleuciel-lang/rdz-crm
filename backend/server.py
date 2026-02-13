@@ -55,21 +55,23 @@ async def lifespan(app: FastAPI):
         
         # Index leads optimisés
         await db.leads.create_index("phone", background=True)
-        await db.leads.create_index("form_code", background=True)
-        await db.leads.create_index("created_at", background=True)
+        await db.leads.create_index("nom", background=True)
+        await db.leads.create_index("departement", background=True)
         await db.leads.create_index("entity", background=True)
+        await db.leads.create_index("produit", background=True)
         await db.leads.create_index("status", background=True)
+        await db.leads.create_index("register_date", background=True)
         
-        # Index composite pour doublon 30 jours (phone + product + client + date)
+        # Index composite pour doublon 30 jours (phone + produit + client + date)
         await db.leads.create_index(
-            [("phone", 1), ("product_type", 1), ("delivered_to_client_id", 1), ("delivered_at", -1)],
+            [("phone", 1), ("produit", 1), ("delivered_to_client_id", 1), ("delivered_at", -1)],
             background=True,
             name="idx_duplicate_30_days"
         )
         
-        # Index composite pour routing (entity + product + dept + status)
+        # Index composite pour routing (entity + produit + departement + status)
         await db.leads.create_index(
-            [("entity", 1), ("product_type", 1), ("departement", 1), ("status", 1)],
+            [("entity", 1), ("produit", 1), ("departement", 1), ("status", 1)],
             background=True,
             name="idx_routing"
         )
