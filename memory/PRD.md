@@ -216,6 +216,26 @@ Février 2026 - Système complet sécurisé :
 - Backend compatible sendBeacon (parse_beacon_body)
 - Tests de fiabilité : 7/7 PASS, 100/100 funnel E2E
 
+### Briefs v2.2 - Conversion GTM + Redirection Produit (NEW)
+**Nouvelles sections automatiques dans les briefs Form et LP+Form:**
+
+1. **Redirection post-submit par produit**
+   - URLs configurées dans Paramètres compte : `redirect_url_pv`, `redirect_url_pac`, `redirect_url_ite`
+   - Exemple : PV → `/merci-solaire`, PAC → `/merci-pompe-a-chaleur`
+   - Déclenchement : après submit réussi + validation téléphone
+
+2. **Code conversion GTM**
+   - Champ compte : `gtm_conversion`
+   - Injection automatique dans le script Form
+   - Déclenchement : après submit valide, avant redirection
+   - Compatible : gtag(), dataLayer.push()
+   - Variables disponibles : `data.lead_id`, `data.lp_code`, `data.form_code`, `data.utm_campaign`
+
+**Flux post-submit:**
+```
+Submit → Validation → DataLayer standard → Code GTM personnalisé → Redirection
+```
+
 ### Détection Doublons Interne v2.2 (VALIDÉ)
 - Critères : phone + département + fenêtre 30 jours
 - Statuts : `doublon_recent` (déjà livré), `non_livre` (redistribuable), `double_submit` (anti double-clic)
