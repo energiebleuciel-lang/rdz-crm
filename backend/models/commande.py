@@ -8,20 +8,16 @@
 ║  - Priorité (1-10) pour routing                                              ║
 ║                                                                              ║
 ║  RÈGLE: Commande TOUJOURS rattachée à une entité et un client                ║
+║                                                                              ║
+║  NOTE: EntityType et ProductType importés depuis models/lead.py              ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 """
 
 from typing import Optional, List
 from pydantic import BaseModel, Field, validator
-from enum import Enum
-from .entity import EntityType
 
-
-class ProductType(str, Enum):
-    """Types de produits - enum strict"""
-    PV = "PV"    # Panneaux solaires
-    PAC = "PAC"  # Pompe à chaleur
-    ITE = "ITE"  # Isolation thermique extérieure
+# Import depuis lead.py (source unique)
+from .lead import EntityType, ProductType
 
 
 # Liste pour validation
