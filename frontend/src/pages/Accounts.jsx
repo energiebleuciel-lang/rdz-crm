@@ -520,6 +520,115 @@ export default function Accounts() {
             </p>
           </div>
 
+          {/* Section Routing CRM par produit */}
+          <div className="border-t pt-4 mt-4">
+            <button
+              type="button"
+              onClick={() => setShowRoutingSection(!showRoutingSection)}
+              className="w-full flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
+            >
+              <span className="font-medium text-slate-700 flex items-center gap-2">
+                <Shield className="w-4 h-4" />
+                Routing CRM par produit
+                {(form.crm_routing?.PV?.api_key || form.crm_routing?.PAC?.api_key || form.crm_routing?.ITE?.api_key) && (
+                  <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full font-medium">Configuré</span>
+                )}
+              </span>
+              {showRoutingSection ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+
+            {showRoutingSection && (
+              <div className="mt-4 p-4 bg-slate-50 rounded-lg space-y-4" data-testid="crm-routing-section">
+                <p className="text-xs text-slate-500 mb-3">
+                  Définissez le CRM cible et la clé API pour chaque type de produit. Une clé configurée ne peut être que remplacée (rotation), jamais supprimée.
+                </p>
+
+                {['PV', 'PAC', 'ITE'].map(pt => {
+                  const config = form.crm_routing?.[pt] || {};
+                  const hasKey = !!config.api_key;
+                  const colors = { PV: 'amber', PAC: 'blue', ITE: 'green' };
+                  const c = colors[pt];
+                  return (
+                    <div key={pt} className="border rounded-lg p-4 bg-white" data-testid={`routing-row-${pt.toLowerCase()}`}>
+                      <div className="flex items-center gap-3 mb-3">
+                        <span className={`px-3 py-1.5 bg-${c}-100 text-${c}-700 text-sm font-bold rounded`}>{pt}</span>
+                        {hasKey ? (
+                          <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full flex items-center gap-1">
+                            <Key className="w-3 h-3" /> Actif
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 bg-slate-100 text-slate-500 text-xs rounded-full">Non configuré</span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-xs text-slate-600 mb-1">CRM cible</label>
+                          <select
+                            value={config.target_crm || ''}
+                            onChange={e => setForm({
+                              ...form,
+                              crm_routing: {
+                                ...form.crm_routing,
+                                [pt]: { ...config, target_crm: e.target.value }
+                              }
+                            })}
+                            className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                            data-testid={`routing-crm-${pt.toLowerCase()}`}
+                          >
+                            <option value="">-- Aucun --</option>
+                            <option value="zr7">ZR7</option>
+                            <option value="mdl">MDL</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-600 mb-1 flex items-center gap-1">
+                            Clé API {hasKey && <Key className="w-3 h-3 text-green-600" />}
+                          </label>
+                          <input
+                            type="text"
+                            value={config.api_key || ''}
+                            onChange={e => {
+                              const val = e.target.value;
+                              // Interdire vidage si clé existante (en édition)
+                              if (editingAccount && hasKey && !val.trim()) return;
+                              setForm({
+                                ...form,
+                                crm_routing: {
+                                  ...form.crm_routing,
+                                  [pt]: { ...config, api_key: val }
+                                }
+                              });
+                            }}
+                            placeholder={hasKey ? "Remplacer la clé..." : "UUID clé API"}
+                            className="w-full px-3 py-2 border rounded-lg text-sm font-mono focus:ring-2 focus:ring-blue-500"
+                            data-testid={`routing-key-${pt.toLowerCase()}`}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-600 mb-1">Mode</label>
+                          <select
+                            value={config.delivery_mode || 'api'}
+                            onChange={e => setForm({
+                              ...form,
+                              crm_routing: {
+                                ...form.crm_routing,
+                                [pt]: { ...config, delivery_mode: e.target.value }
+                              }
+                            })}
+                            className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                            data-testid={`routing-mode-${pt.toLowerCase()}`}
+                          >
+                            <option value="api">API</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           {/* Section GTM */}
           <div className="border-t pt-4 mt-4">
             <button
