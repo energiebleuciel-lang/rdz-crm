@@ -82,6 +82,12 @@ async def update_account(account_id: str, data: AccountUpdate, user: dict = Depe
     
     # Ne mettre à jour que les champs fournis
     update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    # Sérialiser crm_routing si présent (Pydantic → dict)
+    if "crm_routing" in update_data and update_data["crm_routing"]:
+        update_data["crm_routing"] = {
+            k: v if isinstance(v, dict) else v
+            for k, v in update_data["crm_routing"].items()
+        }
     update_data["updated_at"] = now_iso()
     update_data["updated_by"] = user["id"]
     
