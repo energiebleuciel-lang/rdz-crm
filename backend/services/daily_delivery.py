@@ -795,7 +795,6 @@ async def process_pending_csv_deliveries() -> Dict:
             try:
                 await send_csv_email(
                     entity=entity,
-                    client_name=client_name,
                     to_emails=emails,
                     csv_content=csv_content,
                     csv_filename=csv_filename,
