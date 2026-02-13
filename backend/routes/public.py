@@ -442,6 +442,8 @@ async def submit_lead(data: LeadData, request: Request):
     allow_cross_crm = form.get("allow_cross_crm", True)
     
     # Form-level CRM config (override optionnel)
+    form_target_crm = form.get("target_crm", "").lower().strip()
+    form_crm_api_key = form.get("crm_api_key", "").strip()
     
     # Récupérer le compte pour routing account-centric
     account = await db.accounts.find_one({"id": account_id}, {"_id": 0})
