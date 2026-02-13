@@ -244,7 +244,7 @@ async def get_client_stats(
     pipeline = [
         {"$match": {"delivered_to_client_id": client_id, "status": "livre"}},
         {"$group": {
-            "_id": "$product_type",
+            "_id": "$produit",
             "count": {"$sum": 1}
         }}
     ]
