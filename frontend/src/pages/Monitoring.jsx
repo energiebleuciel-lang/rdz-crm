@@ -167,6 +167,50 @@ const StatsTable = ({ data, title, icon: Icon, showFailures = true }) => {
   );
 };
 
+const FailureLegend = () => {
+  const [open, setOpen] = useState(false);
+  const categories = [
+    { title: 'Envoi CRM', keys: ['success', 'duplicate', 'failed', 'validation_error', 'auth_error', 'server_error', 'timeout', 'connection_error', 'queued'] },
+    { title: 'Doublons internes RDZ', keys: ['doublon_recent', 'double_submit', 'non_livre'] },
+    { title: 'Données invalides', keys: ['invalid_phone', 'missing_required', 'orphan'] },
+    { title: 'Configuration', keys: ['no_crm', 'no_api_key', 'pending_no_order'] },
+  ];
+  return (
+    <div className="border rounded-lg overflow-hidden" data-testid="failure-legend">
+      <button onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 transition-colors">
+        <span className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+          <AlertTriangle className="w-4 h-4" /> Dictionnaire des statuts
+        </span>
+        {open ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+      </button>
+      {open && (
+        <div className="divide-y">
+          {categories.map(cat => (
+            <div key={cat.title} className="px-4 py-3">
+              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">{cat.title}</h4>
+              <div className="space-y-2">
+                {cat.keys.map(key => {
+                  const info = getFailureInfo(key);
+                  return (
+                    <div key={key} className="flex items-start gap-3">
+                      <code className="text-xs bg-slate-100 px-1.5 py-0.5 rounded font-mono text-slate-600 shrink-0 w-32 text-center">{key}</code>
+                      <div>
+                        <span className="text-sm font-medium text-slate-800">{info.label}</span>
+                        <p className="text-xs text-slate-500 mt-0.5">{info.rule}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function Monitoring() {
   const { authFetch } = useAuth();
   const [data, setData] = useState(null);
