@@ -147,6 +147,11 @@ __all__ = [
     "EntityUpdate",
     "validate_entity",
     "get_entity_or_raise",
+    # Client
+    "ClientCreate",
+    "ClientUpdate",
+    "ClientResponse",
+    "ClientListResponse",
     # Commande
     "VALID_PRODUCTS",
     "DEPARTEMENTS_METRO",
