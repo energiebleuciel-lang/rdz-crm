@@ -347,13 +347,17 @@ async def run_daily_delivery():
     
     start_time = datetime.now(timezone.utc)
     
-    # 1. Marquer les vieux leads comme LB
-    lb_marked = await mark_old_leads_as_lb()
+    # 1. Marquer les leads éligibles comme LB (2 conditions)
+    lb_non_livres, lb_livres = await mark_leads_as_lb()
     
     # 2. Traiter chaque entité
     all_results = {
         "run_at": now_iso(),
-        "lb_marked": lb_marked,
+        "lb_marked": {
+            "non_livres_to_lb": lb_non_livres,
+            "livres_to_lb": lb_livres,
+            "total": lb_non_livres + lb_livres
+        },
         "entities": {}
     }
     
