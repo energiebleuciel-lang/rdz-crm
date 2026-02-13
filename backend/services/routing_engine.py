@@ -232,7 +232,7 @@ async def route_lead(
         # Cross-entity INTERDIT si entity_locked (provider)
         if entity_locked:
             logger.info(
-                f"[ROUTING] entity_locked_by_provider -> pas de cross-entity"
+                "[ROUTING] entity_locked_by_provider -> pas de cross-entity"
             )
             return RoutingResult(success=False, reason="no_open_orders_entity_locked")
 
@@ -269,7 +269,7 @@ async def route_lead(
     logger.info(f"[ROUTING] {entity}: toutes commandes OPEN = doublon 30j")
 
     if entity_locked:
-        logger.info(f"[ROUTING] entity_locked_by_provider -> pas de cross-entity")
+        logger.info("[ROUTING] entity_locked_by_provider -> pas de cross-entity")
         return RoutingResult(success=False, reason="all_commandes_duplicate_entity_locked")
 
     fallback = await _try_cross_entity(entity, produit, departement, phone, is_lb)
