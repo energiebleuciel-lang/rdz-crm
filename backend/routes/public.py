@@ -329,6 +329,12 @@ async def submit_lead(data: LeadData, request: Request):
     entity = (data.entity or "").upper()
     produit = (data.produit or "").upper()
 
+    # Si provider: entity VERROUILLEE par le provider
+    if provider:
+        entity = provider.get("entity", "")
+        entity_locked = True
+        # produit peut venir du body (le provider l'envoie)
+
     # Source gating: verifier si la source est autorisee
     # Recuperer session pour connaitre la source
     session = await db.visitor_sessions.find_one({"id": data.session_id}, {"_id": 0})
