@@ -643,47 +643,68 @@ async def process_entity_deliveries(entity: str) -> Dict:
     return results
 
 
-# ════════════════════════════════════════════════════════════════════════
-# CROSS-ENTITY FALLBACK
-# ════════════════════════════════════════════════════════════════════════
+# ---- CROSS-ENTITY FALLBACK ----
 
 async def try_cross_entity_fallback(
     lead: Dict,
     original_entity: str
 ) -> Optional[str]:
     """
-    Tente de router vers l'autre entité si aucune commande éligible
-    dans l'entité principale.
-    
+    Tente de router vers l'autre entite si aucune commande OPEN
+    dans l'entite principale.
+
+    Conditions:
+    1. Settings cross_entity autorisent le transfert
+    2. L'autre entite a au moins une commande OPEN compatible
+    3. Pas de doublon 30j chez le client cible
+
     Returns:
-        ID de la commande trouvée ou None
+        ID de la commande trouvee ou None
     """
+    from services.settings import is_cross_entity_allowed
+
     other_entity = "MDL" if original_entity == "ZR7" else "ZR7"
-    
-    # Chercher une commande éligible dans l'autre entité
+
+    # 1. Check settings
+    allowed = await is_cross_entity_allowed(original_entity, other_entity)
+    if not allowed:
+        logger.info(
+            f"[CROSS_ENTITY] {original_entity}->{other_entity} BLOQUE par settings"
+        )
+        return None
+
+    # 2. Commandes OPEN dans l'autre entite
     commandes = await get_active_commandes(other_entity)
-    
+
+    if not commandes:
+        logger.info(
+            f"[CROSS_ENTITY] {other_entity}: no_open_orders "
+            f"pour {lead.get('produit')}/{lead.get('departement')}"
+        )
+        return None
+
     for cmd in commandes:
-        produit = cmd.get("produit")
         departements = cmd.get("departements", [])
         client_id = cmd.get("client_id")
-        
-        # Vérifier département
+
+        # Departement compatible ?
         dept = lead.get("departement", "")
         if "*" not in departements and dept not in departements:
             continue
-        
-        # Vérifier doublon
-        if await is_duplicate_blocked(lead.get("phone"), produit, client_id):
+
+        # Doublon 30j ?
+        if await is_duplicate_blocked(lead.get("phone"), cmd.get("produit"), client_id):
             continue
-        
-        # Trouvé !
+
         logger.info(
-            f"[CROSS_ENTITY] Lead {lead.get('id')[:8]}... "
-            f"fallback {original_entity} → {other_entity}"
+            f"[CROSS_ENTITY_OK] {original_entity}->{other_entity} "
+            f"lead={lead.get('id', '')[:8]}... -> {cmd.get('client_name')}"
         )
         return cmd.get("id")
-    
+
+    logger.info(
+        f"[CROSS_ENTITY] {other_entity}: no_open_orders compatible"
+    )
     return None
 
 
