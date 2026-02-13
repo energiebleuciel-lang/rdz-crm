@@ -1,76 +1,25 @@
 """
-╔══════════════════════════════════════════════════════════════════════════════╗
-║  RDZ CRM - Models Package                                                    ║
-║                                                                              ║
-║  Exports tous les modèles pour import facile                                 ║
-║  from models import EntityType, ClientCreate, CommandeCreate, etc.           ║
-║                                                                              ║
-║  Inclut aussi les modèles legacy pour compatibilité                          ║
-╚══════════════════════════════════════════════════════════════════════════════╝
+RDZ CRM - Models Package
+Exports tous les modeles pour import facile
 """
 
-# ==================== LEGACY MODELS (compatibilité) ====================
-# Ces modèles viennent de l'ancien fichier models.py monolithique
-import sys
-from pathlib import Path
-
-# Import depuis le fichier renommé
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from models_legacy import (
-    # Auth
+# Auth & Utilisateurs
+from .auth import (
     UserPermissions,
     UserLogin,
     UserCreate,
     UserUpdate,
     UserResponse,
-    # Activity
     ActivityLog,
-    # Accounts
-    CRMProductConfig,
-    AccountCreate,
-    AccountUpdate,
-    # CRMs
-    CRMCreate,
-    CRMUpdate,
-    # LPs
-    LPCreate,
-    LPUpdate,
-    # Forms
-    FormCreate,
-    FormUpdate,
-    # Leads (legacy)
-    LeadSubmit,
-    LeadUpdate as LeadUpdateLegacy,
-    LeadForceSend,
-    # Tracking
-    TrackLPVisit,
-    TrackCTAClick,
-    TrackFormStart,
-    # Queue
-    QueueItem,
 )
 
-# ==================== NEW RDZ MODELS ====================
-
-# Lead (SOURCE UNIQUE - VERROUILLÉ)
-from .lead import (
-    EntityType,
-    ProductType,
-    LeadStatus,
-    LeadCreate,
-    LeadDocument,
-    LeadPublicSubmit,
-    validate_lead_required_fields,
-    is_lead_exploitable
-)
-
-# Entity Config (utilise EntityType de lead.py)
+# Entity
 from .entity import (
     EntityConfig,
     EntityCreate,
     EntityUpdate,
     validate_entity,
-    get_entity_or_raise
+    get_entity_or_raise,
 )
 
 # Client (Acheteur de leads)
@@ -78,20 +27,20 @@ from .client import (
     ClientCreate,
     ClientUpdate,
     ClientResponse,
-    ClientListResponse
+    ClientListResponse,
 )
 
-# Commande (utilise EntityType et ProductType de lead.py)
+# Commande
 from .commande import (
     VALID_PRODUCTS,
     DEPARTEMENTS_METRO,
     CommandeCreate,
     CommandeUpdate,
     CommandeResponse,
-    CommandeListResponse
+    CommandeListResponse,
 )
 
-# Lead (VERROUILLÉ)
+# Lead (SOURCE UNIQUE)
 from .lead import (
     EntityType,
     ProductType,
@@ -100,75 +49,30 @@ from .lead import (
     LeadDocument,
     LeadPublicSubmit,
     validate_lead_required_fields,
-    is_lead_exploitable
+    is_lead_exploitable,
 )
 
 # Delivery
 from .delivery import (
     DeliveryBatch,
-    DeliveryStats
+    DeliveryStats,
 )
 
 __all__ = [
-    # Legacy Auth
-    "UserPermissions",
-    "UserLogin",
-    "UserCreate",
-    "UserUpdate",
-    "UserResponse",
-    # Legacy Activity
+    # Auth
+    "UserPermissions", "UserLogin", "UserCreate", "UserUpdate", "UserResponse",
     "ActivityLog",
-    # Legacy Accounts
-    "CRMProductConfig",
-    "AccountCreate",
-    "AccountUpdate",
-    # Legacy CRMs
-    "CRMCreate",
-    "CRMUpdate",
-    # Legacy LPs
-    "LPCreate",
-    "LPUpdate",
-    # Legacy Forms
-    "FormCreate",
-    "FormUpdate",
-    # Legacy Leads
-    "LeadSubmit",
-    "LeadUpdateLegacy",
-    "LeadForceSend",
-    # Legacy Tracking
-    "TrackLPVisit",
-    "TrackCTAClick",
-    "TrackFormStart",
-    # Legacy Queue
-    "QueueItem",
-    # Entity Config
-    "EntityConfig",
-    "EntityCreate",
-    "EntityUpdate",
-    "validate_entity",
-    "get_entity_or_raise",
+    # Entity
+    "EntityConfig", "EntityCreate", "EntityUpdate", "validate_entity", "get_entity_or_raise",
     # Client
-    "ClientCreate",
-    "ClientUpdate",
-    "ClientResponse",
-    "ClientListResponse",
+    "ClientCreate", "ClientUpdate", "ClientResponse", "ClientListResponse",
     # Commande
-    "VALID_PRODUCTS",
-    "DEPARTEMENTS_METRO",
-    "CommandeCreate",
-    "CommandeUpdate",
-    "CommandeResponse",
-    "CommandeListResponse",
-    # Lead (VERROUILLÉ - SOURCE UNIQUE)
-    "EntityType",
-    "ProductType",
-    "LeadStatus",
-    "LeadCreate",
-    "LeadDocument",
-    "LeadPublicSubmit",
-    "validate_lead_required_fields",
-    "is_lead_exploitable",
+    "VALID_PRODUCTS", "DEPARTEMENTS_METRO",
+    "CommandeCreate", "CommandeUpdate", "CommandeResponse", "CommandeListResponse",
+    # Lead
+    "EntityType", "ProductType", "LeadStatus",
+    "LeadCreate", "LeadDocument", "LeadPublicSubmit",
+    "validate_lead_required_fields", "is_lead_exploitable",
     # Delivery
-    "DeliveryBatch",
-    "DeliveryStats",
+    "DeliveryBatch", "DeliveryStats",
 ]
