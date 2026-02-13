@@ -108,6 +108,8 @@ export default function Accounts() {
     setEditingAccount(account);
     setShowGtmSection(!!account.gtm_head || !!account.gtm_body || !!account.gtm_conversion);
     setShowLegalSection(!!account.cgu_text || !!account.privacy_policy_text || !!account.legal_mentions_text);
+    const r = account.crm_routing || {};
+    setShowRoutingSection(!!(r.PV?.api_key || r.PAC?.api_key || r.ITE?.api_key));
     setForm({
       name: account.name,
       crm_id: account.crm_id,
@@ -126,7 +128,12 @@ export default function Accounts() {
       gtm_head: account.gtm_head || '',
       gtm_body: account.gtm_body || '',
       gtm_conversion: account.gtm_conversion || '',
-      default_tracking_type: account.default_tracking_type || 'redirect'
+      default_tracking_type: account.default_tracking_type || 'redirect',
+      crm_routing: {
+        PV: { target_crm: r.PV?.target_crm || '', api_key: r.PV?.api_key || '', delivery_mode: r.PV?.delivery_mode || 'api' },
+        PAC: { target_crm: r.PAC?.target_crm || '', api_key: r.PAC?.api_key || '', delivery_mode: r.PAC?.delivery_mode || 'api' },
+        ITE: { target_crm: r.ITE?.target_crm || '', api_key: r.ITE?.api_key || '', delivery_mode: r.ITE?.delivery_mode || 'api' }
+      }
     });
     setShowModal(true);
   };
