@@ -271,14 +271,6 @@ class LeadForceSend(BaseModel):
     reason: Optional[str] = "manual_redistribution"
 
 
-# ==================== REDISTRIBUTION KEYS ====================
-
-class RedistributionKeys(BaseModel):
-    """6 clés API pour distribution inter-CRM"""
-    zr7: Dict[str, str] = {"PV": "", "PAC": "", "ITE": ""}  # Clés pour envoyer VERS ZR7
-    mdl: Dict[str, str] = {"PV": "", "PAC": "", "ITE": ""}  # Clés pour envoyer VERS MDL
-
-
 # ==================== TRACKING ====================
 
 class TrackLPVisit(BaseModel):
