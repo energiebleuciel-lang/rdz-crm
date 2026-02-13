@@ -4,14 +4,25 @@
 ║                                                                              ║
 ║  CRON: Tous les jours à 09h30 Europe/Paris                                   ║
 ║                                                                              ║
-║  ACTIONS:                                                                    ║
-║  1. Récupérer les leads "new" ou "non_livre" récents                         ║
-║  2. Router chaque lead vers un client éligible                               ║
-║  3. Éviter doublons 30 jours                                                 ║
-║  4. Compléter quotas avec LB si nécessaire                                   ║
-║  5. Générer CSV                                                              ║
-║  6. Envoyer par email                                                        ║
-║  7. Mettre à jour la base                                                    ║
+║  LOGIQUE LB (Lead Backlog) - POOL DE LEADS REVENDABLES:                      ║
+║  ═══════════════════════════════════════════════════════════════════════     ║
+║  Un lead entre en LB dans 2 cas:                                             ║
+║                                                                              ║
+║  1. JAMAIS LIVRÉ → non_livre depuis > 8 jours → LB                           ║
+║  2. DÉJÀ LIVRÉ → dernière livraison > 30 jours → LB                          ║
+║                                                                              ║
+║  LB = statut unique pour leads recyclables/revendables                       ║
+║  Doublon = période de blocage 30 jours PAR CLIENT                            ║
+║  Une fois expiré → retour automatique en LB                                  ║
+║                                                                              ║
+║  ACTIONS QUOTIDIENNES:                                                       ║
+║  1. Marquer les leads éligibles comme LB                                     ║
+║  2. Récupérer les leads "new" ou "non_livre" récents                         ║
+║  3. Router chaque lead vers un client éligible                               ║
+║  4. Éviter doublons 30 jours                                                 ║
+║  5. Compléter quotas avec LB si nécessaire                                   ║
+║  6. Générer CSV                                                              ║
+║  7. Envoyer par email                                                        ║
 ║                                                                              ║
 ║  ZÉRO MANIPULATION HUMAINE                                                   ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
@@ -29,6 +40,10 @@ from services.csv_delivery import deliver_to_client
 from services.duplicate_detector_v2 import check_duplicate_30_days
 
 logger = logging.getLogger("daily_delivery")
+
+# Configuration LB
+LB_NON_LIVRE_DAYS = 8   # Leads non livrés > 8 jours → LB
+LB_LIVRE_DAYS = 30      # Leads livrés > 30 jours → LB (revendables)
 
 
 async def mark_old_leads_as_lb():
