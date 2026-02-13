@@ -51,9 +51,6 @@ def timestamp() -> int:
     """Retourne le timestamp actuel"""
     return int(datetime.now(timezone.utc).timestamp())
 
-
-# ==================== VALIDATION TÉLÉPHONE ====================
-
 def validate_phone_fr(phone: str) -> tuple[bool, str]:
     """
     Valide un numéro de téléphone français.
@@ -102,74 +99,3 @@ def validate_phone_fr(phone: str) -> tuple[bool, str]:
         return False, "Numéro invalide (répétition)"
     
     return True, digits
-
-
-# ==================== VALIDATION CODE POSTAL ====================
-
-FRANCE_METRO_DEPTS = [str(i).zfill(2) for i in range(1, 96)] + ["2A", "2B"]
-
-def validate_postal_code_fr(code: str) -> tuple[bool, str]:
-    """
-    Valide un code postal français métropolitain.
-    Returns: (is_valid, cleaned_code_or_error)
-    """
-    if not code:
-        return True, ""
-    
-    digits = ''.join(filter(str.isdigit, code))
-    
-    if len(digits) != 5:
-        return False, "Le code postal doit contenir 5 chiffres"
-    
-    dept = digits[:2]
-    if dept not in FRANCE_METRO_DEPTS:
-        return False, "Code postal France métropolitaine uniquement (01-95)"
-    
-    return True, digits
-
-
-# ==================== GÉNÉRATION DE CODES ====================
-
-async def generate_lp_code() -> str:
-    """
-    Génère un code LP unique (LP-001, LP-002, etc.)
-    """
-    # Compter toutes les LPs pour obtenir le prochain numéro
-    all_lps = await db.lps.find({"code": {"$regex": "^LP-\\d+$"}}, {"code": 1}).to_list(1000)
-    
-    max_num = 0
-    for lp in all_lps:
-        code = lp.get("code", "")
-        try:
-            num = int(code.split("-")[1])
-            if num > max_num:
-                max_num = num
-        except:
-            pass
-    
-    return f"LP-{str(max_num + 1).zfill(3)}"
-
-
-async def generate_form_code(product_type: str) -> str:
-    """
-    Génère un code formulaire unique par produit.
-    PV-001, PAC-001, ITE-001, etc.
-    """
-    prefix = product_type.upper()
-    if prefix not in ["PV", "PAC", "ITE"]:
-        prefix = "PV"
-    
-    # Compter tous les forms pour ce produit
-    all_forms = await db.forms.find({"code": {"$regex": f"^{prefix}-\\d+$"}}, {"code": 1}).to_list(1000)
-    
-    max_num = 0
-    for form in all_forms:
-        code = form.get("code", "")
-        try:
-            num = int(code.split("-")[1])
-            if num > max_num:
-                max_num = num
-        except:
-            pass
-    
-    return f"{prefix}-{str(max_num + 1).zfill(3)}"
