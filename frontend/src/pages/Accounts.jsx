@@ -18,6 +18,7 @@ export default function Accounts() {
   const [editingAccount, setEditingAccount] = useState(null);
   const [showGtmSection, setShowGtmSection] = useState(false);
   const [showLegalSection, setShowLegalSection] = useState(false);
+  const [showRoutingSection, setShowRoutingSection] = useState(false);
   
   // Mini Brief
   const [showMiniBriefModal, setShowMiniBriefModal] = useState(false);
