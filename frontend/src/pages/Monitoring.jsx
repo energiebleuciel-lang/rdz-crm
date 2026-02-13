@@ -11,6 +11,43 @@ import {
   ChevronDown, ChevronUp, Shield
 } from 'lucide-react';
 
+const AlertsPanel = ({ criticals, warnings, threshold }) => {
+  const [expanded, setExpanded] = useState(false);
+  const all = [...criticals, ...warnings];
+  const shown = expanded ? all : all.slice(0, 4);
+  return (
+    <Card className="p-0 overflow-hidden" data-testid="alerts-section">
+      <div className="px-4 py-3 bg-red-50 border-b border-red-100 flex items-center gap-2">
+        <AlertTriangle className="w-4 h-4 text-red-500" />
+        <span className="text-sm font-semibold text-red-700">
+          Alertes actives ({all.length})
+        </span>
+        <span className="text-xs text-red-400 ml-auto">seuil: {threshold}%</span>
+      </div>
+      <div className="divide-y">
+        {shown.map((a, i) => (
+          <div key={i} className={`px-4 py-2.5 flex items-start gap-3 ${a.level === 'critical' ? 'bg-red-50/30' : 'bg-amber-50/30'}`}>
+            <span className={`mt-0.5 px-2 py-0.5 text-xs rounded font-bold shrink-0 ${
+              a.level === 'critical' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+            }`}>
+              {a.level === 'critical' ? 'CRITIQUE' : 'ATTENTION'}
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm text-slate-700">{a.message}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      {all.length > 4 && (
+        <button onClick={() => setExpanded(!expanded)}
+          className="w-full px-4 py-2 text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-50 border-t">
+          {expanded ? 'Réduire' : `Voir toutes les alertes (${all.length - 4} de plus)`}
+        </button>
+      )}
+    </Card>
+  );
+};
+
 const RateBar = ({ rate, total, success, failed }) => {
   const color = rate >= 90 ? 'bg-green-500' : rate >= 70 ? 'bg-amber-500' : 'bg-red-500';
   const textColor = rate >= 90 ? 'text-green-700' : rate >= 70 ? 'text-amber-700' : 'text-red-700';
