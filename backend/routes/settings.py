@@ -131,8 +131,6 @@ class FormsConfigUpdate(BaseModel):
 @router.get("/forms-config")
 async def get_forms_config(user: dict = Depends(get_current_user)):
     """Recupere la config des formulaires (form_code -> entity + produit)"""
-    from services.settings import get_setting
-    
     doc = await get_setting("forms_config")
     if not doc:
         return {"forms": {}, "count": 0}
