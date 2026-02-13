@@ -268,6 +268,10 @@ Submit → Validation → DataLayer standard → Code GTM personnalisé → Redi
 RDZ → API → ZR7/MDL (basé sur account.crm_routing[product_type])
 ```
 
+**Chemin unique d'envoi : `send_to_crm()` dans `services/lead_sender.py`**
+- Aucun legacy (send_to_crm_v2 supprimé, ancien send_to_crm supprimé)
+- Un seul flux : `submit_lead → routing (account.crm_routing) → delivery_mode=API → send_to_crm`
+
 **Nouveau modèle de routing :**
 - Chaque compte (`accounts`) possède un champ `crm_routing` :
   ```json
@@ -278,9 +282,19 @@ RDZ → API → ZR7/MDL (basé sur account.crm_routing[product_type])
   }
   ```
 - **Hiérarchie de résolution :**
-  1. `form.target_crm` + `form.crm_api_key` → override optionnel (si les deux sont renseignés)
+  1. `form.target_crm` + `form.crm_api_key` → override optionnel (whitelist: zr7, mdl)
   2. `account.crm_routing[product_type]` → config par défaut du compte
   3. Aucun → `no_crm`
+
+**Sécurité API keys :**
+- Une clé configurée ne peut JAMAIS être supprimée/vidée → rotation uniquement
+- Validation backend : `target_crm ∈ {zr7, mdl}`, `product_type ∈ {PV, PAC, ITE}`
+- UI : pas de bouton delete, seulement remplacement
+
+**UI Settings CRM Routing :**
+- Section "Routing CRM par produit" dans le modal d'édition de compte
+- Tableau PV/PAC/ITE avec select CRM, input clé API, select mode
+- Résumé badges sur chaque carte de compte (PV → ZR7, PAC → MDL, etc.)
 
 **Champs de traçabilité sur chaque lead :**
 - `routing_source` : `account_routing`, `form_override`, ou `none`
@@ -290,9 +304,10 @@ RDZ → API → ZR7/MDL (basé sur account.crm_routing[product_type])
 ```
 [ROUTING] lead_phone=XXXX account_id=... product=PV source=account_routing target_crm=zr7
 [ROUTING_RESULT] lead_id=... account_id=... product_type=PV routing_source=account_routing target_crm=zr7 status=success
+[ROUTING_WARN] form override rejeté: target_crm='invalid' not in whitelist
 ```
 
-**Tests validés : 10/10**
+**Tests validés : 10/10 + validations sécurité**
 - PV/PAC/ITE routing via account ✅
 - Form override ✅
 - No config → no_crm ✅
@@ -301,6 +316,9 @@ RDZ → API → ZR7/MDL (basé sur account.crm_routing[product_type])
 - Mise à jour crm_routing via API ✅
 - Multi-produit ✅
 - Champs routing_source présents ✅
+- Suppression clé API → REJETÉ ✅
+- CRM invalide → REJETÉ ✅
+- Rotation clé → ACCEPTÉ ✅
 - Détection doublons v2.2 toujours active ✅
 - Feature flags LB/Commandes toujours désactivés ✅
 
