@@ -1,208 +1,135 @@
 # RDZ CRM - Product Requirements Document
 
-## 🎯 OBJECTIF GLOBAL
+## OBJECTIF GLOBAL
 
 Construire un CRM central unique **RDZ** qui :
-- Récupère 100% des leads
+- Recupere 100% des leads
 - Ne perd jamais aucun lead
 - Stocke tout avant toute distribution
-- Sépare strictement **ZR7** et **MDL**
+- Separe strictement **ZR7** et **MDL**
 - Distribue automatiquement selon commandes
 - Livre automatiquement chaque matin **09h30 Europe/Paris**
-- Envoi automatique CSV par email et/ou API
-- **Zéro manipulation humaine**
+- Envoi automatique CSV par email
+- **Zero manipulation humaine**
 
 ---
 
-## 🏗️ ARCHITECTURE MULTI-TENANT
+## ARCHITECTURE MULTI-TENANT
 
-### Entités (Entity)
+### Entites
 - **ZR7** - ZR7 Digital
 - **MDL** - Maison du Lead
 
-### Règle fondamentale
+### Regle fondamentale
 TOUS les leads passent par RDZ avant toute distribution.
-**Interdit** : insertion directe vers ZR7 ou MDL
 
-### Séparation stricte
-Chaque entité possède ses propres :
+### Separation stricte
+Chaque entite possede ses propres :
 - Clients (acheteurs de leads)
 - Commandes (ordres d'achat)
-- Prix
-- Emails SMTP
-- Stats
-- Facturation
+- Prix, Emails SMTP, Stats
 
-⚠️ **AUCUN mélange de données** - Champ `entity` obligatoire partout
+Champ `entity` obligatoire partout.
 
 ---
 
-## 📊 MODÈLES DE DONNÉES
+## NAMING STRICT
 
-### Client (Acheteur de leads)
-```json
-{
-  "id": "uuid",
-  "entity": "ZR7|MDL",  // OBLIGATOIRE
-  "name": "Installateur XYZ",
-  "email": "contact@xyz.fr",
-  "delivery_emails": [],
-  "api_endpoint": "",
-  "default_prix_lead": 25.0,
-  "remise_percent": 0,
-  "active": true
-}
-```
+- `phone` (jamais telephone)
+- `departement` (jamais code_postal)
+- `produit` (jamais product_type)
+- `nom` (jamais name pour un lead)
+- `entity` (ZR7 ou MDL)
 
-### Commande (Ordre d'achat)
-```json
-{
-  "id": "uuid",
-  "entity": "ZR7|MDL",  // OBLIGATOIRE
-  "client_id": "xxx",
-  "product_type": "PV|PAC|ITE",
-  "departements": ["75", "92", "93"],
-  "quota_semaine": 50,
-  "prix_lead": 25.0,
-  "lb_percent_max": 20,  // % LB autorisé
-  "priorite": 5,  // 1=haute, 10=basse
-  "auto_renew": true,
-  "active": true
-}
-```
+---
 
-### Lead (Statuts)
+## MODELES DE DONNEES
+
+### Client
+`{id, entity, name, email, delivery_emails, default_prix_lead, active}`
+
+### Commande
+`{id, entity, client_id, produit, departements, quota_semaine, prix_lead, lb_percent_max, priorite, active}`
+
+### Lead Statuts
 | Statut | Description |
 |--------|-------------|
-| `new` | Nouveau lead, pas encore traité |
-| `non_livre` | Non livré (pas de commande, etc.) |
-| `livre` | Livré avec succès à un client |
-| `doublon` | Doublon 30 jours (non envoyé mais stocké) |
-| `rejet_client` | Rejeté par le client après livraison |
-| `lb` | Lead Backlog (>8 jours sans livraison) |
+| `new` | Nouveau, pas encore traite |
+| `non_livre` | Non livre |
+| `livre` | Livre a un client |
+| `doublon` | Doublon 30 jours |
+| `rejet_client` | Rejete par le client |
+| `lb` | Lead Backlog (>8 jours) |
 
 ---
 
-## ⚙️ RÈGLES MÉTIER
+## REGLES METIER
 
-### Règle d'insertion (CRITIQUE)
-Un lead est **TOUJOURS inséré** si téléphone présent.
-Même si doublon, même si non livré, même sans commande, même rejeté.
-
-### Règle Doublon 30 jours
-**Doublon** si :
-- Même téléphone
-- Même produit
-- Déjà livré **au même client**
-- Dans les 30 derniers jours
-
-**Comportement** :
-- ❌ NE PAS envoyer
-- ✅ Rester en base avec `status = doublon`
-- ✅ Logger : client déjà livré + date livraison précédente
-
-### Règle LB (Lead Backlog)
-- Lead non livré depuis **> 8 jours** → devient LB automatiquement
-- LB peut être redistribué
-- LB ne doit jamais retourner au même client (sauf si aucune disponibilité)
-
-**⚠️ RÈGLE EXPORT LB** : Un lead LB doit être exporté comme un lead **NORMAL** :
-- Aucune mention "LB" dans le CSV
-- Le champ `produit` = produit de la **commande** (pas l'original du lead)
+1. Lead TOUJOURS insere si telephone present
+2. Doublon 30j: meme phone + produit + client = bloque, remplace automatiquement
+3. LB: non livre > 8 jours, exporte comme lead normal
+4. CSV: ZR7 (7 cols), MDL (8 cols)
+5. Livraison 09h30 Europe/Paris
 
 ---
 
-## 📤 FORMAT CSV (OBLIGATOIRE)
+## ARCHITECTURE CODE (v4.0 POST-AUDIT)
 
-**7 colonnes exactes, dans cet ordre** :
-
-| # | Colonne | Description |
-|---|---------|-------------|
-| 1 | nom | Nom du lead |
-| 2 | prenom | Prénom du lead |
-| 3 | telephone | Numéro de téléphone |
-| 4 | email | Email |
-| 5 | departement | Code département |
-| 6 | proprietaire_maison | **Toujours TRUE** |
-| 7 | produit | **Produit de la commande** |
-
-**Interdits** : lead_id, date, source, type, raison, LB, statut
+```
+/app/backend/
+  config.py
+  server.py
+  models/ (auth, client, commande, delivery, entity, lead)
+  routes/ (auth, clients, commandes, public)
+  services/ (activity_logger, csv_delivery, daily_delivery, duplicate_detector, routing_engine)
+```
 
 ---
 
-## ⏰ LIVRAISON AUTOMATIQUE
+## COMPLETED
 
-### CRON : 09h30 Europe/Paris (tous les jours)
-Actions :
-1. Marquer les vieux leads (>8j) comme LB
-2. Récupérer les leads `new`/`non_livre`
-3. Router vers commandes actives (priorité + quota)
-4. Éviter doublons 30 jours
-5. Compléter avec LB si autorisé
-6. Générer CSV
-7. Envoyer par email
-8. Mettre à jour la base
+### Phase 1 - Backend Foundation (Fevrier 2026)
+- Modeles multi-tenant, routing, delivery 09h30, doublon 30j, CSV, SMTP
 
-### SMTP Configuration
-| Entity | Email | Host | Port |
-|--------|-------|------|------|
-| ZR7 | livraison@zr7-digital.fr | ssl0.ovh.net | 465 SSL |
-| MDL | livraisonleads@maisonduleads.fr | ssl0.ovh.net | 465 SSL |
+### Audit Technique (Decembre 2025)
+- 25+ fichiers legacy supprimes
+- Naming unifie (produit partout)
+- DB nettoyee (indexes, collections, champs)
+- Zero code mort, zero fallback
+- Lint 0 erreurs
 
 ---
 
-## ✅ PHASE 1 COMPLÉTÉE (Février 2026)
+## NEXT
 
-### Nouveaux modèles implémentés
-- `/app/backend/models/entity.py` - EntityType (ZR7/MDL)
-- `/app/backend/models/client.py` - ClientCreate/Update/Response
-- `/app/backend/models/commande.py` - CommandeCreate/Update/Response
-- `/app/backend/models/lead.py` - LeadStatus, LeadDocument
-- `/app/backend/models/delivery.py` - DeliveryBatch, DeliveryStats
+### Phase 2 - Pipeline Public (P0)
+- Connecter /api/public/leads au routing engine
+- Determiner entity/produit automatiquement
 
-### Nouveaux services implémentés
-- `/app/backend/services/duplicate_detector_v2.py` - Règle 30 jours
-- `/app/backend/services/routing_engine.py` - Moteur de routing
-- `/app/backend/services/csv_delivery.py` - Génération et envoi CSV
-- `/app/backend/services/daily_delivery.py` - Scheduler 09h30
+### Phase 3 - UI Admin (P1)
+- Gestion Clients + Commandes par entite
+- Dashboard livraison
 
-### Nouvelles routes API
-- `GET/POST /api/clients` - CRUD clients (entity obligatoire)
-- `GET/POST /api/commandes` - CRUD commandes
-- `GET /api/commandes/departements` - Liste départements métro
-- `GET /api/commandes/products` - Liste produits (PV/PAC/ITE)
+### Phase 4 - Dashboard (P2)
+- Stats quotidiennes, filtres
 
-### Scheduler configuré
-- Livraison quotidienne: 09h30 Europe/Paris
-- Vérification nocturne: 03h00 UTC
-- Queue processing: 5 minutes
+### Backlog
+- Livraison API, Tracking final, rejet_client
 
 ---
 
-## 🔜 PHASES SUIVANTES
+## CREDENTIALS
+- UI: `energiebleuciel@gmail.com` / `92Ruemarxdormoy`
+- SMTP: `@92Ruemarxdormoy`
 
-### Phase 2 - Intégration Pipeline Public
-- Modifier `routes/public.py` pour ajouter le champ `entity` aux leads
-- Connecter submit_lead au nouveau routing engine
-- Tests E2E complets du flux
-
-### Phase 3 - UI Admin
-- Interface gestion Clients par entité
-- Interface gestion Commandes
-- Dashboard de livraison
-
-### Phase 4 - Production
-- Tests E2E avec vrais envois CSV
-- Validation SMTP
-- Monitoring et alertes
-
----
-
-## 🔐 CREDENTIALS TEST
-
-- **UI Login** : `energiebleuciel@gmail.com` / `92Ruemarxdormoy`
-- **SMTP ZR7/MDL** : `@92Ruemarxdormoy`
-
-## URLs CRM
-- **ZR7** : `https://app.zr7-digital.fr/lead/api/create_lead/`
-- **MDL** : `https://maison-du-lead.com/lead/api/create_lead/`
+## API ENDPOINTS
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | /api/auth/login | Non | Connexion |
+| GET | /api/auth/me | Oui | Info user |
+| GET/POST | /api/clients | Oui | CRUD clients |
+| GET/POST | /api/commandes | Oui | CRUD commandes |
+| POST | /api/public/leads | Non | Soumettre lead |
+| POST | /api/public/track/session | Non | Session tracking |
+| POST | /api/public/track/lp-visit | Non | LP visit |
+| POST | /api/public/track/event | Non | Event tracking |
