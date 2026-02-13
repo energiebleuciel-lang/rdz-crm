@@ -36,7 +36,7 @@ router = APIRouter(prefix="/commandes", tags=["Commandes"])
 async def list_commandes(
     entity: str = Query(..., description="Entité obligatoire: ZR7 ou MDL"),
     client_id: Optional[str] = Query(None, description="Filtrer par client"),
-    product_type: Optional[str] = Query(None, description="Filtrer par produit"),
+    produit: Optional[str] = Query(None, description="Filtrer par produit"),
     active_only: bool = Query(True, description="Uniquement les commandes actives"),
     user: dict = Depends(get_current_user)
 ):
@@ -51,8 +51,8 @@ async def list_commandes(
     query = {"entity": entity}
     if client_id:
         query["client_id"] = client_id
-    if product_type:
-        query["product_type"] = product_type
+    if produit:
+        query["produit"] = produit
     if active_only:
         query["active"] = True
     
@@ -160,7 +160,7 @@ async def create_commande(
     existing = await db.commandes.find_one({
         "entity": data.entity.value,
         "client_id": data.client_id,
-        "product_type": data.product_type.value,
+        "produit": data.produit.value,
         "active": True
     })
     if existing:
@@ -173,7 +173,7 @@ async def create_commande(
         "id": str(uuid.uuid4()),
         "entity": data.entity.value,
         "client_id": data.client_id,
-        "product_type": data.product_type.value,
+        "produit": data.produit.value,
         "departements": data.departements,
         "quota_semaine": data.quota_semaine,
         "prix_lead": data.prix_lead,
