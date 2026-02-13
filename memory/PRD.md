@@ -37,24 +37,41 @@ CRM central **RDZ** : collecte 100% des leads, separation stricte **ZR7** / **MD
 
 ## COMPLETED
 
-- Phase 1 : Backend foundation (modeles, routing, delivery, doublon, CSV, SMTP)
-- Audit technique : 25+ fichiers supprimes, naming unifie, DB nettoyee
-- Commande OPEN + Cross-entity toggle + Source gating
-- **Provider** : auth API key, entity locked, no cross-entity
+- Phase 1 : Backend foundation (modeles, routing, delivery 09h30, doublon 30j, CSV ZR7/MDL, SMTP OVH)
+- Audit technique (Decembre 2025) : 25+ fichiers legacy supprimes, naming unifie (produit partout), DB nettoyee (indexes, collections, champs), zero code mort
+- Commande OPEN : active + semaine courante + delivered < quota. Cross-entity fallback uniquement si commande OPEN compatible
+- Cross-entity toggle : collection settings, global ON/OFF + per-entity in/out (ZR7.in, ZR7.out, MDL.in, MDL.out)
+- Source gating : blacklist dans settings, lead stocke hold_source, jamais route
+- Provider : auth API key (prov_xxx), entity locked, cross-entity interdit, CRUD admin + rotate-key
+- Tests: 59/59 passes (audit 20/20 + settings 18/18 + providers 21/21)
 
-## NEXT
+## NEXT (Phase 2 - Pipeline Public)
 
-- **Phase 2** : Connecter /api/public/leads au routing engine (entity/produit auto)
-- **Phase 3** : UI Admin (Clients, Commandes, Providers, Settings, Dashboard)
+- Connecter POST /api/public/leads au routing engine
+- Determiner entity/produit automatiquement (depuis provider ou config formulaire)
+- Tests E2E du flux complet : LP -> Form -> RDZ -> Routing -> CSV -> Email
+
+## UPCOMING (Phase 3 - UI Admin)
+
+- Interface gestion Clients par entite
+- Interface gestion Commandes (CRUD + stats OPEN/CLOSED)
+- Interface gestion Providers (CRUD + API keys)
+- Page Settings (cross-entity toggle, source gating)
+- Dashboard livraison (stats quotidiennes)
 
 ## BACKLOG
 
-- Dashboard stats, Livraison API, Tracking final, rejet_client
+- Dashboard stats avances (filtres par entite/produit/periode)
+- Livraison API (POST en plus du CSV)
+- Tracking & audit final
+- Feature rejet_client (client rejette un lead livre)
+- Facturation inter-entites
 
 ## CREDENTIALS
 
 - UI: `energiebleuciel@gmail.com` / `92Ruemarxdormoy`
-- SMTP: `@92Ruemarxdormoy`
+- SMTP ZR7: `vos-leads@zr7-digital.fr` / `@92Ruemarxdormoy`
+- SMTP MDL: `livraisonleads@maisonduleads.fr` / `@92Ruemarxdormoy`
 
 ## API ENDPOINTS
 
@@ -62,12 +79,28 @@ CRM central **RDZ** : collecte 100% des leads, separation stricte **ZR7** / **MD
 |--------|------|------|-------------|
 | POST | /api/auth/login | Non | Connexion |
 | GET | /api/auth/me | Oui | Info user |
-| GET/POST | /api/clients | Oui | CRUD clients |
-| GET/POST | /api/commandes | Oui | CRUD commandes |
-| GET/POST | /api/providers | Admin | CRUD providers |
+| GET/POST/PUT/DELETE | /api/clients | Oui | CRUD clients |
+| GET/POST/PUT/DELETE | /api/commandes | Oui | CRUD commandes |
+| GET/POST/PUT/DELETE | /api/providers | Admin | CRUD providers |
 | POST | /api/providers/{id}/rotate-key | Admin | Regenerer API key |
 | GET | /api/settings | Oui | Liste settings |
 | GET/PUT | /api/settings/cross-entity | Admin | Toggle cross-entity |
 | GET/PUT | /api/settings/source-gating | Admin | Source gating |
 | POST | /api/public/leads | Non/Key | Soumettre lead |
-| POST | /api/public/track/* | Non | Tracking |
+| POST | /api/public/track/session | Non | Creer session |
+| POST | /api/public/track/lp-visit | Non | Tracking LP |
+| POST | /api/public/track/event | Non | Tracking event |
+
+## KEY FILES
+
+- `/app/backend/server.py` - FastAPI app, routes, indexes, scheduler 09h30
+- `/app/backend/services/routing_engine.py` - is_commande_open(), find_open_commandes(), route_lead(entity_locked), _try_cross_entity()
+- `/app/backend/services/daily_delivery.py` - run_daily_delivery(), mark_leads_as_lb(), process_commande_delivery()
+- `/app/backend/services/duplicate_detector.py` - check_duplicate_30_days(), check_double_submit()
+- `/app/backend/services/csv_delivery.py` - generate_csv_content() (ZR7: 7 cols, MDL: 8 cols), send_csv_email()
+- `/app/backend/services/settings.py` - get/upsert settings, is_cross_entity_allowed(), is_source_allowed()
+- `/app/backend/routes/public.py` - submit_lead avec provider auth + source gating
+- `/app/backend/routes/providers.py` - CRUD providers + rotate-key
+- `/app/backend/routes/settings.py` - Admin settings endpoints
+- `/app/backend/routes/clients.py` - CRUD clients par entity
+- `/app/backend/routes/commandes.py` - CRUD commandes par entity
