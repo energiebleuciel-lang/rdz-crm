@@ -712,14 +712,144 @@ async def try_cross_entity_fallback(
 # MAIN - RUN DAILY DELIVERY
 # ════════════════════════════════════════════════════════════════════════
 
+async def process_pending_csv_deliveries() -> Dict:
+    """
+    📤 Traite les deliveries créées par le routing immédiat (Phase 2)
+    
+    Ces deliveries ont status=pending_csv et doivent être groupées par
+    client/commande pour envoi CSV.
+    
+    Returns:
+        Dict avec stats de traitement
+    """
+    from services.csv_delivery import send_csv_email, generate_csv_content
+    
+    results = {
+        "processed": 0,
+        "sent": 0,
+        "errors": []
+    }
+    
+    # Récupérer toutes les deliveries pending_csv
+    pending = await db.deliveries.find(
+        {"status": "pending_csv"},
+        {"_id": 0}
+    ).to_list(1000)
+    
+    if not pending:
+        logger.info("[PENDING_CSV] Aucune delivery en attente")
+        return results
+    
+    results["processed"] = len(pending)
+    logger.info(f"[PENDING_CSV] {len(pending)} deliveries à traiter")
+    
+    # Grouper par client_id + commande_id
+    from collections import defaultdict
+    grouped = defaultdict(list)
+    
+    for delivery in pending:
+        key = (delivery.get("client_id"), delivery.get("commande_id"))
+        grouped[key].append(delivery)
+    
+    # Traiter chaque groupe
+    for (client_id, commande_id), deliveries in grouped.items():
+        try:
+            # Récupérer les leads associés
+            lead_ids = [d.get("lead_id") for d in deliveries]
+            leads = await db.leads.find(
+                {"id": {"$in": lead_ids}},
+                {"_id": 0}
+            ).to_list(len(lead_ids))
+            
+            if not leads:
+                continue
+            
+            # Récupérer info client et commande
+            client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+            commande = await db.commandes.find_one({"id": commande_id}, {"_id": 0})
+            
+            if not client or not commande:
+                logger.error(f"[PENDING_CSV] Client ou commande introuvable: {client_id}/{commande_id}")
+                continue
+            
+            entity = commande.get("entity", deliveries[0].get("entity", ""))
+            produit = commande.get("produit", deliveries[0].get("produit", ""))
+            client_name = client.get("name", "")
+            
+            # Emails de livraison
+            emails = client.get("delivery_emails", [])
+            if not emails and client.get("email"):
+                emails = [client.get("email")]
+            
+            if not emails:
+                logger.warning(f"[PENDING_CSV] Pas d'email pour client {client_name}")
+                results["errors"].append({"client": client_name, "error": "no_email"})
+                continue
+            
+            # Générer et envoyer CSV
+            lb_count = sum(1 for l in leads if l.get("is_lb"))
+            csv_content = generate_csv_content(leads, entity)
+            
+            now = now_iso()
+            csv_filename = f"leads_{entity}_{produit}_{now[:10].replace('-', '')}_{len(leads)}.csv"
+            
+            try:
+                await send_csv_email(
+                    entity=entity,
+                    client_name=client_name,
+                    to_emails=emails,
+                    csv_content=csv_content,
+                    csv_filename=csv_filename,
+                    lead_count=len(leads),
+                    lb_count=lb_count,
+                    produit=produit
+                )
+                
+                # Marquer deliveries comme sent
+                delivery_ids = [d.get("id") for d in deliveries]
+                await db.deliveries.update_many(
+                    {"id": {"$in": delivery_ids}},
+                    {"$set": {"status": "sent", "sent_at": now}}
+                )
+                
+                # Marquer leads comme livre
+                await db.leads.update_many(
+                    {"id": {"$in": lead_ids}},
+                    {"$set": {
+                        "status": "livre",
+                        "delivered_at": now,
+                        "delivered_to_client_id": client_id,
+                        "delivered_to_client_name": client_name,
+                        "delivery_commande_id": commande_id
+                    }}
+                )
+                
+                results["sent"] += len(leads)
+                logger.info(
+                    f"[PENDING_CSV] {client_name}: {len(leads)} leads envoyés "
+                    f"(entity={entity}, produit={produit})"
+                )
+                
+            except Exception as e:
+                logger.error(f"[PENDING_CSV] Erreur envoi CSV {client_name}: {str(e)}")
+                results["errors"].append({"client": client_name, "error": str(e)})
+                
+        except Exception as e:
+            logger.error(f"[PENDING_CSV] Erreur traitement groupe: {str(e)}")
+            results["errors"].append({"group": f"{client_id}/{commande_id}", "error": str(e)})
+    
+    return results
+
+
 async def run_daily_delivery():
     """
     Fonction principale appelée par le cron à 09h30 Europe/Paris
     
-    1. Marquer leads éligibles → LB
-    2. Traiter ZR7
-    3. Traiter MDL
-    4. Sauvegarder rapport
+    1. Traiter les deliveries pending_csv (routing immédiat Phase 2)
+    2. Marquer leads éligibles → LB
+    3. Traiter ZR7 (leads new non encore routés)
+    4. Traiter MDL (leads new non encore routés)
+    5. Sauvegarder rapport
     """
     logger.info("[DAILY_DELIVERY] ════════════════════════════════════════")
     logger.info("[DAILY_DELIVERY] DÉBUT LIVRAISON QUOTIDIENNE 09h30")
@@ -727,12 +857,20 @@ async def run_daily_delivery():
     
     start_time = datetime.now(timezone.utc)
     
+    # 0. Traiter les deliveries pending_csv (Phase 2)
+    pending_csv_results = await process_pending_csv_deliveries()
+    logger.info(
+        f"[DAILY_DELIVERY] Pending CSV: {pending_csv_results['sent']} leads envoyés "
+        f"({pending_csv_results['processed']} deliveries traitées)"
+    )
+    
     # 1. Marquer les leads LB
     lb_old, lb_delivered = await mark_leads_as_lb()
     
-    # 2. Traiter chaque entité
+    # 2. Traiter chaque entité (leads new non encore routés)
     all_results = {
         "run_at": now_iso(),
+        "pending_csv": pending_csv_results,
         "lb_marked": {
             "from_old_leads": lb_old,
             "from_delivered": lb_delivered,
