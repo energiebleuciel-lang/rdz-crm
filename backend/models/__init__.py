@@ -81,9 +81,8 @@ from .client import (
     ClientListResponse
 )
 
-# Commande (Ordres d'achat)
+# Commande (utilise EntityType et ProductType de lead.py)
 from .commande import (
-    ProductType,
     VALID_PRODUCTS,
     DEPARTEMENTS_METRO,
     CommandeCreate,
