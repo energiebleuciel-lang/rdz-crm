@@ -33,7 +33,9 @@ const AlertsPanel = ({ criticals, warnings, threshold }) => {
               {a.level === 'critical' ? 'CRITIQUE' : 'ATTENTION'}
             </span>
             <div className="min-w-0">
-              <p className="text-sm text-slate-700">{a.message}</p>
+              <p className="text-sm text-slate-700">
+                {a.message.replace(a.top_failure_reason, getFailureInfo(a.top_failure_reason).label)}
+              </p>
             </div>
           </div>
         ))}
