@@ -2,7 +2,7 @@
 RDZ CRM - Routes Publiques
 - Tracking sessions visiteurs
 - Tracking evenements LP/Form
-- Soumission leads (sauvegarde en base, routing par daily_delivery)
+- Soumission leads avec routing immediat (Phase 2)
 """
 
 from fastapi import APIRouter, Request
@@ -14,6 +14,8 @@ import json
 import logging
 
 from config import db, now_iso, timestamp, validate_phone_fr
+from services.routing_engine import route_lead, RoutingResult
+from services.settings import get_form_config, is_source_allowed
 
 router = APIRouter(prefix="/public", tags=["Public"])
 logger = logging.getLogger("public")
