@@ -207,18 +207,20 @@ async def route_lead(
     produit: str,
     departement: str,
     phone: str,
-    is_lb: bool = False
+    is_lb: bool = False,
+    entity_locked: bool = False
 ) -> RoutingResult:
     """
     Route un lead vers le meilleur client avec une commande OPEN.
 
     1. Chercher commandes OPEN dans l'entite
     2. Filtrer doublons 30 jours
-    3. Si aucune -> tenter cross-entity fallback (si autorise)
+    3. Si aucune -> tenter cross-entity fallback (si autorise ET entity_locked=False)
     """
     logger.info(
         f"[ROUTING] entity={entity} produit={produit} dept={departement} "
-        f"phone=***{phone[-4:] if len(phone) >= 4 else phone} is_lb={is_lb}"
+        f"phone=***{phone[-4:] if len(phone) >= 4 else phone} is_lb={is_lb} "
+        f"entity_locked={entity_locked}"
     )
 
     # 1. Commandes OPEN dans l'entite principale
@@ -227,7 +229,13 @@ async def route_lead(
     if not commandes:
         logger.info(f"[ROUTING] {entity}: aucune commande OPEN pour {produit}/{departement}")
 
-        # Tenter cross-entity fallback
+        # Cross-entity INTERDIT si entity_locked (provider)
+        if entity_locked:
+            logger.info(
+                f"[ROUTING] entity_locked_by_provider -> pas de cross-entity"
+            )
+            return RoutingResult(success=False, reason="no_open_orders_entity_locked")
+
         fallback = await _try_cross_entity(entity, produit, departement, phone, is_lb)
         if fallback:
             return fallback
@@ -257,8 +265,13 @@ async def route_lead(
             reason="open_commande_found"
         )
 
-    # Toutes doublons -> tenter cross-entity
+    # Toutes doublons -> tenter cross-entity (sauf entity_locked)
     logger.info(f"[ROUTING] {entity}: toutes commandes OPEN = doublon 30j")
+
+    if entity_locked:
+        logger.info(f"[ROUTING] entity_locked_by_provider -> pas de cross-entity")
+        return RoutingResult(success=False, reason="all_commandes_duplicate_entity_locked")
+
     fallback = await _try_cross_entity(entity, produit, departement, phone, is_lb)
     if fallback:
         return fallback
