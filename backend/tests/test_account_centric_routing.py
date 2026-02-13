@@ -195,10 +195,11 @@ async def test_2_account_routing_pac():
 
 
 @pytest.mark.asyncio
-async def test_3_account_routing_ite(headers, crm_slugs):
+async def test_3_account_routing_ite():
     """
     Test 3: Routing via account.crm_routing pour ITE
     """
+    headers, crm_slugs = await get_auth()
     crm_id = list(crm_slugs.values())[0]
 
     account = await create_test_account(headers, crm_id, crm_routing={
@@ -218,12 +219,13 @@ async def test_3_account_routing_ite(headers, crm_slugs):
 
 
 @pytest.mark.asyncio
-async def test_4_form_override(headers, crm_slugs):
+async def test_4_form_override():
     """
     Test 4: Override formulaire prend le dessus sur account
     Config: account.crm_routing.PV = zr7, form.target_crm = mdl
     Attendu: routing_source = form_override, target_crm = mdl
     """
+    headers, crm_slugs = await get_auth()
     crm_id = list(crm_slugs.values())[0]
 
     account = await create_test_account(headers, crm_id, crm_routing={
@@ -245,11 +247,12 @@ async def test_4_form_override(headers, crm_slugs):
 
 
 @pytest.mark.asyncio
-async def test_5_no_config_no_crm(headers, crm_slugs):
+async def test_5_no_config_no_crm():
     """
     Test 5: Ni account ni form n'ont de config CRM
     Attendu: status = no_crm, routing_source = none
     """
+    headers, crm_slugs = await get_auth()
     crm_id = list(crm_slugs.values())[0]
 
     account = await create_test_account(headers, crm_id, suffix="NoCRM")
@@ -267,11 +270,12 @@ async def test_5_no_config_no_crm(headers, crm_slugs):
 
 
 @pytest.mark.asyncio
-async def test_6_partial_account_config(headers, crm_slugs):
+async def test_6_partial_account_config():
     """
     Test 6: Account a config pour PV mais pas PAC
     Attendu: PV → account_routing, PAC → no_crm
     """
+    headers, crm_slugs = await get_auth()
     crm_id = list(crm_slugs.values())[0]
 
     account = await create_test_account(headers, crm_id, crm_routing={
@@ -298,11 +302,12 @@ async def test_6_partial_account_config(headers, crm_slugs):
 
 
 @pytest.mark.asyncio
-async def test_7_form_override_partial(headers, crm_slugs):
+async def test_7_form_override_partial():
     """
     Test 7: Form a target_crm mais PAS de crm_api_key → fallback vers account
     Attendu: routing_source = account_routing (car override incomplet)
     """
+    headers, crm_slugs = await get_auth()
     crm_id = list(crm_slugs.values())[0]
 
     account = await create_test_account(headers, crm_id, crm_routing={
@@ -326,10 +331,11 @@ async def test_7_form_override_partial(headers, crm_slugs):
 
 
 @pytest.mark.asyncio
-async def test_8_update_account_routing(headers, crm_slugs):
+async def test_8_update_account_routing():
     """
     Test 8: Mise à jour du crm_routing via PUT /accounts/:id
     """
+    headers, crm_slugs = await get_auth()
     crm_id = list(crm_slugs.values())[0]
 
     account = await create_test_account(headers, crm_id, suffix="UpdateRouting")
@@ -364,11 +370,12 @@ async def test_8_update_account_routing(headers, crm_slugs):
 
 
 @pytest.mark.asyncio
-async def test_9_multi_product_account(headers, crm_slugs):
+async def test_9_multi_product_account():
     """
     Test 9: Un compte avec config complète PV/PAC/ITE vers différents CRM
     Vérifie que chaque produit route vers le bon CRM
     """
+    headers, crm_slugs = await get_auth()
     crm_id = list(crm_slugs.values())[0]
 
     account = await create_test_account(headers, crm_id, crm_routing={
@@ -396,10 +403,11 @@ async def test_9_multi_product_account(headers, crm_slugs):
 
 
 @pytest.mark.asyncio
-async def test_10_lead_has_routing_source_field(headers, crm_slugs):
+async def test_10_lead_has_routing_source_field():
     """
     Test 10: Vérifier que le champ routing_source est bien présent dans le lead
     """
+    headers, crm_slugs = await get_auth()
     crm_id = list(crm_slugs.values())[0]
 
     account = await create_test_account(headers, crm_id, crm_routing={
