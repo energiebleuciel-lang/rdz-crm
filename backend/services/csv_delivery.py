@@ -314,8 +314,6 @@ async def deliver_to_client(
     )
     
     # 5. Sauvegarder le batch
-    lb_count = sum(1 for lead in leads if lead.get("is_lb", False))
-    
     batch = {
         "id": batch_id,
         "entity": entity,
