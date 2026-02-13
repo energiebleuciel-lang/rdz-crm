@@ -3,6 +3,8 @@ Monitoring - Taux de succès par CRM / produit / compte + alertes
 """
 
 from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel
+from typing import Optional
 from config import db, now_iso
 from routes.auth import get_current_user
 from datetime import datetime, timedelta, timezone
