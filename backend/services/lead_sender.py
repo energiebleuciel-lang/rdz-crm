@@ -1,15 +1,12 @@
 """
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║  🔒🔒🔒  FICHIER CRITIQUE VERROUILLÉ - NE PAS MODIFIER  🔒🔒🔒               ║
+║  FICHIER CRITIQUE - Service d'envoi de leads vers CRMs externes             ║
 ║                                                                              ║
-║  Ce fichier contient les fonctions CRITIQUES d'envoi vers CRMs:              ║
-║  - send_to_crm_v2()  : Envoi effectif vers ZR7/MDL                           ║
-║  - add_to_queue()    : File d'attente retry automatique                      ║
+║  - send_to_crm()   : Unique point d'envoi vers ZR7/MDL                      ║
+║  - add_to_queue()   : File d'attente retry automatique                      ║
 ║                                                                              ║
 ║  Ces fonctions communiquent directement avec les CRMs externes.              ║
 ║  Toute modification peut BLOQUER l'envoi de TOUS les leads.                  ║
-║                                                                              ║
-║  DÉVERROUILLAGE REQUIS: "Je déverrouille le noyau critique pour modifier X"  ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
 Service d'envoi de leads vers les CRMs externes (ZR7, MDL)
@@ -33,11 +30,12 @@ MAX_RETRY_ATTEMPTS = 5
 RETRY_DELAYS = [60, 300, 900, 3600, 7200]  # 1min, 5min, 15min, 1h, 2h
 
 
-# ==================== NOUVELLE FONCTION V2 ====================
+# ==================== UNIQUE POINT D'ENVOI ====================
 
-async def send_to_crm_v2(lead_doc: dict, api_url: str, api_key: str) -> tuple:
+async def send_to_crm(lead_doc: dict, api_url: str, api_key: str) -> tuple:
     """
     Envoie un lead vers ZR7 ou MDL avec le format API exact.
+    UNIQUE FONCTION D'ENVOI - Aucun autre chemin n'existe.
     
     Format requis par l'API:
     {
@@ -147,93 +145,6 @@ async def send_to_crm_v2(lead_doc: dict, api_url: str, api_key: str) -> tuple:
                 status = "server_error"
                 should_queue = True
                 logger.warning(f"Erreur serveur CRM {resp.status_code}: {api_url}")
-            else:
-                status = "failed"
-                logger.warning(f"CRM rejected lead: {response}")
-                
-    except httpx.TimeoutException as e:
-        status = "timeout"
-        response = f"Timeout après 30s: {str(e)}"
-        should_queue = True
-        logger.warning(f"CRM timeout: {api_url}")
-        
-    except httpx.ConnectError as e:
-        status = "connection_error"
-        response = f"Erreur connexion: {str(e)}"
-        should_queue = True
-        logger.warning(f"CRM connection error: {api_url}")
-        
-    except Exception as e:
-        status = "failed"
-        response = str(e)
-        should_queue = True
-        logger.error(f"CRM error: {str(e)}")
-    
-    return status, response, should_queue
-
-
-# ==================== ANCIENNE FONCTION (compatibilité) ====================
-
-async def send_to_crm(lead_doc: dict, api_url: str, api_key: str) -> tuple:
-    """
-    Envoie un lead vers un CRM externe.
-    
-    Args:
-        lead_doc: Document du lead
-        api_url: URL de l'API CRM
-        api_key: Clé API du CRM
-    
-    Returns:
-        (status, response, should_queue)
-        - status: "success", "duplicate", "failed", "timeout", "connection_error"
-        - response: Réponse API ou message d'erreur
-        - should_queue: True si on doit mettre en file d'attente (erreur temporaire)
-    """
-    # Construire le payload
-    custom_fields = {}
-    
-    for field in ["superficie_logement", "chauffage_actuel", "departement", 
-                  "type_logement", "statut_occupant", "facture_electricite"]:
-        if lead_doc.get(field):
-            custom_fields[field] = {"value": lead_doc[field]}
-    
-    payload = {
-        "phone": lead_doc["phone"],
-        "register_date": lead_doc.get("register_date", int(datetime.now().timestamp())),
-        "nom": lead_doc.get("nom", ""),
-        "prenom": lead_doc.get("prenom", ""),
-        "email": lead_doc.get("email", ""),
-    }
-    
-    if lead_doc.get("civilite"):
-        payload["civilite"] = lead_doc["civilite"]
-    
-    if custom_fields:
-        payload["custom_fields"] = custom_fields
-    
-    # Envoi
-    status = "failed"
-    response = None
-    should_queue = False
-    
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(
-                api_url,
-                json=payload,
-                headers={"Authorization": api_key, "Content-Type": "application/json"}
-            )
-            data = resp.json()
-            response = str(data)
-            
-            if resp.status_code == 201:
-                status = "success"
-            elif "doublon" in str(data.get("message", "")).lower():
-                status = "duplicate"
-            elif resp.status_code >= 500:
-                status = "server_error"
-                should_queue = True
-                logger.warning(f"CRM server error {resp.status_code}: {api_url}")
             else:
                 status = "failed"
                 logger.warning(f"CRM rejected lead: {response}")
