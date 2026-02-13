@@ -131,19 +131,22 @@ async def send_csv_email(
     csv_content: str,
     csv_filename: str,
     lead_count: int,
-    client_name: str,
+    lb_count: int,
     product_type: str
 ) -> Dict:
     """
-    Envoie un email avec le CSV en pièce jointe
+    Envoie un email PROFESSIONNEL avec le CSV en pièce jointe
+    
+    Templates différents par entité (ZR7 / MDL)
+    Aucune mention technique, debug, test
     
     Args:
         entity: ZR7 ou MDL
         to_emails: Liste des emails destinataires
         csv_content: Contenu du CSV
-        csv_filename: Nom du fichier
-        lead_count: Nombre de leads
-        client_name: Nom du client
+        csv_filename: Nom du fichier (format: {ENTITY}_{PRODUIT}_{DATE}.csv)
+        lead_count: Nombre total de leads
+        lb_count: Nombre de leads LB inclus
         product_type: Type de produit
     
     Returns:
@@ -173,29 +176,24 @@ async def send_csv_email(
     if not smtp_password:
         return {"success": False, "error": f"Mot de passe SMTP non configuré pour {entity}"}
     
+    # Template email selon entité
+    template = EMAIL_TEMPLATES.get(entity, EMAIL_TEMPLATES["ZR7"])
+    
     try:
+        # Date formatée pour l'objet
+        date_formatted = datetime.now(timezone.utc).strftime("%d/%m/%Y")
+        
         # Créer le message
         msg = MIMEMultipart()
         msg["From"] = config["email"]
         msg["To"] = ", ".join(to_emails)
-        msg["Subject"] = f"[{entity}] Livraison {product_type} - {lead_count} leads - {client_name}"
+        # Objet professionnel: Livraison leads {ENTITY} – {PRODUIT} – {DATE}
+        msg["Subject"] = f"Livraison leads {entity} – {product_type} – {date_formatted}"
         
-        # Corps du message
-        body = f"""Bonjour,
-
-Veuillez trouver ci-joint votre livraison de leads :
-
-- Client : {client_name}
-- Produit : {product_type}
-- Nombre de leads : {lead_count}
-- Date : {datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M")} UTC
-
-Cordialement,
-L'équipe {entity}
-"""
-        msg.attach(MIMEText(body, "plain", "utf-8"))
+        # Corps du message - template professionnel par entité
+        msg.attach(MIMEText(template["body"], "plain", "utf-8"))
         
-        # Pièce jointe CSV
+        # Pièce jointe CSV (UTF-8, séparateur virgule)
         attachment = MIMEBase("text", "csv")
         attachment.set_payload(csv_content.encode("utf-8"))
         encoders.encode_base64(attachment)
@@ -211,14 +209,16 @@ L'équipe {entity}
             server.send_message(msg)
         
         logger.info(
-            f"[CSV_SENT] entity={entity} client={client_name} "
-            f"leads={lead_count} to={to_emails}"
+            f"[CSV_SENT] entity={entity} product={product_type} "
+            f"leads={lead_count} lb={lb_count} to={to_emails}"
         )
         
         return {
             "success": True,
             "emails_sent_to": to_emails,
-            "lead_count": lead_count
+            "lead_count": lead_count,
+            "lb_count": lb_count,
+            "filename": csv_filename
         }
         
     except smtplib.SMTPAuthenticationError as e:
