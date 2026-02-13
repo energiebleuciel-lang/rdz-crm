@@ -38,14 +38,25 @@ from config import db, now_iso
 
 logger = logging.getLogger("csv_delivery")
 
-# Colonnes CSV strictes
-CSV_COLUMNS = [
+# Colonnes CSV par entité
+CSV_COLUMNS_ZR7 = [
     "nom",
     "prenom", 
     "telephone",
     "email",
     "departement",
     "proprietaire_maison",
+    "produit"
+]
+
+CSV_COLUMNS_MDL = [
+    "nom",
+    "prenom", 
+    "telephone",
+    "email",
+    "departement",
+    "proprietaire",
+    "type_logement",
     "produit"
 ]
 
