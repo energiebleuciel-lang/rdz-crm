@@ -309,8 +309,8 @@ async def deliver_to_client(
     if not emails:
         return {"success": False, "error": "Aucun email de livraison configuré"}
     
-    # 2. Générer le CSV
-    csv_content = generate_csv_content(leads, product_type)
+    # 2. Générer le CSV (format différent selon entity)
+    csv_content = generate_csv_content(leads, product_type, entity)
     csv_filename = generate_csv_filename(entity, product_type)
     
     # Compter les LB
