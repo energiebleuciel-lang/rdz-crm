@@ -264,21 +264,26 @@ async def track_event(request: Request):
 @router.post("/leads")
 async def submit_lead(data: LeadData, request: Request):
     """
-    Soumettre un lead
+    Soumettre un lead avec routing immediat (Phase 2)
 
-    REGLE: Le lead est TOUJOURS insere si telephone present.
-    Le routing est gere par le daily_delivery (09h30).
-
+    FLUX:
     1. Valider telephone
     2. Anti double-submit (5 sec)
-    3. Sauvegarder lead status=new
-    4. Retourner success
+    3. Resoudre entity + produit (provider OU form_code)
+    4. Sauvegarder lead
+    5. Router immediatement si eligible
+    6. Retourner resultat enrichi
+
+    STATUTS POSSIBLES:
+    - routed: lead livre a un client
+    - no_open_orders: aucune commande OPEN compatible
+    - hold_source: source blacklistee
+    - duplicate: doublon 30j chez tous les clients
+    - invalid: donnees incompletes
     """
     from services.duplicate_detector import check_double_submit
-    from services.settings import is_source_allowed
 
     # ---- Provider auth ----
-    # API key: header Authorization OU body api_key
     api_key = data.api_key or ""
     if not api_key:
         auth_header = request.headers.get("authorization", "")
@@ -309,36 +314,37 @@ async def submit_lead(data: LeadData, request: Request):
     # Champs minimaux valides (phone + departement + nom)
     lead_minimal_valid = bool(is_valid and nom and dept)
 
-    # Anti double-submit
-    is_double_submit = False
-    original_lead_id = None
-
+    # Anti double-submit (5 sec)
     if is_valid and data.session_id:
         dup_result = await check_double_submit(phone, data.session_id)
         if dup_result.is_duplicate:
-            is_double_submit = True
-            original_lead_id = dup_result.original_lead_id
+            return {
+                "success": True,
+                "lead_id": dup_result.original_lead_id,
+                "status": "double_submit",
+                "message": "Double soumission detectee - lead deja cree"
+            }
 
-    if is_double_submit:
-        return {
-            "success": True,
-            "lead_id": original_lead_id,
-            "status": "double_submit",
-            "message": "Double soumission detectee - lead deja cree"
-        }
-
-    # Determiner entity et produit
+    # ---- Resoudre entity + produit ----
     entity = (data.entity or "").upper()
     produit = (data.produit or "").upper()
 
-    # Si provider: entity VERROUILLEE par le provider
+    # Si provider: entity VERROUILLEE
     if provider:
         entity = provider.get("entity", "")
         entity_locked = True
-        # produit peut venir du body (le provider l'envoie)
+        # produit peut venir du body
+    
+    # Si pas provider ET pas entity/produit: resoudre depuis form_code
+    if not provider and (not entity or not produit) and data.form_code:
+        form_config = await get_form_config(data.form_code)
+        if form_config:
+            entity = entity or form_config.get("entity", "")
+            produit = produit or form_config.get("produit", "")
+        else:
+            logger.warning(f"[LEAD] form_code={data.form_code} non configure - entity/produit manquants")
 
-    # Source gating: verifier si la source est autorisee
-    # Recuperer session pour connaitre la source
+    # Recuperer session pour source/UTM
     session = await db.visitor_sessions.find_one({"id": data.session_id}, {"_id": 0})
     utm_source = session.get("utm_source", "") if session else ""
     utm_medium = session.get("utm_medium", "") if session else ""
@@ -346,18 +352,21 @@ async def submit_lead(data: LeadData, request: Request):
     lp_code = data.lp_code or (session.get("lp_code", "") if session else "")
 
     source_name = utm_source or lp_code or ""
+    
+    # Source gating
     source_blocked = False
-
     if lead_minimal_valid and source_name:
         allowed = await is_source_allowed(source_name)
         if not allowed:
             source_blocked = True
 
     # Determiner le statut initial
-    if source_blocked and lead_minimal_valid:
+    if not lead_minimal_valid:
+        initial_status = "invalid"
+    elif source_blocked:
         initial_status = "hold_source"
-    elif lead_minimal_valid:
-        initial_status = "new"
+    elif not entity or not produit:
+        initial_status = "pending_config"  # Manque config form
     else:
         initial_status = "new"
 
@@ -387,7 +396,7 @@ async def submit_lead(data: LeadData, request: Request):
         "utm_source": utm_source,
         "utm_medium": utm_medium,
         "utm_campaign": utm_campaign,
-        # Champs secondaires dans custom_fields
+        # Champs secondaires
         "custom_fields": {},
         # Meta
         "ip": request.headers.get("x-forwarded-for", request.client.host if request.client else ""),
@@ -411,6 +420,7 @@ async def submit_lead(data: LeadData, request: Request):
     if secondary:
         lead["custom_fields"] = secondary
 
+    # ======== INSERT LEAD ========
     await db.leads.insert_one(lead)
 
     # MAJ session
@@ -420,24 +430,116 @@ async def submit_lead(data: LeadData, request: Request):
             {"$set": {"status": "converted", "lead_id": lead_id}}
         )
 
+    # ======== ROUTING IMMEDIAT ========
+    routing_result = None
+    delivery_id = None
+    
+    # Conditions pour router:
+    # - lead_minimal_valid
+    # - NOT source_blocked
+    # - entity + produit presents
+    can_route = lead_minimal_valid and not source_blocked and entity and produit
+
+    if can_route:
+        routing_result = await route_lead(
+            entity=entity,
+            produit=produit,
+            departement=dept,
+            phone=phone,
+            is_lb=False,
+            entity_locked=entity_locked
+        )
+
+        if routing_result.success:
+            # Creer delivery record
+            delivery_id = str(uuid.uuid4())
+            delivery = {
+                "id": delivery_id,
+                "lead_id": lead_id,
+                "client_id": routing_result.client_id,
+                "client_name": routing_result.client_name,
+                "commande_id": routing_result.commande_id,
+                "entity": entity,
+                "produit": produit,
+                "delivery_method": "realtime",
+                "status": "pending_csv",  # Sera envoye dans le batch CSV du matin
+                "is_lb": False,
+                "created_at": now_iso(),
+            }
+            await db.deliveries.insert_one(delivery)
+
+            # MAJ lead
+            await db.leads.update_one(
+                {"id": lead_id},
+                {"$set": {
+                    "status": "routed",
+                    "delivery_id": delivery_id,
+                    "delivery_client_id": routing_result.client_id,
+                    "delivery_client_name": routing_result.client_name,
+                    "delivery_commande_id": routing_result.commande_id,
+                    "routed_at": now_iso()
+                }}
+            )
+            lead["status"] = "routed"
+        else:
+            # Pas de commande OPEN
+            reason = routing_result.reason
+            if "duplicate" in reason:
+                new_status = "duplicate"
+            else:
+                new_status = "no_open_orders"
+            
+            await db.leads.update_one(
+                {"id": lead_id},
+                {"$set": {
+                    "status": new_status,
+                    "routing_reason": reason
+                }}
+            )
+            lead["status"] = new_status
+
+    # ======== LOG ========
     log_msg = (
         f"[LEAD_CREATED] id={lead_id} phone=***{phone[-4:] if len(phone) >= 4 else phone} "
-        f"entity={entity or 'TBD'} produit={produit or 'TBD'} dept={dept} "
-        f"status={initial_status}"
+        f"entity={entity or 'N/A'} produit={produit or 'N/A'} dept={dept} "
+        f"status={lead['status']}"
     )
     if provider:
         log_msg += f" provider={provider.get('slug')} entity_locked=True"
     if source_blocked:
         log_msg += f" HOLD_SOURCE={source_name}"
+    if routing_result:
+        if routing_result.success:
+            log_msg += f" -> ROUTED to {routing_result.client_name}"
+        else:
+            log_msg += f" -> {routing_result.reason}"
     logger.info(log_msg)
 
-    msg = "Lead enregistre"
-    if source_blocked:
-        msg = "Lead stocke - source en attente"
-
-    return {
+    # ======== RESPONSE ========
+    response = {
         "success": True,
         "lead_id": lead_id,
-        "status": initial_status,
-        "message": msg
+        "status": lead["status"],
+        "entity": entity or None,
+        "produit": produit or None,
+    }
+
+    if delivery_id:
+        response["delivery_id"] = delivery_id
+        response["client_id"] = routing_result.client_id
+        response["client_name"] = routing_result.client_name
+        response["message"] = f"Lead route vers {routing_result.client_name}"
+    elif source_blocked:
+        response["message"] = "Lead stocke - source en attente de validation"
+    elif not lead_minimal_valid:
+        response["message"] = "Lead stocke - donnees incompletes"
+    elif not entity or not produit:
+        response["message"] = "Lead stocke - configuration formulaire manquante"
+    elif routing_result and not routing_result.success:
+        response["message"] = f"Lead stocke - {routing_result.reason}"
+        response["routing_reason"] = routing_result.reason
+    else:
+        response["message"] = "Lead enregistre"
+
+    return response
     }
