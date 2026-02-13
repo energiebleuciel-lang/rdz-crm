@@ -142,13 +142,25 @@ export default function Accounts() {
     e.preventDefault();
     
     try {
+      // Construire le payload - filtrer crm_routing pour ne garder que les produits configurés
+      const payload = { ...form };
+      if (payload.crm_routing) {
+        const filtered = {};
+        for (const [pt, cfg] of Object.entries(payload.crm_routing)) {
+          if (cfg.target_crm && cfg.api_key) {
+            filtered[pt] = cfg;
+          }
+        }
+        payload.crm_routing = Object.keys(filtered).length > 0 ? filtered : undefined;
+      }
+      
       const url = editingAccount 
         ? `${API}/api/accounts/${editingAccount.id}`
         : `${API}/api/accounts`;
       
       const res = await authFetch(url, {
         method: editingAccount ? 'PUT' : 'POST',
-        body: JSON.stringify(form)
+        body: JSON.stringify(payload)
       });
       
       if (res.ok) {
