@@ -305,6 +305,9 @@ export default function Monitoring() {
 
       <StatsTable data={windowData.by_crm_product} title="Par CRM x Produit" icon={Activity} showFailures={true} />
 
+      {/* Légende des statuts */}
+      <FailureLegend />
+
       <p className="text-xs text-slate-400 text-right">
         Dernière mise à jour : {new Date(data.generated_at).toLocaleString('fr-FR')}
       </p>
