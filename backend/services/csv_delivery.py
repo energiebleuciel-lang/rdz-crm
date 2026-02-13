@@ -15,6 +15,11 @@
 ║  - Un lead LB est exporté comme un lead NORMAL                               ║
 ║  - Aucune mention "LB" dans le CSV                                           ║
 ║  - Le champ produit = produit de la COMMANDE (pas l'original du lead)        ║
+║                                                                              ║
+║  EMAILS PROFESSIONNELS:                                                      ║
+║  - Templates différents par entité (ZR7 / MDL)                               ║
+║  - Aucune mention technique, debug, test                                     ║
+║  - Ton institutionnel, sobre, professionnel                                  ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 """
 
@@ -43,6 +48,32 @@ CSV_COLUMNS = [
     "proprietaire_maison",
     "produit"
 ]
+
+# Templates email par entité - PRODUCTION
+EMAIL_TEMPLATES = {
+    "ZR7": {
+        "signature": "ZR7 Consulting",
+        "body": """Bonjour,
+
+Veuillez trouver ci-joint votre livraison de leads du jour.
+
+L'équipe ZR7 Consulting vous accompagne dans la croissance de vos performances commerciales.
+
+Bien cordialement,
+ZR7 Consulting"""
+    },
+    "MDL": {
+        "signature": "Maison du Lead",
+        "body": """Bonjour,
+
+Veuillez trouver ci-joint votre livraison de leads du jour.
+
+L'équipe Maison du Lead vous souhaite une excellente transformation et de belles ventes.
+
+Cordialement,
+Maison du Lead"""
+    }
+}
 
 
 def generate_csv_content(leads: List[Dict], product_type: str) -> str:
