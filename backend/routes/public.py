@@ -275,6 +275,27 @@ async def submit_lead(data: LeadData, request: Request):
     from services.duplicate_detector import check_double_submit
     from services.settings import is_source_allowed
 
+    # ---- Provider auth ----
+    # API key: header Authorization OU body api_key
+    api_key = data.api_key or ""
+    if not api_key:
+        auth_header = request.headers.get("authorization", "")
+        if auth_header.startswith("Bearer "):
+            api_key = auth_header[7:].strip()
+        elif auth_header.startswith("prov_"):
+            api_key = auth_header.strip()
+
+    provider = None
+    entity_locked = False
+
+    if api_key and api_key.startswith("prov_"):
+        provider = await db.providers.find_one(
+            {"api_key": api_key, "active": True},
+            {"_id": 0}
+        )
+        if not provider:
+            return {"success": False, "error": "API key provider invalide ou inactive"}
+
     # Valider telephone
     is_valid, phone_result = validate_phone_fr(data.phone)
     phone = phone_result if is_valid else data.phone
