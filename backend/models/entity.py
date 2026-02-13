@@ -1,25 +1,17 @@
 """
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║  RDZ CRM - Entité (Multi-tenant strict)                                      ║
+║  RDZ CRM - Configuration Entité (Multi-tenant strict)                        ║
 ║                                                                              ║
-║  RÈGLE FONDAMENTALE:                                                         ║
-║  - Deux entités isolées: ZR7 et MDL                                          ║
-║  - AUCUN mélange de données possible                                         ║
-║  - Toute requête DOIT avoir un filtre entity                                 ║
+║  NOTE: EntityType est défini dans models/lead.py (source unique)             ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 """
 
-from enum import Enum
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
-class EntityType(str, Enum):
-    """
-    Entités possibles - multi-tenant strict
-    """
-    ZR7 = "ZR7"
-    MDL = "MDL"
+# Import depuis lead.py (source unique)
+from .lead import EntityType
 
 
 class EntityConfig(BaseModel):
