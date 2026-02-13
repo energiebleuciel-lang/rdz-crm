@@ -13,7 +13,7 @@ import asyncio
 from playwright.async_api import async_playwright
 import json
 
-BASE_URL = "https://leadwise-1.preview.emergentagent.com"
+BASE_URL = "https://account-lead-router.preview.emergentagent.com"
 API_URL = f"{BASE_URL}/api/public"
 
 results = {

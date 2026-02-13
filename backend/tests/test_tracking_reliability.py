@@ -17,7 +17,7 @@ import uuid
 import os
 from datetime import datetime
 
-API_URL = os.environ.get("API_URL", "https://leadwise-1.preview.emergentagent.com")
+API_URL = os.environ.get("API_URL", "https://account-lead-router.preview.emergentagent.com")
 BASE_URL = f"{API_URL}/api/public"
 
 # Compteurs globaux
