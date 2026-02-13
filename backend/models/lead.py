@@ -157,8 +157,12 @@ class LeadDocument(BaseModel):
     delivery_commande_id: Optional[str] = None
     
     # === LB INFO ===
+    # LB = Lead Backlog = Pool de leads revendables
+    # Condition 1: non_livre > 8 jours → LB
+    # Condition 2: livre > 30 jours → LB (recyclable)
     is_lb: bool = False
     lb_since: Optional[str] = None
+    lb_reason: Optional[str] = None  # "non_livre_8_days" ou "livre_30_days_expired"
     lb_original_produit: Optional[str] = None
     
     # === REJET CLIENT ===
