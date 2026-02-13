@@ -327,6 +327,7 @@ async def _generate_mode_a(
     product_type: str,
     account_name: str,
     gtm_head: str,
+    gtm_conversion: str,
     redirect_url: str,
     form_selector: str,
     selected_product: str = None
@@ -337,6 +338,10 @@ async def _generate_mode_a(
     utm_campaign:
     - Script LP: lire depuis URL, envoyer dans track/session, stocker sessionStorage, ajouter à URL form
     - Script Form: récupérer (URL priorité, sinon sessionStorage), envoyer dans /leads
+    
+    Post-submit:
+    - Exécuter gtm_conversion (si défini)
+    - Rediriger vers redirect_url
     """
     
     # ══════════════════════════════════════════════════════════
