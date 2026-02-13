@@ -29,23 +29,6 @@ if not BACKEND_URL:
     raise ValueError("BACKEND_URL environment variable is required")
 
 
-# ==================== FEATURE FLAGS ====================
-# Ces flags contrôlent les fonctionnalités en développement
-# NE PAS ACTIVER sans validation explicite du CTO
-
-# Système LB (Lead Backup) - Remplacement automatique des doublons
-# OFF = Les doublons sont détectés mais PAS remplacés automatiquement
-ENABLE_LB_REPLACEMENT = False
-
-# Système Commandes/Distribution Engine - Routing basé sur les commandes actives
-# OFF = Routing basé uniquement sur target_crm du formulaire
-ENABLE_COMMANDES_ROUTING = False
-
-# Note: Ces fonctionnalités sont en développement et seront activées
-# uniquement après validation complète du CTO.
-# Pipeline actif actuel: RDZ → API → ZR7/MDL (via target_crm)
-
-
 # ==================== HELPERS ====================
 
 def hash_password(password: str) -> str:
