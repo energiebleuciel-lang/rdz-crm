@@ -87,7 +87,7 @@ Maison du Lead"""
 }
 
 
-def generate_csv_content(leads: List[Dict], product_type: str, entity: str) -> str:
+def generate_csv_content(leads: List[Dict], produit: str, entity: str) -> str:
     """
     Génère le contenu CSV à partir d'une liste de leads
     
@@ -101,7 +101,7 @@ def generate_csv_content(leads: List[Dict], product_type: str, entity: str) -> s
     - email ← lead.email
     - departement ← lead.departement
     - proprietaire_maison ← CONSTANTE "oui"
-    - produit ← product_type (commande)
+    - produit ← produit (commande)
     
     MDL (7 colonnes):
     - nom ← lead.nom
@@ -110,7 +110,7 @@ def generate_csv_content(leads: List[Dict], product_type: str, entity: str) -> s
     - email ← lead.email
     - departement ← lead.departement
     - type_logement ← CONSTANTE "maison"
-    - produit ← product_type (commande)
+    - produit ← produit (commande)
     
     RÈGLES:
     - Ignore tous les autres champs du lead
@@ -133,7 +133,7 @@ def generate_csv_content(leads: List[Dict], product_type: str, entity: str) -> s
                 "departement": lead.get("departement", ""),
                 "proprietaire": "oui",  # CONSTANTE - toujours "oui"
                 "type_logement": "maison",  # CONSTANTE - toujours "maison"
-                "produit": product_type  # Produit de la COMMANDE (relabel LB)
+                "produit": produit  # Produit de la COMMANDE (relabel LB)
             }
             writer.writerow(row)
     else:
@@ -149,14 +149,14 @@ def generate_csv_content(leads: List[Dict], product_type: str, entity: str) -> s
                 "email": lead.get("email", ""),
                 "departement": lead.get("departement", ""),
                 "proprietaire_maison": "oui",  # CONSTANTE - toujours "oui"
-                "produit": product_type  # Produit de la COMMANDE (relabel LB)
+                "produit": produit  # Produit de la COMMANDE (relabel LB)
             }
             writer.writerow(row)
     
     return output.getvalue()
 
 
-def generate_csv_filename(entity: str, product_type: str) -> str:
+def generate_csv_filename(entity: str, produit: str) -> str:
     """
     Génère un nom de fichier CSV professionnel
     Format: {ENTITY}_{PRODUIT}_{YYYY-MM-DD}.csv
@@ -166,7 +166,7 @@ def generate_csv_filename(entity: str, product_type: str) -> str:
     - MDL_PAC_2026-02-13.csv
     """
     date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    return f"{entity}_{product_type}_{date_str}.csv"
+    return f"{entity}_{produit}_{date_str}.csv"
 
 
 async def send_csv_email(
@@ -176,7 +176,7 @@ async def send_csv_email(
     csv_filename: str,
     lead_count: int,
     lb_count: int,
-    product_type: str
+    produit: str
 ) -> Dict:
     """
     Envoie un email PROFESSIONNEL avec le CSV en pièce jointe
@@ -191,7 +191,7 @@ async def send_csv_email(
         csv_filename: Nom du fichier (format: {ENTITY}_{PRODUIT}_{DATE}.csv)
         lead_count: Nombre total de leads
         lb_count: Nombre de leads LB inclus
-        product_type: Type de produit
+        produit: Type de produit
     
     Returns:
         Dict avec status et détails
@@ -232,7 +232,7 @@ async def send_csv_email(
         msg["From"] = config["email"]
         msg["To"] = ", ".join(to_emails)
         # Objet professionnel: Livraison leads {ENTITY} – {PRODUIT} – {DATE}
-        msg["Subject"] = f"Livraison leads {entity} – {product_type} – {date_formatted}"
+        msg["Subject"] = f"Livraison leads {entity} – {produit} – {date_formatted}"
         
         # Corps du message - template professionnel par entité
         msg.attach(MIMEText(template["body"], "plain", "utf-8"))
@@ -253,7 +253,7 @@ async def send_csv_email(
             server.send_message(msg)
         
         logger.info(
-            f"[CSV_SENT] entity={entity} product={product_type} "
+            f"[CSV_SENT] entity={entity} product={produit} "
             f"leads={lead_count} lb={lb_count} to={to_emails}"
         )
         
@@ -282,7 +282,7 @@ async def deliver_to_client(
     entity: str,
     client_id: str,
     leads: List[Dict],
-    product_type: str,
+    produit: str,
     batch_id: str
 ) -> Dict:
     """
@@ -298,7 +298,7 @@ async def deliver_to_client(
         entity: ZR7 ou MDL
         client_id: ID du client
         leads: Liste des leads à livrer
-        product_type: Produit de la commande
+        produit: Produit de la commande
         batch_id: ID du batch de livraison
     
     Returns:
@@ -321,8 +321,8 @@ async def deliver_to_client(
         return {"success": False, "error": "Aucun email de livraison configuré"}
     
     # 2. Générer le CSV (format différent selon entity)
-    csv_content = generate_csv_content(leads, product_type, entity)
-    csv_filename = generate_csv_filename(entity, product_type)
+    csv_content = generate_csv_content(leads, produit, entity)
+    csv_filename = generate_csv_filename(entity, produit)
     
     # Compter les LB
     lb_count = sum(1 for lead in leads if lead.get("is_lb", False))
@@ -335,7 +335,7 @@ async def deliver_to_client(
         csv_filename=csv_filename,
         lead_count=len(leads),
         lb_count=lb_count,
-        product_type=product_type
+        produit=produit
     )
     
     if not send_result.get("success"):
@@ -367,7 +367,7 @@ async def deliver_to_client(
         "lead_ids": lead_ids,
         "lead_count": len(leads),
         "lb_count": lb_count,
-        "product_type": product_type,
+        "produit": produit,
         "status": "sent",
         "csv_filename": csv_filename,
         "csv_emails_sent_to": emails,
