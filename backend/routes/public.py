@@ -623,17 +623,14 @@ async def submit_lead(data: LeadData, request: Request):
         "ip": request.headers.get("x-forwarded-for", request.client.host if request.client else ""),
         "register_date": timestamp(),
         "created_at": now_iso(),
-        # CRM info - Champs harmonisés avec leads.py v1
-        "origin_crm": origin_crm_slug or target_crm,  # CRM d'origine (compte)
-        "target_crm": final_crm or "none",  # CRM de destination final (slug)
-        "is_transferred": is_transferred,  # Transféré vers autre CRM ?
-        "routing_reason": routing_reason,  # Raison du routing
-        "routing_source": routing_source,  # D'où vient la config CRM: account_routing, form_override, none
-        "distribution_reason": distribution_reason,  # Raison de la distribution
-        "allow_cross_crm": allow_cross_crm,  # Cross-CRM autorisé ?
-        "api_status": initial_status,  # pending, pending_no_order, no_api_key, no_crm, orphan, invalid_phone, missing_required, double_submit
+        # CRM info
+        "origin_crm": origin_crm_slug or target_crm,
+        "target_crm": final_crm or "none",
+        "routing_reason": routing_reason,
+        "routing_source": routing_source,
+        "distribution_reason": distribution_reason,
+        "api_status": initial_status,
         "sent_to_crm": False,
-        "manual_only": False,  # Pour redistribution auto
         "retry_count": 0,
         # FLAGS de diagnostic
         "phone_invalid": phone_invalid,
