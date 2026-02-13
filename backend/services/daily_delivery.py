@@ -371,6 +371,7 @@ async def process_commande_delivery(
     
     # ════════════════════════════════════════════════════════════════════
     # PASS 2: LB jamais livrés à ce client
+    # ⚠️ Si doublon → SAUTER et REMPLACER par le suivant
     # ════════════════════════════════════════════════════════════════════
     if lb_remaining > 0 and len(to_deliver) < quota_remaining:
         for lead in lb_leads:
@@ -393,9 +394,11 @@ async def process_commande_delivery(
             if was_delivered:
                 continue  # Réservé pour PASS 3
             
-            # Vérifier doublon 30j (normalement non car jamais livré)
+            # Vérifier doublon 30j
+            # ⚠️ Si doublon → SAUTER et REMPLACER par le suivant
             if await is_duplicate_blocked(lead.get("phone"), produit, client_id):
-                continue
+                skipped_duplicates += 1
+                continue  # REMPLACEMENT: on passe au lead suivant
             
             to_deliver.append(lead)
             used_lead_ids.add(lead_id)
@@ -403,6 +406,7 @@ async def process_commande_delivery(
     
     # ════════════════════════════════════════════════════════════════════
     # PASS 3: LB déjà livrés à ce client (>30j) - DERNIER RECOURS
+    # ⚠️ Si encore bloqué → SAUTER et REMPLACER par le suivant
     # ════════════════════════════════════════════════════════════════════
     if lb_remaining > lb_count and len(to_deliver) < quota_remaining:
         for lead in lb_leads:
@@ -426,18 +430,27 @@ async def process_commande_delivery(
                 continue  # Déjà traité en PASS 2
             
             # Vérifier que > 30 jours (doublon expiré)
+            # ⚠️ Si encore bloqué → SAUTER et REMPLACER par le suivant
             if await is_duplicate_blocked(lead.get("phone"), produit, client_id):
-                continue  # Encore bloqué
+                skipped_duplicates += 1
+                continue  # REMPLACEMENT: on passe au lead suivant
             
             # OK - doublon expiré, on peut re-livrer
             to_deliver.append(lead)
             used_lead_ids.add(lead_id)
             lb_count += 1
     
+    # Log si des doublons ont été sautés
+    if skipped_duplicates > 0:
+        logger.debug(
+            f"[ROUTING] {client_name}: {skipped_duplicates} doublons sautés et remplacés"
+        )
+    
     return {
         "leads": to_deliver,
         "lb_count": lb_count,
-        "fresh_count": len(to_deliver) - lb_count
+        "fresh_count": len(to_deliver) - lb_count,
+        "skipped_duplicates": skipped_duplicates
     }
 
 
