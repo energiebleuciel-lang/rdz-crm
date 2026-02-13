@@ -322,6 +322,14 @@ async def submit_lead(data: LeadData, request: Request):
         if not allowed:
             source_blocked = True
 
+    # Determiner le statut initial
+    if source_blocked and lead_minimal_valid:
+        initial_status = "hold_source"
+    elif lead_minimal_valid:
+        initial_status = "new"
+    else:
+        initial_status = "new"
+
     # Creer le lead
     lead_id = str(uuid.uuid4())
     lead = {
@@ -333,14 +341,14 @@ async def submit_lead(data: LeadData, request: Request):
         "departement": dept,
         "entity": entity,
         "produit": produit,
-        "status": "new",
+        "status": initial_status,
         "is_lb": False,
         # Tracking
         "session_id": data.session_id,
         "form_code": data.form_code or "",
         "lp_code": lp_code,
         "liaison_code": data.liaison_code or "",
-        "source": utm_source,
+        "source": source_name,
         "utm_source": utm_source,
         "utm_medium": utm_medium,
         "utm_campaign": utm_campaign,
@@ -351,6 +359,10 @@ async def submit_lead(data: LeadData, request: Request):
         "register_date": timestamp(),
         "created_at": now_iso(),
     }
+
+    # Source blocked flag
+    if source_blocked:
+        lead["hold_reason"] = f"source_blocked:{source_name}"
 
     # Champs secondaires
     secondary = {}
