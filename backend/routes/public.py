@@ -372,6 +372,10 @@ async def submit_lead(data: LeadData, request: Request):
         "produit": produit,
         "status": initial_status,
         "is_lb": False,
+        # Provider
+        "provider_id": provider.get("id") if provider else None,
+        "provider_slug": provider.get("slug") if provider else None,
+        "entity_locked": entity_locked,
         # Tracking
         "session_id": data.session_id,
         "form_code": data.form_code or "",
