@@ -517,42 +517,15 @@ async def submit_lead(data: LeadData, request: Request):
     has_api_key = bool(crm_api_key)
     has_crm_config = bool(target_crm and target_crm_url)
     
-    # Vérifier commandes et trouver le bon CRM
+    # Résolution finale du CRM
     final_crm = None
     final_key = None
-    is_transferred = False
     routing_reason = "no_crm"
     
-    # === ROUTING SIMPLIFIÉ (PRODUCTION) ===
-    from config import ENABLE_COMMANDES_ROUTING
-    
     if has_crm_config and has_api_key:
-        if ENABLE_COMMANDES_ROUTING:
-            # Mode Commandes (DÉSACTIVÉ)
-            crm_id = await get_crm_id(target_crm)
-            if crm_id and await has_commande(crm_id, product_type, dept):
-                final_crm = target_crm
-                final_key = crm_api_key
-                routing_reason = f"commande_{target_crm}"
-            elif allow_cross_crm:
-                other = "mdl" if target_crm == "zr7" else "zr7"
-                other_id = await get_crm_id(other)
-                if other_id and await has_commande(other_id, product_type, dept):
-                    other_form = await db.forms.find_one({
-                        "account_id": account_id,
-                        "target_crm": other,
-                        "crm_api_key": {"$exists": True, "$ne": ""}
-                    }, {"_id": 0})
-                    if other_form:
-                        final_crm = other
-                        final_key = other_form.get("crm_api_key")
-                        is_transferred = True
-                        routing_reason = f"cross_crm_{other}"
-        else:
-            # Mode Production (ACTIF) - Routing account-centric
-            final_crm = target_crm
-            final_key = crm_api_key
-            routing_reason = f"{routing_source}_{target_crm}"
+        final_crm = target_crm
+        final_key = crm_api_key
+        routing_reason = f"{routing_source}_{target_crm}"
     
     # Déterminer le statut initial
     # RÈGLE: Lead TOUJOURS sauvegardé, peu importe la config
