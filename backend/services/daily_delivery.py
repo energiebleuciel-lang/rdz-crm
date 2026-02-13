@@ -38,7 +38,7 @@ from typing import List, Dict, Tuple, Optional, Set
 from collections import defaultdict
 
 from config import db, now_iso
-from services.duplicate_detector_v2 import check_duplicate_30_days
+from services.duplicate_detector import check_duplicate_30_days
 from services.routing_engine import get_week_start
 
 logger = logging.getLogger("daily_delivery")

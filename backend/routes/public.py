@@ -270,7 +270,7 @@ async def submit_lead(data: LeadData, request: Request):
     3. Sauvegarder lead status=new
     4. Retourner success
     """
-    from services.duplicate_detector_v2 import check_double_submit
+    from services.duplicate_detector import check_double_submit
 
     # Valider telephone
     is_valid, phone_result = validate_phone_fr(data.phone)

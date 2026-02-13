@@ -18,7 +18,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any, Tuple
 from config import db
-from services.duplicate_detector_v2 import check_duplicate_30_days
+from services.duplicate_detector import check_duplicate_30_days
 
 logger = logging.getLogger("routing_engine")
 
