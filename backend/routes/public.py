@@ -812,6 +812,15 @@ async def submit_lead(data: LeadData, request: Request):
         }}
     )
     
+    # LOG COMPLET DE ROUTAGE
+    routing_logger.info(
+        f"[ROUTING_RESULT] lead_id={lead_id} account_id={account_id} "
+        f"product_type={product_type} routing_source={routing_source} "
+        f"target_crm={actual_crm_sent or target_crm or 'none'} "
+        f"status={status} is_transferred={is_transferred} "
+        f"routing_reason={routing_reason}"
+    )
+    
     # Mettre à jour la session
     if session:
         await db.visitor_sessions.update_one(
