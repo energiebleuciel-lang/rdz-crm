@@ -182,3 +182,92 @@ async def get_monitoring_stats(user: dict = Depends(get_current_user)):
         },
         "generated_at": now_iso(),
     }
+
+
+
+RETRYABLE_STATUSES = {"failed", "server_error", "timeout", "connection_error", "queued", "no_crm", "no_api_key", "validation_error", "auth_error"}
+
+
+class RetryRequest(BaseModel):
+    target_crm: Optional[str] = None
+    product_type: Optional[str] = None
+    account_id: Optional[str] = None
+    hours: int = 24
+
+
+@router.post("/retry")
+async def retry_failed_leads(data: RetryRequest, user: dict = Depends(get_current_user)):
+    """
+    Relance les leads en échec via le routing account-centric.
+    Filtre optionnel par CRM / produit / compte / fenêtre.
+    """
+    import logging
+    from services.lead_sender import send_to_crm
+    from routes.public import get_crm_url
+
+    logger = logging.getLogger("monitoring_retry")
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=data.hours)).isoformat()
+
+    query = {
+        "api_status": {"$in": list(RETRYABLE_STATUSES)},
+        "created_at": {"$gte": cutoff},
+    }
+    if data.target_crm:
+        query["target_crm"] = data.target_crm
+    if data.product_type:
+        query["product_type"] = data.product_type
+    if data.account_id:
+        query["account_id"] = data.account_id
+
+    leads = await db.leads.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+
+    results = {"total": len(leads), "success": 0, "failed": 0, "skipped": 0, "details": []}
+
+    for lead in leads:
+        account_id = lead.get("account_id")
+        product_type = lead.get("product_type", "PV")
+        lead_id = lead.get("id")
+
+        # Résoudre CRM via account routing
+        account = await db.accounts.find_one({"id": account_id}, {"_id": 0})
+        if not account:
+            results["skipped"] += 1
+            results["details"].append({"lead_id": lead_id, "status": "skipped", "reason": "account_not_found"})
+            continue
+
+        routing = (account.get("crm_routing") or {}).get(product_type, {})
+        crm_slug = routing.get("target_crm", "").strip()
+        api_key = routing.get("api_key", "").strip()
+
+        if not crm_slug or not api_key:
+            results["skipped"] += 1
+            results["details"].append({"lead_id": lead_id, "status": "skipped", "reason": "no_routing_config"})
+            continue
+
+        api_url = await get_crm_url(crm_slug)
+        if not api_url:
+            results["skipped"] += 1
+            results["details"].append({"lead_id": lead_id, "status": "skipped", "reason": "crm_url_missing"})
+            continue
+
+        status, response, _ = await send_to_crm(lead, api_url, api_key)
+
+        await db.leads.update_one({"id": lead_id}, {"$set": {
+            "api_status": status,
+            "target_crm": crm_slug,
+            "sent_to_crm": status in ("success", "duplicate"),
+            "sent_at": now_iso() if status in ("success", "duplicate") else None,
+            "retry_count": lead.get("retry_count", 0) + 1,
+            "retried_at": now_iso(),
+            "retried_by": user.get("email"),
+        }})
+
+        if status in ("success", "duplicate"):
+            results["success"] += 1
+        else:
+            results["failed"] += 1
+        results["details"].append({"lead_id": lead_id, "status": status, "crm": crm_slug})
+
+        logger.info(f"[RETRY] lead={lead_id} crm={crm_slug} product={product_type} status={status}")
+
+    return {"success": True, "results": results}
