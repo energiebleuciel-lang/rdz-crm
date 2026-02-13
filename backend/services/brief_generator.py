@@ -1139,6 +1139,31 @@ async def _generate_mode_b(
   }}
 
   // ══════════════════════════════════════════════════════════
+  // GTM CONVERSION - Exécuter le code de conversion
+  // ══════════════════════════════════════════════════════════
+  function executeConversion(leadId) {{
+    if (!RDZ.conversionCode) return;
+    
+    try {{
+      var conversionData = {{
+        lead_id: leadId,
+        lp_code: RDZ.lp,
+        form_code: RDZ.form,
+        liaison_code: RDZ.liaison,
+        utm_campaign: RDZ.utm.utm_campaign || "",
+        utm_source: RDZ.utm.utm_source || "",
+        utm_medium: RDZ.utm.utm_medium || ""
+      }};
+      
+      if (typeof RDZ.conversionCode === "function") {{
+        RDZ.conversionCode(conversionData);
+      }}
+    }} catch(e) {{
+      console.warn("RDZ Conversion error:", e);
+    }}
+  }}
+
+  // ══════════════════════════════════════════════════════════
   // 1. SESSION INITIALIZATION - Anti-doublon côté serveur
   // ══════════════════════════════════════════════════════════
   async function initSession() {{
