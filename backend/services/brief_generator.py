@@ -357,6 +357,19 @@ async def _generate_mode_a(
     - Rediriger vers redirect_url
     """
     
+    # Formater le code conversion GTM en fonction JavaScript
+    # Si vide ou null, on met null. Sinon on wrap dans une fonction
+    if gtm_conversion and gtm_conversion.strip():
+        # Le code conversion est wrappé dans une fonction qui reçoit les données du lead
+        gtm_conversion_js = f'''function(data) {{
+      try {{
+        // Variables disponibles: data.lead_id, data.lp_code, data.form_code, data.liaison_code, data.utm_campaign, data.utm_source, data.utm_medium
+        {gtm_conversion}
+      }} catch(e) {{ console.warn("RDZ GTM Conversion error:", e); }}
+    }}'''
+    else:
+        gtm_conversion_js = "null"
+    
     # ══════════════════════════════════════════════════════════
     # SCRIPT LP - Mode A - RDZ TRACKING COMPLET
     # ══════════════════════════════════════════════════════════
