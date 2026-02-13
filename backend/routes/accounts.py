@@ -84,9 +84,30 @@ async def update_account(account_id: str, data: AccountUpdate, user: dict = Depe
     update_data = {k: v for k, v in data.model_dump().items() if v is not None}
     # Sérialiser crm_routing si présent (Pydantic → dict)
     if "crm_routing" in update_data and update_data["crm_routing"]:
+        new_routing = update_data["crm_routing"]
+        existing_routing = account.get("crm_routing") or {}
+        
+        # SÉCURITÉ: Une API key configurée ne peut JAMAIS être supprimée/vidée
+        VALID_CRMS = {"zr7", "mdl"}
+        for product, config in new_routing.items():
+            if product not in ("PV", "PAC", "ITE"):
+                raise HTTPException(status_code=400, detail=f"product_type invalide: {product}. Valeurs: PV, PAC, ITE")
+            crm = config.get("target_crm", "").lower().strip()
+            key = config.get("api_key", "").strip()
+            if crm and crm not in VALID_CRMS:
+                raise HTTPException(status_code=400, detail=f"target_crm invalide: {crm}. Valeurs: {', '.join(VALID_CRMS)}")
+            # Interdire suppression d'une clé existante
+            old_config = existing_routing.get(product, {})
+            old_key = old_config.get("api_key", "").strip() if isinstance(old_config, dict) else ""
+            if old_key and not key:
+                raise HTTPException(status_code=400, detail=f"Impossible de supprimer la clé API pour {product}. Rotation uniquement.")
+            # Interdire CRM vide si clé présente
+            if key and not crm:
+                raise HTTPException(status_code=400, detail=f"target_crm requis pour {product} si api_key est configurée.")
+        
         update_data["crm_routing"] = {
             k: v if isinstance(v, dict) else v
-            for k, v in update_data["crm_routing"].items()
+            for k, v in new_routing.items()
         }
     update_data["updated_at"] = now_iso()
     update_data["updated_by"] = user["id"]
