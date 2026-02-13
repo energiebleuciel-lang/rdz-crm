@@ -15,7 +15,7 @@ import pytest
 import httpx
 import uuid
 
-API_URL = "https://crmsync-11.preview.emergentagent.com"
+API_URL = "https://delivery-pipeline-1.preview.emergentagent.com"
 CREDENTIALS = {"email": "energiebleuciel@gmail.com", "password": "92Ruemarxdormoy"}
 
 
