@@ -190,9 +190,9 @@ async def lifespan(app: FastAPI):
 
 # Créer l'app avec lifespan
 app = FastAPI(
-    title="EnerSolar CRM",
-    description="CRM de gestion de leads solaires",
-    version="2.0.0",
+    title="RDZ CRM",
+    description="CRM Multi-Tenant pour gestion et distribution de leads (ZR7 / MDL)",
+    version="3.0.0",
     lifespan=lifespan
 )
 
@@ -208,6 +208,8 @@ app.add_middleware(
 # ==================== IMPORT DES ROUTES ====================
 
 from routes import auth, accounts, crms, lps, forms, leads, queue, config, stats, billing, verification, public, media, quality_mappings, monitoring
+from routes import clients
+from routes import commandes_v2 as commandes
 
 # Routes avec préfixe /api
 app.include_router(auth.router, prefix="/api")
@@ -225,19 +227,26 @@ app.include_router(public.router, prefix="/api")
 app.include_router(media.router, prefix="/api")
 app.include_router(quality_mappings.router, prefix="/api")
 app.include_router(monitoring.router, prefix="/api")
+# Nouvelles routes RDZ v3
+app.include_router(clients.router, prefix="/api")
+app.include_router(commandes.router, prefix="/api")
 
 # ==================== ROUTE RACINE ====================
 
 @app.get("/")
 async def root():
     return {
-        "name": "EnerSolar CRM API",
-        "version": "2.0.0",
+        "name": "RDZ CRM API",
+        "version": "3.0.0",
         "status": "running",
         "docs": "/docs",
+        "entities": ["ZR7", "MDL"],
         "features": {
+            "daily_delivery": "09:30 Europe/Paris",
             "nightly_verification": "03:00 UTC",
-            "queue_processing": "every 5 minutes"
+            "queue_processing": "every 5 minutes",
+            "duplicate_detection": "30 days rule",
+            "lb_system": "8 days threshold"
         }
     }
 
