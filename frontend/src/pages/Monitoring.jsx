@@ -115,8 +115,12 @@ export default function Monitoring() {
 
   const windowData = window === '24h' ? data.window_24h : data.window_7d;
   const alerts = data.alerts || [];
-  const criticals = alerts.filter(a => a.level === 'critical' && !a.label.startsWith('Test Account'));
-  const warnings = alerts.filter(a => a.level === 'warning' && !a.label.startsWith('Test Account'));
+  const filteredAlerts = alerts.filter(a =>
+    !a.label.startsWith('Test Account') && a.label !== '?' && a.value !== 'none'
+    && (a.total === null || a.total >= 3)
+  );
+  const criticals = filteredAlerts.filter(a => a.level === 'critical');
+  const warnings = filteredAlerts.filter(a => a.level === 'warning');
 
   // Global totals from by_crm
   const totals = (windowData.by_crm || []).reduce((acc, s) => {
