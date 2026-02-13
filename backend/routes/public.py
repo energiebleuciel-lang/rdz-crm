@@ -685,7 +685,6 @@ async def submit_lead(data: LeadData, request: Request):
         # Récupérer URL dynamiquement depuis la DB
         api_url = await get_crm_url(final_crm)
         if not api_url:
-            # URL manquante - on garde le lead mais on notifie
             status = "no_crm"
             message = f"Lead enregistré - URL API non configurée pour {final_crm.upper()}"
             warning = "API_URL_MISSING"
@@ -693,37 +692,13 @@ async def submit_lead(data: LeadData, request: Request):
             status, response, should_queue = await send_to_crm(lead, api_url, final_key)
             actual_crm_sent = final_crm
             
-            # FALLBACK : Si erreur (Token invalide, etc.) et cross_crm autorisé → essayer l'autre CRM
-            if status == "failed" and allow_cross_crm:
-                other_crm = "mdl" if final_crm == "zr7" else "zr7"
-                # Chercher la clé API de l'autre CRM dans les formulaires du même compte
-                other_form = await db.forms.find_one({
-                    "account_id": account_id,
-                    "target_crm": other_crm,
-                    "crm_api_key": {"$exists": True, "$ne": ""}
-                }, {"_id": 0})
-                
-                if other_form and other_form.get("crm_api_key"):
-                    other_key = other_form["crm_api_key"]
-                    other_url = await get_crm_url(other_crm)  # URL dynamique
-                    if other_url:
-                        status, response, should_queue = await send_to_crm(lead, other_url, other_key)
-                        actual_crm_sent = other_crm
-                        
-                        # Marquer comme transféré (fallback utilisé)
-                        await db.leads.update_one(
-                            {"id": lead_id},
-                            {"$set": {"is_transferred": True, "routing_reason": f"fallback_{other_crm}"}}
-                        )
-            
             if should_queue:
                 await add_to_queue(lead, api_url, final_key, "error")
                 status = "queued"
             
             message = f"Envoyé vers {actual_crm_sent.upper()}" if status == "success" else str(response)
     else:
-        # Pas de commande trouvée
-        message = "Lead enregistré - En attente de commande active"
+        message = "Lead enregistré - Pas de CRM configuré"
     
     # Mettre à jour le lead avec le statut final
     await db.leads.update_one(
