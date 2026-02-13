@@ -79,6 +79,8 @@ class LeadData(BaseModel):
     # RDZ direct (Phase 2)
     entity: Optional[str] = ""
     produit: Optional[str] = ""
+    # Provider auth (API key dans le body ou header)
+    api_key: Optional[str] = ""
 
 
 # Tracking endpoints
