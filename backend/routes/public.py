@@ -667,13 +667,16 @@ async def submit_lead(data: LeadData, request: Request):
         # Retourner l'ID du lead original au lieu du nouveau
         lead_id = original_lead_id
     elif initial_status == "doublon_recent":
-        # === LOGIQUE LB (Lead Backup) ===
-        # Quand un doublon est détecté, on cherche un LB de remplacement
-        from services.lead_replacement import process_doublon_with_replacement
+        # === LOGIQUE LB (Lead Backup) - DÉSACTIVÉE ===
+        # Feature flag: ENABLE_LB_REPLACEMENT = False
+        # Quand activé: cherche un LB de remplacement automatiquement
+        # Actuellement: doublon simplement marqué, pas de remplacement
+        from config import ENABLE_LB_REPLACEMENT
         
         lb_result = None
-        if final_crm and final_key:
-            # Tenter le remplacement par LB
+        if ENABLE_LB_REPLACEMENT and final_crm and final_key:
+            # Tenter le remplacement par LB (DÉSACTIVÉ PAR DÉFAUT)
+            from services.lead_replacement import process_doublon_with_replacement
             lb_result = await process_doublon_with_replacement(
                 doublon_lead=lead,
                 target_crm=final_crm,
@@ -684,14 +687,11 @@ async def submit_lead(data: LeadData, request: Request):
             # LB envoyé avec succès
             message = f"Doublon remplacé par LB ({lb_result.get('lb_id', '')[:8]}...) - {lb_result.get('lb_status')}"
             warning = "DUPLICATE_REPLACED_BY_LB"
-            # Ajouter les infos LB à la réponse
-            status = "doublon_recent"  # Le doublon reste doublon
-            # Mais on indique qu'un LB a été envoyé
+            status = "doublon_recent"
         else:
-            # Pas de LB disponible ou échec
-            lb_reason = lb_result.get("message", "Aucun LB disponible") if lb_result else "LB non configuré"
-            message = f"Doublon détecté - {lb_reason}"
-            warning = "DUPLICATE_NO_LB"
+            # Mode actuel: Doublon détecté, pas de remplacement (LB désactivé)
+            message = f"Doublon détecté - lead déjà livré (original: {original_lead_id[:8]}...)"
+            warning = "DUPLICATE_DELIVERED"
     elif initial_status == "non_livre":
         message = f"Doublon détecté - lead existant non livré (original: {original_lead_id[:8]}...)"
         warning = "DUPLICATE_NOT_SENT"
