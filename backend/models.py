@@ -207,25 +207,6 @@ class FormUpdate(BaseModel):
     status: Optional[str] = None
 
 
-# ==================== COMMANDES ====================
-
-class CommandeCreate(BaseModel):
-    """Commande de leads pour un CRM"""
-    crm_id: str  # ID du CRM (ZR7 ou MDL)
-    product_type: str  # PV, PAC, ITE ou * pour tous
-    departements: List[str]  # ["75", "92"] ou ["*"] pour tous
-    active: bool = True
-    prix_unitaire: Optional[float] = 0.0  # Prix par lead
-    notes: Optional[str] = ""
-
-class CommandeUpdate(BaseModel):
-    product_type: Optional[str] = None
-    departements: Optional[List[str]] = None
-    active: Optional[bool] = None
-    prix_unitaire: Optional[float] = None
-    notes: Optional[str] = None
-
-
 # ==================== LEADS ====================
 
 class LeadSubmit(BaseModel):
