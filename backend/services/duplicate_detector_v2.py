@@ -97,7 +97,7 @@ async def check_double_submit(
 
 async def check_duplicate_30_days(
     phone: str,
-    product_type: str,
+    produit: str,
     target_client_id: str
 ) -> DuplicateResult:
     """
@@ -110,7 +110,7 @@ async def check_duplicate_30_days(
     IMPORTANT: Cette fonction vérifie si le lead peut être envoyé à un client spécifique.
     Un lead peut être doublon pour un client mais pas pour un autre.
     """
-    if not phone or not product_type or not target_client_id:
+    if not phone or not produit or not target_client_id:
         return DuplicateResult(is_duplicate=False)
     
     now = datetime.now(timezone.utc)
@@ -119,7 +119,7 @@ async def check_duplicate_30_days(
     # Chercher un lead déjà livré à CE CLIENT avec ce phone+produit dans les 30 jours
     existing = await db.leads.find_one({
         "phone": phone,
-        "product_type": product_type,
+        "produit": produit,
         "delivered_to_client_id": target_client_id,
         "status": "livre",  # Seulement les leads effectivement livrés
         "delivered_at": {"$gte": cutoff}
@@ -127,7 +127,7 @@ async def check_duplicate_30_days(
 
     if existing:
         logger.info(
-            f"[DOUBLON_30J] phone={phone[-4:]} product={product_type} "
+            f"[DOUBLON_30J] phone={phone[-4:]} product={produit} "
             f"client={target_client_id[:8]}... déjà livré le {existing.get('delivered_at', '')[:10]}"
         )
         return DuplicateResult(
@@ -145,7 +145,7 @@ async def check_duplicate_30_days(
 
 async def check_duplicate_for_any_client(
     phone: str,
-    product_type: str,
+    produit: str,
     entity: str
 ) -> Tuple[bool, Dict[str, Any]]:
     """
@@ -159,7 +159,7 @@ async def check_duplicate_for_any_client(
     Utilisé pour le routing: on peut proposer le lead à un autre client
     qui ne l'a pas encore reçu.
     """
-    if not phone or not product_type or not entity:
+    if not phone or not produit or not entity:
         return False, {}
     
     now = datetime.now(timezone.utc)
@@ -168,7 +168,7 @@ async def check_duplicate_for_any_client(
     # Chercher tous les clients à qui ce lead a déjà été livré
     cursor = db.leads.find({
         "phone": phone,
-        "product_type": product_type,
+        "produit": produit,
         "entity": entity,
         "status": "livre",
         "delivered_at": {"$gte": cutoff}
@@ -192,7 +192,7 @@ async def check_duplicate_for_any_client(
 
 async def check_duplicate(
     phone: str,
-    product_type: str,
+    produit: str,
     session_id: Optional[str] = None,
     target_client_id: Optional[str] = None
 ) -> DuplicateResult:
@@ -205,7 +205,7 @@ async def check_duplicate(
     
     Args:
         phone: Numéro de téléphone du lead
-        product_type: Type de produit (PV, PAC, ITE)
+        produit: Type de produit (PV, PAC, ITE)
         session_id: ID de session (pour anti double-clic)
         target_client_id: Client cible (pour règle 30 jours)
     
@@ -222,8 +222,8 @@ async def check_duplicate(
             return result
     
     # 2. Règle 30 jours (si client cible spécifié)
-    if target_client_id and product_type:
-        result = await check_duplicate_30_days(phone, product_type, target_client_id)
+    if target_client_id and produit:
+        result = await check_duplicate_30_days(phone, produit, target_client_id)
         if result.is_duplicate:
             return result
     
