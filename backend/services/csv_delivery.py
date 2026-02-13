@@ -38,7 +38,7 @@ from config import db, now_iso
 
 logger = logging.getLogger("csv_delivery")
 
-# Colonnes CSV par entité
+# Colonnes CSV par entité - FORMAT FINAL VERROUILLÉ
 CSV_COLUMNS_ZR7 = [
     "nom",
     "prenom", 
@@ -55,7 +55,6 @@ CSV_COLUMNS_MDL = [
     "telephone",
     "email",
     "departement",
-    "proprietaire",
     "type_logement",
     "produit"
 ]
