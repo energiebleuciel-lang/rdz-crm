@@ -141,20 +141,13 @@ __all__ = [
     "TrackFormStart",
     # Legacy Queue
     "QueueItem",
-    # Entity
-    "EntityType",
+    # Entity Config
     "EntityConfig",
     "EntityCreate",
     "EntityUpdate",
     "validate_entity",
     "get_entity_or_raise",
-    # Client
-    "ClientCreate",
-    "ClientUpdate",
-    "ClientResponse",
-    "ClientListResponse",
     # Commande
-    "ProductType",
     "VALID_PRODUCTS",
     "DEPARTEMENTS_METRO",
     "CommandeCreate",
