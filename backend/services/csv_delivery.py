@@ -87,38 +87,60 @@ Maison du Lead"""
 }
 
 
-def generate_csv_content(leads: List[Dict], product_type: str) -> str:
+def generate_csv_content(leads: List[Dict], product_type: str, entity: str) -> str:
     """
     Génère le contenu CSV à partir d'une liste de leads
     
     RÈGLES:
-    - Seulement 7 colonnes
-    - proprietaire_maison = TRUE toujours
+    - Format différent selon entity (ZR7 vs MDL)
+    - ZR7: 7 colonnes avec proprietaire_maison = oui
+    - MDL: 8 colonnes avec proprietaire = oui + type_logement = maison
     - produit = produit de la commande (pas du lead si LB)
     - Aucune info LB, aucun ID, aucune date
     
     Args:
         leads: Liste de documents lead
         product_type: Produit de la commande (utilisé pour tous les leads)
+        entity: ZR7 ou MDL
     
     Returns:
         Contenu CSV en string
     """
     output = io.StringIO()
-    writer = csv.DictWriter(output, fieldnames=CSV_COLUMNS)
-    writer.writeheader()
     
-    for lead in leads:
-        row = {
-            "nom": lead.get("nom", ""),
-            "prenom": lead.get("prenom", ""),
-            "telephone": lead.get("phone", ""),
-            "email": lead.get("email", ""),
-            "departement": lead.get("departement", ""),
-            "proprietaire_maison": "oui",  # Toujours "oui"
-            "produit": product_type  # Produit de la COMMANDE
-        }
-        writer.writerow(row)
+    if entity == "MDL":
+        # MDL: 8 colonnes avec proprietaire + type_logement séparés
+        writer = csv.DictWriter(output, fieldnames=CSV_COLUMNS_MDL)
+        writer.writeheader()
+        
+        for lead in leads:
+            row = {
+                "nom": lead.get("nom", ""),
+                "prenom": lead.get("prenom", ""),
+                "telephone": lead.get("phone", ""),
+                "email": lead.get("email", ""),
+                "departement": lead.get("departement", ""),
+                "proprietaire": "oui",
+                "type_logement": "maison",
+                "produit": product_type
+            }
+            writer.writerow(row)
+    else:
+        # ZR7: 7 colonnes avec proprietaire_maison
+        writer = csv.DictWriter(output, fieldnames=CSV_COLUMNS_ZR7)
+        writer.writeheader()
+        
+        for lead in leads:
+            row = {
+                "nom": lead.get("nom", ""),
+                "prenom": lead.get("prenom", ""),
+                "telephone": lead.get("phone", ""),
+                "email": lead.get("email", ""),
+                "departement": lead.get("departement", ""),
+                "proprietaire_maison": "oui",
+                "produit": product_type
+            }
+            writer.writerow(row)
     
     return output.getvalue()
 
