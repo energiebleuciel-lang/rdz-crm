@@ -262,7 +262,7 @@ async def deliver_to_client(
         return send_result
     
     # 4. Mettre à jour les leads
-    lead_ids = [l.get("id") for l in leads]
+    lead_ids = [lead.get("id") for lead in leads]
     now = now_iso()
     
     await db.leads.update_many(
