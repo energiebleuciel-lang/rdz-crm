@@ -1,0 +1,85 @@
+{
+  "summary": "Backend testing for 3 new features completed successfully. 18/18 tests PASSED (100%). Validated Settings API (cross-entity and source-gating), source gating lead submission (blocked sources -> hold_source status), commande OPEN concept (active + delivered < quota), and audit fields (updated_at/updated_by).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_settings_features.py",
+    "/app/test_reports/pytest/pytest_settings_features.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Settings service properly handles defaults when no document exists in MongoDB",
+    "Cross-entity toggle has 3 levels: global, per-entity in, per-entity out - all working correctly",
+    "Source gating uses blacklist mode with case-insensitive matching",
+    "is_commande_open() correctly checks: active=true AND (quota=0 OR delivered < quota)",
+    "All settings have audit fields (updated_at, updated_by) added on save",
+    "Phone validation requires 10-digit French format (0XXXXXXXXX) for lead_minimal_valid to be true"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_settings_features.py"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "N/A - backend only testing"
+  },
+  "test_credentials": {
+    "email": "energiebleuciel@gmail.com",
+    "password": "92Ruemarxdormoy"
+  },
+  "seed_data_creation": "Test sessions created with blocked_test_source and TEST_LP lp_codes. Test leads with status new and hold_source created.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "3 new features validated: (1) Settings API with cross-entity and source-gating endpoints working, (2) Source gating correctly puts leads from blocked sources into hold_source status, (3) Commande OPEN concept working - inactive or quota-full commandes are CLOSED. Phone validation requires French 10-digit format for source gating to apply. Settings stored in MongoDB 'settings' collection with key-based documents.",
+  "tests_executed": {
+    "total": 18,
+    "passed": 18,
+    "failed": 0,
+    "test_classes": [
+      {
+        "name": "TestSettingsAPI",
+        "tests": 9,
+        "passed": 9,
+        "details": ["list_settings_returns_defaults", "list_settings_requires_auth", "get_cross_entity_settings", "update_cross_entity_global_toggle", "update_cross_entity_per_entity", "update_cross_entity_requires_admin", "get_source_gating_settings", "update_source_gating_add_blocked_source", "update_source_gating_clear_blocked_sources"]
+      },
+      {
+        "name": "TestSourceGatingLeadSubmission",
+        "tests": 3,
+        "passed": 3,
+        "details": ["test_lead_with_allowed_source_gets_status_new", "test_lead_with_blocked_source_gets_status_hold_source", "test_cleanup_source_gating"]
+      },
+      {
+        "name": "TestCommandeOpenConcept",
+        "tests": 2,
+        "passed": 2,
+        "details": ["test_list_commandes_shows_open_status", "test_commande_with_quota_zero_is_unlimited"]
+      },
+      {
+        "name": "TestCrossEntityToggle",
+        "tests": 2,
+        "passed": 2,
+        "details": ["test_disable_global_cross_entity", "test_disable_zr7_outbound"]
+      },
+      {
+        "name": "TestSettingsAuditFields",
+        "tests": 2,
+        "passed": 2,
+        "details": ["test_cross_entity_has_audit_fields", "test_source_gating_has_audit_fields"]
+      }
+    ]
+  },
+  "key_validations": {
+    "settings_api": "VERIFIED - GET/PUT endpoints for cross-entity and source-gating working",
+    "cross_entity_toggle": "VERIFIED - Global toggle, per-entity in/out toggles all functional",
+    "source_gating": "VERIFIED - Blocked sources result in hold_source status (requires valid 10-digit phone)",
+    "commande_open_concept": "VERIFIED - is_commande_open checks active + quota + delivered_this_week",
+    "audit_fields": "VERIFIED - updated_at and updated_by fields present on all settings updates",
+    "admin_auth_required": "VERIFIED - PUT settings endpoints require admin role"
+  }
+}
