@@ -62,6 +62,32 @@ const RateBar = ({ rate, total, success, failed }) => {
   );
 };
 
+// Dictionnaire des causes d'échec : label FR + règle métier
+const FAILURE_DICT = {
+  success:           { label: 'Succès',              rule: 'Lead envoyé et accepté par le CRM (HTTP 201).' },
+  duplicate:         { label: 'Doublon CRM',         rule: 'Le CRM a détecté que ce lead existe déjà dans sa base.' },
+  failed:            { label: 'Erreur envoi',        rule: 'Le CRM a rejeté le lead (erreur HTTP 4xx hors auth/validation, ou erreur inconnue).' },
+  doublon_recent:    { label: 'Doublon interne',     rule: 'Phone + dept identiques dans les 30 derniers jours, lead original déjà livré. Non renvoyé au CRM.' },
+  double_submit:     { label: 'Double-clic',         rule: 'Même session + même phone en moins de 5 secondes. Anti double-soumission.' },
+  non_livre:         { label: 'Doublon non livré',   rule: 'Phone + dept identiques dans les 30 jours, mais le lead original n\'a jamais été livré. Conservé pour redistribution.' },
+  orphan:            { label: 'Orphelin',            rule: 'Le code formulaire envoyé n\'existe pas en base. Aucun routing possible.' },
+  no_crm:            { label: 'CRM non configuré',   rule: 'Ni le compte ni le formulaire n\'ont de CRM cible configuré pour ce type de produit.' },
+  no_api_key:        { label: 'Clé API manquante',   rule: 'Le CRM cible est défini mais aucune clé API n\'est renseignée.' },
+  invalid_phone:     { label: 'Téléphone invalide',  rule: 'Le numéro ne respecte pas le format FR : 10 chiffres, commence par 0, pas de suite/répétition.' },
+  missing_required:  { label: 'Champs manquants',    rule: 'Le nom ou le département sont vides. Lead conservé mais non envoyé.' },
+  validation_error:  { label: 'Erreur validation',   rule: 'Le CRM a rejeté le payload (champ invalide, format incorrect). HTTP 400.' },
+  auth_error:        { label: 'Erreur auth CRM',     rule: 'La clé API est refusée par le CRM. HTTP 403. Vérifier la clé dans les settings du compte.' },
+  server_error:      { label: 'Erreur serveur CRM',  rule: 'Le CRM est en panne (HTTP 5xx). Le lead est mis en file d\'attente pour retry automatique.' },
+  timeout:           { label: 'Timeout CRM',         rule: 'Le CRM n\'a pas répondu dans les 30 secondes. Retry automatique programmé.' },
+  connection_error:  { label: 'Connexion impossible', rule: 'Impossible de contacter le serveur CRM. Vérifier l\'URL ou la disponibilité du service.' },
+  queued:            { label: 'En file d\'attente',  rule: 'Le lead a été mis en queue pour retry après une erreur temporaire (timeout, erreur serveur).' },
+  pending:           { label: 'En attente',          rule: 'Lead créé, en cours de traitement.' },
+  pending_no_order:  { label: 'Pas de commande',     rule: 'Aucune commande active pour ce CRM + produit + département. Lead en attente de redistribution.' },
+  pending_retry:     { label: 'Retry en cours',      rule: 'Le lead est en cours de retry après un échec précédent.' },
+};
+
+const getFailureInfo = (key) => FAILURE_DICT[key] || { label: key, rule: 'Statut inconnu.' };
+
 const FailureBreakdown = ({ failures }) => {
   if (!failures || Object.keys(failures).length === 0) return null;
   const sorted = Object.entries(failures).sort((a, b) => b[1] - a[1]);
@@ -76,14 +102,26 @@ const FailureBreakdown = ({ failures }) => {
     missing_required: 'bg-purple-100 text-purple-700',
     validation_error: 'bg-red-100 text-red-600',
     non_livre: 'bg-blue-100 text-blue-700',
+    auth_error: 'bg-red-100 text-red-700',
+    server_error: 'bg-orange-100 text-orange-700',
+    timeout: 'bg-orange-100 text-orange-600',
+    connection_error: 'bg-red-100 text-red-600',
+    pending_retry: 'bg-blue-100 text-blue-600',
   };
   return (
     <div className="flex flex-wrap gap-1.5 mt-1.5">
-      {sorted.map(([reason, count]) => (
-        <span key={reason} className={`px-2 py-0.5 text-xs rounded-full font-medium ${colors[reason] || 'bg-slate-100 text-slate-600'}`}>
-          {reason}: {count}
-        </span>
-      ))}
+      {sorted.map(([reason, count]) => {
+        const info = getFailureInfo(reason);
+        return (
+          <span
+            key={reason}
+            title={info.rule}
+            className={`px-2 py-0.5 text-xs rounded-full font-medium cursor-help ${colors[reason] || 'bg-slate-100 text-slate-600'}`}
+          >
+            {info.label}: {count}
+          </span>
+        );
+      })}
     </div>
   );
 };
