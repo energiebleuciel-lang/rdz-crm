@@ -253,7 +253,7 @@ async def send_csv_email(
             server.send_message(msg)
         
         logger.info(
-            f"[CSV_SENT] entity={entity} product={produit} "
+            f"[CSV_SENT] entity={entity} produit={produit} "
             f"leads={lead_count} lb={lb_count} to={to_emails}"
         )
         

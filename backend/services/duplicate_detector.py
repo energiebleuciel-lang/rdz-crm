@@ -127,7 +127,7 @@ async def check_duplicate_30_days(
 
     if existing:
         logger.info(
-            f"[DOUBLON_30J] phone={phone[-4:]} product={produit} "
+            f"[DOUBLON_30J] phone={phone[-4:]} produit={produit} "
             f"client={target_client_id[:8]}... déjà livré le {existing.get('delivered_at', '')[:10]}"
         )
         return DuplicateResult(

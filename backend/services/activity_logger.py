@@ -19,7 +19,7 @@ async def log_activity(
     Enregistre une activité dans le journal
     
     Actions: create, update, delete, login, logout, view, export, retry
-    Entity types: account, lp, form, lead, commande, user, system
+    Entity types: client, lp, form, lead, commande, provider, user, system
     """
     log_entry = {
         "id": str(uuid.uuid4()),
