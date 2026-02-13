@@ -166,7 +166,7 @@ async def create_commande(
     if existing:
         raise HTTPException(
             status_code=400,
-            detail=f"Une commande active existe déjà pour ce client/produit"
+            detail="Une commande active existe deja pour ce client/produit"
         )
     
     commande = {

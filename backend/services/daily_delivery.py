@@ -498,7 +498,7 @@ async def deliver_leads_to_client(
     batch_id = str(uuid.uuid4())
     now = now_iso()
     
-    lead_ids = [l.get("id") for l in leads]
+    lead_ids = [lead.get("id") for lead in leads]
     await db.leads.update_many(
         {"id": {"$in": lead_ids}},
         {"$set": {
