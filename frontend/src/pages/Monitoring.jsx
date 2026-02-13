@@ -300,6 +300,15 @@ export default function Monitoring() {
             ))}
           </div>
           <button
+            onClick={retryFailed}
+            disabled={retrying}
+            className="flex items-center gap-2 px-3 py-1.5 bg-amber-500 text-white rounded-lg hover:bg-amber-600 text-sm font-medium disabled:opacity-50"
+            data-testid="retry-failed-btn"
+          >
+            <RotateCcw className={`w-4 h-4 ${retrying ? 'animate-spin' : ''}`} />
+            {retrying ? 'Relance...' : 'Relancer les fails'}
+          </button>
+          <button
             onClick={loadData}
             className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
             data-testid="refresh-btn"
@@ -308,6 +317,17 @@ export default function Monitoring() {
           </button>
         </div>
       </div>
+
+      {/* Retry result banner */}
+      {retryResult && (
+        <div className="flex items-center gap-3 px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg" data-testid="retry-result">
+          <CheckCircle className="w-5 h-5 text-blue-600 shrink-0" />
+          <span className="text-sm text-blue-800">
+            Relance terminée : <strong>{retryResult.success}</strong> succès, <strong>{retryResult.failed}</strong> échecs, <strong>{retryResult.skipped}</strong> ignorés sur {retryResult.total} leads
+          </span>
+          <button onClick={() => setRetryResult(null)} className="ml-auto text-blue-400 hover:text-blue-600 text-xs">Fermer</button>
+        </div>
+      )}
 
       {/* KPI cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
