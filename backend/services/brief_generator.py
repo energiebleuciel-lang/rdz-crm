@@ -670,7 +670,9 @@ async def _generate_mode_a(
     utm: {{}},
     redirectUrl: "{redirect_url}",
     initialized: false,
-    initFailed: false
+    initFailed: false,
+    // Code conversion GTM (exécuté après submit valide, avant redirection)
+    conversionCode: {gtm_conversion_js}
   }};
 
   // ══════════════════════════════════════════════════════════
@@ -689,6 +691,33 @@ async def _generate_mode_a(
         try {{ RDZ.utm[key] = sessionStorage.getItem("rdz_" + key) || ""; }} catch(e) {{ RDZ.utm[key] = ""; }}
       }}
     }});
+  }}
+
+  // ══════════════════════════════════════════════════════════
+  // GTM CONVERSION - Exécuter le code de conversion
+  // ══════════════════════════════════════════════════════════
+  function executeConversion(leadId) {{
+    if (!RDZ.conversionCode) return;
+    
+    try {{
+      // Injecter les variables disponibles
+      var conversionData = {{
+        lead_id: leadId,
+        lp_code: RDZ.lp,
+        form_code: RDZ.form,
+        liaison_code: RDZ.liaison,
+        utm_campaign: RDZ.utm.utm_campaign || "",
+        utm_source: RDZ.utm.utm_source || "",
+        utm_medium: RDZ.utm.utm_medium || ""
+      }};
+      
+      // Exécuter le code conversion (déjà une fonction)
+      if (typeof RDZ.conversionCode === "function") {{
+        RDZ.conversionCode(conversionData);
+      }}
+    }} catch(e) {{
+      console.warn("RDZ Conversion error:", e);
+    }}
   }}
 
   // ══════════════════════════════════════════════════════════
