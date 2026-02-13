@@ -433,13 +433,12 @@ async def submit_lead(data: LeadData, request: Request):
             "account_id": "",
             "target_crm": "",
             "crm_api_key": "",
-            "allow_cross_crm": False
+            "allow_cross_crm": False,
         }
     
     form_code = form.get("code", "")
     product_type = form.get("product_type", "PV")
     account_id = form.get("account_id", "")
-    allow_cross_crm = form.get("allow_cross_crm", True)
     
     # Form-level CRM config (override optionnel)
     form_target_crm = form.get("target_crm", "").lower().strip()
