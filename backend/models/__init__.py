@@ -52,9 +52,20 @@ from models_legacy import (
 
 # ==================== NEW RDZ MODELS ====================
 
-# Entity (Multi-tenant)
-from .entity import (
+# Lead (SOURCE UNIQUE - VERROUILLÉ)
+from .lead import (
     EntityType,
+    ProductType,
+    LeadStatus,
+    LeadCreate,
+    LeadDocument,
+    LeadPublicSubmit,
+    validate_lead_required_fields,
+    is_lead_exploitable
+)
+
+# Entity Config (utilise EntityType de lead.py)
+from .entity import (
     EntityConfig,
     EntityCreate,
     EntityUpdate,
