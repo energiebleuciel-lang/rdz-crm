@@ -1,157 +1,170 @@
 <analysis>**original_problem_statement:**
-The user has provided a new, detailed specification to build a central CRM named RDZ. This represents a major architectural pivot from the previous work.
+The user wants to build a central CRM named RDZ. The core requirements include:
+1.  **Centralized Lead Collection:** All leads must be stored in a central database.
+2.  **Strict Entity Separation:** Leads and clients are separated into two distinct entities: ZR7 and MDL.
+3.  **Order System (Commandes):** Implement a system to manage lead distribution rules for clients.
+4.  **Duplicate Rule:** A 30-day duplicate check based on phone, product, and client.
+5.  **Lead Backlog (LB):** A system for recycling older or undelivered leads.
+6.  **Automated Daily Delivery:** Send leads via CSV email every morning at 09:30 (Europe/Paris).
+7.  **Backend First:** Build a reliable and robust backend foundation before any UI work.
 
-The core goal is to create a system that:
-1.  Collects 100% of leads into a central database.
-2.  Strictly separates leads and clients into two distinct entities: ZR7 and MDL.
-3.  Implements a Commandes (Orders) system to define lead distribution rules for clients.
-4.  Re-introduces a 30-day duplicate rule (per phone, product, and client).
-5.  Implements a Lead Backlog (LB) system for recycling older or previously delivered leads.
-6.  Automates lead delivery every morning at 09:30 (Europe/Paris) via CSV email, with specific formats for each entity.
-7.  Ensures zero lead loss and builds a reliable backend foundation before any UI work.
-
-The project is divided into phases, with the current focus being the completion and validation of Phase 1 (Backend foundation and core business logic).
+During this session, the user requested a full technical audit and added several new features:
+*   **Technical Audit:** A complete review and cleanup of the entire backend to remove all legacy code, inconsistencies, and technical debt.
+*   **Commande OPEN Logic:** A stricter definition for an order to be eligible for receiving leads ( +  + ).
+*   **Dynamic Settings:** A new settings system to dynamically enable/disable  lead fallback and to blacklist lead .
+*   **Provider System:** A mechanism to onboard external lead providers, authenticated via API key. Each provider is tied to a single entity (ZR7 or MDL), and leads from them are , meaning they can **never** be routed to the other entity.
 
 **User's preferred language**: French
 
 **what currently exists?**
-A completely new backend has been built from the ground up to match the user's RDZ specification. The previous architecture (account-centric routing) has been superseded.
+The backend has been completely refactored based on the user's comprehensive technical audit request. All legacy code, unused files, and inconsistent naming conventions have been removed, resulting in a clean and maintainable architecture.
 
-The new system includes:
-*   **Multi-tenant Architecture:** A strict separation between ZR7 and MDL entities is enforced at the database level using an  field on all core models (, , ).
-*   **New Data Models:** A new  directory contains Pydantic models for , , , and . Legacy models are preserved in  for compatibility with untouched parts of the application.
-*   **Core Business Logic Services:**
-    *   : Routes leads based on active .
-    *   : A scheduled service (runs at 09:30 Europe/Paris via APScheduler) that orchestrates the entire delivery process, including differentiating between Fresh and LB (Lead Backlog) leads, respecting quotas, and handling cross-entity fallbacks.
-    *   : Implements the 30-day duplicate check (phone + product + client).
-    *   : Generates and emails CSV files with distinct formats and templates for ZR7 and MDL.
-*   **API Endpoints:** New CRUD endpoints for managing  and  have been created and tested via .
-*   **Validation:** The entire Phase 1 backend logic has been extensively tested and validated through a custom script () and a tight iterative feedback loop with the user, involving multiple test email generations.
+The current system includes:
+*   A clean codebase with a consistent structure and naming conventions ( is used universally).
+*   A  system with API key authentication for external lead sources. The public lead submission endpoint () is now protected and assigns leads to the provider's entity, locking them from cross-entity routing.
+*   A dynamic  model and API () to control business logic at runtime, such as enabling/disabling cross-entity lead sharing and blacklisting lead sources.
+*   Refined routing logic incorporating the Commande OPEN concept, ensuring leads are only sent to clients with active orders that have not yet met their weekly quota.
+*   All new features and the refactored codebase have been extensively tested and validated using the testing agent, with all tests passing.
 
 **Last working item**:
-- **Last item agent was working:** The agent was performing the final validation steps for the Phase 1 backend logic. The last specific request from the user was to clarify and implement the replacement rule: if a lead is found to be a duplicate for a client during the delivery process, it must be skipped and automatically replaced by the next eligible lead to ensure the delivery quota is met. The agent has implemented this logic.
-- **Status:** USER VERIFICATION PENDING
+The agent successfully implemented and validated the  feature as requested by the user, which was the final task for the session.
+
+- **Last item agent was working:** Implementation of the Provider system, including the  model, a CRUD API with API key rotation (), and updating the public lead endpoint to handle authentication and lock the lead's entity.
+- **Status:** COMPLETED
 - **Agent Testing Done:** Y
 - **Which testing method agent to use?** backend testing agent
-- **User Testing Done:** N
+- **User Testing Done:** Y
 
 **All Pending/In progress Issue list**:
-- No outstanding issues. The work is proceeding as per the user's phased specification.
+- No outstanding issues. All work from the session was completed and validated.
 
 **In progress Task List**:
-- **Task 1: Finalize Phase 1 Validation** (Priority: P0)
-  - **Where to resume:** The agent has confirmed the implementation of the replacement rule for duplicate leads. The next step is to await the user's final approval to lock down all of Phase 1 and move to Phase 2.
-  - **What will be achieved with this?** This will mark the completion of the entire backend foundation, including all core business logic for routing, delivery, duplicates, and lead categorization (Fresh/LB), as per the user's stringent requirements.
-  - **Status:** USER VERIFICATION PENDING
+- No tasks are currently in progress.
 
 **Upcoming and Future Tasks**
 *   **Upcoming Tasks:**
-    *   **(P0) Phase 2: Public Pipeline Integration:** Connect the public lead submission endpoint () to the new backend. New leads should be saved to the database and become available for the daily delivery job.
-    *   **(P1) Phase 6: UI for Commandes & Clients:** The user's specification requires a  system. A UI will be needed for admins to create and manage Clients and their associated Commandes.
-    *   **(P2) Phase 8: Dashboard:** Implement the monitoring dashboard as specified, showing daily stats (leads received, delivered, LB, etc.) with filters. This requires new backend endpoints and a new frontend page.
+    *   **(P0) Phase 2: Public Pipeline Integration:** Connect the  endpoint to the routing engine so that incoming leads are processed automatically instead of just being saved for the daily batch job. This involves determining the lead's  and  from the provider or form configuration and then triggering the routing logic.
+    *   **(P1) Phase 3: UI Admin:** Begin development of the frontend administration interface for managing , , , and .
+
 *   **Future Tasks:**
-    *   **(P2) Phase 7: API Delivery:** Implement the optional API POST delivery method in addition to CSV emails.
-    *   **(P2) Phase 9 & 10: Tracking & Final Audit:** Ensure frontend tracking scripts align with the new strict naming conventions and perform a final end-to-end audit before production.
-    *   **(P3) Client Rejection Feature:** Implement the  status, allowing clients to reject delivered leads.
+    *   **(P2) Phase 8: Dashboard:** Implement the monitoring dashboard with daily statistics.
+    *   **(P2) Phase 7: API Delivery:** Implement the optional API POST delivery method for clients.
+    *   **(P2) Phase 9 & 10: Tracking & Final Audit:** Align frontend tracking scripts and perform a final E2E audit.
+    *   **(P3) Client Rejection Feature:** Implement the  status for leads.
 
 **Completed work in this session**
-- **Full Backend Re-architecture:** Rebuilt the entire backend to create the RDZ CRM, replacing the previous architecture.
-- **New Data Models:** Created and implemented a full suite of new Pydantic models (, , , , ).
-- **Implemented Core Business Logic:**
-    - **Commandes-based Routing Engine**.
-    - **Daily Scheduled Delivery (09:30 Paris)** with .
-    - **Differentiated CSV Generation** for ZR7 (7 columns) and MDL (8 columns).
-    - **30-Day Duplicate Rule** (per client, product, phone).
-    - **Fresh vs LB Lead Logic**, including rules for % completion, cross-entity fallback, and automatic replacement of duplicates.
-- **SMTP Integration & Testing:** Configured and sent multiple successful test emails for both entities using different templates and formats.
-- **New API Endpoints:** Built and tested CRUD APIs for  and .
-- **Iterative Validation:** Successfully completed a multi-step, rigorous validation process with the user to lock down every detail of the business logic and CSV formats.
+- **Full Backend Technical Audit & Refactoring:**
+    - Performed a complete cleanup of the backend codebase.
+    - **Deleted over 25 legacy files**, including old models, routes (, , ), and services (, ).
+    - **Standardized Naming:** Replaced  with  across all models, routes, services, and existing MongoDB data.
+    - **Cleaned Database:** Dropped obsolete indexes and collections.
+- **Implemented Commande OPEN Logic:** Refined the routing engine to only consider orders that are active, within the current week, and have not met their quota.
+- **Implemented Dynamic Settings System:**
+    - Created a  endpoint and a  collection in MongoDB to manage global toggles for cross-entity routing and source blacklisting.
+- **Implemented Provider System:**
+    - Created a  model and a  CRUD API for managing external lead suppliers.
+    - Secured the public lead endpoint () with API key authentication.
+    - Implemented the  feature to prevent leads from providers from being shared across entities.
+- **Extensive Validation:** All features were rigorously tested using the testing agent, passing a total of **59/59 tests** across three validation cycles.
 
 **Earlier issues found/mentioned but not fixed**
 - None.
 
 **Known issue recurrence from previous fork**
-- **Not a recurrence, but a planned reversal.** The previous work involved *removing* the Commandes system and the 30-day duplicate rule. This session's work, based on a new user specification, was to *re-implement* this logic in a more robust and detailed manner.
+- None. The technical audit was specifically performed to eliminate all legacy code and prevent such recurrences.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Multi-tenancy:** Strict data isolation between ZR7 and MDL entities using a mandatory  field on all core business models.
-- **Scheduled Jobs:** Use of  with  and  for reliable, timezone-aware daily job execution.
-- **Lead Lifecycle Management:** Leads follow a strict state machine (, , , , ) with clear rules for transitioning between states (e.g.,  > 8 days → ).
-- **Declarative Business Logic:** The complex rules for lead delivery (Fresh vs LB, duplicate replacement, quota limits) are encapsulated in the  service.
+- **Multi-tenancy:** Strict data isolation between ZR7 and MDL, now enhanced with an  flag for provider leads.
+- **Scheduled Jobs:**  is used for the reliable daily delivery job at 09:30 Europe/Paris.
+- **Dynamic Configuration:** Business logic (like cross-entity sharing) can be toggled at runtime via the  endpoint without requiring a code deployment.
+- **API Key Authentication:** The public lead endpoint is secured, identifying and authenticating external providers via a unique API key.
+- **Code Refactoring & Debt Reduction:** The session's primary focus was on cleaning the codebase to create a stable foundation for future development.
 
 **key DB schema**
-- ****:  - Represents a lead buyer within an entity.
-- ****:  - Represents a weekly order from a client.
-- ****:  - The central, unified lead model with strictly defined naming.
-- ****:  - A record of a successful lead delivery, used for the 30-day duplicate check.
+- ****: 
+- ****: 
+- ****: 
+- ****: 
+- ****: 
+- ****: 
 
 **All files of reference**
 *   **New/Created:**
-    *    (entire directory: , , , , , )
     *   
     *   
     *   
     *   
     *   
-    *   
-    *   
-*   **Heavily Modified:**
-    *    (added new routes, scheduler, and DB indexes)
-    *    (added SMTP secrets)
-*   **Renamed:**
-    *    → 
+*   **Heavily Modified/Rewritten:**
+    *    (Scheduler cleaned, new routes and indexes added)
+    *    (Rewritten to support provider auth and source gating)
+    *    (Updated for Commande OPEN and  logic)
+    *    (Updated to use new routing logic)
+    *    (Field  renamed to )
+*   **Deleted:** Over 25 legacy files across , , and .
+
+**Areas that need refactoring**:
+- The test script  is now outdated due to the extensive refactoring and removal of old logic. It should be updated or replaced to reflect the current state of the codebase and test the new features.
 
 **key api endpoints**
-- : Create a new client.
-- : Get clients for an entity.
-- : Create a new commande.
-- : Get commandes for an entity.
-- : Health check endpoint.
+- **Providers:**
+    - : Create a new provider.
+    - : List all providers.
+    - : Generate a new API key for a provider.
+- **Settings:**
+    - : Retrieve current settings.
+    - : Update settings.
+- **Leads:**
+    - : Submit a lead (requires provider API key in  header).
+- **Existing (and still active):**
+    - CRUD for  and .
 
 **Critical Info for New Agent**
-- **New Specification is Law:** The current work is a **complete pivot** based on the user's new, detailed RDZ specification. The architecture from the previous handoff (account-centric routing) is now obsolete. Adhere strictly to the business logic validated in the recent messages.
-- **Backend First:** The user's priority is a 100% reliable backend foundation. UI/frontend work has been deliberately postponed. The existing frontend is likely out of sync with the new backend models and logic.
-- **Phase 1 is Locked (Pending Final OK):** The core backend logic (Models, Routing, Delivery, Duplicates, LB) is built and has been rigorously validated with the user. Do not change this logic without explicit instruction.
-- **Next Task is Phase 2:** The immediate next step after user confirmation is to integrate the public lead submission pipeline to feed leads into this new system.
-- **Communicate in French:** All user interactions must be in French.
+- **The backend is clean.** A major technical audit was just completed. Adhere to the new, simplified architecture and do not re-introduce any legacy patterns.
+- **The next task is Phase 2.** The user has explicitly stated that the next step is to connect the public lead pipeline to the routing engine for automatic processing. This is the highest priority.
+- **Provider system is central.** All external leads now come through providers authenticated by an API key. This system dictates the lead's entity and locks it.
+- **Communicate exclusively in French.**
 
 **documents and test reports created in this job**
-- 
--  (updated)
+-  (updated with all new features and architecture changes)
+-  (Audit validation)
+-  (Settings & Commande OPEN validation)
+-  (Provider system validation)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Provided final CSV structure for ZR7 (7 cols) and MDL (7 cols), asked for mapping and a re-test. (Completed)
-2.  **User:** Corrected the MDL spec to re-include , making it 8 columns. (Completed)
-3.  **User:** Provided the final, locked-down specification for the  model in the database, including strict naming and required fields. (Completed)
-4.  **User:** Clarified the LB (Lead Backlog) logic: it's a unified pool for leads that were never delivered (>8 days) AND leads that were already delivered (>30 days ago). (Completed)
-5.  **User:** Provided the final, non-negotiable business logic for routing, including categorization (Fresh/LB), duplicate handling, and cross-entity fallback. (Completed)
-6.  **User:** Clarified the replacement rule: if a lead is a duplicate, it must be skipped and replaced by the next eligible lead to fill the quota, not leave a gap. (Last item worked on, pending final user confirmation)
-7.  **User:** OK, two things...  should be oui, not TRUE. Re-send emails. (Completed)
-8.  **User:** For MDL only, dissociate  into =oui and =maison. (Completed)
-9.  **User:** Asks for the ZR7 email to be resent. (Completed)
-10. **User:** Provided the correct email address for ZR7 (). (Completed)
+1.  **User (msg 231):** Asks for a complete summary of the day's work and a status update to ensure the next agent knows where to resume.
+2.  **User (msg 230):** Expresses satisfaction and validates the provider feature implementation (Parfait, Provider feature validée ✅... GO.).
+3.  **User (msg 228-229):** (Agent response summarizing test results).
+4.  **User (msg 186):** Confirms the provider authentication should be via API key.
+5.  **User (msg 185):** (Agent proposing API key auth).
+6.  **User (msg 182):** Specifies the new  requirement: providers are attached to a single entity, their leads are , and cross-entity routing is strictly forbidden for them.
+7.  **User (msg 180-181):** (Agent response summarizing test results).
+8.  **User (msg 131):** Approves the implementation plan for settings and Commande OPEN, adding clarifications:  must check for the current week, settings should have , and  leads should still be validated.
+9.  **User (msg 130):** (Agent proposes implementation plan for settings and Commande OPEN).
+10. **User (msg 128):** Clarifies requirements for cross-entity logic (must be a , not just active), and requests new features: a global ON/OFF toggle for cross-entity fallback and a source-gating mechanism.
 
 **Project Health Check:**
-- **Broken:** The frontend is out of sync with the major backend overhaul. Admin pages for creating forms or managing accounts (the old way) will not work with the new -based system. This is expected as per the user's backend-first directive.
+- **Broken:** The frontend is completely out of sync with the refactored backend and new data models. This is an expected state as per the user's backend-first strategy.
 - **Mocked:** None.
 
 **3rd Party Integrations**
-- **OVH SMTP:** Used for sending lead delivery CSVs. Credentials are in .
+- **OVH SMTP:** Used for sending lead delivery CSVs via email. Credentials are in .
 - **APScheduler:** Used for the daily scheduled delivery job.
 
 **Testing status**
-- **Testing agent used after significant changes:** NO
+- **Testing agent used after significant changes:** YES. The testing agent was used successfully three times to validate the technical audit, the settings feature, and the provider system.
 - **Troubleshoot agent used after agent stuck in loop:** NO
-- **Test files created:** []
-- **Known regressions:** The entire lead routing and delivery system from the previous session has been intentionally replaced.
+- **Test files created:** None. The existing script  is now outdated.
+- **Known regressions:** None. The session was focused on eliminating regressions and technical debt.
 
 **Credentials to test flow:**
-- **UI Login:**  /  (Note: UI is likely not functional for new logic).
+- **UI Login:**  /  (Note: UI is not functional for new logic).
 - **SMTP (MDL):**  / 
 - **SMTP (ZR7):**  / 
+- **Provider API Key (for testing):** A test provider for ZR7 was created with the API key .
 
 **What agent forgot to execute**
-- The agent has been extremely thorough and has not forgotten any of the user's explicit instructions. The work has followed the user's phased plan precisely.</analysis>
+- The agent did not update the manual test script  after the major backend refactoring. While the testing agent provides comprehensive validation, this script is now stale and could cause confusion if used.</analysis>
