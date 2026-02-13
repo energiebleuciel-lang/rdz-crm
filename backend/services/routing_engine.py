@@ -94,7 +94,7 @@ async def get_commande_stats(commande_id: str, week_start: str) -> Dict[str, int
 
 async def find_eligible_commandes(
     entity: str,
-    product_type: str,
+    produit: str,
     departement: str,
     is_lb: bool = False
 ) -> List[Dict]:
@@ -116,7 +116,7 @@ async def find_eligible_commandes(
     # Requête de base
     query = {
         "entity": entity,
-        "product_type": product_type,
+        "produit": produit,
         "active": True,
         "$or": [
             {"departements": departement},
@@ -182,7 +182,7 @@ async def find_eligible_commandes(
 
 async def route_lead(
     entity: str,
-    product_type: str,
+    produit: str,
     departement: str,
     phone: str,
     is_lb: bool = False
@@ -197,7 +197,7 @@ async def route_lead(
     
     Args:
         entity: ZR7 ou MDL
-        product_type: PV, PAC, ITE
+        produit: PV, PAC, ITE
         departement: Code département
         phone: Téléphone du lead
         is_lb: True si le lead est un LB
@@ -206,12 +206,12 @@ async def route_lead(
         RoutingResult avec succès ou raison d'échec
     """
     logger.info(
-        f"[ROUTING] entity={entity} product={product_type} dept={departement} "
+        f"[ROUTING] entity={entity} product={produit} dept={departement} "
         f"phone=***{phone[-4:] if len(phone) >= 4 else phone} is_lb={is_lb}"
     )
     
     # 1. Trouver les commandes éligibles
-    commandes = await find_eligible_commandes(entity, product_type, departement, is_lb)
+    commandes = await find_eligible_commandes(entity, produit, departement, is_lb)
     
     if not commandes:
         logger.info("[ROUTING] Aucune commande éligible trouvée")
@@ -226,7 +226,7 @@ async def route_lead(
         client_name = cmd.get("client_name", "")
         
         # Vérifier si doublon pour ce client
-        dup_result = await check_duplicate_30_days(phone, product_type, client_id)
+        dup_result = await check_duplicate_30_days(phone, produit, client_id)
         
         if dup_result.is_duplicate:
             logger.debug(
@@ -273,7 +273,7 @@ async def route_lead_batch(leads: List[Dict]) -> List[Tuple[Dict, RoutingResult]
     for lead in leads:
         result = await route_lead(
             entity=lead.get("entity", ""),
-            product_type=lead.get("product_type", ""),
+            produit=lead.get("produit", ""),
             departement=lead.get("departement", ""),
             phone=lead.get("phone", ""),
             is_lb=lead.get("is_lb", False)
