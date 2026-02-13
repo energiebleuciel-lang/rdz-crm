@@ -756,7 +756,7 @@ async def submit_lead(data: LeadData, request: Request):
         message = "Lead enregistré - Clé API manquante"
         warning = "API_KEY_MISSING"
     elif final_crm and final_key:
-        from services.lead_sender import send_to_crm_v2, add_to_queue
+        from services.lead_sender import send_to_crm, add_to_queue
         
         # Récupérer URL dynamiquement depuis la DB
         api_url = await get_crm_url(final_crm)
@@ -766,7 +766,7 @@ async def submit_lead(data: LeadData, request: Request):
             message = f"Lead enregistré - URL API non configurée pour {final_crm.upper()}"
             warning = "API_URL_MISSING"
         else:
-            status, response, should_queue = await send_to_crm_v2(lead, api_url, final_key)
+            status, response, should_queue = await send_to_crm(lead, api_url, final_key)
             actual_crm_sent = final_crm
             
             # FALLBACK : Si erreur (Token invalide, etc.) et cross_crm autorisé → essayer l'autre CRM
@@ -783,7 +783,7 @@ async def submit_lead(data: LeadData, request: Request):
                     other_key = other_form["crm_api_key"]
                     other_url = await get_crm_url(other_crm)  # URL dynamique
                     if other_url:
-                        status, response, should_queue = await send_to_crm_v2(lead, other_url, other_key)
+                        status, response, should_queue = await send_to_crm(lead, other_url, other_key)
                         actual_crm_sent = other_crm
                         
                         # Marquer comme transféré (fallback utilisé)
