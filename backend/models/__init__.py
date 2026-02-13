@@ -58,6 +58,13 @@ from .delivery import (
     DeliveryStats,
 )
 
+# Provider
+from .provider import (
+    ProviderCreate,
+    ProviderUpdate,
+    ProviderResponse,
+)
+
 __all__ = [
     # Auth
     "UserPermissions", "UserLogin", "UserCreate", "UserUpdate", "UserResponse",
@@ -75,4 +82,6 @@ __all__ = [
     "validate_lead_required_fields", "is_lead_exploitable",
     # Delivery
     "DeliveryBatch", "DeliveryStats",
+    # Provider
+    "ProviderCreate", "ProviderUpdate", "ProviderResponse",
 ]
