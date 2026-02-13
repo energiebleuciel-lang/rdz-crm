@@ -99,18 +99,8 @@ async def lifespan(app: FastAPI):
             replace_existing=True
         )
         
-        # NOUVEAU: Marquage leads > 8 jours comme manual_only (tous les jours à 4h UTC)
-        from services.lead_redistributor import mark_old_leads_as_manual_only
-        scheduler.add_job(
-            mark_old_leads_as_manual_only,
-            CronTrigger(hour=4, minute=0),
-            id="lead_aging_check",
-            name="Marquage leads > 8 jours manual_only",
-            replace_existing=True
-        )
-        
         scheduler.start()
-        logger.info("✅ Scheduler démarré (vérification 3h UTC, aging 4h UTC, queue 5min)")
+        logger.info("✅ Scheduler démarré (vérification 3h UTC, queue 5min)")
         
     except Exception as e:
         logger.warning(f"⚠️ Scheduler: {str(e)}")
