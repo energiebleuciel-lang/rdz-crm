@@ -213,32 +213,9 @@ export default function Monitoring() {
         </Card>
       </div>
 
-      {/* Alerts */}
+      {/* Alerts - max 4 visible, expandable */}
       {(criticals.length > 0 || warnings.length > 0) && (
-        <Card className="p-0 overflow-hidden" data-testid="alerts-section">
-          <div className="px-4 py-3 bg-red-50 border-b border-red-100 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-red-500" />
-            <span className="text-sm font-semibold text-red-700">
-              Alertes actives ({criticals.length + warnings.length})
-            </span>
-            <span className="text-xs text-red-400 ml-auto">seuil: {data.config.alert_threshold}%</span>
-          </div>
-          <div className="divide-y">
-            {[...criticals, ...warnings].map((a, i) => (
-              <div key={i} className={`px-4 py-3 flex items-start gap-3 ${a.level === 'critical' ? 'bg-red-50/30' : 'bg-amber-50/30'}`}>
-                <span className={`mt-0.5 px-2 py-0.5 text-xs rounded font-bold shrink-0 ${
-                  a.level === 'critical' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
-                }`}>
-                  {a.level === 'critical' ? 'CRITIQUE' : 'ATTENTION'}
-                </span>
-                <div className="min-w-0">
-                  <p className="text-sm text-slate-700">{a.message}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">{a.dimension}: {a.value}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
+        <AlertsPanel criticals={criticals} warnings={warnings} threshold={data.config.alert_threshold} />
       )}
 
       {/* Stats tables */}
