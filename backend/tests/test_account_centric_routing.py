@@ -14,40 +14,31 @@ Scénarios testés:
 import pytest
 import httpx
 import uuid
-import asyncio
 
 API_URL = "https://account-lead-router.preview.emergentagent.com"
 CREDENTIALS = {"email": "energiebleuciel@gmail.com", "password": "92Ruemarxdormoy"}
 
 
-@pytest.fixture(scope="module")
-def event_loop():
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
+# ==================== SETUP (run once) ====================
 
+_auth_cache = {}
 
-@pytest.fixture(scope="module")
-async def auth_token():
-    """Obtenir un token d'authentification"""
-    async with httpx.AsyncClient(timeout=30) as client:
-        r = await client.post(f"{API_URL}/api/auth/login", json=CREDENTIALS)
-        assert r.status_code == 200, f"Login failed: {r.text}"
-        return r.json()["token"]
-
-
-@pytest.fixture(scope="module")
-async def headers(auth_token):
-    return {"Authorization": f"Bearer {auth_token}", "Content-Type": "application/json"}
-
-
-@pytest.fixture(scope="module")
-async def crm_slugs(headers):
-    """Récupérer les CRM existants (zr7, mdl)"""
-    async with httpx.AsyncClient(timeout=30) as client:
-        r = await client.get(f"{API_URL}/api/crms", headers=headers)
-        crms = r.json().get("crms", [])
-        return {c["slug"]: c["id"] for c in crms}
+async def get_auth():
+    """Cache pour auth token et headers"""
+    if "token" not in _auth_cache:
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.post(f"{API_URL}/api/auth/login", json=CREDENTIALS)
+            assert r.status_code == 200, f"Login failed: {r.text}"
+            _auth_cache["token"] = r.json()["token"]
+            _auth_cache["headers"] = {
+                "Authorization": f"Bearer {_auth_cache['token']}",
+                "Content-Type": "application/json"
+            }
+            # Get CRM slugs
+            r2 = await client.get(f"{API_URL}/api/crms", headers=_auth_cache["headers"])
+            crms = r2.json().get("crms", [])
+            _auth_cache["crm_slugs"] = {c["slug"]: c["id"] for c in crms}
+    return _auth_cache["headers"], _auth_cache["crm_slugs"]
 
 
 # ==================== HELPERS ====================
