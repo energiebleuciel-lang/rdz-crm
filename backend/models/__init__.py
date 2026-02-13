@@ -4,8 +4,53 @@
 ║                                                                              ║
 ║  Exports tous les modèles pour import facile                                 ║
 ║  from models import EntityType, ClientCreate, CommandeCreate, etc.           ║
+║                                                                              ║
+║  Inclut aussi les modèles legacy pour compatibilité                          ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 """
+
+# ==================== LEGACY MODELS (compatibilité) ====================
+# Ces modèles viennent de l'ancien fichier models.py monolithique
+import sys
+from pathlib import Path
+
+# Import depuis le fichier renommé
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from models_legacy import (
+    # Auth
+    UserPermissions,
+    UserLogin,
+    UserCreate,
+    UserUpdate,
+    UserResponse,
+    # Activity
+    ActivityLog,
+    # Accounts
+    CRMProductConfig,
+    AccountCreate,
+    AccountUpdate,
+    # CRMs
+    CRMCreate,
+    CRMUpdate,
+    # LPs
+    LPCreate,
+    LPUpdate,
+    # Forms
+    FormCreate,
+    FormUpdate,
+    # Leads (legacy)
+    LeadSubmit,
+    LeadUpdate as LeadUpdateLegacy,
+    LeadForceSend,
+    # Tracking
+    TrackLPVisit,
+    TrackCTAClick,
+    TrackFormStart,
+    # Queue
+    QueueItem,
+)
+
+# ==================== NEW RDZ MODELS ====================
 
 # Entity (Multi-tenant)
 from .entity import (
@@ -36,7 +81,7 @@ from .commande import (
     CommandeListResponse
 )
 
-# Lead
+# Lead (nouveau modèle)
 from .lead import (
     LeadStatus,
     VALID_LEAD_STATUSES,
@@ -54,6 +99,37 @@ from .delivery import (
 )
 
 __all__ = [
+    # Legacy Auth
+    "UserPermissions",
+    "UserLogin",
+    "UserCreate",
+    "UserUpdate",
+    "UserResponse",
+    # Legacy Activity
+    "ActivityLog",
+    # Legacy Accounts
+    "CRMProductConfig",
+    "AccountCreate",
+    "AccountUpdate",
+    # Legacy CRMs
+    "CRMCreate",
+    "CRMUpdate",
+    # Legacy LPs
+    "LPCreate",
+    "LPUpdate",
+    # Legacy Forms
+    "FormCreate",
+    "FormUpdate",
+    # Legacy Leads
+    "LeadSubmit",
+    "LeadUpdateLegacy",
+    "LeadForceSend",
+    # Legacy Tracking
+    "TrackLPVisit",
+    "TrackCTAClick",
+    "TrackFormStart",
+    # Legacy Queue
+    "QueueItem",
     # Entity
     "EntityType",
     "EntityConfig",
