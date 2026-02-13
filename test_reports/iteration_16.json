@@ -1,0 +1,139 @@
+{
+  "summary": "Phase 2 Public Leads Routing - All 22 backend tests PASSED (100%). Verified immediate routing after lead insert, form_code mapping, provider entity_locked behavior, duplicate 30j detection, cross-entity fallback, source gating, and delivery record creation.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_public_leads_routing.py",
+    "/app/test_reports/pytest/pytest_public_leads_routing.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "POST /api/public/leads correctly routes leads immediately after insert via routing_engine.route_lead()",
+    "form_code mapping works: FORM-MDL-PV correctly resolves to entity=MDL, produit=PV",
+    "Unknown form_code returns status=pending_config as expected",
+    "Provider API key (prov_xxx) correctly sets entity from provider and entity_locked=true",
+    "Provider duplicate 30j correctly blocks cross-entity fallback (routing_reason=all_commandes_duplicate_entity_locked)",
+    "Source gating works: BAD_SOURCE leads get status=hold_source",
+    "Cross-entity disabled correctly blocks fallback (status=no_open_orders)",
+    "Delivery records created with status=pending_csv when lead is routed",
+    "All lead status transitions working: new, routed, duplicate, hold_source, no_open_orders, pending_config, invalid"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_public_leads_routing.py"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "N/A - backend only testing"
+  },
+  "test_credentials": {
+    "email": "energiebleuciel@gmail.com",
+    "password": "92Ruemarxdormoy",
+    "provider_api_key": "prov_0vVMbevPVC1yBXXb3cPKySmiB_iP4nW1cjTjIOQ54is"
+  },
+  "seed_data_creation": "Used existing test data: ZR7 has 1 commande PV for depts 75/92/93/94, MDL has 2 commandes PV. Provider 'Taboola FR' (ZR7) exists. Form config FORM-MDL-PV -> MDL/PV. Source 'BAD_SOURCE' is blocked.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Phase 2 public leads routing fully tested. Key features verified: (1) POST /api/public/leads routes immediately via route_lead(), (2) form_code mapping via settings.forms_config, (3) Provider leads have entity_locked=true blocking cross-entity, (4) Duplicate 30j detection supports both old (livre/delivered_to_client_id) and new (routed/delivery_client_id) formats, (5) Delivery records created with status=pending_csv, (6) Source gating blocks BAD_SOURCE leads. Lead status counts in DB: routed=14, new=20, hold_source=4, no_open_orders=3, duplicate=3, pending_config=2, invalid=1.",
+  "tests_executed": {
+    "total": 22,
+    "passed": 22,
+    "failed": 0,
+    "test_classes": [
+      {
+        "name": "TestAuthSetup",
+        "tests": 1,
+        "passed": 1,
+        "details": ["test_login_works"]
+      },
+      {
+        "name": "TestFormsConfigAPI",
+        "tests": 3,
+        "passed": 3,
+        "details": ["test_get_forms_config", "test_upsert_single_form_config", "test_forms_config_requires_auth"]
+      },
+      {
+        "name": "TestFreshLeadRouting",
+        "tests": 2,
+        "passed": 2,
+        "details": ["test_fresh_lead_routed_to_zr7", "test_lead_with_invalid_dept_no_open_orders"]
+      },
+      {
+        "name": "TestFormCodeMapping",
+        "tests": 2,
+        "passed": 2,
+        "details": ["test_lead_with_configured_form_code", "test_lead_with_unknown_form_code_pending_config"]
+      },
+      {
+        "name": "TestProviderLeadSubmission",
+        "tests": 3,
+        "passed": 3,
+        "details": ["test_provider_lead_entity_locked", "test_provider_lead_with_api_key_in_body", "test_invalid_provider_key_error"]
+      },
+      {
+        "name": "TestDuplicate30Days",
+        "tests": 2,
+        "passed": 2,
+        "details": ["test_duplicate_same_client_blocked", "test_provider_duplicate_no_cross_entity"]
+      },
+      {
+        "name": "TestSourceGating",
+        "tests": 1,
+        "passed": 1,
+        "details": ["test_blocked_source_hold_source"]
+      },
+      {
+        "name": "TestCrossEntityFallback",
+        "tests": 2,
+        "passed": 2,
+        "details": ["test_cross_entity_disabled_blocks_fallback", "test_cross_entity_enabled_allows_fallback"]
+      },
+      {
+        "name": "TestDeliveryRecordCreation",
+        "tests": 1,
+        "passed": 1,
+        "details": ["test_routed_lead_has_delivery_record"]
+      },
+      {
+        "name": "TestLeadStatusTransitions",
+        "tests": 3,
+        "passed": 3,
+        "details": ["test_status_new_when_not_routed", "test_status_invalid_for_incomplete_data", "test_all_valid_statuses"]
+      },
+      {
+        "name": "TestCleanup",
+        "tests": 2,
+        "passed": 2,
+        "details": ["test_restore_cross_entity_settings", "test_restore_source_gating"]
+      }
+    ]
+  },
+  "key_validations": {
+    "immediate_routing": "VERIFIED - POST /api/public/leads routes immediately via route_lead()",
+    "form_code_mapping": "VERIFIED - FORM-MDL-PV resolves to entity=MDL, produit=PV",
+    "unknown_form_code": "VERIFIED - Returns status=pending_config",
+    "provider_entity_locked": "VERIFIED - Provider leads have entity_locked=true",
+    "provider_no_cross_entity": "VERIFIED - routing_reason=all_commandes_duplicate_entity_locked",
+    "duplicate_30j": "VERIFIED - Same phone/produit/client blocked within 30 days",
+    "source_gating": "VERIFIED - BAD_SOURCE leads get status=hold_source",
+    "cross_entity_disabled": "VERIFIED - Returns status=no_open_orders when disabled",
+    "delivery_record": "VERIFIED - Created with status=pending_csv when routed",
+    "all_statuses": "VERIFIED - new, routed, duplicate, hold_source, no_open_orders, pending_config, invalid"
+  },
+  "database_verification": {
+    "routed_leads": 14,
+    "new_leads": 20,
+    "hold_source_leads": 4,
+    "no_open_orders_leads": 3,
+    "duplicate_leads": 3,
+    "pending_config_leads": 2,
+    "invalid_leads": 1,
+    "delivery_records_created": "Multiple with status=pending_csv"
+  }
+}
