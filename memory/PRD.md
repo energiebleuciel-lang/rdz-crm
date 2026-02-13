@@ -263,14 +263,46 @@ Submit → Validation → DataLayer standard → Code GTM personnalisé → Redi
 - Cross-CRM automatique si pas de commande
 - **ACTIVATION: Nécessite validation CTO**
 
-### Pipeline Production ACTIF
+### Pipeline Production ACTIF - Routing Account-Centric v1.0 (NEW - Février 2026)
 ```
-RDZ → API → ZR7/MDL (basé sur target_crm du formulaire)
+RDZ → API → ZR7/MDL (basé sur account.crm_routing[product_type])
 ```
-- Routing direct basé sur `target_crm` et `crm_api_key` du formulaire
-- Pas de vérification des commandes
-- Détection doublons v2.2 active
-- Scheduler mark_old_leads actif
+
+**Nouveau modèle de routing :**
+- Chaque compte (`accounts`) possède un champ `crm_routing` :
+  ```json
+  {
+    "PV":  {"target_crm": "zr7", "api_key": "xxx", "delivery_mode": "api"},
+    "PAC": {"target_crm": "mdl", "api_key": "yyy", "delivery_mode": "api"},
+    "ITE": {"target_crm": "zr7", "api_key": "zzz", "delivery_mode": "api"}
+  }
+  ```
+- **Hiérarchie de résolution :**
+  1. `form.target_crm` + `form.crm_api_key` → override optionnel (si les deux sont renseignés)
+  2. `account.crm_routing[product_type]` → config par défaut du compte
+  3. Aucun → `no_crm`
+
+**Champs de traçabilité sur chaque lead :**
+- `routing_source` : `account_routing`, `form_override`, ou `none`
+- `routing_reason` : `account_routing_zr7`, `form_override_mdl`, etc.
+
+**Logs structurés :**
+```
+[ROUTING] lead_phone=XXXX account_id=... product=PV source=account_routing target_crm=zr7
+[ROUTING_RESULT] lead_id=... account_id=... product_type=PV routing_source=account_routing target_crm=zr7 status=success
+```
+
+**Tests validés : 10/10**
+- PV/PAC/ITE routing via account ✅
+- Form override ✅
+- No config → no_crm ✅
+- Config partielle ✅
+- Override incomplet → fallback account ✅
+- Mise à jour crm_routing via API ✅
+- Multi-produit ✅
+- Champs routing_source présents ✅
+- Détection doublons v2.2 toujours active ✅
+- Feature flags LB/Commandes toujours désactivés ✅
 
 ### Liaison LP ↔ Form Obligatoire
 - Création LP génère automatiquement Form lié
