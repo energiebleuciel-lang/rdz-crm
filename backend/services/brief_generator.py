@@ -1064,6 +1064,7 @@ async def _generate_mode_b(
     product_type: str,
     account_name: str,
     gtm_head: str,
+    gtm_conversion: str,
     redirect_url: str,
     form_selector: str,
     form_anchor: str,
@@ -1073,13 +1074,28 @@ async def _generate_mode_b(
     Génère le brief Mode B (Form intégré dans LP)
     
     Tracking complet avec UTM, sendBeacon et anti-doublon
+    
+    Post-submit:
+    - Exécuter gtm_conversion (si défini)
+    - Rediriger vers redirect_url
     """
+    
+    # Formater le code conversion GTM en fonction JavaScript
+    if gtm_conversion and gtm_conversion.strip():
+        gtm_conversion_js = f'''function(data) {{
+      try {{
+        // Variables disponibles: data.lead_id, data.lp_code, data.form_code, data.liaison_code, data.utm_campaign, data.utm_source, data.utm_medium
+        {gtm_conversion}
+      }} catch(e) {{ console.warn("RDZ GTM Conversion error:", e); }}
+    }}'''
+    else:
+        gtm_conversion_js = "null"
     
     script_unique = f'''<!-- ═══════════════════════════════════════════════════════════════════════════ -->
 <!-- RDZ TRACKING - LP + FORMULAIRE INTÉGRÉS                                     -->
 <!-- {lp_code} + {form_code}                                                      -->
 <!-- À coller AVANT </body>                                                       -->
-<!-- Version: 2.1 - Tracking complet, sendBeacon compatible, URL normalisée      -->
+<!-- Version: 2.2 - Tracking complet + Conversion GTM + Redirection produit      -->
 <!-- ═══════════════════════════════════════════════════════════════════════════ -->
 <script>
 (function() {{
@@ -1099,7 +1115,9 @@ async def _generate_mode_b(
     utm: {{}},
     redirectUrl: "{redirect_url}",
     initialized: false,
-    initFailed: false
+    initFailed: false,
+    // Code conversion GTM (exécuté après submit valide, avant redirection)
+    conversionCode: {gtm_conversion_js}
   }};
 
   // ══════════════════════════════════════════════════════════
