@@ -181,6 +181,8 @@ async def check_duplicate_for_any_client(
     
     Utilisé pour le routing: on peut proposer le lead à un autre client
     qui ne l'a pas encore reçu.
+    
+    Supporte les deux formats (ancien et nouveau).
     """
     if not phone or not produit or not entity:
         return False, {}
@@ -189,26 +191,44 @@ async def check_duplicate_for_any_client(
     cutoff = (now - timedelta(days=DUPLICATE_WINDOW_DAYS)).isoformat()
     
     # Chercher tous les clients à qui ce lead a déjà été livré
+    # Supporte les deux formats
     cursor = db.leads.find({
         "phone": phone,
         "produit": produit,
         "entity": entity,
-        "status": "livre",
-        "delivered_at": {"$gte": cutoff}
-    }, {"_id": 0, "delivered_to_client_id": 1, "delivered_to_client_name": 1, "delivered_at": 1})
+        "$or": [
+            # Nouveau format
+            {
+                "status": {"$in": ["routed", "livre"]},
+                "routed_at": {"$gte": cutoff},
+                "delivery_client_id": {"$exists": True, "$ne": None}
+            },
+            # Ancien format
+            {
+                "status": "livre",
+                "delivered_at": {"$gte": cutoff},
+                "delivered_to_client_id": {"$exists": True, "$ne": None}
+            }
+        ]
+    }, {"_id": 0, "delivery_client_id": 1, "delivery_client_name": 1, "routed_at": 1,
+        "delivered_to_client_id": 1, "delivered_to_client_name": 1, "delivered_at": 1})
     
     already_delivered = await cursor.to_list(100)
     
     if already_delivered:
-        clients = [
-            {
-                "client_id": d.get("delivered_to_client_id"),
-                "client_name": d.get("delivered_to_client_name"),
-                "delivered_at": d.get("delivered_at")
-            }
-            for d in already_delivered
-        ]
-        return True, {"clients_already_delivered": clients}
+        clients = []
+        for d in already_delivered:
+            client_id = d.get("delivery_client_id") or d.get("delivered_to_client_id")
+            client_name = d.get("delivery_client_name") or d.get("delivered_to_client_name")
+            delivery_date = d.get("routed_at") or d.get("delivered_at")
+            if client_id:
+                clients.append({
+                    "client_id": client_id,
+                    "client_name": client_name,
+                    "delivered_at": delivery_date
+                })
+        if clients:
+            return True, {"clients_already_delivered": clients}
     
     return False, {}
 
