@@ -81,15 +81,16 @@ from .commande import (
     CommandeListResponse
 )
 
-# Lead (nouveau modèle)
+# Lead (VERROUILLÉ)
 from .lead import (
+    EntityType,
+    ProductType,
     LeadStatus,
-    VALID_LEAD_STATUSES,
-    LeadSubmitPublic,
+    LeadCreate,
     LeadDocument,
-    LeadUpdate,
-    LeadDeliveryInfo,
-    DuplicateCheckResult
+    LeadPublicSubmit,
+    validate_lead_required_fields,
+    is_lead_exploitable
 )
 
 # Delivery
