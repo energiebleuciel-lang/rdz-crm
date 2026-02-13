@@ -109,6 +109,10 @@ async def check_duplicate_30_days(
     
     IMPORTANT: Cette fonction vérifie si le lead peut être envoyé à un client spécifique.
     Un lead peut être doublon pour un client mais pas pour un autre.
+    
+    Supporte les deux formats:
+    - Ancien: status=livre, delivered_to_client_id, delivered_at
+    - Nouveau: status=routed, delivery_client_id, routed_at
     """
     if not phone or not produit or not target_client_id:
         return DuplicateResult(is_duplicate=False)
@@ -116,28 +120,47 @@ async def check_duplicate_30_days(
     now = datetime.now(timezone.utc)
     cutoff = (now - timedelta(days=DUPLICATE_WINDOW_DAYS)).isoformat()
     
-    # Chercher un lead déjà livré à CE CLIENT avec ce phone+produit dans les 30 jours
+    # Chercher un lead déjà livré/routé à CE CLIENT avec ce phone+produit dans les 30 jours
+    # Supporte ancien format (livre/delivered_to_client_id) et nouveau (routed/delivery_client_id)
     existing = await db.leads.find_one({
         "phone": phone,
         "produit": produit,
-        "delivered_to_client_id": target_client_id,
-        "status": "livre",  # Seulement les leads effectivement livrés
-        "delivered_at": {"$gte": cutoff}
-    }, {"_id": 0, "id": 1, "delivered_to_client_id": 1, "delivered_to_client_name": 1, "delivered_at": 1})
+        "$or": [
+            # Nouveau format (Phase 2)
+            {
+                "delivery_client_id": target_client_id,
+                "status": {"$in": ["routed", "livre"]},
+                "routed_at": {"$gte": cutoff}
+            },
+            # Ancien format (daily_delivery)
+            {
+                "delivered_to_client_id": target_client_id,
+                "status": "livre",
+                "delivered_at": {"$gte": cutoff}
+            }
+        ]
+    }, {"_id": 0, "id": 1, "delivery_client_id": 1, "delivery_client_name": 1, 
+        "delivered_to_client_id": 1, "delivered_to_client_name": 1, 
+        "routed_at": 1, "delivered_at": 1})
 
     if existing:
+        # Extraire les infos (nouveau ou ancien format)
+        client_id = existing.get("delivery_client_id") or existing.get("delivered_to_client_id")
+        client_name = existing.get("delivery_client_name") or existing.get("delivered_to_client_name")
+        delivery_date = existing.get("routed_at") or existing.get("delivered_at") or ""
+        
         logger.info(
             f"[DOUBLON_30J] phone={phone[-4:]} produit={produit} "
-            f"client={target_client_id[:8]}... déjà livré le {existing.get('delivered_at', '')[:10]}"
+            f"client={target_client_id[:8]}... déjà livré le {delivery_date[:10] if delivery_date else 'N/A'}"
         )
         return DuplicateResult(
             is_duplicate=True,
             duplicate_type="30_days",
             original_lead_id=existing.get("id"),
-            original_client_id=existing.get("delivered_to_client_id"),
-            original_client_name=existing.get("delivered_to_client_name"),
-            original_delivery_date=existing.get("delivered_at"),
-            message=f"Doublon 30 jours - déjà livré à ce client le {existing.get('delivered_at', '')[:10]}"
+            original_client_id=client_id,
+            original_client_name=client_name,
+            original_delivery_date=delivery_date,
+            message=f"Doublon 30 jours - déjà livré à ce client le {delivery_date[:10] if delivery_date else 'N/A'}"
         )
     
     return DuplicateResult(is_duplicate=False)
