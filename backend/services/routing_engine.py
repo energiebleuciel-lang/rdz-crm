@@ -339,15 +339,24 @@ async def _try_cross_entity(
     Tente le fallback cross-entity.
 
     Conditions:
-    1. Settings cross_entity autorisent le transfert
-    2. L'autre entite a au moins une commande OPEN compatible
-    3. Pas de doublon 30j chez le client cible
+    1. Calendar gating: l'entity cible doit aussi être en jour livrable
+    2. Settings cross_entity autorisent le transfert
+    3. L'autre entite a au moins une commande OPEN compatible
+    4. Pas de doublon 30j chez le client cible
     """
     from services.settings import is_cross_entity_allowed
 
     to_entity = "MDL" if from_entity == "ZR7" else "ZR7"
 
-    # Check settings
+    # 0. Check calendar gating pour l'entity cible
+    day_enabled, day_reason = await is_delivery_day_enabled(to_entity)
+    if not day_enabled:
+        logger.info(
+            f"[CROSS_ENTITY] {to_entity}: {day_reason} - fallback bloqué"
+        )
+        return None
+
+    # 1. Check settings
     allowed = await is_cross_entity_allowed(from_entity, to_entity)
     if not allowed:
         logger.info(
@@ -355,7 +364,7 @@ async def _try_cross_entity(
         )
         return None
 
-    # Chercher commandes OPEN dans l'autre entite
+    # 2. Chercher commandes OPEN dans l'autre entite
     commandes = await find_open_commandes(to_entity, produit, departement, is_lb)
 
     if not commandes:
@@ -364,7 +373,7 @@ async def _try_cross_entity(
         )
         return None
 
-    # Verifier doublons
+    # 3. Verifier doublons
     for cmd in commandes:
         client_id = cmd.get("client_id")
         client_name = cmd.get("client_name", "")
