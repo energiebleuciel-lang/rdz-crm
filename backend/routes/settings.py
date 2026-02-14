@@ -176,3 +176,98 @@ async def upsert_single_form_config(
         updated_by=user.get("email", "admin")
     )
     return {"success": True, "form_code": form_code, "config": result.get("forms", {}).get(form_code)}
+
+
+
+# ---- Email Denylist ----
+
+class EmailDenylistUpdate(BaseModel):
+    domains: List[str]
+    simulation_mode: bool = False
+    simulation_email: str = "energiebleuciel@gmail.com"
+
+
+@router.get("/email-denylist")
+async def get_email_denylist(user: dict = Depends(get_current_user)):
+    """Récupère la config email denylist"""
+    from services.settings import get_email_denylist_settings
+    return await get_email_denylist_settings()
+
+
+@router.put("/email-denylist")
+async def update_email_denylist(
+    data: EmailDenylistUpdate,
+    user: dict = Depends(require_admin)
+):
+    """Met à jour la denylist emails"""
+    payload = {
+        "domains": [d.strip().lower() for d in data.domains if d.strip()],
+        "simulation_mode": data.simulation_mode,
+        "simulation_email": data.simulation_email
+    }
+    
+    result = await upsert_setting(
+        "email_denylist",
+        payload,
+        updated_by=user.get("email", "admin")
+    )
+    return {"success": True, "setting": result}
+
+
+# ---- Delivery Calendar ----
+
+class DeliveryCalendarUpdate(BaseModel):
+    entity: str
+    enabled_days: List[int]  # 0=lundi, 6=dimanche
+    disabled_dates: List[str] = []  # Format YYYY-MM-DD
+
+
+@router.get("/delivery-calendar")
+async def get_delivery_calendar(user: dict = Depends(get_current_user)):
+    """Récupère le calendrier de livraison par entity"""
+    from services.settings import get_delivery_calendar_settings
+    return await get_delivery_calendar_settings()
+
+
+@router.put("/delivery-calendar")
+async def update_delivery_calendar(
+    data: DeliveryCalendarUpdate,
+    user: dict = Depends(require_admin)
+):
+    """Met à jour le calendrier de livraison pour une entity"""
+    from services.settings import update_delivery_calendar as update_cal
+    
+    if data.entity.upper() not in ["ZR7", "MDL"]:
+        raise HTTPException(status_code=400, detail="Entity invalide (ZR7 ou MDL)")
+    
+    # Valider les jours (0-6)
+    valid_days = [d for d in data.enabled_days if 0 <= d <= 6]
+    
+    result = await update_cal(
+        entity=data.entity.upper(),
+        enabled_days=valid_days,
+        disabled_dates=data.disabled_dates,
+        updated_by=user.get("email", "admin")
+    )
+    
+    return {"success": True, "entity": data.entity.upper(), "setting": result}
+
+
+@router.get("/delivery-calendar/check/{entity}")
+async def check_delivery_day(
+    entity: str,
+    user: dict = Depends(get_current_user)
+):
+    """Vérifie si aujourd'hui est un jour de livraison pour l'entity"""
+    from services.settings import is_delivery_day_enabled
+    
+    if entity.upper() not in ["ZR7", "MDL"]:
+        raise HTTPException(status_code=400, detail="Entity invalide")
+    
+    is_enabled, reason = await is_delivery_day_enabled(entity.upper())
+    
+    return {
+        "entity": entity.upper(),
+        "is_delivery_day": is_enabled,
+        "reason": reason
+    }
