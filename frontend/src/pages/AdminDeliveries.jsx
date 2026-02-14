@@ -67,7 +67,7 @@ export default function AdminDeliveries() {
       setClientMap(map);
     } catch (e) { console.error(e); }
     setLoading(false);
-  }, [page, filters, authFetch]);
+  }, [page, week, filters, authFetch]);
 
   useEffect(() => { load(); }, [load]);
 
