@@ -1,94 +1,57 @@
-/**
- * EnerSolar CRM - Application principale
- * Version 2.0
- */
-
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
-import { CRMProvider } from './hooks/useCRM';
 
-// Pages
 import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Accounts from './pages/Accounts';
-import LandingPages from './pages/LandingPages';
-import Forms from './pages/Forms';
-import Leads from './pages/Leads';
-import Departements from './pages/Departements';
-import Billing from './pages/Billing';
-import Settings from './pages/Settings';
-import UsersPage from './pages/UsersPage';
-import Media from './pages/Media';
-import QualityMappings from './pages/QualityMappings';
+import AdminLayout from './components/AdminLayout';
+import AdminDashboard from './pages/AdminDashboard';
+import AdminDeliveries from './pages/AdminDeliveries';
+import AdminDeliveryDetail from './pages/AdminDeliveryDetail';
+import AdminClients from './pages/AdminClients';
+import AdminCommandes from './pages/AdminCommandes';
+import AdminSettings from './pages/AdminSettings';
 
-import Monitoring from './pages/Monitoring';
-
-// Components
-import Layout from './components/Layout';
-import { Loading } from './components/UI';
-
-// Route protégée avec CRM Provider
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
-  
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100">
-        <Loading text="Vérification de la session..." />
+      <div className="min-h-screen flex items-center justify-center bg-zinc-950">
+        <div className="w-6 h-6 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
-  
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-  
-  return (
-    <CRMProvider>
-      <Layout>{children}</Layout>
-    </CRMProvider>
-  );
+
+  if (!user) return <Navigate to="/login" replace />;
+
+  return <AdminLayout>{children}</AdminLayout>;
 }
 
-// Routes
 function AppRoutes() {
   const { user, loading } = useAuth();
-  
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100">
-        <Loading text="Chargement..." />
+      <div className="min-h-screen flex items-center justify-center bg-zinc-950">
+        <div className="w-6 h-6 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
-  
+
   return (
     <Routes>
-      <Route 
-        path="/login" 
-        element={user ? <Navigate to="/dashboard" replace /> : <Login />} 
-      />
-      
-      <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-      <Route path="/accounts" element={<PrivateRoute><Accounts /></PrivateRoute>} />
-      <Route path="/lps" element={<PrivateRoute><LandingPages /></PrivateRoute>} />
-      <Route path="/forms" element={<PrivateRoute><Forms /></PrivateRoute>} />
-      <Route path="/leads" element={<PrivateRoute><Leads /></PrivateRoute>} />
-      <Route path="/departements" element={<PrivateRoute><Departements /></PrivateRoute>} />
-      <Route path="/billing" element={<PrivateRoute><Billing /></PrivateRoute>} />
-      <Route path="/media" element={<PrivateRoute><Media /></PrivateRoute>} />
-      <Route path="/quality-mappings" element={<PrivateRoute><QualityMappings /></PrivateRoute>} />
-      <Route path="/monitoring" element={<PrivateRoute><Monitoring /></PrivateRoute>} />
-      <Route path="/users" element={<PrivateRoute><UsersPage /></PrivateRoute>} />
-      <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
-      
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/login" element={user ? <Navigate to="/admin/dashboard" replace /> : <Login />} />
+      <Route path="/admin/dashboard" element={<PrivateRoute><AdminDashboard /></PrivateRoute>} />
+      <Route path="/admin/deliveries" element={<PrivateRoute><AdminDeliveries /></PrivateRoute>} />
+      <Route path="/admin/deliveries/:id" element={<PrivateRoute><AdminDeliveryDetail /></PrivateRoute>} />
+      <Route path="/admin/clients" element={<PrivateRoute><AdminClients /></PrivateRoute>} />
+      <Route path="/admin/commandes" element={<PrivateRoute><AdminCommandes /></PrivateRoute>} />
+      <Route path="/admin/settings" element={<PrivateRoute><AdminSettings /></PrivateRoute>} />
+      <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
+      <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
     </Routes>
   );
 }
 
-// App
 export default function App() {
   return (
     <BrowserRouter>
