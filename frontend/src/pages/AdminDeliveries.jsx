@@ -104,7 +104,8 @@ export default function AdminDeliveries() {
     <div data-testid="admin-deliveries">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-lg font-semibold text-white">Deliveries</h1>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <WeekNavStandard week={week} onChange={handleWeekNav} />
           <button onClick={() => setShowFilters(!showFilters)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-zinc-800 text-zinc-300 rounded-md hover:bg-zinc-700 border border-zinc-700" data-testid="filter-toggle-btn">
             <Filter className="w-3 h-3" /> Filtres {filters.client_id && <span className="text-teal-400">(client)</span>}
           </button>
