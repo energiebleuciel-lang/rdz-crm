@@ -22,30 +22,24 @@ Toxicity/Trust scores, cannibalization index, cross-source matrix, time buckets,
 Fail-open, kill switch, 30d window, alternative routing, max 10 candidates, 500ms timeout
 
 ### Audit Global Zero Surprises (2026-02-15)
-**5 livrables:**
-- `/app/ARCHITECTURE_OVERVIEW.md` — Modules, flow E2E 10 etapes, fail-open, endpoints
-- `/app/NAMING_SCHEMA_STANDARD.md` — Collections, champs, conventions, mapping API↔DB
-- `/app/TEST_MATRIX.md` — Matrice scenarios A-H, chaos checklist, commandes replay
-- `/app/DEPLOYMENT_RUNBOOK.md` — Env vars, cron, health, rollback, checklist 5min
-- `/app/AUDIT_REPORT_FINAL.md` — Risques P0/P1/P2, fixes appliques, reco
-- `/app/RELEASE_POLICY.md` — Politique freeze, procedure merge/rollback
+**6 livrables:**
+- `ARCHITECTURE_OVERVIEW.md` — Modules, flow E2E 10 etapes, fail-open, endpoints
+- `NAMING_SCHEMA_STANDARD.md` — Collections, champs, conventions, mapping API<>DB
+- `TEST_MATRIX.md` — Matrice 80+ scenarios, chaos checklist, commandes replay
+- `DEPLOYMENT_RUNBOOK.md` — Env vars, cron, health, rollback, checklist 5min
+- `AUDIT_REPORT_FINAL.md` — Risques P0/P1/P2, fixes, reco
+- `AUDIT_ADDENDUM_POINTS_SENSIBLES.md` — 8 points sensibles: risque, preuve, tests, rollback
 
-**6 fixes appliques:**
-- FIX-1: MONGO_URL/DB_NAME fail-fast
-- FIX-2: LeadStatus enum complet (14 statuts)
-- FIX-3: LB marking filtre 30j pour leads livres
-- FIX-4: Fix $or override leads list (client_id + search)
-- FIX-5: Index leads.provider_id
-- FIX-6: SMTP timeout=30s
+**6 fixes appliques:** fail-fast DB, LeadStatus enum, LB 30j, $or fix, provider_id index, SMTP timeout
 
 ## Backlog
 - **(P0) Accounts / LP / Form registry + UI builder** — prochaine phase
-- **(P0) C-01: Migration bcrypt** — avant mise en prod
-- **(P0) CORS restrictif** — avant mise en prod
+- **(P0) Migration bcrypt** — avant prod
+- **(P0) CORS restrictif** — avant prod
+- **(P1) Rate limiting (slowapi)** — endpoints publics
+- **(P1) Lock cron daily_delivery** — comme intercompany
 - **(P1) Invoice PDF generation**
-- **(P1) Prefixer billing routes** (collision /products)
-- **(P1) Detection inter-CRM** (format validation)
-- **(P2) Rate limiting endpoints publics**
+- **(P1) SMTP host/port dans .env**
 - **(P2) N+1 queries clients/providers**
 - **(P2) Unifier champs delivery dupliques**
 - **(P2) Audit trail UI**
