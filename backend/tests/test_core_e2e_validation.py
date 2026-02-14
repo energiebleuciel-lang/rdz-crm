@@ -520,59 +520,54 @@ class TestFCron:
 
     def test_f2_cron_lock_idempotent(self):
         """Cron lock: per-week idempotency prevents double run."""
-        import asyncio
-        from motor.motor_asyncio import AsyncIOMotorClient
+        loop = asyncio.new_event_loop()
+        try:
+            from motor.motor_asyncio import AsyncIOMotorClient
 
-        async def run():
-            client = AsyncIOMotorClient("mongodb://localhost:27017")
-            db = client["test_database"]
-            wk = "2099-W01"
+            async def run():
+                client = AsyncIOMotorClient("mongodb://localhost:27017")
+                db = client["test_database"]
+                wk = "2099-W01"
+                await db.cron_logs.insert_one({
+                    "job": "intercompany_invoices", "week_key": wk,
+                    "status": "success", "run_at": datetime.now(timezone.utc).isoformat(),
+                })
+                lock = await db.cron_logs.find_one({
+                    "job": "intercompany_invoices", "week_key": wk,
+                    "status": {"$in": ["running", "success"]}
+                })
+                assert lock is not None, "Lock should exist"
+                await db.cron_logs.delete_many({"week_key": wk})
+                client.close()
 
-            # Insert a lock
-            await db.cron_logs.insert_one({
-                "job": "intercompany_invoices",
-                "week_key": wk,
-                "status": "success",
-                "run_at": datetime.now(timezone.utc).isoformat(),
-            })
-
-            # Check that it would be skipped
-            lock = await db.cron_logs.find_one({
-                "job": "intercompany_invoices",
-                "week_key": wk,
-                "status": {"$in": ["running", "success"]}
-            })
-            assert lock is not None, "Lock should exist"
-
-            await db.cron_logs.delete_many({"week_key": wk})
-            client.close()
-
-        asyncio.run(run())
+            loop.run_until_complete(run())
+        finally:
+            loop.close()
 
     def test_f3_intercompany_failopen_no_crash(self):
         """Intercompany failure doesn't crash other modules."""
-        import asyncio, sys
+        import sys
         sys.path.insert(0, "/app/backend")
-
-        async def run():
-            from services.intercompany import maybe_create_intercompany_transfer
-            result = await maybe_create_intercompany_transfer(
-                delivery_id="chaos_cron_test",
-                lead_id="nonexistent",
-                commande_id="nonexistent",
-                product="FAKE",
-                target_entity="ZR7",
-            )
-            # Should NOT raise, should return gracefully
-            assert result["created"] is False
-
+        loop = asyncio.new_event_loop()
+        try:
             from motor.motor_asyncio import AsyncIOMotorClient
-            client = AsyncIOMotorClient("mongodb://localhost:27017")
-            db = client["test_database"]
-            await db.intercompany_transfers.delete_one({"delivery_id": "chaos_cron_test"})
-            client.close()
 
-        asyncio.run(run())
+            async def run():
+                from services.intercompany import maybe_create_intercompany_transfer
+                result = await maybe_create_intercompany_transfer(
+                    delivery_id="chaos_cron_test",
+                    lead_id="nonexistent", commande_id="nonexistent",
+                    product="FAKE", target_entity="ZR7",
+                )
+                assert result["created"] is False
+                client = AsyncIOMotorClient("mongodb://localhost:27017")
+                db = client["test_database"]
+                await db.intercompany_transfers.delete_one({"delivery_id": "chaos_cron_test"})
+                client.close()
+
+            loop.run_until_complete(run())
+        finally:
+            loop.close()
 
 
 # ═══════════════════════════════════════════════════════════════
