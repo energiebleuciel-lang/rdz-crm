@@ -29,11 +29,16 @@ BILLING_MODES = ["WEEKLY_INVOICE", "PREPAID"]
 
 
 def _parse_week(week_str: str):
-    parts = week_str.split("-W")
-    year, wn = int(parts[0]), int(parts[1])
-    start = datetime.fromisocalendar(year, wn, 1).replace(tzinfo=timezone.utc)
-    end = start + timedelta(days=7)
-    return start.isoformat(), end.isoformat()
+    try:
+        parts = week_str.split("-W")
+        if len(parts) != 2:
+            raise HTTPException(400, f"Invalid week format: {week_str}. Expected YYYY-W##")
+        year, wn = int(parts[0]), int(parts[1])
+        start = datetime.fromisocalendar(year, wn, 1).replace(tzinfo=timezone.utc)
+        end = start + timedelta(days=7)
+        return start.isoformat(), end.isoformat()
+    except ValueError as e:
+        raise HTTPException(400, f"Invalid week: {week_str}. {str(e)}")
 
 
 def _current_week_key():
