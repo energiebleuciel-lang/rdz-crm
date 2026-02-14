@@ -34,6 +34,8 @@ export default function AdminDeliveries() {
   const [clientMap, setClientMap] = useState({});
   const limit = 50;
 
+  const handleWeekNav = (dir) => { setWeek(w => shiftWeekKey(w, dir)); setPage(0); };
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
