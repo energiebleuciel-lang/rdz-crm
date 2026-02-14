@@ -258,7 +258,8 @@ Guard:
 
 ## NEXT
 
-- [ ] QA Phase C: tests calcul (LB même prix, freebies déduits, remise correcte, snapshot immutabilité)
+- [ ] QA Phase C: tests calcul (LB même prix, freebies déduits, remise correcte, pricing_missing, snapshot immutabilité)
+- [ ] Standardiser format semaine sur Dashboard cockpit + Commandes
 - [ ] Permissions simples (admin / ops / viewer)
 
 ## BACKLOG
