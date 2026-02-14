@@ -326,9 +326,11 @@ export default function AdminCommandes() {
                             <button onClick={() => navigate(`/admin/commandes/${cmd.id}`)} className="p-1 text-zinc-500 hover:text-cyan-400 rounded" title="Détails" data-testid={`view-cmd-btn-${cmd.id}`}>
                               <Eye className="w-3.5 h-3.5" />
                             </button>
-                            <button onClick={() => startEdit(cmd)} className="p-1 text-zinc-500 hover:text-teal-400 rounded" data-testid={`edit-cmd-btn-${cmd.id}`}>
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
+                            {!isWriteBlocked && (
+                              <button onClick={() => startEdit(cmd)} className="p-1 text-zinc-500 hover:text-teal-400 rounded" data-testid={`edit-cmd-btn-${cmd.id}`}>
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </>
