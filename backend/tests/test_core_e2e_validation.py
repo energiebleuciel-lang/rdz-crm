@@ -11,10 +11,13 @@ import uuid
 import os
 from datetime import datetime, timezone, timedelta
 
-API_URL = os.environ.get(
-    "API_URL",
-    open("/app/frontend/.env").read().split("REACT_APP_BACKEND_URL=")[1].strip()
-)
+API_URL = os.environ.get("API_URL", "").strip()
+if not API_URL:
+    with open("/app/frontend/.env") as f:
+        for line in f:
+            if line.startswith("REACT_APP_BACKEND_URL="):
+                API_URL = line.split("=", 1)[1].strip()
+                break
 
 PASSWORD = "RdzTest2026!"
 USERS = {
