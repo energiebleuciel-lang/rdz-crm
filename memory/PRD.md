@@ -7,7 +7,7 @@ CRM central **RDZ** : collecte 100% des leads, separation stricte **ZR7** / **MD
 ## NAMING STRICT (SCHEMA FREEZE)
 
 `phone`, `departement`, `produit`, `nom`, `entity` (ZR7|MDL)
-❌ Interdit: telephone, tel, mobile, product, product_type, crm, account, dept
+Interdit: telephone, tel, mobile, product, product_type, crm, account, dept
 
 ## MODELES
 
@@ -15,16 +15,16 @@ CRM central **RDZ** : collecte 100% des leads, separation stricte **ZR7** / **MD
 - **Commande** : `{id, entity, client_id, produit, departements, quota_semaine, lb_percent_max, priorite, active}`
 - **Provider** : `{id, name, slug, entity, api_key, active}` - fournisseur externe rattache a UNE entite
 - **Delivery** : `{id, lead_id, client_id, commande_id, status, csv_content, sent_to, send_attempts, last_error}`
-- **Delivery statuts** : `pending_csv` → `ready_to_send` → `sending` → `sent` / `failed`
+- **Delivery statuts** : `pending_csv` -> `ready_to_send` -> `sending` -> `sent` / `failed`
 - **Lead statuts** : `new` | `routed` | `livre` | `no_open_orders` | `duplicate` | `hold_source` | `pending_config` | `invalid`
 - **Settings** : `cross_entity`, `source_gating`, `forms_config`, `email_denylist`, `delivery_calendar`
 
 ## REGLES METIER (ORDRE DE PRIORITE)
 
-1. **Calendar gating** (day OFF) → bloque routing + batch (rien ne se passe)
-2. **Client non livrable** → aucune commande OPEN possible
+1. **Calendar gating** (day OFF) -> bloque routing + batch (rien ne se passe)
+2. **Client non livrable** -> aucune commande OPEN possible
 3. **Commande OPEN** = `active` + `semaine courante` + `delivered < quota` + `client livrable`
-4. **auto_send_enabled = false** (day ON) → CSV genere, pas envoye → `ready_to_send`
+4. **auto_send_enabled = false** (day ON) -> CSV genere, pas envoye -> `ready_to_send`
 5. **Doublon 30j** = meme phone + produit + client = bloque, fallback autre client
 6. **LB** = non livre > 8 jours, exporte comme lead normal
 7. **Provider** = auth par API key -> entity verrouillee, jamais de cross-entity
@@ -39,7 +39,7 @@ Un client est **livrable** si:
 - delivery_emails contient au moins 1 email valide ET pas en denylist OU
 - api_endpoint configure
 
-Si aucun canal valide → client NON livrable → commandes CLOSED.
+Si aucun canal valide -> client NON livrable -> commandes CLOSED.
 
 Email denylist (configurable via settings):
 - example.com, test.com, localhost, invalid, fake.com, mailinator.com
@@ -47,9 +47,9 @@ Email denylist (configurable via settings):
 ## DELIVERY LIFECYCLE
 
 ```
-pending_csv → ready_to_send → sending → sent
-                    ↓              ↓
-                 failed ←────────────
+pending_csv -> ready_to_send -> sending -> sent
+                    |              |
+                 failed <----------
 ```
 
 - `pending_csv`: Cree au routing, en attente du batch
@@ -60,28 +60,43 @@ pending_csv → ready_to_send → sending → sent
 
 **REGLE CRITIQUE**: `lead.status = "livre"` UNIQUEMENT si `delivery.status = "sent"`
 
+## DELIVERY STATE MACHINE (INVARIANTS)
+
+**SEUL le module delivery_state_machine.py peut modifier delivery.status et lead.status vers sent/livre**
+
+Invariants pour status="sent":
+- sent_to DOIT etre une liste non vide
+- last_sent_at DOIT etre non null
+- send_attempts DOIT etre >= 1
+- Violation = DeliveryInvariantError + status="failed"
+
+Guards batch:
+- batch_mark_deliveries_sent: verifie que TOUTES les deliveries sont dans un etat source valide
+- batch_mark_deliveries_failed: bloque si deliveries deja en "sent" (terminal)
+- batch_mark_deliveries_ready_to_send: verifie que source = "pending_csv"
+
 ## DELIVERY CALENDAR
 
 - Defaut: lundi-vendredi (jours 0-4)
 - Samedi/dimanche: OFF par defaut
 - Configurable par entity via settings.delivery_calendar
-- **HARD STOP**: Si jour OFF → aucune commande OPEN → routing retourne `no_open_orders` avec `reason: delivery_day_disabled`
+- **HARD STOP**: Si jour OFF -> aucune commande OPEN -> routing retourne `no_open_orders`
 
 ## AUTO_SEND_ENABLED
 
 - Champ `auto_send_enabled` sur Client (defaut: true)
-- Si `true`: batch genere CSV + envoie → `delivery.status=sent` + `lead.status=livre`
-- Si `false`: batch genere CSV + stocke → `delivery.status=ready_to_send` + `lead.status=routed`
+- Si `true`: batch genere CSV + envoie -> `delivery.status=sent` + `lead.status=livre`
+- Si `false`: batch genere CSV + stocke -> `delivery.status=ready_to_send` + `lead.status=routed`
 - Envoi manuel via `POST /api/deliveries/{id}/send` ou `POST /api/deliveries/batch/send-ready`
 
-## ARCHITECTURE (v4.5)
+## ARCHITECTURE (v4.6)
 
 ```
 /app/backend/
   config.py, server.py
   models/ (auth, client, commande, delivery, entity, lead, provider, setting)
   routes/ (auth, clients, commandes, deliveries, providers, public, settings)
-  services/ (activity_logger, csv_delivery, daily_delivery, duplicate_detector, routing_engine, settings)
+  services/ (activity_logger, csv_delivery, daily_delivery, delivery_state_machine, duplicate_detector, routing_engine, settings)
 ```
 
 ## COMPLETED
@@ -93,23 +108,27 @@ pending_csv → ready_to_send → sending → sent
 - Source gating : blacklist dans settings, lead stocke hold_source
 - Provider : auth API key (prov_xxx), entity locked, cross-entity interdit
 - **Phase 2 (Dec 2025)** : Routing immediat dans POST /api/public/leads
-- **Phase 2.1** : Delivery lifecycle strict (pending_csv → sent/failed)
+- **Phase 2.1** : Delivery lifecycle strict (pending_csv -> sent/failed)
 - **Phase 2.2** : Client livrable (email denylist, delivery_enabled)
 - **Phase 2.3** : Calendar gating (delivery_days par entity, hard stop routing)
-- **Phase 2.4** : Endpoints deliveries (list, stats, send, download, batch/generate-csv)
+- **Phase 2.4** : Endpoints deliveries (list, stats, send, download, batch/generate-csv, batch/send-ready)
 - **Phase 2.5** : auto_send_enabled integration
-  - Batch respecte priorite: Calendar > Client deliverable > auto_send_enabled
-  - auto_send=true → sent + livre
-  - auto_send=false → ready_to_send + lead reste routed
-  - POST /api/deliveries/batch/send-ready pour envoi manuel groupe
 - Tests: 24/24 passes (iteration 20)
+- **Phase 2.6 (Feb 2025)** : State Machine Enforcement
+  - delivery_state_machine.py: seul module autorise pour transitions de status
+  - Invariants stricts: sent_to, last_sent_at, send_attempts obligs pour status=sent
+  - Guards batch: verification etats source, blocage terminal
+  - 3 code paths corriges: batch_send_ready, batch_generate_csv, deliver_leads_to_client
+  - Fallback direct DB supprime (zero bypass)
+  - Dead code supprime (csv_delivery.deliver_to_client)
+  - Tests: 45/45 passes (iteration 21)
 
-## NEXT (Phase 3 — UI Admin)
+## NEXT (Phase 3 - UI Admin)
 
 - [ ] UI Clients (email, api_endpoint, auto_send_enabled, jours livraison)
 - [ ] UI Commandes (OPEN/CLOSED, quotas, stats semaine)
 - [ ] UI Deliveries (status, send_attempts, last_error, boutons telecharger/envoyer)
-- [ ] UI forms_config (form_code → entity/produit)
+- [ ] UI forms_config (form_code -> entity/produit)
 - [ ] UI Settings (cross-entity, source gating, email denylist, calendar)
 - [ ] Dashboard minimal (stats par status/entity/produit)
 
@@ -151,12 +170,14 @@ pending_csv → ready_to_send → sending → sent
 | GET | /api/deliveries/{id}/download | Oui | Telecharger CSV |
 | POST | /api/deliveries/{id}/send | Admin | Envoyer/Renvoyer |
 | POST | /api/deliveries/batch/generate-csv | Admin | Generer CSV en batch |
+| POST | /api/deliveries/batch/send-ready | Admin | Envoyer ready_to_send |
 | POST | /api/public/leads | Non/Key | Soumettre lead + routing |
 | POST | /api/public/track/* | Non | Tracking events |
 
 ## KEY FILES
 
 - `/app/backend/server.py` - FastAPI app, routes, scheduler 09h30
+- `/app/backend/services/delivery_state_machine.py` - SEUL module pour transitions status delivery/lead
 - `/app/backend/services/routing_engine.py` - route_lead (calendar gating, client deliverable)
 - `/app/backend/services/daily_delivery.py` - process_pending_csv_deliveries, run_daily_delivery
 - `/app/backend/services/settings.py` - is_delivery_day_enabled, get_email_denylist_settings
