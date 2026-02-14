@@ -115,53 +115,58 @@ async def list_products(user: dict = Depends(require_permission("commandes.view"
 
 @router.get("/lb-monitor")
 async def lb_monitoring(
-    entity: str = Query(...),
     week: Optional[str] = Query(None),
+    request: Request = None,
     user: dict = Depends(require_permission("monitoring.lb.view"))
 ):
     """
     LB Monitoring: shows lb_target vs actual LB% per commande.
-    Only accessible to users with monitoring.lb.view permission.
+    Entity resolved from X-Entity-Scope header (super_admin) or user.entity.
     """
+    from fastapi import Request as Req
     from services.routing_engine import (
         get_accepted_stats_for_lb_target, resolve_week_range, get_week_key
     )
+    from services.permissions import get_entity_scope_from_request
 
-    validate_entity_access(user, entity)
+    scope = get_entity_scope_from_request(user, request)
+    entities = ["ZR7", "MDL"] if scope == "BOTH" else [scope]
 
     wk = week or get_week_key()
     ws, we = resolve_week_range(wk)
 
-    cmds = await db.commandes.find(
-        {"entity": entity, "active": True, "lb_target_pct": {"$gt": 0}},
-        {"_id": 0}
-    ).sort("priorite", 1).to_list(200)
-
     results = []
-    for cmd in cmds:
-        client = await db.clients.find_one({"id": cmd.get("client_id")}, {"_id": 0, "name": 1})
-        accepted = await get_accepted_stats_for_lb_target(cmd.get("id"), ws, we)
-        units = accepted["units_accepted"]
-        lb = accepted["lb_accepted"]
-        target = cmd.get("lb_target_pct", 0)
-        actual_pct = (lb / units) if units > 0 else 0
-        delta = actual_pct - target
+    for ent in entities:
+        cmds = await db.commandes.find(
+            {"entity": ent, "active": True, "lb_target_pct": {"$gt": 0}},
+            {"_id": 0}
+        ).sort("priorite", 1).to_list(200)
 
-        results.append({
-            "commande_id": cmd.get("id"),
-            "client_name": client.get("name", "?") if client else "?",
-            "produit": cmd.get("produit"),
-            "quota_semaine": cmd.get("quota_semaine", 0),
-            "lb_target_pct": target,
-            "units_accepted": units,
-            "lb_accepted": lb,
-            "fresh_accepted": accepted["fresh_accepted"],
-            "actual_lb_pct": round(actual_pct, 4),
-            "delta": round(delta, 4),
-            "status": "on_target" if abs(delta) < 0.05 else ("over" if delta > 0 else "under"),
-        })
+        for cmd in cmds:
+            client = await db.clients.find_one({"id": cmd.get("client_id")}, {"_id": 0, "name": 1})
+            accepted = await get_accepted_stats_for_lb_target(cmd.get("id"), ws, we)
+            units = accepted["units_accepted"]
+            lb = accepted["lb_accepted"]
+            target = cmd.get("lb_target_pct", 0)
+            actual_pct = (lb / units) if units > 0 else 0
+            delta = actual_pct - target
 
-    return {"week_key": wk, "entity": entity, "commandes": results, "count": len(results)}
+            results.append({
+                "commande_id": cmd.get("id"),
+                "entity": ent,
+                "client_name": client.get("name", "?") if client else "?",
+                "produit": cmd.get("produit"),
+                "quota_semaine": cmd.get("quota_semaine", 0),
+                "lb_target_pct": target,
+                "units_accepted": units,
+                "lb_accepted": lb,
+                "fresh_accepted": accepted["fresh_accepted"],
+                "actual_lb_pct": round(actual_pct, 4),
+                "delta": round(delta, 4),
+                "status": "on_target" if abs(delta) < 0.05 else ("over" if delta > 0 else "under"),
+            })
+
+    return {"week_key": wk, "scope": scope, "commandes": results, "count": len(results)}
 
 
 @router.get("/{commande_id}")
