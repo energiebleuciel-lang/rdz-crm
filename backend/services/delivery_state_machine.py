@@ -195,6 +195,19 @@ async def mark_delivery_sent(
         )
         logger.info(f"[STATE_MACHINE] Prepayment balance decremented for {client_id}:{produit}")
 
+    # Intercompany transfer check (billable = sent + accepted)
+    try:
+        from services.intercompany import maybe_create_intercompany_transfer
+        await maybe_create_intercompany_transfer(
+            delivery_id=delivery_id,
+            lead_id=lead_id,
+            commande_id=commande_id,
+            product=produit,
+            target_entity=delivery.get("entity", ""),
+        )
+    except Exception as e:
+        logger.error(f"[STATE_MACHINE] Intercompany check failed: {e}")
+
     return {
         "delivery_id": delivery_id,
         "lead_id": lead_id,
