@@ -452,6 +452,12 @@ async def submit_lead(data: LeadData, request: Request):
         )
 
         if routing_result.success:
+            # Determine target entity from commande (may differ from lead entity on fallback)
+            target_cmd = await db.commandes.find_one(
+                {"id": routing_result.commande_id}, {"_id": 0, "entity": 1}
+            )
+            target_entity = target_cmd.get("entity", entity) if target_cmd else entity
+
             # Creer delivery record
             delivery_id = str(uuid.uuid4())
             delivery = {
@@ -460,11 +466,12 @@ async def submit_lead(data: LeadData, request: Request):
                 "client_id": routing_result.client_id,
                 "client_name": routing_result.client_name,
                 "commande_id": routing_result.commande_id,
-                "entity": entity,
+                "entity": target_entity,
                 "produit": produit,
                 "delivery_method": "realtime",
-                "status": "pending_csv",  # Sera envoye dans le batch CSV du matin
+                "status": "pending_csv",
                 "is_lb": False,
+                "routing_mode": routing_result.routing_mode,
                 "created_at": now_iso(),
             }
             await db.deliveries.insert_one(delivery)
@@ -478,6 +485,7 @@ async def submit_lead(data: LeadData, request: Request):
                     "delivery_client_id": routing_result.client_id,
                     "delivery_client_name": routing_result.client_name,
                     "delivery_commande_id": routing_result.commande_id,
+                    "routing_mode": routing_result.routing_mode,
                     "routed_at": now_iso()
                 }}
             )
