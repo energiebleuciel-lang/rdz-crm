@@ -40,11 +40,19 @@ class ProductType(str, Enum):
 
 
 class LeadStatus(str, Enum):
-    """Statuts de lead"""
+    """Statuts de lead — COMPLET (inclut tous les statuts reels du systeme)"""
     NEW = "new"
-    NON_LIVRE = "non_livre"
+    ROUTED = "routed"
     LIVRE = "livre"
     DOUBLON = "doublon"
+    DUPLICATE = "duplicate"
+    NO_OPEN_ORDERS = "no_open_orders"
+    HOLD_SOURCE = "hold_source"
+    PENDING_CONFIG = "pending_config"
+    INVALID = "invalid"
+    REPLACED_BY_LB = "replaced_by_lb"
+    RESERVED_FOR_REPLACEMENT = "reserved_for_replacement"
+    NON_LIVRE = "non_livre"
     REJET_CLIENT = "rejet_client"
     LB = "lb"
 

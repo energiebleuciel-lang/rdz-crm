@@ -147,6 +147,9 @@ async def lifespan(app: FastAPI):
         await db.providers.create_index("api_key", unique=True, background=True)
         await db.providers.create_index("entity", background=True)
 
+        # Index leads.provider_id (pour enrichissement stats providers)
+        await db.leads.create_index("provider_id", background=True, sparse=True)
+
         # Index tracking (LP/Form)
         await db.tracking.create_index("lp_code", background=True)
         await db.tracking.create_index("form_code", background=True)
