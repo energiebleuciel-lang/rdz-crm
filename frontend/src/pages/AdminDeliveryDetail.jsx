@@ -90,6 +90,7 @@ export default function AdminDeliveryDetail() {
 
   const d = delivery;
   const isRejected = d.outcome === 'rejected';
+  const isRemoved = d.outcome === 'removed';
   const entityDays = calendar[d.entity]?.enabled_days || [];
 
   return (
@@ -102,6 +103,7 @@ export default function AdminDeliveryDetail() {
         <h1 className="text-lg font-semibold text-white">Delivery</h1>
         <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${STATUS_BADGE[d.status]}`}>{d.status}</span>
         {isRejected && <span className="text-[10px] px-2 py-0.5 rounded-full border bg-orange-500/10 text-orange-400 border-orange-500/30 font-medium">rejected</span>}
+        {isRemoved && <span className="text-[10px] px-2 py-0.5 rounded-full border bg-red-500/10 text-red-300 border-red-500/30 font-medium">removed</span>}
         {d.billable && <span className="text-[10px] px-2 py-0.5 rounded-full border bg-emerald-500/10 text-emerald-400 border-emerald-500/30">billable</span>}
       </div>
 
