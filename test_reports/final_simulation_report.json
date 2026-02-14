@@ -1,0 +1,94 @@
+{
+  "timestamp": "2026-02-14T00:31:40.096065+00:00",
+  "simulation_type": "Full Production Simulation",
+  "email_override": "energiebleuciel@gmail.com",
+  "statistics": {
+    "total_leads": 3186,
+    "by_status": {
+      "no_open_orders": 1826,
+      "livre": 624,
+      "unknown": 549,
+      "hold_source": 82,
+      "pending_config": 78,
+      "new": 20,
+      "duplicate": 6,
+      "invalid": 1
+    },
+    "by_entity": {
+      "ZR7": 1583,
+      "MDL": 973,
+      "unknown": 81
+    },
+    "by_produit": {
+      "PV": 1441,
+      "PAC": 838,
+      "ITE": 821,
+      "unknown": 2
+    },
+    "top_departements": {
+      "75": 507,
+      "92": 79,
+      "13": 73,
+      "31": 51,
+      "69": 51,
+      "33": 44,
+      "06": 43,
+      "50": 38,
+      "93": 38,
+      "08": 36
+    },
+    "departements_covered": 96,
+    "total_deliveries": 624,
+    "deliveries_by_status": {
+      "sent": 624
+    }
+  },
+  "validations": [
+    {
+      "test": "Total Leads >= 1300",
+      "passed": true,
+      "details": "3186 leads"
+    },
+    {
+      "test": "Deliveries Created",
+      "passed": true,
+      "details": "624 deliveries"
+    },
+    {
+      "test": "Entity Distribution",
+      "passed": true,
+      "details": "ZR7=1583, MDL=973"
+    },
+    {
+      "test": "Produit Distribution",
+      "passed": true,
+      "details": "PV=1441, PAC=838, ITE=821"
+    },
+    {
+      "test": "Departement Coverage",
+      "passed": true,
+      "details": "96 departements"
+    },
+    {
+      "test": "Hold Source",
+      "passed": true,
+      "details": "82 leads"
+    },
+    {
+      "test": "Pending Config",
+      "passed": true,
+      "details": "78 leads"
+    },
+    {
+      "test": "Duplicate Detection",
+      "passed": true,
+      "details": "6 blocked"
+    },
+    {
+      "test": "CSV Batch Idempotency",
+      "passed": true,
+      "details": "624 sent, 0 pending"
+    }
+  ],
+  "anomalies": []
+}
