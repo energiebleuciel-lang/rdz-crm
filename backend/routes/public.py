@@ -557,9 +557,9 @@ async def submit_lead(data: LeadData, request: Request):
                 delivery["replaced_suspicious_id"] = lead_id
             await db.deliveries.insert_one(delivery)
 
-            # MAJ lead
+            # MAJ lead (the actual delivered lead — LB or original)
             await db.leads.update_one(
-                {"id": lead_id},
+                {"id": actual_lead_id},
                 {"$set": {
                     "status": "routed",
                     "delivery_id": delivery_id,
@@ -570,7 +570,8 @@ async def submit_lead(data: LeadData, request: Request):
                     "routed_at": now_iso()
                 }}
             )
-            lead["status"] = "routed"
+            if not was_replaced:
+                lead["status"] = "routed"
         else:
             # Pas de commande OPEN
             reason = routing_result.reason
