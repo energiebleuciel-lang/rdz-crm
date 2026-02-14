@@ -7,6 +7,7 @@ from typing import Optional
 from datetime import datetime, timezone, timedelta
 from config import db, now_iso
 from routes.auth import get_current_user
+from services.permissions import require_permission, validate_entity_access
 
 router = APIRouter(prefix="/leads", tags=["Leads"])
 
@@ -14,7 +15,7 @@ router = APIRouter(prefix="/leads", tags=["Leads"])
 @router.get("/stats")
 async def get_lead_stats(
     entity: Optional[str] = None,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_permission("leads.view"))
 ):
     """Stats leads par status"""
     match_query = {}
