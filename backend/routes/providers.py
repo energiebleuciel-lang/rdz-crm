@@ -14,6 +14,7 @@ from config import db, now_iso
 from routes.auth import get_current_user, require_admin
 from models import validate_entity
 from models.provider import ProviderCreate, ProviderUpdate
+from services.permissions import require_permission
 
 router = APIRouter(prefix="/providers", tags=["Providers"])
 
@@ -26,7 +27,7 @@ def generate_provider_key() -> str:
 @router.get("")
 async def list_providers(
     entity: Optional[str] = Query(None, description="Filtrer par entite"),
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_permission("providers.access"))
 ):
     """Liste les providers"""
     query = {}
@@ -46,7 +47,7 @@ async def list_providers(
 
 
 @router.get("/{provider_id}")
-async def get_provider(provider_id: str, user: dict = Depends(get_current_user)):
+async def get_provider(provider_id: str, user: dict = Depends(require_permission("providers.access"))):
     """Recupere un provider"""
     p = await db.providers.find_one({"id": provider_id}, {"_id": 0})
     if not p:
@@ -59,7 +60,7 @@ async def get_provider(provider_id: str, user: dict = Depends(get_current_user))
 
 
 @router.post("")
-async def create_provider(data: ProviderCreate, user: dict = Depends(require_admin)):
+async def create_provider(data: ProviderCreate, user: dict = Depends(require_permission("providers.access"))):
     """Cree un provider avec API key auto-generee"""
     # Slug unique
     existing = await db.providers.find_one({"slug": data.slug.lower().strip()})
@@ -89,7 +90,7 @@ async def create_provider(data: ProviderCreate, user: dict = Depends(require_adm
 async def update_provider(
     provider_id: str,
     data: ProviderUpdate,
-    user: dict = Depends(require_admin)
+    user: dict = Depends(require_permission("providers.access"))
 ):
     """Met a jour un provider"""
     p = await db.providers.find_one({"id": provider_id})
@@ -105,7 +106,7 @@ async def update_provider(
 
 
 @router.delete("/{provider_id}")
-async def delete_provider(provider_id: str, user: dict = Depends(require_admin)):
+async def delete_provider(provider_id: str, user: dict = Depends(require_permission("providers.access"))):
     """Supprime un provider"""
     result = await db.providers.delete_one({"id": provider_id})
     if result.deleted_count == 0:
@@ -114,7 +115,7 @@ async def delete_provider(provider_id: str, user: dict = Depends(require_admin))
 
 
 @router.post("/{provider_id}/rotate-key")
-async def rotate_api_key(provider_id: str, user: dict = Depends(require_admin)):
+async def rotate_api_key(provider_id: str, user: dict = Depends(require_permission("providers.access"))):
     """Regenere l'API key d'un provider"""
     p = await db.providers.find_one({"id": provider_id})
     if not p:
