@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { API } from '../hooks/useApi';
-import { Plus, Edit2, X, Check } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Edit2, X, Check, Eye } from 'lucide-react';
 
 export default function AdminCommandes() {
   const { authFetch } = useAuth();
