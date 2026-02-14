@@ -179,8 +179,29 @@ async def lifespan(app: FastAPI):
             replace_existing=True
         )
 
+        # Intercompany invoice generation - Monday 08:00 Europe/Paris
+        async def run_intercompany_invoices():
+            """Cron: generate intercompany invoices for previous week."""
+            from datetime import datetime, timezone as tz, timedelta
+            now = datetime.now(tz.utc)
+            prev = now - timedelta(days=7)
+            iso = prev.isocalendar()
+            wk = f"{iso[0]}-W{iso[1]:02d}"
+            logger.info(f"[CRON_INTERCO] Generating invoices for {wk}")
+            from routes.intercompany import generate_weekly_invoices_internal
+            result = await generate_weekly_invoices_internal(wk)
+            logger.info(f"[CRON_INTERCO] Result: {result}")
+
+        scheduler.add_job(
+            run_intercompany_invoices,
+            CronTrigger(day_of_week="mon", hour=8, minute=0, timezone=PARIS_TZ),
+            id="intercompany_invoices",
+            name="Intercompany invoices lundi 08h00",
+            replace_existing=True
+        )
+
         scheduler.start()
-        logger.info("Scheduler: Livraison quotidienne 09h30 Europe/Paris")
+        logger.info("Scheduler: Livraison 09h30 + Intercompany lundi 08h00")
 
     except Exception as e:
         logger.warning(f"Scheduler: {str(e)}")
