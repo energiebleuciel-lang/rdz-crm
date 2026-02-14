@@ -103,7 +103,7 @@ function DeptDrawer({ dept, product, week, onClose, authFetch }) {
               <ResponsiveContainer width="100%" height={180}>
                 <BarChart data={data.timeseries || []} barGap={1}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                  <XAxis dataKey="week" tick={{ fill: '#71717a', fontSize: 9 }} tickFormatter={w => w.split('-')[1]} />
+                  <XAxis dataKey="week" tick={{ fill: '#71717a', fontSize: 9 }} tickFormatter={w => weekKeyToShort(w)} />
                   <YAxis tick={{ fill: '#71717a', fontSize: 9 }} width={30} />
                   <Tooltip
                     contentStyle={{ background: '#18181b', border: '1px solid #3f3f46', borderRadius: 6, fontSize: 11 }}
