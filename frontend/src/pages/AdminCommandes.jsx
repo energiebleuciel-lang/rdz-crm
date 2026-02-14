@@ -32,43 +32,28 @@ export default function AdminCommandes() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const loadBoth = async (endpoint) => {
-        const [zr7, mdl] = await Promise.all([
-          authFetch(`${API}${endpoint}?entity=ZR7&week=${week}`),
-          authFetch(`${API}${endpoint}?entity=MDL&week=${week}`)
-        ]);
-        let all = [];
-        if (zr7.ok) { const d = await zr7.json(); all = all.concat(d.commandes || d.clients || []); }
-        if (mdl.ok) { const d = await mdl.json(); all = all.concat(d.commandes || d.clients || []); }
-        return all;
-      };
-
-      if (entityFilter) {
-        const [cRes, clRes] = await Promise.all([
-          authFetch(`${API}/api/commandes?entity=${entityFilter}&week=${week}`),
-          Promise.all([authFetch(`${API}/api/clients?entity=ZR7`), authFetch(`${API}/api/clients?entity=MDL`)])
-        ]);
-        if (cRes.ok) { const d = await cRes.json(); setCommandes(d.commandes || []); }
-        let allClients = [];
-        for (const r of clRes) { if (r.ok) { const d = await r.json(); allClients = allClients.concat(d.clients || []); } }
-        setClients(allClients);
-      } else {
-        const [cmds] = await Promise.all([
-          loadBoth('/api/commandes'),
-        ]);
-        setCommandes(cmds);
-        const [clZr7, clMdl] = await Promise.all([
-          authFetch(`${API}/api/clients?entity=ZR7`),
-          authFetch(`${API}/api/clients?entity=MDL`)
-        ]);
-        let allCl = [];
-        if (clZr7.ok) { const d = await clZr7.json(); allCl = allCl.concat(d.clients || []); }
-        if (clMdl.ok) { const d = await clMdl.json(); allCl = allCl.concat(d.clients || []); }
-        setClients(allCl);
+      const entities = getEntitiesToLoad();
+      const results = await Promise.all(
+        entities.map(e => authFetch(`${API}/api/commandes?entity=${e}&week=${week}`))
+      );
+      let allCmds = [];
+      for (const r of results) {
+        if (r.ok) { const d = await r.json(); allCmds = allCmds.concat(d.commandes || []); }
       }
+      setCommandes(allCmds);
+
+      // Load clients for all visible entities
+      const clResults = await Promise.all(
+        entities.map(e => authFetch(`${API}/api/clients?entity=${e}`))
+      );
+      let allCl = [];
+      for (const r of clResults) {
+        if (r.ok) { const d = await r.json(); allCl = allCl.concat(d.clients || []); }
+      }
+      setClients(allCl);
     } catch (e) { console.error(e); }
     setLoading(false);
-  }, [entityFilter, week, authFetch]);
+  }, [entityFilter, week, authFetch, getEntitiesToLoad]);
 
   useEffect(() => { load(); }, [load]);
 
