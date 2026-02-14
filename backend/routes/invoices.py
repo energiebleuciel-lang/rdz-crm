@@ -85,15 +85,15 @@ async def overdue_dashboard(
     scope = get_entity_scope_from_request(user, request)
     base_filter = build_entity_filter(scope)
 
-    # Mark overdue: any sent invoice past due_at
+    # Mark overdue: any sent invoice past due_at (external only)
     now = now_iso()
     await db.invoices.update_many(
-        {**base_filter, "status": "sent", "due_at": {"$lt": now}},
+        {**base_filter, "status": "sent", "due_at": {"$lt": now}, "type": {"$ne": "intercompany"}},
         {"$set": {"status": "overdue"}}
     )
 
-    # Aggregate overdue per client
-    match = {**base_filter, "status": "overdue"}
+    # Aggregate overdue per client (external only)
+    match = {**base_filter, "status": "overdue", "type": {"$ne": "intercompany"}}
     pipeline = [
         {"$match": match},
         {"$group": {
