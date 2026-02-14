@@ -253,6 +253,79 @@ async def generate_weekly_invoices(
     }
 
 
+async def generate_weekly_invoices_internal(week_key: str) -> dict:
+    """Internal function for cron — no auth required."""
+    import logging
+    _logger = logging.getLogger("intercompany")
+
+    pending = await db.intercompany_transfers.find({
+        "week_key": week_key, "transfer_status": "pending",
+    }, {"_id": 0}).to_list(10000)
+
+    if not pending:
+        return {"invoices_created": 0}
+
+    groups = defaultdict(list)
+    for t in pending:
+        groups[(t["from_entity"], t["to_entity"])].append(t)
+
+    created = 0
+    for (from_ent, to_ent), transfers in groups.items():
+        existing_inv = await db.invoices.find_one({
+            "type": "intercompany", "from_entity": from_ent,
+            "to_entity": to_ent, "week_key": week_key,
+        }, {"_id": 0, "id": 1})
+        if existing_inv:
+            tids = [t["id"] for t in transfers]
+            await db.intercompany_transfers.update_many(
+                {"id": {"$in": tids}, "transfer_status": "pending"},
+                {"$set": {"transfer_status": "invoiced", "invoice_id": existing_inv["id"]}}
+            )
+            continue
+
+        lines_by_product = defaultdict(lambda: {"qty": 0, "unit_price_ht": 0, "transfer_ids": []})
+        for t in transfers:
+            lines_by_product[t["product"]]["qty"] += 1
+            lines_by_product[t["product"]]["unit_price_ht"] = t["unit_price_ht"]
+            lines_by_product[t["product"]]["transfer_ids"].append(t["id"])
+
+        line_items, total_ht, all_ids = [], 0, []
+        for product, data in lines_by_product.items():
+            lht = data["qty"] * data["unit_price_ht"]
+            line_items.append({"product": product, "qty": data["qty"], "unit_price_ht": data["unit_price_ht"], "total_ht": round(lht, 2)})
+            total_ht += lht
+            all_ids.extend(data["transfer_ids"])
+
+        from services.routing_engine import week_key_to_range
+        ws, we = week_key_to_range(week_key)
+        inv_count = await db.invoices.count_documents({"entity": from_ent}) + 1
+        now_str = now_iso()
+
+        invoice = {
+            "id": str(uuid.uuid4()),
+            "invoice_number": f"IC-{from_ent}-{week_key}-{inv_count:04d}",
+            "entity": from_ent, "type": "intercompany",
+            "client_id": None, "client_name": to_ent,
+            "from_entity": from_ent, "to_entity": to_ent,
+            "week_key": week_key, "week_start": ws, "week_end": we,
+            "line_items": line_items, "transfer_ids": all_ids,
+            "amount_ht": round(total_ht, 2), "vat_rate": 0, "amount_ttc": round(total_ht, 2),
+            "status": "draft", "issued_at": now_str,
+            "due_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+            "paid_at": None, "created_at": now_str, "created_by": "cron",
+        }
+        await db.invoices.insert_one(invoice)
+        await db.intercompany_transfers.update_many(
+            {"id": {"$in": all_ids}},
+            {"$set": {"transfer_status": "invoiced", "invoice_id": invoice["id"]}}
+        )
+        created += 1
+        _logger.info(f"[INTERCO_CRON] Invoice {invoice['invoice_number']}: {from_ent}->{to_ent} {total_ht}EUR")
+
+    return {"invoices_created": created, "week_key": week_key}
+
+
+
 # ════════════════════════════════════════════════════════════════════════
 # INTERCOMPANY INVOICES
 # ════════════════════════════════════════════════════════════════════════
