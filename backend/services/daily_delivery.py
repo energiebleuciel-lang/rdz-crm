@@ -136,16 +136,18 @@ async def mark_leads_as_lb():
         }}
     )
     
-    # Condition 2: Déjà livrés → LB (pour le pool de recyclage)
+    # Condition 2: Déjà livrés > 30 jours → LB (pour le pool de recyclage)
+    cutoff_30_days = (now - timedelta(days=30)).isoformat()
     result_delivered = await db.leads.update_many(
         {
             "status": "livre",
-            "is_lb": {"$ne": True}
+            "is_lb": {"$ne": True},
+            "delivered_at": {"$lt": cutoff_30_days}
         },
         {"$set": {
             "is_lb": True,
             "lb_since": now_str,
-            "lb_reason": "already_delivered"
+            "lb_reason": "already_delivered_30_days"
         }}
     )
     # Note: on garde status="livre" pour garder l'historique
