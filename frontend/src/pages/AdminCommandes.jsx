@@ -258,9 +258,14 @@ export default function AdminCommandes() {
                         <td className="px-3 py-2 text-zinc-500">{cmd.lb_percent_max || 0}%</td>
                         <td className="px-3 py-2">{(cmd.active ?? true) ? <span className="text-[10px] text-emerald-400">Active</span> : <span className="text-[10px] text-red-400">Closed</span>}</td>
                         <td className="px-3 py-2 text-right">
-                          <button onClick={() => startEdit(cmd)} className="p-1 text-zinc-500 hover:text-teal-400 rounded" data-testid={`edit-cmd-btn-${cmd.id}`}>
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
+                          <div className="flex items-center justify-end gap-1">
+                            <button onClick={() => navigate(`/admin/commandes/${cmd.id}`)} className="p-1 text-zinc-500 hover:text-cyan-400 rounded" title="Détails" data-testid={`view-cmd-btn-${cmd.id}`}>
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => startEdit(cmd)} className="p-1 text-zinc-500 hover:text-teal-400 rounded" data-testid={`edit-cmd-btn-${cmd.id}`}>
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </td>
                       </>
                     )}
