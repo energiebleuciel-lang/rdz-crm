@@ -3,6 +3,8 @@ import { useAuth } from '../hooks/useAuth';
 import { API } from '../hooks/useApi';
 import { useNavigate } from 'react-router-dom';
 import { RefreshCw, Filter, X, ExternalLink } from 'lucide-react';
+import { getCurrentWeekKey, shiftWeekKey } from '../lib/weekUtils';
+import { WeekNavStandard } from '../components/WeekNav';
 
 const ACTION_LABELS = {
   reject_lead: 'Rejet lead',
