@@ -134,6 +134,8 @@ export function AuthProvider({ children }) {
 
   // Effective entity for the current scope
   const effectiveEntity = user?.role === 'super_admin' ? entityScope : (user?.entity || 'ZR7');
+  // Write blocked when super_admin in BOTH scope (must pick ZR7 or MDL first)
+  const isWriteBlocked = user?.role === 'super_admin' && entityScope === 'BOTH';
 
   return (
     <AuthContext.Provider value={{
@@ -148,6 +150,7 @@ export function AuthProvider({ children }) {
       setEntityScope,
       isSuperAdmin: user?.role === 'super_admin',
       isAdmin: user?.role === 'admin' || user?.role === 'super_admin',
+      isWriteBlocked,
     }}>
       {children}
     </AuthContext.Provider>
