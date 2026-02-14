@@ -196,6 +196,18 @@ Guard:
   - Page /admin/activity: timeline globale + filtres + liens vers entités
   - ActivityBlock: composant réutilisable intégré dans Lead detail et Delivery detail
   - Tests: 10/10 frontend + 14/14 backend (iteration 26)
+- **UI3 Etape 4 (Feb 2025)** : Enrichissement Commandes + Delivery + QA
+  - Page /admin/commandes/{id}: config routing + quota bar + départements + historique quotas 4 sem + deliveries liées + activité + toggle active
+  - GET /api/commandes/{id}/deliveries endpoint
+  - Delivery detail enrichi: section SMTP log (sent_to/last_sent_at/attempts/sent_by/csv_file/error) + bouton Retirer lead + remove modal
+  - Commandes list: bouton view vers detail
+  - Bug fix: dashboard-stats billable excluait seulement rejected mais pas removed → corrigé ($nin)
+  - QA COMPLÈTE: 12/12 areas PASS, 23/23 backend tests (iteration 27)
+    - Navigation 7 items, Dashboard cockpit, Deliveries list+detail, Leads list+detail
+    - Clients list+360, Commandes list+detail, Activity timeline, Settings
+    - Compteurs cohérence: sent=160, rejected=2, removed=1, billable=157 (160-2-1=157)
+    - Actions sensibles: reject/remove/toggle tous fonctionnels + event logged
+    - Idempotence: reject 2x=already_rejected, remove 2x=already_removed
 
 ## NEXT
 
