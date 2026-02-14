@@ -63,6 +63,7 @@ export default function AdminActivity() {
       const params = new URLSearchParams();
       params.set('limit', limit);
       params.set('skip', page * limit);
+      params.set('week', week);
       if (filters.action) params.set('action', filters.action);
       if (filters.entity_type) params.set('entity_type', filters.entity_type);
       if (filters.entity) params.set('entity', filters.entity);
