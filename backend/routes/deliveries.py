@@ -484,18 +484,16 @@ async def remove_lead_from_delivery(
     )
     
     # 3. Event log
-    import uuid as _uuid
-    await db.event_log.insert_one({
-        "id": str(_uuid.uuid4()),
-        "action": "lead_removed_from_delivery",
-        "entity_type": "delivery",
-        "entity_id": delivery_id,
-        "related": {"lead_id": lead_id, "client_id": delivery.get("client_id"), "client_name": delivery.get("client_name"), "produit": delivery.get("produit")},
-        "reason": reason,
-        "detail": data.reason_detail or "",
-        "user": user.get("email"),
-        "created_at": now
-    })
+    from services.event_logger import log_event
+    await log_event(
+        action="lead_removed_from_delivery",
+        entity_type="delivery",
+        entity_id=delivery_id,
+        entity=delivery.get("entity", ""),
+        user=user.get("email"),
+        details={"reason": reason, "detail": data.reason_detail or ""},
+        related={"lead_id": lead_id, "client_id": delivery.get("client_id"), "client_name": delivery.get("client_name"), "produit": delivery.get("produit")}
+    )
     
     logger.info(f"[REMOVE] delivery={delivery_id} lead={lead_id} reason={reason} by={user.get('email')}")
     
