@@ -1,0 +1,93 @@
+{
+  "total": 17,
+  "passed": 15,
+  "failed": 2,
+  "results": [
+    {
+      "test": "ZR7 Entity Dispatch",
+      "passed": false,
+      "details": "Lead routed to wrong entity: MDL"
+    },
+    {
+      "test": "MDL Entity Dispatch",
+      "passed": true,
+      "details": "Lead routed to MDL client: TEST_Client_MDL_4ae01bb6"
+    },
+    {
+      "test": "Produit PV Routing",
+      "passed": true,
+      "details": "status=routed"
+    },
+    {
+      "test": "Produit PAC Routing",
+      "passed": true,
+      "details": "status=routed"
+    },
+    {
+      "test": "Produit ITE Routing",
+      "passed": true,
+      "details": "status=routed"
+    },
+    {
+      "test": "Provider Entity Locked",
+      "passed": true,
+      "details": "Provider lead assigned to ZR7, status=no_open_orders"
+    },
+    {
+      "test": "Pending Config",
+      "passed": true,
+      "details": "Unknown form_code correctly returns pending_config"
+    },
+    {
+      "test": "Duplicate Blocked",
+      "passed": false,
+      "details": "First=routed, Second=no_open_orders"
+    },
+    {
+      "test": "Hold Source",
+      "passed": true,
+      "details": "Blocked source correctly returns hold_source"
+    },
+    {
+      "test": "No Open Orders",
+      "passed": true,
+      "details": "status=routed (lead stored)"
+    },
+    {
+      "test": "Delivery Grouping",
+      "passed": true,
+      "details": "3 deliveries created for same client"
+    },
+    {
+      "test": "CSV Integrity",
+      "passed": true,
+      "details": "ZR7: 7 cols, MDL: 8 cols"
+    },
+    {
+      "test": "Idempotency",
+      "passed": true,
+      "details": "Double submit detected, same lead_id returned"
+    },
+    {
+      "test": "Status Transitions",
+      "passed": true,
+      "details": "All observed statuses are valid: {'routed', 'no_open_orders'}"
+    },
+    {
+      "test": "Email Override",
+      "passed": true,
+      "details": "All 1 SIM clients have email override"
+    },
+    {
+      "test": "Quota Respect",
+      "passed": true,
+      "details": "No quota violations found"
+    },
+    {
+      "test": "Departement Distribution",
+      "passed": true,
+      "details": "Tested 5 departements: ['75', '13', '69', '33', '59']"
+    }
+  ],
+  "timestamp": "2026-02-14T00:28:35.067594+00:00"
+}
