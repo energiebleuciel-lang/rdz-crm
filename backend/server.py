@@ -163,7 +163,7 @@ app.add_middleware(
 )
 
 # Routes
-from routes import auth, public, clients, commandes, settings, providers, deliveries, leads, event_log
+from routes import auth, public, clients, commandes, settings, providers, deliveries, leads, event_log, departements
 
 app.include_router(auth.router, prefix="/api")
 app.include_router(public.router, prefix="/api")
@@ -174,6 +174,7 @@ app.include_router(providers.router, prefix="/api")
 app.include_router(deliveries.router, prefix="/api")
 app.include_router(leads.router, prefix="/api")
 app.include_router(event_log.router, prefix="/api")
+app.include_router(departements.router, prefix="/api")
 
 
 @app.get("/")

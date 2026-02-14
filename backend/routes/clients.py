@@ -601,3 +601,153 @@ async def get_client_activity(
     activities.sort(key=lambda x: x.get("created_at") or "", reverse=True)
     
     return {"activities": activities[:limit], "count": len(activities)}
+
+
+
+@router.get("/{client_id}/coverage")
+async def get_client_coverage(
+    client_id: str,
+    product: str = "ALL",
+    week: Optional[str] = None,
+    user: dict = Depends(get_current_user),
+):
+    """Client coverage: départements couverts par ce client, avec stats"""
+    from datetime import datetime, timezone, timedelta
+    from collections import defaultdict
+
+    client = await db.clients.find_one({"id": client_id}, {"_id": 0, "id": 1, "name": 1, "entity": 1})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client non trouvé")
+
+    now = datetime.now(timezone.utc)
+    if not week:
+        iso = now.isocalendar()
+        week = f"{iso[0]}-W{iso[1]:02d}"
+
+    parts = week.split("-W")
+    year, wn = int(parts[0]), int(parts[1])
+    ws = datetime.fromisocalendar(year, wn, 1).replace(tzinfo=timezone.utc)
+    we = ws + timedelta(days=7)
+    week_start, week_end = ws.isoformat(), we.isoformat()
+
+    prod_match = {} if not product or product.upper() == "ALL" else {"produit": product.upper()}
+
+    # Active commandes for this client
+    cmds = await db.commandes.find(
+        {"client_id": client_id, "active": True, **prod_match}, {"_id": 0}
+    ).to_list(500)
+
+    # Deliveries for these commandes in the period
+    cmd_ids = [c["id"] for c in cmds]
+    dels = []
+    if cmd_ids:
+        dels = await db.deliveries.find(
+            {"commande_id": {"$in": cmd_ids}, "created_at": {"$gte": week_start, "$lt": week_end}},
+            {"_id": 0, "lead_id": 1, "commande_id": 1, "status": 1, "outcome": 1},
+        ).to_list(50000)
+
+    # Lead dept map
+    lead_ids = list({d["lead_id"] for d in dels})
+    ldm = {}
+    if lead_ids:
+        for ld in await db.leads.find({"id": {"$in": lead_ids}}, {"_id": 0, "id": 1, "departement": 1}).to_list(len(lead_ids)):
+            ldm[ld["id"]] = ld.get("departement", "??")
+
+    # Produced leads for this client's depts
+    all_depts = set()
+    for cmd in cmds:
+        if cmd.get("departements") == ["*"]:
+            all_depts.add("*")
+        else:
+            all_depts.update(cmd.get("departements", []))
+
+    # Per commande + dept stats
+    cmd_dept = defaultdict(lambda: {"billable": 0, "non_billable": 0})
+    cmd_global = defaultdict(lambda: {"billable": 0})
+
+    for d in dels:
+        dept = ldm.get(d["lead_id"], "??")
+        cid = d["commande_id"]
+        outcome = d.get("outcome") or "accepted"
+        if d.get("status") == "sent" and outcome == "accepted":
+            cmd_dept[f"{cid}:{dept}"]["billable"] += 1
+            cmd_global[cid]["billable"] += 1
+        if outcome in ("rejected", "removed"):
+            cmd_dept[f"{cid}:{dept}"]["non_billable"] += 1
+
+    # Build dept results
+    dept_results = defaultdict(lambda: {"quota_week": 0, "billable_week": 0, "remaining_week": 0, "non_billable": 0, "commandes": []})
+
+    for cmd in cmds:
+        produit = cmd.get("produit", "")
+        quota = cmd.get("quota_semaine", 0)
+        gb = cmd_global.get(cmd["id"], {"billable": 0})["billable"]
+        remaining = max(0, quota - gb) if quota > 0 else -1
+        depts = cmd.get("departements", [])
+
+        if depts == ["*"]:
+            # Get all depts that actually have deliveries for this cmd
+            covered_depts = set()
+            for d in dels:
+                if d["commande_id"] == cmd["id"]:
+                    covered_depts.add(ldm.get(d["lead_id"], "??"))
+            depts = list(covered_depts) if covered_depts else ["*"]
+
+        for dp in depts:
+            if dp == "??" or dp == "unknown":
+                continue
+            key = f"{dp}:{produit}"
+            cd = cmd_dept.get(f"{cmd['id']}:{dp}", {"billable": 0, "non_billable": 0})
+            dept_results[key]["quota_week"] += quota
+            dept_results[key]["billable_week"] += cd["billable"]
+            dept_results[key]["remaining_week"] = remaining if remaining < 0 else dept_results[key].get("remaining_week", 0) + max(0, remaining)
+            dept_results[key]["non_billable"] += cd["non_billable"]
+            dept_results[key]["commandes"].append({"commande_id": cmd["id"], "produit": produit, "quota": quota})
+
+    # Determine status per dept
+    final = []
+    for key in sorted(dept_results.keys()):
+        parts_k = key.split(":")
+        if len(parts_k) != 2:
+            continue
+        dp, prod = parts_k
+        r = dept_results[key]
+        unlim = r["remaining_week"] < 0
+        status = "on_remaining" if (unlim or r["remaining_week"] > 0) else "saturated"
+        final.append({
+            "departement": dp,
+            "produit": prod,
+            "quota_week": r["quota_week"],
+            "billable_week": r["billable_week"],
+            "remaining_week": r["remaining_week"],
+            "non_billable": r["non_billable"],
+            "status": status,
+            "commandes": r["commandes"],
+        })
+
+    # Aggregates
+    total_quota = sum(c.get("quota_semaine", 0) for c in cmds)
+    total_billable = sum(r["billable_week"] for r in dept_results.values())
+    total_remaining = total_quota - total_billable if total_quota > 0 else -1
+
+    # Produced for this client's departments
+    produced_match = {"created_at": {"$gte": week_start, "$lt": week_end}, **prod_match}
+    if "*" not in all_depts:
+        produced_match["departement"] = {"$in": list(all_depts)}
+    prod_count = await db.leads.count_documents(produced_match)
+
+    return {
+        "client_id": client_id,
+        "client_name": client.get("name", ""),
+        "week": week,
+        "product": product,
+        "aggregates": {
+            "produced_week": prod_count,
+            "billable_week": total_billable,
+            "quota_week": total_quota,
+            "remaining_week": max(0, total_remaining) if total_remaining >= 0 else -1,
+        },
+        "departements": final,
+        "count": len(final),
+    }
+
