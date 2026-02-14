@@ -19,12 +19,18 @@ export default function AdminSettings() {
   const load = async () => {
     setLoading(true);
     try {
-      const [dlRes, calRes] = await Promise.all([
+      const [dlRes, calRes, zr7Check, mdlCheck] = await Promise.all([
         authFetch(`${API}/api/settings/email-denylist`),
-        authFetch(`${API}/api/settings/delivery-calendar`)
+        authFetch(`${API}/api/settings/delivery-calendar`),
+        authFetch(`${API}/api/settings/delivery-calendar/check/ZR7`),
+        authFetch(`${API}/api/settings/delivery-calendar/check/MDL`)
       ]);
       if (dlRes.ok) setDenylist(await dlRes.json());
       if (calRes.ok) setCalendar(await calRes.json());
+      const checks = {};
+      if (zr7Check.ok) checks.ZR7 = await zr7Check.json();
+      if (mdlCheck.ok) checks.MDL = await mdlCheck.json();
+      setCalCheck(checks);
     } catch (e) { console.error(e); }
     setLoading(false);
   };
