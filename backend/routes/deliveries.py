@@ -255,16 +255,11 @@ async def send_delivery(
                 error=str(e),
                 increment_attempts=True
             )
-        except Exception:
-            # Fallback direct si state machine échoue
-            await db.deliveries.update_one(
-                {"id": delivery_id},
-                {"$set": {
-                    "status": "failed",
-                    "last_error": str(e),
-                    "updated_at": now_iso()
-                },
-                "$inc": {"send_attempts": 1}}
+        except Exception as sm_err:
+            # CRITICAL: state machine elle-même a échoué - ne PAS bypass
+            logger.critical(
+                f"[DELIVERY_CRITICAL] State machine failed for delivery {delivery_id}: "
+                f"original_error={str(e)} sm_error={str(sm_err)}"
             )
         
         logger.error(f"[DELIVERY_FAILED] id={delivery_id} error={str(e)}")
