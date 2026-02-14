@@ -50,8 +50,8 @@ async def get_dashboard_stats(
 
     week_start, week_end = resolve_week_range(week)
 
-    # Lead stats by status
-    lead_pipeline = [{"$group": {"_id": "$status", "count": {"$sum": 1}}}]
+    # Lead stats by status (scoped to selected week)
+    lead_pipeline = [{"$match": {"created_at": {"$gte": week_start, "$lte": week_end}}}, {"$group": {"_id": "$status", "count": {"$sum": 1}}}]
     lead_stats_raw = await db.leads.aggregate(lead_pipeline).to_list(20)
     lead_stats = {r["_id"]: r["count"] for r in lead_stats_raw if r["_id"]}
 
