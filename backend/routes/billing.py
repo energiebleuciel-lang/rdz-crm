@@ -87,6 +87,7 @@ async def create_product(data: ProductCreate, user: dict = Depends(get_current_u
 
 class GlobalPricingUpdate(BaseModel):
     discount_pct_global: float = 0
+    tva_rate: float = 20.0
 
 
 class ProductPricingUpsert(BaseModel):
@@ -116,7 +117,8 @@ async def update_global_pricing(
 ):
     await db.client_pricing.update_one(
         {"client_id": client_id},
-        {"$set": {"client_id": client_id, "discount_pct_global": data.discount_pct_global, "updated_at": now_iso()}},
+        {"$set": {"client_id": client_id, "discount_pct_global": data.discount_pct_global,
+                  "tva_rate": data.tva_rate, "updated_at": now_iso()}},
         upsert=True,
     )
     await log_event("pricing_update", "client", client_id, user=user.get("email"),
