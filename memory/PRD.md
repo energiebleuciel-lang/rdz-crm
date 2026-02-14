@@ -97,19 +97,18 @@ pending_csv → ready_to_send → sending → sent
 - **Phase 2.2** : Client livrable (email denylist, delivery_enabled)
 - **Phase 2.3** : Calendar gating (delivery_days par entity, hard stop routing)
 - **Phase 2.4** : Endpoints deliveries (list, stats, send, download, batch/generate-csv)
-- Tests: 26/26 passes (iteration 19)
+- **Phase 2.5** : auto_send_enabled integration
+  - Batch respecte priorite: Calendar > Client deliverable > auto_send_enabled
+  - auto_send=true → sent + livre
+  - auto_send=false → ready_to_send + lead reste routed
+  - POST /api/deliveries/batch/send-ready pour envoi manuel groupe
+- Tests: 24/24 passes (iteration 20)
 
-## NEXT (Phase 2.5 + Phase 3)
+## NEXT (Phase 3 — UI Admin)
 
-### Phase 2.5 — Mode Manuel + Actions (Backend)
-- [ ] Toggle `auto_send_enabled` par client (existe mais non utilise dans batch)
-- [ ] Batch CSV skip envoi si auto_send_enabled=false → status=ready_to_send
-- [ ] Bouton "Envoyer maintenant" pour ready_to_send
-
-### Phase 3 — UI Admin
-- [ ] UI Clients (email, api_endpoint, auto_send_enabled, delivery_days)
+- [ ] UI Clients (email, api_endpoint, auto_send_enabled, jours livraison)
 - [ ] UI Commandes (OPEN/CLOSED, quotas, stats semaine)
-- [ ] UI Deliveries (status, send_attempts, last_error, boutons)
+- [ ] UI Deliveries (status, send_attempts, last_error, boutons telecharger/envoyer)
 - [ ] UI forms_config (form_code → entity/produit)
 - [ ] UI Settings (cross-entity, source gating, email denylist, calendar)
 - [ ] Dashboard minimal (stats par status/entity/produit)
