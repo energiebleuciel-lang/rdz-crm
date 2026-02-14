@@ -151,13 +151,73 @@ async def get_dashboard_stats(
     }
 
 
+@router.get("/list")
+async def list_leads(
+    entity: Optional[str] = None,
+    produit: Optional[str] = None,
+    status: Optional[str] = None,
+    source: Optional[str] = None,
+    departement: Optional[str] = None,
+    client_id: Optional[str] = None,
+    search: Optional[str] = None,
+    limit: int = 50,
+    skip: int = 0,
+    user: dict = Depends(get_current_user)
+):
+    """Liste les leads avec filtres avancés"""
+    from fastapi import Query
+    
+    query = {}
+    if entity:
+        query["entity"] = entity.upper()
+    if produit:
+        query["produit"] = produit.upper()
+    if status:
+        query["status"] = status
+    if source:
+        query["source"] = {"$regex": source, "$options": "i"}
+    if departement:
+        query["departement"] = departement
+    if client_id:
+        query["$or"] = [
+            {"delivered_to_client_id": client_id},
+            {"delivery_client_id": client_id}
+        ]
+    if search:
+        query["$or"] = [
+            {"phone": {"$regex": search, "$options": "i"}},
+            {"nom": {"$regex": search, "$options": "i"}},
+            {"email": {"$regex": search, "$options": "i"}}
+        ]
+    
+    leads = await db.leads.find(
+        query, {"_id": 0}
+    ).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+    
+    total = await db.leads.count_documents(query)
+    
+    return {"leads": leads, "count": len(leads), "total": total}
+
+
 @router.get("/{lead_id}")
 async def get_lead(
     lead_id: str,
     user: dict = Depends(get_current_user)
 ):
-    """Get a single lead by ID"""
+    """Get a single lead by ID with delivery history"""
     lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
     if not lead:
         raise HTTPException(status_code=404, detail="Lead non trouve")
+    
+    # Attach delivery history
+    deliveries = await db.deliveries.find(
+        {"lead_id": lead_id},
+        {"_id": 0, "csv_content": 0}
+    ).sort("created_at", -1).to_list(20)
+    
+    for d in deliveries:
+        d["outcome"] = d.get("outcome", "accepted")
+        d["billable"] = d.get("status") == "sent" and d.get("outcome", "accepted") == "accepted"
+    
+    lead["deliveries"] = deliveries
     return lead
