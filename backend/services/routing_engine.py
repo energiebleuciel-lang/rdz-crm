@@ -321,18 +321,27 @@ async def find_open_commandes(
         cmd["leads_delivered_this_week"] = stats["leads_delivered"]
         cmd["lb_delivered_this_week"] = stats["lb_delivered"]
 
-        # LB: verifier % autorise
+        # LB: vérifier lb_target_pct (remplace lb_percent_max)
         if is_lb:
-            lb_max = cmd.get("lb_percent_max", 0)
-            if lb_max <= 0:
+            target = cmd.get("lb_target_pct", 0)
+            if target <= 0:
+                logger.debug(f"[ROUTING] Skip {client.get('name')}: lb_target_pct=0, no LB wanted")
                 continue
 
-            total = stats["leads_delivered"]
-            lb_count = stats["lb_delivered"]
-            if total > 0:
-                current_pct = (lb_count / total) * 100
-                if current_pct >= lb_max:
-                    continue
+            # Calculer lb_needed avec les stats acceptées
+            accepted = await get_accepted_stats_for_lb_target(
+                cmd.get("id"), week_start, get_week_end()
+            )
+            delivered_units = accepted["units_accepted"]
+            lb_delivered = accepted["lb_accepted"]
+            lb_needed = compute_lb_needed(target, delivered_units, lb_delivered)
+
+            if lb_needed <= 0:
+                logger.debug(
+                    f"[ROUTING] Skip {client.get('name')}: LB target atteint "
+                    f"({lb_delivered}/{delivered_units}, target={target})"
+                )
+                continue
 
         open_commandes.append(cmd)
 
