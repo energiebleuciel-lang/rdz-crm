@@ -369,25 +369,29 @@ async def billing_week_dashboard(
         uprice = pp.get("unit_price_eur", 0) if pp else 0
         disc = pp.get("discount_pct", gd) if pp else gd
         pmissing = not pp or uprice <= 0
+        tva = gp_map.get(cid, {}).get("tva_rate", 20.0)
 
         total_credits = cr_prod.get(key, 0) + cr_global.get(cid, 0)
         ufree = min(total_credits, s["billable"])
         uinv = max(0, s["billable"] - ufree)
         gross = round(uinv * uprice, 2)
         net_val = round(gross * (1 - disc / 100), 2)
+        tva_amount = round(net_val * tva / 100, 2)
+        ttc = round(net_val + tva_amount, 2)
 
         inv = inv_map.get(key)
 
         row = {
             "client_id": cid, "client_name": cl.get("name", ""), "entity": cl.get("entity", ""),
             "product_code": pc, "billing_mode": bmode, "pricing_missing": pmissing,
-            "unit_price_eur": uprice, "discount_pct": disc,
+            "unit_price_eur": uprice, "discount_pct": disc, "tva_rate": tva,
             "units_leads": s["billable_leads"], "units_lb": s["billable_lb"],
             "units_total_delivered": s["leads"] + s["lb"],
             "units_billable": s["billable"], "units_rejected": s["rejected"],
             "units_removed": s["removed"],
             "units_free_applied": ufree, "units_invoiced": uinv,
             "gross_total": gross, "discount_amount": round(gross - net_val, 2), "net_total": net_val,
+            "tva_amount": tva_amount, "ttc": ttc,
             "invoice_status": inv.get("status") if inv else None,
             "invoice_id": inv.get("id") if inv else None,
             "invoice_number": inv.get("invoice_number") if inv else None,
