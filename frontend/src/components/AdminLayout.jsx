@@ -2,13 +2,14 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import {
   LayoutDashboard, Package, Users, ShoppingCart, Settings, LogOut,
-  Truck, ChevronLeft, ChevronRight
+  Truck, ChevronLeft, ChevronRight, FileText
 } from 'lucide-react';
 import { useState } from 'react';
 
 const NAV = [
   { path: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { path: '/admin/deliveries', icon: Truck, label: 'Deliveries', tag: 'P0' },
+  { path: '/admin/deliveries', icon: Truck, label: 'Deliveries' },
+  { path: '/admin/leads', icon: FileText, label: 'Leads' },
   { path: '/admin/clients', icon: Users, label: 'Clients' },
   { path: '/admin/commandes', icon: ShoppingCart, label: 'Commandes' },
   { path: '/admin/settings', icon: Settings, label: 'Settings' },
