@@ -303,8 +303,9 @@ async def submit_lead(data: LeadData, request: Request):
         if not provider:
             return {"success": False, "error": "API key provider invalide ou inactive"}
 
-    # Valider telephone
-    is_valid, phone_result = validate_phone_fr(data.phone)
+    # Valider et normaliser telephone (FORMAT UNIQUE: 0XXXXXXXXX)
+    phone_status, phone_result, phone_quality = normalize_phone_fr(data.phone)
+    is_valid = phone_status == "valid"
     phone = phone_result if is_valid else data.phone
 
     # Champs obligatoires
