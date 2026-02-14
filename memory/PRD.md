@@ -75,6 +75,27 @@ Guards batch:
 - batch_mark_deliveries_failed: bloque si deliveries deja en "sent" (terminal)
 - batch_mark_deliveries_ready_to_send: verifie que source = "pending_csv"
 
+## CLIENT REJECTION (REJET)
+
+Un client peut rejeter un lead deja livre.
+
+Comportement:
+- `delivery.outcome` = "rejected" (status et CSV inchanges)
+- `delivery.rejected_at`, `rejected_by`, `rejection_reason` renseignes
+- `lead.status` = "new" (re-routable comme un lead frais)
+- References delivery supprimees du lead ($unset)
+- Le lead redevient disponible pour le routing immediat ou le batch
+
+Billing:
+- `billable = delivery.status == "sent" AND outcome == "accepted"`
+- Un lead rejete n'est PAS facturable
+
+Idempotency:
+- Rejeter 2x le meme lead = pas d'erreur, retour `already_rejected: true`
+
+Guard:
+- Seul un delivery `status=sent` peut etre rejete
+
 ## DELIVERY CALENDAR
 
 - Defaut: lundi-vendredi (jours 0-4)
