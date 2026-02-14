@@ -300,7 +300,7 @@ function PerformanceTab({ summary, groupBy, setGroupBy, loadSummary }) {
               <tr><td colSpan={7} className="text-center py-6 text-zinc-600">Aucune donnée</td></tr>
             ) : (summary.periods || []).map((p, i) => (
               <tr key={i} className="border-b border-zinc-800/50">
-                <td className="px-3 py-2 text-zinc-300 font-mono">{p.period}</td>
+                <td className="px-3 py-2 text-zinc-300">{fmtPeriod(p.period)}</td>
                 <td className="px-3 py-2 text-right text-zinc-300">{p.sent}</td>
                 <td className="px-3 py-2 text-right text-emerald-400">{p.billable}</td>
                 <td className="px-3 py-2 text-right text-orange-400">{p.rejected || 0}</td>
