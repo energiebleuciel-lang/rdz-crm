@@ -181,6 +181,14 @@ Guard:
   - Backend: GET /summary, PUT /crm, POST /notes, GET /activity
   - GET /clients/{id} enrichi (has_valid_channel, deliverable_reason, auto_send_enabled, week stats)
   - Tests: 10/10 frontend + 25/25 backend (iteration 24)
+- **UI3 Etape 1+2 (Feb 2025)** : Leads + Remove lead
+  - Page /admin/leads: liste globale avec filtres (entity/produit/status/dept/source/search), stat pills, pagination
+  - Page /admin/leads/{id}: payload brut, routing info, delivery history avec actions (view/reject/remove)
+  - POST /api/deliveries/{id}/remove-lead: outcome=removed, lead→new, event_log, CSV intact, idempotent
+  - Guards: status must be sent, cannot remove if rejected
+  - Stats enrichis: removed count, billable exclut rejected+removed
+  - Deliveries list/detail: badge removed, panel removal info
+  - Tests: 10/10 frontend + 16/16 backend (iteration 25)
 
 ## NEXT
 
