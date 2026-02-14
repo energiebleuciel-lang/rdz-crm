@@ -177,7 +177,21 @@ async def mark_delivery_sent(
         f"[STATE_MACHINE] Delivery {delivery_id} -> sent | "
         f"Lead {lead_id} -> livre | sent_to={sent_to}"
     )
-    
+
+    # Update prepayment balance if PREPAID
+    produit = delivery.get("produit", "")
+    prepay_pp = await db.client_product_pricing.find_one(
+        {"client_id": client_id, "product_code": produit, "billing_mode": "PREPAID"},
+        {"_id": 0}
+    )
+    if prepay_pp:
+        await db.prepayment_balances.update_one(
+            {"client_id": client_id, "product_code": produit},
+            {"$inc": {"units_delivered_total": 1, "units_remaining": -1},
+             "$set": {"updated_at": now_iso()}}
+        )
+        logger.info(f"[STATE_MACHINE] Prepayment balance decremented for {client_id}:{produit}")
+
     return {
         "delivery_id": delivery_id,
         "lead_id": lead_id,
