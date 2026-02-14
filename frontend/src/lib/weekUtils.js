@@ -49,3 +49,28 @@ export function weekKeyToShort(wk) {
   const { start, end } = weekKeyToDates(wk);
   return `${pad(start.getUTCDate())}/${pad(start.getUTCMonth() + 1)} – ${pad(end.getUTCDate())}/${pad(end.getUTCMonth() + 1)}`;
 }
+
+// ═══════════════════════════════════════════════════
+// Month utilities
+// ═══════════════════════════════════════════════════
+
+const MONTH_NAMES_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+
+/** Current month key "YYYY-MM" */
+export function getCurrentMonthKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+}
+
+/** Shift month by dir (+1 / -1) */
+export function shiftMonthKey(mk, dir) {
+  const [y, m] = mk.split('-').map(Number);
+  const d = new Date(Date.UTC(y, m - 1 + dir, 1));
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}`;
+}
+
+/** "Février 2026" */
+export function monthKeyToLabel(mk) {
+  const [y, m] = mk.split('-').map(Number);
+  return `${MONTH_NAMES_FR[m - 1]} ${y}`;
+}
