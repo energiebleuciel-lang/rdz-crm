@@ -256,6 +256,7 @@ app.add_middleware(
 
 # Routes
 from routes import auth, public, clients, commandes, settings, providers, deliveries, leads, event_log, departements, billing, invoices, intercompany
+from routes.system_health import router as system_health_router
 
 app.include_router(auth.router, prefix="/api")
 app.include_router(public.router, prefix="/api")
@@ -270,6 +271,7 @@ app.include_router(departements.router, prefix="/api")
 app.include_router(billing.router, prefix="/api")
 app.include_router(invoices.router, prefix="/api")
 app.include_router(intercompany.router, prefix="/api")
+app.include_router(system_health_router, prefix="/api")
 
 
 @app.get("/")

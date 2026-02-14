@@ -7,23 +7,27 @@ from typing import Optional
 from datetime import datetime, timezone, timedelta
 from config import db, now_iso
 from routes.auth import get_current_user
-from services.permissions import require_permission, validate_entity_access
+from services.permissions import require_permission, validate_entity_access, get_entity_scope_from_request, build_entity_filter
 
 router = APIRouter(prefix="/leads", tags=["Leads"])
 
 
 @router.get("/stats")
 async def get_lead_stats(
+    request: Request,
     entity: Optional[str] = None,
     user: dict = Depends(require_permission("leads.view"))
 ):
-    """Stats leads par status"""
+    """Stats leads par status — scoped by X-Entity-Scope"""
+    from services.permissions import get_entity_scope_from_request, build_entity_filter
+
     match_query = {}
     if entity:
         validate_entity_access(user, entity)
         match_query["entity"] = entity.upper()
-    elif user.get("role") != "super_admin":
-        match_query["entity"] = user.get("entity", "ZR7")
+    else:
+        scope = get_entity_scope_from_request(user, request)
+        match_query.update(build_entity_filter(scope))
 
     pipeline = [
         {"$match": match_query},
