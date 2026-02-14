@@ -1,0 +1,104 @@
+{
+  "summary": "Completed RBAC + Entity Isolation testing for RDZ CRM. Backend: 20/21 passed (1 skipped due to known bug). Frontend: All UI elements working correctly. Found 1 CRITICAL security bug: deliveries endpoint lacks entity isolation.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "GET /api/deliveries",
+        "issue": "Missing validate_entity_access() - ops_zr7 user CAN access entity=MDL deliveries (should get 403)",
+        "priority": "CRITICAL",
+        "file": "/app/backend/routes/deliveries.py",
+        "line": "39-67",
+        "fix": "Add validate_entity_access(user, entity) after line 51 when entity param is provided"
+      },
+      {
+        "endpoint": "GET /api/leads/list",
+        "issue": "Missing validate_entity_access() - leads endpoint may expose cross-entity data",
+        "priority": "HIGH",
+        "file": "/app/backend/routes/leads.py",
+        "line": "155-205",
+        "note": "validate_entity_access is imported but not used - needs entity isolation"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_rbac_entity_isolation.py",
+    "/app/test_reports/pytest/pytest_rbac_entity_isolation.xml"
+  ],
+  "action_items": [
+    "CRITICAL: Add validate_entity_access(user, entity) to /api/deliveries endpoint in routes/deliveries.py line ~52",
+    "HIGH: Add validate_entity_access(user, entity) to /api/leads/list endpoint in routes/leads.py line ~172"
+  ],
+  "critical_code_review_comments": [
+    "deliveries.py line 39-67: list_deliveries lacks entity access validation - security vulnerability",
+    "leads.py line 155-205: list_leads lacks entity access validation - validate_entity_access imported but unused"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_rbac_entity_isolation.py"
+  ],
+  "success_rate": {
+    "backend": "95% (20 passed, 1 skipped)",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "super_admin": "energiebleuciel@gmail.com / 92Ruemarxdormoy",
+    "ops_zr7": "ops_zr7@test.com / TestPass123!"
+  },
+  "seed_data_creation": "Used existing users. Test users created/cleaned during testing.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "RBAC system working for most endpoints. Two endpoints (deliveries, leads) lack entity isolation. commandes and clients endpoints correctly enforce entity isolation. Frontend correctly filters menu items by permissions and shows entity scope switcher only for super_admin.",
+  "backend_tests_passed": [
+    "TestLoginReturnsRBACData: super_admin has all 25 permissions True",
+    "TestLoginReturnsRBACData: ops user has correct preset (billing.view=False, users.manage=False)",
+    "TestEntityIsolation: ops_zr7 gets 403 on entity=MDL commandes",
+    "TestEntityIsolation: ops_zr7 CAN access entity=ZR7 commandes",
+    "TestEntityIsolation: super_admin CAN access both ZR7 and MDL",
+    "TestEntityIsolation: ops_zr7 gets 403 on entity=MDL clients",
+    "TestPermissionEnforcement: ops gets 403 on /api/products (billing.view)",
+    "TestPermissionEnforcement: ops gets 403 on /api/auth/users (users.manage)",
+    "TestPermissionEnforcement: ops gets 403 on POST /api/auth/users",
+    "TestPermissionEnforcement: ops gets 403 on /api/auth/activity-logs",
+    "TestPermissionEnforcement: super_admin CAN access billing and activity",
+    "TestUserCRUD: super_admin can list/create/update users",
+    "TestUserCRUD: creating user with role=ops applies ops preset permissions",
+    "TestUserCRUD: super_admin can get permission-keys endpoint",
+    "TestEntityScopeHeader: X-Entity-Scope header works for ZR7/MDL/BOTH"
+  ],
+  "frontend_tests_passed": [
+    "super_admin: Entity scope switcher visible (ZR7/MDL/BOTH buttons)",
+    "super_admin: All nav items visible including 'Utilisateurs'",
+    "super_admin: Users management page loads with user table",
+    "super_admin: Create user modal has email/password/nom/entity/role fields",
+    "super_admin: Permission checkbox grid visible in create modal",
+    "ops_zr7: Entity scope switcher hidden (shows ZR7 badge instead)",
+    "ops_zr7: 'Utilisateurs' nav item hidden (no users.manage permission)",
+    "ops_zr7: 'Facturation' nav item hidden (no billing.view permission)",
+    "ops_zr7: 'Activity' nav item hidden (no activity.view permission)",
+    "ops_zr7: Only 6 nav items visible (Dashboard, Deliveries, Leads, Clients, Commandes, Départements)"
+  ],
+  "api_endpoints_tested": {
+    "working": [
+      "POST /api/auth/login - returns entity/role/permissions",
+      "GET /api/auth/me - returns user with permissions",
+      "GET /api/auth/users - requires users.manage",
+      "POST /api/auth/users - requires users.manage, applies role presets",
+      "PUT /api/auth/users/{id} - requires users.manage",
+      "DELETE /api/auth/users/{id} - requires users.manage",
+      "GET /api/auth/permission-keys - returns all keys and presets",
+      "GET /api/auth/activity-logs - requires activity.view",
+      "GET /api/commandes?entity= - validates entity access",
+      "GET /api/clients?entity= - validates entity access",
+      "GET /api/products - requires billing.view"
+    ],
+    "bugs_found": [
+      "GET /api/deliveries?entity= - MISSING entity validation",
+      "GET /api/leads/list?entity= - MISSING entity validation"
+    ]
+  }
+}
