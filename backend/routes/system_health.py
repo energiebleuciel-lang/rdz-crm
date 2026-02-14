@@ -13,6 +13,31 @@ from services.permissions import require_permission
 router = APIRouter(prefix="/system", tags=["System"])
 logger = logging.getLogger("system_health")
 
+CORE_VERSION = "1.0.0"
+CORE_TAG = "rdz-core-distribution-validated"
+
+
+@router.get("/version")
+async def system_version():
+    """Public: returns version, tag, build info."""
+    import subprocess
+    git_sha = "unknown"
+    try:
+        git_sha = subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd="/app", timeout=3, stderr=subprocess.DEVNULL
+        ).decode().strip()
+    except Exception:
+        pass
+
+    return {
+        "version": CORE_VERSION,
+        "tag": CORE_TAG,
+        "git_sha": git_sha,
+        "build_date": "2026-02-14",
+        "env": "preview",
+    }
+
 
 @router.get("/health")
 async def system_health(
