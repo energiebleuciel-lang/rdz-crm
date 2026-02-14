@@ -52,118 +52,134 @@ async def get_dashboard_stats(
     """
     Stats agrégées pour le cockpit dashboard.
     Scoped by X-Entity-Scope header.
+    FAIL-OPEN: each widget isolated — partial failures return partial data.
     """
-    from fastapi import Request as Req
+    import logging
+    _logger = logging.getLogger("dashboard")
     from services.settings import is_delivery_day_enabled, get_email_denylist_settings
     from models.client import check_client_deliverable
     from services.routing_engine import resolve_week_range
-    from services.permissions import get_entity_scope_from_request, build_entity_filter
 
     scope = get_entity_scope_from_request(user, request)
     entity_filter = build_entity_filter(scope)
 
     week_start, week_end = resolve_week_range(week)
 
-    # Lead stats by status (scoped)
-    lead_pipeline = [{"$match": {**entity_filter, "created_at": {"$gte": week_start, "$lte": week_end}}}, {"$group": {"_id": "$status", "count": {"$sum": 1}}}]
-    lead_stats_raw = await db.leads.aggregate(lead_pipeline).to_list(20)
-    lead_stats = {r["_id"]: r["count"] for r in lead_stats_raw if r["_id"]}
+    result = {"_errors": []}
 
-    # Delivery stats (scoped)
-    week_match = {**entity_filter, "created_at": {"$gte": week_start, "$lte": week_end}}
-    del_pipeline = [{"$match": week_match}, {"$group": {"_id": "$status", "count": {"$sum": 1}}}]
-    del_stats_raw = await db.deliveries.aggregate(del_pipeline).to_list(10)
-    del_stats = {r["_id"]: r["count"] for r in del_stats_raw if r["_id"]}
-    rejected_total = await db.deliveries.count_documents({"outcome": "rejected", **week_match})
-    removed_total = await db.deliveries.count_documents({"outcome": "removed", **week_match})
-    billable_total = await db.deliveries.count_documents({"status": "sent", "outcome": {"$nin": ["rejected", "removed"]}, **week_match})
+    # Widget: Lead stats
+    try:
+        lead_pipeline = [{"$match": {**entity_filter, "created_at": {"$gte": week_start, "$lte": week_end}}}, {"$group": {"_id": "$status", "count": {"$sum": 1}}}]
+        lead_stats_raw = await db.leads.aggregate(lead_pipeline).to_list(20)
+        result["lead_stats"] = {r["_id"]: r["count"] for r in lead_stats_raw if r["_id"]}
+    except Exception as e:
+        _logger.error(f"[DASHBOARD] lead_stats failed: {e}")
+        result["lead_stats"] = {}
+        result["_errors"].append("lead_stats")
 
-    # Calendar status
-    zr7_enabled, zr7_reason = await is_delivery_day_enabled("ZR7")
-    mdl_enabled, mdl_reason = await is_delivery_day_enabled("MDL")
+    # Widget: Delivery stats
+    try:
+        week_match = {**entity_filter, "created_at": {"$gte": week_start, "$lte": week_end}}
+        del_pipeline = [{"$match": week_match}, {"$group": {"_id": "$status", "count": {"$sum": 1}}}]
+        del_stats_raw = await db.deliveries.aggregate(del_pipeline).to_list(10)
+        del_stats = {r["_id"]: r["count"] for r in del_stats_raw if r["_id"]}
+        rejected_total = await db.deliveries.count_documents({"outcome": "rejected", **week_match})
+        removed_total = await db.deliveries.count_documents({"outcome": "removed", **week_match})
+        billable_total = await db.deliveries.count_documents({"status": "sent", "outcome": {"$nin": ["rejected", "removed"]}, **week_match})
+        result["delivery_stats"] = {**del_stats, "rejected": rejected_total, "removed": removed_total, "billable": billable_total}
+    except Exception as e:
+        _logger.error(f"[DASHBOARD] delivery_stats failed: {e}")
+        result["delivery_stats"] = {}
+        result["_errors"].append("delivery_stats")
 
-    # Top clients semaine (by delivery count)
-    top_clients_pipeline = [
-        {"$match": {"status": "sent", **entity_filter, "created_at": {"$gte": week_start, "$lte": week_end}}},
-        {"$group": {
-            "_id": "$client_id",
-            "client_name": {"$first": "$client_name"},
-            "entity": {"$first": "$entity"},
-            "sent": {"$sum": 1}
-        }},
-        {"$sort": {"sent": -1}},
-        {"$limit": 10}
-    ]
-    top_clients = await db.deliveries.aggregate(top_clients_pipeline).to_list(10)
-
-    # Enrich top clients with rejected + billable for week
-    for tc in top_clients:
-        cid = tc["_id"]
-        tc["rejected_7d"] = await db.deliveries.count_documents({
-            "client_id": cid, "outcome": "rejected", "created_at": {"$gte": week_start, "$lte": week_end}
-        })
-        tc["billable_7d"] = await db.deliveries.count_documents({
-            "client_id": cid, "status": "sent", "outcome": {"$nin": ["rejected", "removed"]}, "created_at": {"$gte": week_start, "$lte": week_end}
-        })
-        tc["failed_7d"] = await db.deliveries.count_documents({
-            "client_id": cid, "status": "failed", "created_at": {"$gte": week_start, "$lte": week_end}
-        })
-        tc["ready_7d"] = await db.deliveries.count_documents({
-            "client_id": cid, "status": "ready_to_send", "created_at": {"$gte": week_start, "$lte": week_end}
-        })
-        tc.pop("_id")
-        tc["client_id"] = cid
-
-    # Clients à problème
-    denylist_settings = await get_email_denylist_settings()
-    denylist = denylist_settings.get("domains", [])
-    client_query = {"active": True, **entity_filter}
-    all_clients = await db.clients.find(client_query, {"_id": 0, "id": 1, "name": 1, "entity": 1, "email": 1, "delivery_emails": 1, "api_endpoint": 1}).to_list(500)
-    problem_clients = []
-    for c in all_clients:
-        check = check_client_deliverable(c.get("email",""), c.get("delivery_emails",[]), c.get("api_endpoint",""), denylist)
-        if not check["deliverable"]:
-            problem_clients.append({"client_id": c["id"], "name": c["name"], "entity": c["entity"], "reason": check["reason"]})
-
-    # Commandes proches de la fin (quota_remaining <= 5)
-    low_quota_cmds = []
-    for entity in ["ZR7", "MDL"]:
-        cmds = await db.commandes.find({"entity": entity, "active": True}, {"_id": 0}).to_list(200)
-        for cmd in cmds:
-            delivered = await db.leads.count_documents({
-                "delivery_commande_id": cmd["id"],
-                "delivered_at": {"$gte": week_start}
-            })
-            remaining = max(0, (cmd.get("quota_semaine", 0)) - delivered)
-            if remaining <= 5 and cmd.get("quota_semaine", 0) > 0:
-                client = await db.clients.find_one({"id": cmd["client_id"]}, {"_id": 0, "name": 1})
-                low_quota_cmds.append({
-                    "commande_id": cmd["id"], "client_name": client.get("name") if client else "",
-                    "entity": entity, "produit": cmd.get("produit"), "quota": cmd.get("quota_semaine"),
-                    "delivered": delivered, "remaining": remaining
-                })
-
-    # Stock bloqué by entity+produit
-    blocked_pipeline = [
-        {"$match": {"status": {"$in": ["no_open_orders", "hold_source", "pending_config"]}}},
-        {"$group": {"_id": {"entity": "$entity", "produit": "$produit", "status": "$status"}, "count": {"$sum": 1}}},
-        {"$sort": {"count": -1}}
-    ]
-    blocked_raw = await db.leads.aggregate(blocked_pipeline).to_list(50)
-    blocked_stock = [{"entity": b["_id"].get("entity"), "produit": b["_id"].get("produit"), "status": b["_id"]["status"], "count": b["count"]} for b in blocked_raw]
-
-    return {
-        "lead_stats": lead_stats,
-        "delivery_stats": {**del_stats, "rejected": rejected_total, "removed": removed_total, "billable": billable_total},
-        "calendar": {
+    # Widget: Calendar status
+    try:
+        zr7_enabled, zr7_reason = await is_delivery_day_enabled("ZR7")
+        mdl_enabled, mdl_reason = await is_delivery_day_enabled("MDL")
+        result["calendar"] = {
             "ZR7": {"is_delivery_day": zr7_enabled, "reason": zr7_reason},
             "MDL": {"is_delivery_day": mdl_enabled, "reason": mdl_reason}
-        },
-        "top_clients_7d": top_clients,
-        "problem_clients": problem_clients,
-        "low_quota_commandes": low_quota_cmds,
-        "blocked_stock": blocked_stock
-    }
+        }
+    except Exception as e:
+        _logger.error(f"[DASHBOARD] calendar failed: {e}")
+        result["calendar"] = {}
+        result["_errors"].append("calendar")
+
+    # Widget: Top clients
+    try:
+        top_clients_pipeline = [
+            {"$match": {"status": "sent", **entity_filter, "created_at": {"$gte": week_start, "$lte": week_end}}},
+            {"$group": {"_id": "$client_id", "client_name": {"$first": "$client_name"}, "entity": {"$first": "$entity"}, "sent": {"$sum": 1}}},
+            {"$sort": {"sent": -1}}, {"$limit": 10}
+        ]
+        top_clients = await db.deliveries.aggregate(top_clients_pipeline).to_list(10)
+        for tc in top_clients:
+            cid = tc["_id"]
+            tc["rejected_7d"] = await db.deliveries.count_documents({"client_id": cid, "outcome": "rejected", "created_at": {"$gte": week_start, "$lte": week_end}})
+            tc["billable_7d"] = await db.deliveries.count_documents({"client_id": cid, "status": "sent", "outcome": {"$nin": ["rejected", "removed"]}, "created_at": {"$gte": week_start, "$lte": week_end}})
+            tc["failed_7d"] = await db.deliveries.count_documents({"client_id": cid, "status": "failed", "created_at": {"$gte": week_start, "$lte": week_end}})
+            tc["ready_7d"] = await db.deliveries.count_documents({"client_id": cid, "status": "ready_to_send", "created_at": {"$gte": week_start, "$lte": week_end}})
+            tc.pop("_id")
+            tc["client_id"] = cid
+        result["top_clients_7d"] = top_clients
+    except Exception as e:
+        _logger.error(f"[DASHBOARD] top_clients failed: {e}")
+        result["top_clients_7d"] = []
+        result["_errors"].append("top_clients")
+
+    # Widget: Problem clients
+    try:
+        denylist_settings = await get_email_denylist_settings()
+        denylist = denylist_settings.get("domains", [])
+        client_query = {"active": True, **entity_filter}
+        all_clients = await db.clients.find(client_query, {"_id": 0, "id": 1, "name": 1, "entity": 1, "email": 1, "delivery_emails": 1, "api_endpoint": 1}).to_list(500)
+        problem_clients = []
+        for c in all_clients:
+            check = check_client_deliverable(c.get("email",""), c.get("delivery_emails",[]), c.get("api_endpoint",""), denylist)
+            if not check["deliverable"]:
+                problem_clients.append({"client_id": c["id"], "name": c["name"], "entity": c["entity"], "reason": check["reason"]})
+        result["problem_clients"] = problem_clients
+    except Exception as e:
+        _logger.error(f"[DASHBOARD] problem_clients failed: {e}")
+        result["problem_clients"] = []
+        result["_errors"].append("problem_clients")
+
+    # Widget: Low quota commandes
+    try:
+        low_quota_cmds = []
+        for ent in ["ZR7", "MDL"]:
+            cmds = await db.commandes.find({"entity": ent, "active": True}, {"_id": 0}).to_list(200)
+            for cmd in cmds:
+                delivered = await db.leads.count_documents({"delivery_commande_id": cmd["id"], "delivered_at": {"$gte": week_start}})
+                remaining = max(0, (cmd.get("quota_semaine", 0)) - delivered)
+                if remaining <= 5 and cmd.get("quota_semaine", 0) > 0:
+                    client = await db.clients.find_one({"id": cmd["client_id"]}, {"_id": 0, "name": 1})
+                    low_quota_cmds.append({"commande_id": cmd["id"], "client_name": client.get("name") if client else "", "entity": ent, "produit": cmd.get("produit"), "quota": cmd.get("quota_semaine"), "delivered": delivered, "remaining": remaining})
+        result["low_quota_commandes"] = low_quota_cmds
+    except Exception as e:
+        _logger.error(f"[DASHBOARD] low_quota failed: {e}")
+        result["low_quota_commandes"] = []
+        result["_errors"].append("low_quota")
+
+    # Widget: Blocked stock
+    try:
+        blocked_pipeline = [
+            {"$match": {"status": {"$in": ["no_open_orders", "hold_source", "pending_config"]}}},
+            {"$group": {"_id": {"entity": "$entity", "produit": "$produit", "status": "$status"}, "count": {"$sum": 1}}},
+            {"$sort": {"count": -1}}
+        ]
+        blocked_raw = await db.leads.aggregate(blocked_pipeline).to_list(50)
+        result["blocked_stock"] = [{"entity": b["_id"].get("entity"), "produit": b["_id"].get("produit"), "status": b["_id"]["status"], "count": b["count"]} for b in blocked_raw]
+    except Exception as e:
+        _logger.error(f"[DASHBOARD] blocked_stock failed: {e}")
+        result["blocked_stock"] = []
+        result["_errors"].append("blocked_stock")
+
+    # Remove _errors if empty
+    if not result["_errors"]:
+        del result["_errors"]
+
+    return result
 
 
 @router.get("/list")
