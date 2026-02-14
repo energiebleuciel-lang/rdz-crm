@@ -80,7 +80,7 @@ async def get_delivery_stats(
     entity: Optional[str] = None,
     user: dict = Depends(get_current_user)
 ):
-    """Stats des deliveries par statut"""
+    """Stats des deliveries par statut + outcome"""
     match_query = {}
     if entity:
         match_query["entity"] = entity.upper()
@@ -109,6 +109,13 @@ async def get_delivery_stats(
             stats[status] = r["count"]
     
     stats["total"] = sum(stats.values())
+    
+    # Outcome stats (rejected / billable)
+    rejected_count = await db.deliveries.count_documents({**match_query, "outcome": "rejected"})
+    billable_count = await db.deliveries.count_documents({**match_query, "status": "sent", "outcome": {"$ne": "rejected"}})
+    
+    stats["rejected"] = rejected_count
+    stats["billable"] = billable_count
     
     return stats
 
