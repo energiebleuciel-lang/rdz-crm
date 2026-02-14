@@ -585,6 +585,9 @@ async def submit_lead(data: LeadData, request: Request):
                 "status": "pending_csv",
                 "is_lb": actual_is_lb,
                 "routing_mode": routing_result.routing_mode,
+                "client_group_key": overlap_result.get("client_group_key", ""),
+                "is_shared_client_30d": overlap_result.get("overlap_active_30d", False),
+                "overlap_fallback_delivery": overlap_result.get("fallback", False),
                 "created_at": now_iso(),
             }
             if was_replaced:
