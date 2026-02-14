@@ -5,19 +5,19 @@
     "MDL": 100
   },
   "by_status": {
-    "no_open_orders": 204,
-    "routed": 16,
+    "routed": 212,
+    "no_open_orders": 8,
     "pending_config": 10,
     "hold_source": 10
   },
   "by_produit": {
-    "PV": 86,
-    "PAC": 80,
-    "ITE": 74
+    "ITE": 78,
+    "PV": 89,
+    "PAC": 73
   },
-  "deliveries": 16,
+  "deliveries": 212,
   "duplicates": 0,
-  "no_open_orders": 204,
+  "no_open_orders": 8,
   "pending_config": 10,
   "hold_source": 10,
   "provider_leads": 20,
@@ -25,11 +25,11 @@
   "setup_info": {
     "ZR7": {
       "clients": 3,
-      "commandes": 3
+      "commandes": 5
     },
     "MDL": {
       "clients": 5,
-      "commandes": 4
+      "commandes": 7
     }
   },
   "validations": [
@@ -41,7 +41,7 @@
     [
       "Deliveries",
       "PASS",
-      "16 created"
+      "212 created"
     ],
     [
       "Duplicate Detection",
@@ -74,6 +74,6 @@
       "3 products"
     ]
   ],
-  "elapsed_seconds": 68.2031044960022,
-  "timestamp": "2026-02-14T00:24:37.454231+00:00"
+  "elapsed_seconds": 93.63448977470398,
+  "timestamp": "2026-02-14T00:27:03.277262+00:00"
 }
