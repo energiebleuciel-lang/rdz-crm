@@ -144,8 +144,8 @@ async def lifespan(app: FastAPI):
 
         # Intercompany indexes
         await db.intercompany_transfers.create_index(
-            [("lead_id", 1), ("from_entity", 1), ("to_entity", 1)],
-            unique=True, background=True, name="idx_interco_unique"
+            "delivery_id",
+            unique=True, background=True, name="idx_interco_unique_delivery"
         )
         await db.intercompany_transfers.create_index("week_key", background=True)
         await db.intercompany_transfers.create_index("transfer_status", background=True)
