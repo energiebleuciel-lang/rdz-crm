@@ -247,6 +247,7 @@ Guard:
 | POST | /api/auth/login | Non | Connexion |
 | GET | /api/auth/me | Oui | Info user |
 | CRUD | /api/clients | Oui | Gestion clients |
+| GET | /api/clients/{id}/coverage | Oui | Couverture depts client |
 | CRUD | /api/commandes | Oui | Gestion commandes |
 | CRUD | /api/providers | Admin | Gestion providers |
 | POST | /api/providers/{id}/rotate-key | Admin | Regenerer API key |
@@ -265,6 +266,8 @@ Guard:
 | POST | /api/deliveries/{id}/reject-leads | Admin | Rejet client |
 | POST | /api/deliveries/batch/generate-csv | Admin | Generer CSV en batch |
 | POST | /api/deliveries/batch/send-ready | Admin | Envoyer ready_to_send |
+| GET | /api/departements/overview | Oui | Vue globale depts |
+| GET | /api/departements/{dept}/detail | Oui | Detail dept (drawer) |
 | POST | /api/public/leads | Non/Key | Soumettre lead + routing |
 | POST | /api/public/track/* | Non | Tracking events |
 
