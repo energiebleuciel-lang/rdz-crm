@@ -23,6 +23,7 @@ export default function AdminDeliveries() {
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
+  const [week, setWeek] = useState(getCurrentWeekKey());
   const [filters, setFilters] = useState({
     status: searchParams.get('status') || '',
     entity: searchParams.get('entity') || '',
