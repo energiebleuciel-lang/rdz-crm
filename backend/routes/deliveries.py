@@ -359,6 +359,18 @@ async def reject_delivery_leads(
         }
     )
     
+    # Event log
+    from services.event_logger import log_event
+    await log_event(
+        action="reject_lead",
+        entity_type="delivery",
+        entity_id=delivery_id,
+        entity=delivery.get("entity", ""),
+        user=user.get("email"),
+        details={"reason": data.reason or ""},
+        related={"lead_id": lead_id, "client_id": delivery.get("client_id"), "client_name": delivery.get("client_name"), "produit": delivery.get("produit")}
+    )
+    
     logger.info(
         f"[REJECT] delivery={delivery_id} lead={lead_id} "
         f"by={user.get('email')} reason={data.reason or 'N/A'}"
