@@ -484,12 +484,22 @@ async def deliver_leads_to_client(
     leads: List[Dict],
     lb_count: int
 ) -> Dict:
-    """Génère le CSV et envoie par email"""
+    """
+    Génère le CSV et envoie par email
+    
+    🔒 Utilise delivery_state_machine pour les transitions de statut
+    """
     from services.csv_delivery import generate_csv_content, generate_csv_filename, send_csv_email
+    from services.delivery_state_machine import (
+        batch_mark_deliveries_sent,
+        batch_mark_deliveries_failed,
+        DeliveryInvariantError
+    )
     
     client_id = cmd.get("client_id")
     client_name = cmd.get("client_name", "")
     produit = cmd.get("produit")
+    commande_id = cmd.get("id")
     
     # Emails
     emails = [cmd.get("client_email")]
@@ -503,63 +513,101 @@ async def deliver_leads_to_client(
     csv_content = generate_csv_content(leads, produit, entity)
     csv_filename = generate_csv_filename(entity, produit)
     
-    # Envoyer
-    result = await send_csv_email(
-        entity=entity,
-        to_emails=emails,
-        csv_content=csv_content,
-        csv_filename=csv_filename,
-        lead_count=len(leads),
-        lb_count=lb_count,
-        produit=produit
-    )
-    
-    if not result.get("success"):
-        return result
-    
-    # Mettre à jour les leads
+    # Créer les delivery records dans la collection deliveries
     batch_id = str(uuid.uuid4())
     now = now_iso()
-    
     lead_ids = [lead.get("id") for lead in leads]
-    await db.leads.update_many(
-        {"id": {"$in": lead_ids}},
-        {"$set": {
-            "status": "livre",
-            "delivered_to_client_id": client_id,
-            "delivered_to_client_name": client_name,
-            "delivered_at": now,
-            "delivery_method": "csv",
-            "delivery_batch_id": batch_id,
-            "delivery_commande_id": cmd.get("id")
-        }}
-    )
+    delivery_ids = []
     
-    # Sauvegarder batch
-    await db.delivery_batches.insert_one({
-        "id": batch_id,
-        "entity": entity,
-        "client_id": client_id,
-        "client_name": client_name,
-        "commande_id": cmd.get("id"),
-        "produit": produit,
-        "lead_ids": lead_ids,
-        "lead_count": len(leads),
-        "lb_count": lb_count,
-        "fresh_count": len(leads) - lb_count,
-        "status": "sent",
-        "csv_filename": csv_filename,
-        "emails_sent_to": emails,
-        "sent_at": now,
-        "created_at": now
-    })
+    for lead in leads:
+        delivery_id = str(uuid.uuid4())
+        delivery_ids.append(delivery_id)
+        await db.deliveries.insert_one({
+            "id": delivery_id,
+            "lead_id": lead.get("id"),
+            "client_id": client_id,
+            "client_name": client_name,
+            "commande_id": commande_id,
+            "entity": entity,
+            "produit": produit,
+            "status": "pending_csv",
+            "csv_content": csv_content,
+            "csv_filename": csv_filename,
+            "csv_generated_at": now,
+            "batch_id": batch_id,
+            "send_attempts": 0,
+            "created_at": now,
+            "updated_at": now
+        })
     
-    return {
-        "success": True,
-        "batch_id": batch_id,
-        "lead_count": len(leads),
-        "lb_count": lb_count
-    }
+    # Envoyer
+    try:
+        result = await send_csv_email(
+            entity=entity,
+            to_emails=emails,
+            csv_content=csv_content,
+            csv_filename=csv_filename,
+            lead_count=len(leads),
+            lb_count=lb_count,
+            produit=produit
+        )
+        
+        if not result.get("success"):
+            # 🔒 Marquer failed via state machine
+            await batch_mark_deliveries_failed(
+                delivery_ids=delivery_ids,
+                error=result.get("error", "send_failed")
+            )
+            return result
+        
+        # 🔒 SEULEMENT après envoi réussi: state machine
+        await batch_mark_deliveries_sent(
+            delivery_ids=delivery_ids,
+            lead_ids=lead_ids,
+            sent_to=emails,
+            client_id=client_id,
+            client_name=client_name,
+            commande_id=commande_id
+        )
+        
+        # Sauvegarder batch (backward compatibility)
+        await db.delivery_batches.insert_one({
+            "id": batch_id,
+            "entity": entity,
+            "client_id": client_id,
+            "client_name": client_name,
+            "commande_id": commande_id,
+            "produit": produit,
+            "lead_ids": lead_ids,
+            "delivery_ids": delivery_ids,
+            "lead_count": len(leads),
+            "lb_count": lb_count,
+            "fresh_count": len(leads) - lb_count,
+            "status": "sent",
+            "csv_filename": csv_filename,
+            "emails_sent_to": emails,
+            "sent_at": now,
+            "created_at": now
+        })
+        
+        return {
+            "success": True,
+            "batch_id": batch_id,
+            "lead_count": len(leads),
+            "lb_count": lb_count
+        }
+        
+    except Exception as e:
+        # 🔒 Marquer failed via state machine
+        try:
+            await batch_mark_deliveries_failed(
+                delivery_ids=delivery_ids,
+                error=str(e)
+            )
+        except DeliveryInvariantError:
+            logger.error(f"[DELIVER] State machine failed: {str(e)}")
+        
+        return {"success": False, "error": str(e)}
 
 
 # ════════════════════════════════════════════════════════════════════════
