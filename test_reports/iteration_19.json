@@ -1,0 +1,93 @@
+{
+  "summary": "Phase 2.1/2.2/2.3 Backend Testing Complete - All 26 tests PASSED. Email denylist, delivery calendar, calendar gating, client deliverability, and delivery endpoints all working correctly.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "_try_cross_entity in routing_engine.py",
+        "issue": "Cross-entity fallback does not check calendar gating for target entity. If ZR7 is enabled but MDL is disabled, cross-entity might still attempt MDL routing. Low priority since both entities share same default calendar (Mon-Fri)."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_phase2_delivery_lifecycle.py",
+    "/app/test_reports/pytest/pytest_phase2_delivery.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "✅ EMAIL DENYLIST: GET/PUT /api/settings/email-denylist works correctly with default domains (example.com, test.com, localhost, invalid, fake.com)",
+    "✅ DELIVERY CALENDAR: GET/PUT /api/settings/delivery-calendar works correctly with default Mon-Fri (0-4) enabled",
+    "✅ CALENDAR GATING: POST /api/public/leads on Saturday returns no_open_orders with reason=delivery_day_disabled:samedi",
+    "✅ CLIENT DELIVERABLE: Clients with @example.com emails are correctly identified as non-deliverable and skipped during routing",
+    "✅ SIMULATION MODE: simulation_mode=true with simulation_email=energiebleuciel@gmail.com is configured",
+    "✅ DELIVERY ENDPOINTS: All /api/deliveries/* endpoints working (list, stats, get, download, send)",
+    "✅ STATUS TRANSITIONS: Valid statuses (pending_csv, ready_to_send, sending, sent, failed) enforced",
+    "✅ BATCH CSV: POST /api/deliveries/batch/generate-csv works for pending_csv → ready_to_send transition",
+    "✅ SEND PROTECTION: POST /api/deliveries/{id}/send returns 400 for already sent deliveries without force=true"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_phase2_delivery_lifecycle.py"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "N/A - backend only testing"
+  },
+  "test_credentials": {
+    "email": "energiebleuciel@gmail.com",
+    "password": "92Ruemarxdormoy",
+    "provider_api_key": "prov_0vVMbevPVC1yBXXb3cPKySmiB_iP4nW1cjTjIOQ54is"
+  },
+  "seed_data_creation": "No new seed data created. Used existing test data from iteration 18.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Phase 2.1/2.2/2.3 features fully tested. Calendar gating blocks routing on weekends (today is Saturday). Email denylist includes example.com, test.com, localhost, invalid, fake.com. Simulation mode is ENABLED with override email energiebleuciel@gmail.com. 624 deliveries exist with status=sent. All delivery endpoints working correctly.",
+  "verified_features": {
+    "email_denylist": {
+      "endpoint": "GET/PUT /api/settings/email-denylist",
+      "status": "WORKING",
+      "default_domains": ["example.com", "test.com", "localhost", "invalid", "fake.com"]
+    },
+    "delivery_calendar": {
+      "endpoint": "GET/PUT /api/settings/delivery-calendar",
+      "status": "WORKING",
+      "default_enabled_days": [0, 1, 2, 3, 4],
+      "day_names": ["lundi", "mardi", "mercredi", "jeudi", "vendredi"]
+    },
+    "calendar_gating": {
+      "status": "WORKING",
+      "today": "Saturday (weekday=5)",
+      "is_delivery_day": false,
+      "reason": "delivery_day_disabled:samedi"
+    },
+    "client_deliverability": {
+      "status": "WORKING",
+      "check_function": "check_client_deliverable in models/client.py",
+      "routing_skip": "Clients with denylisted emails are skipped in find_open_commandes"
+    },
+    "delivery_endpoints": {
+      "list": "GET /api/deliveries - WORKING",
+      "stats": "GET /api/deliveries/stats - WORKING",
+      "get": "GET /api/deliveries/{id} - WORKING",
+      "download": "GET /api/deliveries/{id}/download - WORKING",
+      "send": "POST /api/deliveries/{id}/send - WORKING",
+      "batch_generate": "POST /api/deliveries/batch/generate-csv - WORKING"
+    },
+    "simulation_mode": {
+      "status": "ENABLED",
+      "simulation_email": "energiebleuciel@gmail.com"
+    }
+  },
+  "delivery_stats": {
+    "pending_csv": 0,
+    "ready_to_send": 0,
+    "sending": 0,
+    "sent": 624,
+    "failed": 0,
+    "total": 624
+  }
+}
