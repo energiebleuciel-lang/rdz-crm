@@ -272,6 +272,17 @@ async def toggle_commande(
         {"$set": {"active": new_status, "updated_at": now_iso()}}
     )
     
+    from services.event_logger import log_event
+    await log_event(
+        action="order_activate" if new_status else "order_deactivate",
+        entity_type="commande",
+        entity_id=commande_id,
+        entity=cmd.get("entity", ""),
+        user=user.get("email"),
+        details={"active": new_status},
+        related={"client_id": cmd.get("client_id"), "produit": cmd.get("produit")}
+    )
+    
     return {"success": True, "active": new_status}
 
 
