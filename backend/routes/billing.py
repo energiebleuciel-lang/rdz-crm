@@ -453,13 +453,13 @@ async def build_ledger(week_key: str, user: dict = Depends(get_current_user)):
     # Get all deliveries
     deliveries = await db.deliveries.find({"created_at": {"$gte": ws, "$lt": we}}, {"_id": 0}).to_list(50000)
 
-    # Lead departments
+    # Lead departments + entity
     lead_ids = list({d["lead_id"] for d in deliveries})
-    lead_dept = {}
+    lead_info = {}
     for i in range(0, len(lead_ids), 5000):
         chunk = lead_ids[i:i + 5000]
-        for ld in await db.leads.find({"id": {"$in": chunk}}, {"_id": 0, "id": 1, "departement": 1}).to_list(len(chunk)):
-            lead_dept[ld["id"]] = ld.get("departement", "??")
+        for ld in await db.leads.find({"id": {"$in": chunk}}, {"_id": 0, "id": 1, "departement": 1, "entity": 1}).to_list(len(chunk)):
+            lead_info[ld["id"]] = {"dept": ld.get("departement", "??"), "entity": ld.get("entity", "")}
 
     # Pricing maps
     all_pp = await db.client_product_pricing.find({}, {"_id": 0}).to_list(5000)
