@@ -461,6 +461,57 @@ async def monitoring_intelligence(
         result["cannibalization"] = {}
         result["_errors"].append("cannibalization")
 
+    # ═══════════════════════════════════════════════════════════
+    # 8. CLIENT OVERLAP STATS
+    # ═══════════════════════════════════════════════════════════
+    try:
+        from services.overlap_guard import compute_client_group_key
+
+        # Shared clients: clients with emails present in both entities
+        all_clients = await db.clients.find(
+            {"active": True}, {"_id": 0, "id": 1, "entity": 1, "email": 1, "delivery_emails": 1}
+        ).to_list(500)
+
+        email_to_entities = defaultdict(set)
+        client_keys = {}
+        for c in all_clients:
+            key = compute_client_group_key(c)
+            if key:
+                client_keys[c["id"]] = key
+                for em in key.split("|"):
+                    email_to_entities[em].add(c.get("entity", ""))
+
+        shared_emails = {em for em, ents in email_to_entities.items() if len(ents) >= 2}
+        shared_client_ids = set()
+        for c in all_clients:
+            key = client_keys.get(c["id"], "")
+            for em in key.split("|"):
+                if em in shared_emails:
+                    shared_client_ids.add(c["id"])
+                    break
+
+        total_clients = len(all_clients) or 1
+        shared_count = len(shared_client_ids)
+
+        # Overlap deliveries (30d window from deliveries collection)
+        del_base = {**ef, "created_at": {"$gte": cutoff}}
+        total_dels = await db.deliveries.count_documents(del_base)
+        shared_dels = await db.deliveries.count_documents({**del_base, "is_shared_client_30d": True})
+        fallback_dels = await db.deliveries.count_documents({**del_base, "overlap_fallback_delivery": True})
+
+        result["overlap_stats"] = {
+            "shared_clients_count": shared_count,
+            "shared_clients_rate": _safe_div(shared_count, total_clients),
+            "shared_client_deliveries_30d_count": shared_dels,
+            "shared_client_deliveries_30d_rate": _safe_div(shared_dels, total_dels) if total_dels else 0,
+            "overlap_fallback_deliveries_30d_count": fallback_dels,
+            "overlap_fallback_deliveries_30d_rate": _safe_div(fallback_dels, shared_dels) if shared_dels else 0,
+        }
+    except Exception as e:
+        logger.error(f"[MONITORING] overlap_stats failed: {e}")
+        result["overlap_stats"] = {}
+        result["_errors"].append("overlap_stats")
+
     if not result["_errors"]:
         del result["_errors"]
 
