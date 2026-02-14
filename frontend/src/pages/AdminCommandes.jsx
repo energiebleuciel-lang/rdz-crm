@@ -7,7 +7,7 @@ import { getCurrentWeekKey, shiftWeekKey } from '../lib/weekUtils';
 import { WeekNavStandard } from '../components/WeekNav';
 
 export default function AdminCommandes() {
-  const { authFetch } = useAuth();
+  const { authFetch, entityScope, isSuperAdmin, hasPermission } = useAuth();
   const navigate = useNavigate();
   const [commandes, setCommandes] = useState([]);
   const [clients, setClients] = useState([]);
@@ -21,6 +21,13 @@ export default function AdminCommandes() {
   const [saving, setSaving] = useState(false);
 
   const handleWeekNav = (dir) => setWeek(w => shiftWeekKey(w, dir));
+
+  // Resolve entities to query based on scope + local filter
+  const getEntitiesToLoad = useCallback(() => {
+    if (entityFilter) return [entityFilter];
+    if (entityScope === 'BOTH') return ['ZR7', 'MDL'];
+    return [entityScope || 'ZR7'];
+  }, [entityFilter, entityScope]);
 
   const load = useCallback(async () => {
     setLoading(true);
