@@ -110,11 +110,13 @@ async def get_delivery_stats(
     
     stats["total"] = sum(stats.values())
     
-    # Outcome stats (rejected / billable)
+    # Outcome stats (rejected / removed / billable)
     rejected_count = await db.deliveries.count_documents({**match_query, "outcome": "rejected"})
-    billable_count = await db.deliveries.count_documents({**match_query, "status": "sent", "outcome": {"$ne": "rejected"}})
+    removed_count = await db.deliveries.count_documents({**match_query, "outcome": "removed"})
+    billable_count = await db.deliveries.count_documents({**match_query, "status": "sent", "outcome": {"$nin": ["rejected", "removed"]}})
     
     stats["rejected"] = rejected_count
+    stats["removed"] = removed_count
     stats["billable"] = billable_count
     
     return stats
