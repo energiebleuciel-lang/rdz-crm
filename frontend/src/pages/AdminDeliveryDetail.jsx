@@ -266,6 +266,21 @@ export default function AdminDeliveryDetail() {
         </div>
       )}
 
+      {/* SMTP Log */}
+      {d.status === 'sent' && (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 mt-4" data-testid="smtp-log">
+          <h2 className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-3">SMTP Log</h2>
+          <dl className="space-y-1.5 text-xs">
+            <div className="flex justify-between"><dt className="text-zinc-500">Sent to</dt><dd className="text-zinc-300">{d.sent_to?.join(', ')}</dd></div>
+            <div className="flex justify-between"><dt className="text-zinc-500">Last sent at</dt><dd className="text-zinc-300">{d.last_sent_at?.slice(0, 19).replace('T', ' ')}</dd></div>
+            <div className="flex justify-between"><dt className="text-zinc-500">Attempts</dt><dd className="text-zinc-300">{d.send_attempts}</dd></div>
+            <div className="flex justify-between"><dt className="text-zinc-500">Sent by</dt><dd className="text-zinc-300">{d.sent_by || 'system'}</dd></div>
+            {d.csv_filename && <div className="flex justify-between"><dt className="text-zinc-500">CSV file</dt><dd className="text-zinc-300 font-mono text-[10px]">{d.csv_filename}</dd></div>}
+            {d.last_error && <div className="flex justify-between"><dt className="text-zinc-500">Last error</dt><dd className="text-red-400">{d.last_error}</dd></div>}
+          </dl>
+        </div>
+      )}
+
       {/* Activity log for this delivery */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 mt-4" data-testid="delivery-activity-section">
         <h2 className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-3 flex items-center gap-2"><Clock className="w-3.5 h-3.5" /> Activité</h2>
