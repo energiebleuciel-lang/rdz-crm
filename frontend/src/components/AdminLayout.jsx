@@ -3,7 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import {
   LayoutDashboard, Package, Users, ShoppingCart, Settings, LogOut,
   Truck, ChevronLeft, ChevronRight, FileText, Clock, MapPin, Receipt,
-  Shield, UserCog, FileCheck
+  Shield, UserCog, FileCheck, Zap
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
