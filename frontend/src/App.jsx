@@ -17,6 +17,7 @@ import AdminActivity from './pages/AdminActivity';
 import AdminDepartements from './pages/AdminDepartements';
 import AdminFacturation from './pages/AdminFacturation';
 import AdminUsers from './pages/AdminUsers';
+import AdminInvoices from './pages/AdminInvoices';
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
@@ -60,6 +61,7 @@ function AppRoutes() {
       <Route path="/admin/activity" element={<PrivateRoute><AdminActivity /></PrivateRoute>} />
       <Route path="/admin/departements" element={<PrivateRoute><AdminDepartements /></PrivateRoute>} />
       <Route path="/admin/facturation" element={<PrivateRoute><AdminFacturation /></PrivateRoute>} />
+      <Route path="/admin/invoices" element={<PrivateRoute><AdminInvoices /></PrivateRoute>} />
       <Route path="/admin/users" element={<PrivateRoute><AdminUsers /></PrivateRoute>} />
       <Route path="/admin/settings" element={<PrivateRoute><AdminSettings /></PrivateRoute>} />
       <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
