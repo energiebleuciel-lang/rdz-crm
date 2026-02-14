@@ -467,8 +467,8 @@ async def build_ledger(week_key: str, user: dict = Depends(get_current_user)):
     all_gp = await db.client_pricing.find({}, {"_id": 0}).to_list(500)
     gp_map = {g["client_id"]: g for g in all_gp}
 
-    # Client names
-    cnames = {c["id"]: c["name"] for c in await db.clients.find({}, {"_id": 0, "id": 1, "name": 1}).to_list(500)}
+    # Client names + entity
+    client_map = {c["id"]: {"name": c["name"], "entity": c.get("entity", "")} for c in await db.clients.find({}, {"_id": 0, "id": 1, "name": 1, "entity": 1}).to_list(500)}
 
     # Credits map: key = client_id:product_code:order_id:week_key
     credits = await db.billing_credits.find({"week_key": week_key}, {"_id": 0}).to_list(500)
