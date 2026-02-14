@@ -82,20 +82,20 @@ async def get_dashboard_stats(
     ]
     top_clients = await db.deliveries.aggregate(top_clients_pipeline).to_list(10)
 
-    # Enrich top clients with rejected + billable 7d
+    # Enrich top clients with rejected + billable for week
     for tc in top_clients:
         cid = tc["_id"]
         tc["rejected_7d"] = await db.deliveries.count_documents({
-            "client_id": cid, "outcome": "rejected", "created_at": {"$gte": seven_days_ago}
+            "client_id": cid, "outcome": "rejected", "created_at": {"$gte": week_start, "$lte": week_end}
         })
         tc["billable_7d"] = await db.deliveries.count_documents({
-            "client_id": cid, "status": "sent", "outcome": {"$nin": ["rejected", "removed"]}, "created_at": {"$gte": seven_days_ago}
+            "client_id": cid, "status": "sent", "outcome": {"$nin": ["rejected", "removed"]}, "created_at": {"$gte": week_start, "$lte": week_end}
         })
         tc["failed_7d"] = await db.deliveries.count_documents({
-            "client_id": cid, "status": "failed", "created_at": {"$gte": seven_days_ago}
+            "client_id": cid, "status": "failed", "created_at": {"$gte": week_start, "$lte": week_end}
         })
         tc["ready_7d"] = await db.deliveries.count_documents({
-            "client_id": cid, "status": "ready_to_send", "created_at": {"$gte": seven_days_ago}
+            "client_id": cid, "status": "ready_to_send", "created_at": {"$gte": week_start, "$lte": week_end}
         })
         tc.pop("_id")
         tc["client_id"] = cid
