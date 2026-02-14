@@ -1,0 +1,832 @@
+{
+  "billing_credits": {
+    "client_id_1_week_key_1": {
+      "key": [
+        [
+          "client_id",
+          1
+        ],
+        [
+          "week_key",
+          1
+        ]
+      ],
+      "unique": false
+    }
+  },
+  "billing_ledger": {
+    "week_key_1": {
+      "key": [
+        [
+          "week_key",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "week_key_1_client_id_1_product_code_1": {
+      "key": [
+        [
+          "week_key",
+          1
+        ],
+        [
+          "client_id",
+          1
+        ],
+        [
+          "product_code",
+          1
+        ]
+      ],
+      "unique": false
+    }
+  },
+  "billing_records": {
+    "week_key_1_client_id_1_product_code_1_order_id_1": {
+      "key": [
+        [
+          "week_key",
+          1
+        ],
+        [
+          "client_id",
+          1
+        ],
+        [
+          "product_code",
+          1
+        ],
+        [
+          "order_id",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "status_1": {
+      "key": [
+        [
+          "status",
+          1
+        ]
+      ],
+      "unique": false
+    }
+  },
+  "client_pricing": {
+    "client_id_1": {
+      "key": [
+        [
+          "client_id",
+          1
+        ]
+      ],
+      "unique": true
+    }
+  },
+  "client_product_pricing": {
+    "client_id_1_product_code_1": {
+      "key": [
+        [
+          "client_id",
+          1
+        ],
+        [
+          "product_code",
+          1
+        ]
+      ],
+      "unique": true
+    }
+  },
+  "clients": {
+    "entity_1": {
+      "key": [
+        [
+          "entity",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "idx_client_entity_email": {
+      "key": [
+        [
+          "entity",
+          1
+        ],
+        [
+          "email",
+          1
+        ]
+      ],
+      "unique": true
+    }
+  },
+  "commandes": {
+    "entity_1": {
+      "key": [
+        [
+          "entity",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "idx_commande_routing": {
+      "key": [
+        [
+          "entity",
+          1
+        ],
+        [
+          "client_id",
+          1
+        ],
+        [
+          "produit",
+          1
+        ],
+        [
+          "active",
+          1
+        ]
+      ],
+      "unique": false
+    }
+  },
+  "deliveries": {
+    "entity_1": {
+      "key": [
+        [
+          "entity",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "status_1": {
+      "key": [
+        [
+          "status",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "client_id_1": {
+      "key": [
+        [
+          "client_id",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "lead_id_1": {
+      "key": [
+        [
+          "lead_id",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "commande_id_1": {
+      "key": [
+        [
+          "commande_id",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "created_at_1": {
+      "key": [
+        [
+          "created_at",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "outcome_1": {
+      "key": [
+        [
+          "outcome",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "idx_delivery_entity_status_date": {
+      "key": [
+        [
+          "entity",
+          1
+        ],
+        [
+          "status",
+          1
+        ],
+        [
+          "created_at",
+          -1
+        ]
+      ],
+      "unique": false
+    },
+    "idx_delivery_client_billing": {
+      "key": [
+        [
+          "client_id",
+          1
+        ],
+        [
+          "status",
+          1
+        ],
+        [
+          "outcome",
+          1
+        ]
+      ],
+      "unique": false
+    }
+  },
+  "delivery_batches": {
+    "entity_1": {
+      "key": [
+        [
+          "entity",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "sent_at_1": {
+      "key": [
+        [
+          "sent_at",
+          1
+        ]
+      ],
+      "unique": false
+    }
+  },
+  "delivery_reports": {
+    "run_at_1": {
+      "key": [
+        [
+          "run_at",
+          1
+        ]
+      ],
+      "unique": false
+    }
+  },
+  "entity_transfer_pricing": {
+    "from_entity_1_to_entity_1_product_code_1": {
+      "key": [
+        [
+          "from_entity",
+          1
+        ],
+        [
+          "to_entity",
+          1
+        ],
+        [
+          "product_code",
+          1
+        ]
+      ],
+      "unique": true
+    }
+  },
+  "event_log": {
+    "created_at_1": {
+      "key": [
+        [
+          "created_at",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "action_1": {
+      "key": [
+        [
+          "action",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "entity_1": {
+      "key": [
+        [
+          "entity",
+          1
+        ]
+      ],
+      "unique": false
+    }
+  },
+  "forms": {
+    "code_1": {
+      "key": [
+        [
+          "code",
+          1
+        ]
+      ],
+      "unique": false
+    }
+  },
+  "intercompany_pricing": {
+    "idx_interco_pricing": {
+      "key": [
+        [
+          "from_entity",
+          1
+        ],
+        [
+          "to_entity",
+          1
+        ],
+        [
+          "product",
+          1
+        ]
+      ],
+      "unique": true
+    }
+  },
+  "intercompany_transfers": {
+    "week_key_1": {
+      "key": [
+        [
+          "week_key",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "transfer_status_1": {
+      "key": [
+        [
+          "transfer_status",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "idx_interco_unique_delivery": {
+      "key": [
+        [
+          "delivery_id",
+          1
+        ]
+      ],
+      "unique": true
+    }
+  },
+  "interfacturation_records": {
+    "week_key_1_from_entity_1_to_entity_1": {
+      "key": [
+        [
+          "week_key",
+          1
+        ],
+        [
+          "from_entity",
+          1
+        ],
+        [
+          "to_entity",
+          1
+        ]
+      ],
+      "unique": false
+    }
+  },
+  "invoices": {
+    "week_key_1_client_id_1_product_code_1": {
+      "key": [
+        [
+          "week_key",
+          1
+        ],
+        [
+          "client_id",
+          1
+        ],
+        [
+          "product_code",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "invoice_number_1": {
+      "key": [
+        [
+          "invoice_number",
+          1
+        ]
+      ],
+      "unique": true
+    },
+    "entity_1": {
+      "key": [
+        [
+          "entity",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "status_1": {
+      "key": [
+        [
+          "status",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "client_id_1": {
+      "key": [
+        [
+          "client_id",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "type_1": {
+      "key": [
+        [
+          "type",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "idx_invoice_scope": {
+      "key": [
+        [
+          "entity",
+          1
+        ],
+        [
+          "status",
+          1
+        ],
+        [
+          "type",
+          1
+        ]
+      ],
+      "unique": false
+    }
+  },
+  "leads": {
+    "phone_1": {
+      "key": [
+        [
+          "phone",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "created_at_1": {
+      "key": [
+        [
+          "created_at",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "idx_double_submit_detection": {
+      "key": [
+        [
+          "session_id",
+          1
+        ],
+        [
+          "phone",
+          1
+        ],
+        [
+          "created_at",
+          -1
+        ]
+      ],
+      "unique": false
+    },
+    "entity_1": {
+      "key": [
+        [
+          "entity",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "status_1": {
+      "key": [
+        [
+          "status",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "idx_lb": {
+      "key": [
+        [
+          "entity",
+          1
+        ],
+        [
+          "status",
+          1
+        ],
+        [
+          "is_lb",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "nom_1": {
+      "key": [
+        [
+          "nom",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "departement_1": {
+      "key": [
+        [
+          "departement",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "produit_1": {
+      "key": [
+        [
+          "produit",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "register_date_1": {
+      "key": [
+        [
+          "register_date",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "idx_duplicate_30_days": {
+      "key": [
+        [
+          "phone",
+          1
+        ],
+        [
+          "produit",
+          1
+        ],
+        [
+          "delivered_to_client_id",
+          1
+        ],
+        [
+          "delivered_at",
+          -1
+        ]
+      ],
+      "unique": false
+    },
+    "idx_routing": {
+      "key": [
+        [
+          "entity",
+          1
+        ],
+        [
+          "produit",
+          1
+        ],
+        [
+          "departement",
+          1
+        ],
+        [
+          "status",
+          1
+        ]
+      ],
+      "unique": false
+    }
+  },
+  "lps": {
+    "code_1": {
+      "key": [
+        [
+          "code",
+          1
+        ]
+      ],
+      "unique": false
+    }
+  },
+  "prepayment_balances": {
+    "client_id_1_product_code_1": {
+      "key": [
+        [
+          "client_id",
+          1
+        ],
+        [
+          "product_code",
+          1
+        ]
+      ],
+      "unique": true
+    }
+  },
+  "products": {
+    "code_1": {
+      "key": [
+        [
+          "code",
+          1
+        ]
+      ],
+      "unique": true
+    }
+  },
+  "providers": {
+    "slug_1": {
+      "key": [
+        [
+          "slug",
+          1
+        ]
+      ],
+      "unique": true
+    },
+    "api_key_1": {
+      "key": [
+        [
+          "api_key",
+          1
+        ]
+      ],
+      "unique": true
+    },
+    "entity_1": {
+      "key": [
+        [
+          "entity",
+          1
+        ]
+      ],
+      "unique": false
+    }
+  },
+  "sessions": {
+    "token_1": {
+      "key": [
+        [
+          "token",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "expires_at_1": {
+      "key": [
+        [
+          "expires_at",
+          1
+        ]
+      ],
+      "unique": false
+    }
+  },
+  "tracking": {
+    "lp_code_1": {
+      "key": [
+        [
+          "lp_code",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "form_code_1": {
+      "key": [
+        [
+          "form_code",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "session_id_1": {
+      "key": [
+        [
+          "session_id",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "idx_session_event": {
+      "key": [
+        [
+          "session_id",
+          1
+        ],
+        [
+          "event",
+          1
+        ]
+      ],
+      "unique": true
+    }
+  },
+  "users": {
+    "email_1": {
+      "key": [
+        [
+          "email",
+          1
+        ]
+      ],
+      "unique": true
+    }
+  },
+  "visitor_sessions": {
+    "id_1": {
+      "key": [
+        [
+          "id",
+          1
+        ]
+      ],
+      "unique": true
+    },
+    "visitor_id_1": {
+      "key": [
+        [
+          "visitor_id",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "lp_code_1": {
+      "key": [
+        [
+          "lp_code",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "form_code_1": {
+      "key": [
+        [
+          "form_code",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    "status_1": {
+      "key": [
+        [
+          "status",
+          1
+        ]
+      ],
+      "unique": false
+    }
+  }
+}
