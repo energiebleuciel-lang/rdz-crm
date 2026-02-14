@@ -205,6 +205,52 @@ export default function AdminCommandes() {
         </div>
       )}
 
+      {/* LB Monitoring Widget (super_admin only) */}
+      {hasPermission('monitoring.lb.view') && lbMonitor.length > 0 && (
+        <div className="mb-4" data-testid="lb-monitor-widget">
+          <button onClick={() => setShowLbMonitor(!showLbMonitor)}
+            className="flex items-center gap-2 text-xs text-amber-400/80 hover:text-amber-400 mb-2 transition-colors">
+            <Activity className="w-3.5 h-3.5" />
+            <span className="font-medium">LB Monitor</span>
+            <span className="text-zinc-600">({lbMonitor.length} commandes avec target)</span>
+            <span className="text-zinc-700 text-[10px]">{showLbMonitor ? 'masquer' : 'afficher'}</span>
+          </button>
+          {showLbMonitor && (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+              {lbMonitor.map(m => {
+                const statusColor = m.status === 'on_target'
+                  ? 'border-emerald-500/30 bg-emerald-500/5'
+                  : m.status === 'over'
+                    ? 'border-amber-500/30 bg-amber-500/5'
+                    : 'border-zinc-700 bg-zinc-800/30';
+                const pctColor = m.status === 'on_target' ? 'text-emerald-400' : m.status === 'over' ? 'text-amber-400' : 'text-zinc-400';
+                const targetPct = Math.round(m.lb_target_pct * 100);
+                const actualPct = (m.actual_lb_pct * 100).toFixed(1);
+                return (
+                  <div key={m.commande_id} className={`border rounded-md px-2.5 py-2 ${statusColor}`} data-testid={`lb-mon-${m.commande_id}`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] text-zinc-400 truncate max-w-[120px]">{m.client_name}</span>
+                      <span className="text-[9px] text-zinc-600">{m.produit}</span>
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className={`text-sm font-semibold ${pctColor}`}>{actualPct}%</span>
+                      <span className="text-[9px] text-zinc-600">/ {targetPct}% target</span>
+                    </div>
+                    <div className="flex items-center gap-1 mt-1">
+                      <div className="flex-1 h-1 rounded-full bg-zinc-800 overflow-hidden">
+                        <div className={`h-full rounded-full ${m.status === 'on_target' ? 'bg-emerald-500' : m.status === 'over' ? 'bg-amber-500' : 'bg-zinc-600'}`}
+                          style={{width: `${Math.min(100, targetPct > 0 ? (m.actual_lb_pct / m.lb_target_pct * 100) : 0)}%`}} />
+                      </div>
+                      <span className="text-[9px] text-zinc-600">{m.lb_accepted}/{m.units_accepted}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
