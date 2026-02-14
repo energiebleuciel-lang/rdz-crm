@@ -79,6 +79,7 @@ async def maybe_create_intercompany_transfer(
         "unit_price_ht": unit_price_ht,
         "transfer_status": "pending",
         "invoice_id": None,
+        "routing_mode": routing_mode,
         "week_key": week_key,
         "created_at": now_iso(),
     }
