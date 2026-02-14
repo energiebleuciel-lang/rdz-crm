@@ -459,9 +459,9 @@ class TestEDelivery:
         csv = generate_csv_content(leads, "PV", "ZR7")
         lines = csv.strip().split("\n")
         assert len(lines) == 2  # header + 1 row
-        headers = lines[0].split(",")
+        headers = [h.strip() for h in lines[0].split(",")]
         assert headers == ["nom", "prenom", "telephone", "email", "departement", "proprietaire_maison", "produit"]
-        row = lines[1].split(",")
+        row = [v.strip() for v in lines[1].split(",")]
         assert row[5] == "oui"  # proprietaire_maison
         assert row[6] == "PV"   # produit from commande
 
