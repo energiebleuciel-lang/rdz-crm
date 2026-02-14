@@ -1,10 +1,11 @@
 """
-RDZ CRM - Monitoring Intelligence Layer
-READ-ONLY aggregation endpoint. Fail-open per-widget.
+RDZ CRM - Monitoring Intelligence Layer v2
+READ-ONLY aggregation. Fail-open per-widget. Strategic decision engine.
 """
 
 import logging
 from datetime import datetime, timezone, timedelta
+from collections import defaultdict
 from fastapi import APIRouter, Depends, Request, Query
 from typing import Optional
 from config import db, now_iso
@@ -31,6 +32,14 @@ def _prev_cutoff(range_key: str) -> tuple:
     return start.isoformat(), end.isoformat()
 
 
+def _safe_div(a, b, mult=100):
+    return round(a / b * mult, 1) if b > 0 else 0
+
+
+def _clamp(v, lo=0, hi=100):
+    return max(lo, min(hi, round(v, 1)))
+
+
 @router.get("/intelligence")
 async def monitoring_intelligence(
     request: Request,
@@ -38,10 +47,6 @@ async def monitoring_intelligence(
     product: Optional[str] = None,
     user: dict = Depends(require_permission("dashboard.view")),
 ):
-    """
-    Monitoring Intelligence — single aggregated endpoint.
-    Fail-open: each section isolated, partial data on error.
-    """
     scope = get_entity_scope_from_request(user, request)
     ef = build_entity_filter(scope)
     cutoff = _cutoff(range)
@@ -65,14 +70,12 @@ async def monitoring_intelligence(
                 "_id": {
                     "source_type": {"$ifNull": ["$lead_source_type", "unknown"]},
                     "quality": {"$ifNull": ["$phone_quality", "unknown"]},
-                    "entity": "$entity",
                 },
                 "count": {"$sum": 1},
             }},
         ]
         pq_raw = await db.leads.aggregate(pq_pipe).to_list(500)
 
-        # Also get previous period totals for trend
         prev_pipe = [
             {"$match": prev_base},
             {"$group": {
@@ -83,7 +86,6 @@ async def monitoring_intelligence(
         prev_raw = await db.leads.aggregate(prev_pipe).to_list(50)
         prev_by_src = {r["_id"]["source_type"]: r["count"] for r in prev_raw}
 
-        # Aggregate by source_type
         sources = {}
         for r in pq_raw:
             src = r["_id"]["source_type"]
@@ -91,10 +93,7 @@ async def monitoring_intelligence(
             if src not in sources:
                 sources[src] = {"total": 0, "valid": 0, "suspicious": 0, "invalid": 0, "unknown": 0}
             sources[src]["total"] += r["count"]
-            if q in sources[src]:
-                sources[src][q] += r["count"]
-            else:
-                sources[src]["unknown"] += r["count"]
+            sources[src][q] = sources[src].get(q, 0) + r["count"]
 
         phone_quality = []
         for src, s in sorted(sources.items()):
@@ -107,9 +106,9 @@ async def monitoring_intelligence(
                 "valid_count": s["valid"],
                 "suspicious_count": s["suspicious"],
                 "invalid_count": s["invalid"],
-                "valid_rate": round(s["valid"] / t * 100, 1),
-                "suspicious_rate": round(s["suspicious"] / t * 100, 1),
-                "invalid_rate": round(s["invalid"] / t * 100, 1),
+                "valid_rate": _safe_div(s["valid"], t),
+                "suspicious_rate": _safe_div(s["suspicious"], t),
+                "invalid_rate": _safe_div(s["invalid"], t),
                 "trend_pct": trend,
             })
         result["phone_quality"] = phone_quality
@@ -119,12 +118,12 @@ async def monitoring_intelligence(
         result["_errors"].append("phone_quality")
 
     # ═══════════════════════════════════════════════════════════
-    # 2. DUPLICATE STATS
+    # 2. DUPLICATE INTELLIGENCE
     # ═══════════════════════════════════════════════════════════
     try:
         # A. Duplicate rate by source
         dup_pipe = [
-            {"$match": {**base, "status": {"$in": ["duplicate", "routed", "livre", "no_open_orders", "new", "lb"]}}},
+            {"$match": base},
             {"$group": {
                 "_id": {"$ifNull": ["$source", "direct"]},
                 "total": {"$sum": 1},
@@ -140,84 +139,127 @@ async def monitoring_intelligence(
                 "source": r["_id"],
                 "total_leads": r["total"],
                 "duplicate_count": r["dup"],
-                "duplicate_rate": round(r["dup"] / t * 100, 1),
+                "duplicate_rate": _safe_div(r["dup"], t),
             })
         result["duplicate_by_source"] = dup_by_source
 
-        # B. Cross-source duplicate matrix
-        # Find leads with same phone that were submitted by different sources
+        # B. Duplicate offenders by entity
+        ent_list = ["ZR7", "MDL"] if scope == "BOTH" else [scope]
+        offenders_by_entity = {}
+        for ent in ent_list:
+            ent_base = {"entity": ent, "created_at": {"$gte": cutoff}}
+            if product:
+                ent_base["produit"] = product.upper()
+            e_total = await db.leads.count_documents(ent_base)
+            e_dup = await db.leads.count_documents({**ent_base, "status": "duplicate"})
+
+            # Duplicates against internal LP vs provider vs other entity
+            dup_leads = await db.leads.find(
+                {**ent_base, "status": "duplicate"},
+                {"_id": 0, "phone": 1, "produit": 1, "source": 1}
+            ).limit(500).to_list(500)
+
+            against_internal = 0
+            against_provider = 0
+            against_other_entity = 0
+            for dl in dup_leads:
+                orig = await db.leads.find_one({
+                    "phone": dl.get("phone"), "produit": dl.get("produit"),
+                    "status": {"$in": ["routed", "livre"]},
+                }, {"_id": 0, "lead_source_type": 1, "entity": 1})
+                if orig:
+                    if orig.get("lead_source_type") == "internal_lp":
+                        against_internal += 1
+                    elif orig.get("lead_source_type") == "provider":
+                        against_provider += 1
+                    if orig.get("entity") != ent:
+                        against_other_entity += 1
+
+            offenders_by_entity[ent] = {
+                "total_leads": e_total,
+                "duplicate_count": e_dup,
+                "duplicate_rate": _safe_div(e_dup, e_total),
+                "against_internal_lp": against_internal,
+                "against_provider": against_provider,
+                "against_other_entity": against_other_entity,
+            }
+        result["duplicate_offenders_by_entity"] = offenders_by_entity
+
+        # C. Cross-source conflict matrix (enriched with entity)
         cross_pipe = [
             {"$match": {**ef, "phone": {"$exists": True, "$ne": ""}, "created_at": {"$gte": cutoff}}},
             {"$group": {
                 "_id": "$phone",
-                "sources": {"$addToSet": {"$ifNull": ["$source", "direct"]}},
+                "entries": {"$push": {"source": {"$ifNull": ["$source", "direct"]}, "entity": "$entity"}},
                 "count": {"$sum": 1},
             }},
             {"$match": {"count": {"$gte": 2}}},
-            {"$limit": 500},
+            {"$limit": 300},
         ]
-        cross_raw = await db.leads.aggregate(cross_pipe).to_list(500)
+        cross_raw = await db.leads.aggregate(cross_pipe).to_list(300)
 
-        # Build matrix
         cross_matrix = {}
         for r in cross_raw:
-            srcs = sorted(r["sources"])
-            for i, s1 in enumerate(srcs):
-                for s2 in srcs[i+1:]:
-                    key = f"{s1}|{s2}"
-                    cross_matrix[key] = cross_matrix.get(key, 0) + 1
+            entries = r["entries"]
+            seen = set()
+            for i, e1 in enumerate(entries):
+                for e2 in entries[i+1:]:
+                    s1, s2 = e1["source"], e2["source"]
+                    ent1, ent2 = e1.get("entity", "?"), e2.get("entity", "?")
+                    if s1 == s2 and ent1 == ent2:
+                        continue
+                    key = f"{min(s1,s2)}|{max(s1,s2)}|{min(ent1,ent2)}|{max(ent1,ent2)}"
+                    if key not in seen:
+                        cross_matrix[key] = cross_matrix.get(key, 0) + 1
+                        seen.add(key)
 
-        result["duplicate_cross_matrix"] = [
-            {"source_a": k.split("|")[0], "source_b": k.split("|")[1], "conflict_count": v}
-            for k, v in sorted(cross_matrix.items(), key=lambda x: -x[1])
-        ][:20]
+        result["duplicate_cross_matrix"] = sorted([
+            {
+                "source_a": k.split("|")[0], "source_b": k.split("|")[1],
+                "entity_a": k.split("|")[2], "entity_b": k.split("|")[3],
+                "conflict_count": v,
+            }
+            for k, v in cross_matrix.items()
+        ], key=lambda x: -x["conflict_count"])[:25]
 
-        # C. Delay between duplicates (bucket)
-        delay_pipe = [
-            {"$match": {**ef, "status": "duplicate", "created_at": {"$gte": cutoff}}},
-            {"$lookup": {
-                "from": "leads",
-                "let": {"ph": "$phone", "pr": "$produit"},
-                "pipeline": [
-                    {"$match": {"$expr": {"$and": [
-                        {"$eq": ["$phone", "$$ph"]},
-                        {"$eq": ["$produit", "$$pr"]},
-                        {"$in": ["$status", ["routed", "livre"]]},
-                    ]}}},
-                    {"$sort": {"created_at": -1}},
-                    {"$limit": 1},
-                    {"$project": {"_id": 0, "created_at": 1}},
-                ],
-                "as": "original",
-            }},
-            {"$limit": 200},
-        ]
-        delay_raw = await db.leads.aggregate(delay_pipe).to_list(200)
+        # D. Time buckets by source+entity
+        dup_leads_for_buckets = await db.leads.find(
+            {**ef, "status": "duplicate", "created_at": {"$gte": cutoff}},
+            {"_id": 0, "phone": 1, "produit": 1, "created_at": 1, "source": 1, "entity": 1}
+        ).limit(300).to_list(300)
 
-        buckets = {"lt_24h": 0, "1d_7d": 0, "gt_7d": 0, "unknown": 0}
-        for r in delay_raw:
-            if not r.get("original"):
+        buckets = {"lt_1h": 0, "1h_24h": 0, "1d_7d": 0, "gt_7d": 0, "unknown": 0}
+        for dl in dup_leads_for_buckets:
+            orig = await db.leads.find_one({
+                "phone": dl["phone"], "produit": dl.get("produit"),
+                "status": {"$in": ["routed", "livre"]},
+                "created_at": {"$lt": dl["created_at"]},
+            }, {"_id": 0, "created_at": 1}, sort=[("created_at", -1)])
+            if not orig:
                 buckets["unknown"] += 1
                 continue
             try:
-                dup_dt = datetime.fromisoformat(r["created_at"].replace("Z", "+00:00"))
-                orig_dt = datetime.fromisoformat(r["original"][0]["created_at"].replace("Z", "+00:00"))
-                delta = abs((dup_dt - orig_dt).total_seconds()) / 3600
-                if delta < 24:
-                    buckets["lt_24h"] += 1
-                elif delta < 168:
+                d1 = datetime.fromisoformat(dl["created_at"].replace("Z", "+00:00"))
+                d2 = datetime.fromisoformat(orig["created_at"].replace("Z", "+00:00"))
+                hours = abs((d1 - d2).total_seconds()) / 3600
+                if hours < 1:
+                    buckets["lt_1h"] += 1
+                elif hours < 24:
+                    buckets["1h_24h"] += 1
+                elif hours < 168:
                     buckets["1d_7d"] += 1
                 else:
                     buckets["gt_7d"] += 1
             except Exception:
                 buckets["unknown"] += 1
 
-        result["duplicate_delay_buckets"] = buckets
+        result["duplicate_time_buckets"] = buckets
     except Exception as e:
         logger.error(f"[MONITORING] duplicates failed: {e}")
-        result["duplicate_by_source"] = []
-        result["duplicate_cross_matrix"] = []
-        result["duplicate_delay_buckets"] = {}
+        result.setdefault("duplicate_by_source", [])
+        result.setdefault("duplicate_offenders_by_entity", {})
+        result.setdefault("duplicate_cross_matrix", [])
+        result.setdefault("duplicate_time_buckets", {})
         result["_errors"].append("duplicates")
 
     # ═══════════════════════════════════════════════════════════
@@ -232,14 +274,11 @@ async def monitoring_intelligence(
                 "_id": {
                     "source": {"$ifNull": ["$source", "direct"]},
                     "status": "$status",
-                    "produit": {"$ifNull": ["$produit", "unknown"]},
-                    "entity": "$entity",
                 },
                 "count": {"$sum": 1},
             }},
         ]
         rej_raw = await db.leads.aggregate(rej_pipe).to_list(500)
-
         rejections = {}
         for r in rej_raw:
             src = r["_id"]["source"]
@@ -249,10 +288,10 @@ async def monitoring_intelligence(
             reason = r["_id"]["status"]
             rejections[src]["by_reason"][reason] = rejections[src]["by_reason"].get(reason, 0) + r["count"]
 
-        result["rejections_by_source"] = [
+        result["rejections_by_source"] = sorted([
             {"source": src, **data}
-            for src, data in sorted(rejections.items(), key=lambda x: -x[1]["total_rejected"])
-        ]
+            for src, data in rejections.items()
+        ], key=lambda x: -x["total_rejected"])
     except Exception as e:
         logger.error(f"[MONITORING] rejections failed: {e}")
         result["rejections_by_source"] = []
@@ -273,19 +312,16 @@ async def monitoring_intelligence(
             "was_replaced": {"$ne": True},
             "status": {"$in": ["routed", "livre"]},
         })
-
         lb_stock = await db.leads.count_documents({
             **build_entity_filter(scope),
-            "is_lb": True,
-            "status": {"$in": ["lb", "new", "no_open_orders"]},
+            "is_lb": True, "status": {"$in": ["lb", "new", "no_open_orders"]},
         })
-
         result["lb_stats"] = {
             "suspicious_total": susp_total,
             "lb_replaced_count": lb_replaced,
             "suspicious_delivered_count": susp_delivered,
             "lb_stock_available": lb_stock,
-            "lb_usage_rate": round(lb_replaced / susp_total * 100, 1) if susp_total > 0 else 0,
+            "lb_usage_rate": _safe_div(lb_replaced, susp_total),
         }
     except Exception as e:
         logger.error(f"[MONITORING] lb_stats failed: {e}")
@@ -302,21 +338,128 @@ async def monitoring_intelligence(
         delivered_valid = await db.leads.count_documents({
             **base, "phone_quality": "valid", "status": {"$in": ["routed", "livre"]},
         })
-
-        t = total or 1
         result["kpis"] = {
-            "total_leads": total,
-            "delivered": delivered,
-            "valid_total": valid_total,
-            "delivered_valid": delivered_valid,
-            "real_deliverability_rate": round(delivered / t * 100, 1),
-            "clean_rate": round(valid_total / t * 100, 1),
-            "economic_yield": round(delivered_valid / t * 100, 1),
+            "total_leads": total, "delivered": delivered,
+            "valid_total": valid_total, "delivered_valid": delivered_valid,
+            "real_deliverability_rate": _safe_div(delivered, total),
+            "clean_rate": _safe_div(valid_total, total),
+            "economic_yield": _safe_div(delivered_valid, total),
         }
     except Exception as e:
         logger.error(f"[MONITORING] kpis failed: {e}")
         result["kpis"] = {}
         result["_errors"].append("kpis")
+
+    # ═══════════════════════════════════════════════════════════
+    # 6. SOURCE ADVANCED METRICS + SCORES
+    # ═══════════════════════════════════════════════════════════
+    try:
+        adv_pipe = [
+            {"$match": base},
+            {"$group": {
+                "_id": {"$ifNull": ["$source", "direct"]},
+                "total": {"$sum": 1},
+                "valid": {"$sum": {"$cond": [{"$eq": ["$phone_quality", "valid"]}, 1, 0]}},
+                "suspicious": {"$sum": {"$cond": [{"$eq": ["$phone_quality", "suspicious"]}, 1, 0]}},
+                "invalid": {"$sum": {"$cond": [{"$eq": ["$phone_quality", "invalid"]}, 1, 0]}},
+                "duplicate": {"$sum": {"$cond": [{"$eq": ["$status", "duplicate"]}, 1, 0]}},
+                "delivered": {"$sum": {"$cond": [{"$in": ["$status", ["routed", "livre"]]}, 1, 0]}},
+                "replaced": {"$sum": {"$cond": [{"$eq": ["$was_replaced", True]}, 1, 0]}},
+                "rejected": {"$sum": {"$cond": [{"$in": ["$status", [
+                    "invalid", "duplicate", "no_open_orders", "hold_source", "pending_config",
+                ]]}, 1, 0]}},
+            }},
+            {"$sort": {"total": -1}},
+            {"$limit": 50},
+        ]
+        adv_raw = await db.leads.aggregate(adv_pipe).to_list(50)
+
+        source_scores = []
+        for r in adv_raw:
+            t = r["total"] or 1
+            vr = _safe_div(r["valid"], t)
+            sr = _safe_div(r["suspicious"], t)
+            ir = _safe_div(r["invalid"], t)
+            dr = _safe_div(r["duplicate"], t)
+            delr = _safe_div(r["delivered"], t)
+            rejr = _safe_div(r["rejected"], t)
+            lbr = _safe_div(r["replaced"], t)
+
+            # Toxicity Score (0-100, higher = more toxic)
+            raw_tox = (dr * 2) + sr + rejr - delr
+            toxicity = _clamp(raw_tox)
+
+            # Trust Score (0-100, higher = more trustworthy)
+            raw_trust = (vr * 0.4) + (delr * 0.4) - (dr * 0.1) - (sr * 0.1)
+            trust = _clamp(raw_trust)
+
+            source_scores.append({
+                "source": r["_id"],
+                "total": r["total"],
+                "valid_rate": vr, "suspicious_rate": sr, "invalid_rate": ir,
+                "duplicate_rate": dr, "deliverability_rate": delr,
+                "rejection_rate": rejr, "lb_replacement_rate": lbr,
+                "toxicity_score": toxicity,
+                "toxicity_breakdown": {"dup_x2": round(dr * 2, 1), "susp": sr, "rej": rejr, "deliv_neg": round(-delr, 1)},
+                "trust_score": trust,
+                "trust_breakdown": {"valid_x04": round(vr * 0.4, 1), "deliv_x04": round(delr * 0.4, 1), "dup_neg": round(-dr * 0.1, 1), "susp_neg": round(-sr * 0.1, 1)},
+            })
+
+        source_scores.sort(key=lambda x: -x["trust_score"])
+        result["source_scores"] = source_scores
+    except Exception as e:
+        logger.error(f"[MONITORING] source_scores failed: {e}")
+        result["source_scores"] = []
+        result["_errors"].append("source_scores")
+
+    # ═══════════════════════════════════════════════════════════
+    # 7. INTERNAL CANNIBALIZATION INDEX
+    # ═══════════════════════════════════════════════════════════
+    try:
+        # Only meaningful when scope is BOTH or we compute for both entities
+        cross_dup_pipe = [
+            {"$match": {"created_at": {"$gte": cutoff}, "phone": {"$exists": True, "$ne": ""}}},
+            {"$group": {
+                "_id": "$phone",
+                "entities": {"$addToSet": "$entity"},
+                "count": {"$sum": 1},
+            }},
+            {"$match": {"entities": {"$size": 2}, "count": {"$gte": 2}}},
+        ]
+        cross_raw = await db.leads.aggregate(cross_dup_pipe).to_list(1000)
+        cross_entity_count = len(cross_raw)
+
+        total_unique_phones = len(await db.leads.aggregate([
+            {"$match": {**ef, "created_at": {"$gte": cutoff}, "phone": {"$exists": True, "$ne": ""}}},
+            {"$group": {"_id": "$phone"}},
+        ]).to_list(50000))
+
+        # First source distribution for cross-entity leads
+        first_src = {"ZR7": 0, "MDL": 0}
+        for cr in cross_raw[:200]:
+            first = await db.leads.find_one(
+                {"phone": cr["_id"], "status": {"$in": ["routed", "livre", "new"]}},
+                {"_id": 0, "entity": 1},
+                sort=[("created_at", 1)],
+            )
+            if first:
+                ent = first.get("entity", "")
+                if ent in first_src:
+                    first_src[ent] += 1
+
+        cann_rate = _safe_div(cross_entity_count, total_unique_phones)
+
+        result["cannibalization"] = {
+            "cross_entity_duplicate_count": cross_entity_count,
+            "total_unique_phones": total_unique_phones,
+            "cross_entity_duplicate_rate": cann_rate,
+            "first_source_distribution": first_src,
+            "cannibalization_index": _clamp(cann_rate),
+        }
+    except Exception as e:
+        logger.error(f"[MONITORING] cannibalization failed: {e}")
+        result["cannibalization"] = {}
+        result["_errors"].append("cannibalization")
 
     if not result["_errors"]:
         del result["_errors"]
