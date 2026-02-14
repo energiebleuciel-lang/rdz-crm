@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { API } from '../hooks/useApi';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit2, X, Check, Eye } from 'lucide-react';
+import { Plus, Edit2, X, Check, Eye, Activity } from 'lucide-react';
 import { getCurrentWeekKey, shiftWeekKey } from '../lib/weekUtils';
 import { WeekNavStandard } from '../components/WeekNav';
 
