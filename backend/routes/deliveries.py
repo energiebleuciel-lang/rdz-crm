@@ -372,6 +372,106 @@ async def reject_delivery_leads(
     }
 
 
+# ---- Remove lead from delivery ----
+
+REMOVE_REASONS = ["refus_client", "doublon", "hors_zone", "mauvaise_commande", "test", "autre"]
+
+class RemoveLeadRequest(BaseModel):
+    reason: str = ""
+    reason_detail: Optional[str] = ""
+
+
+@router.post("/{delivery_id}/remove-lead")
+async def remove_lead_from_delivery(
+    delivery_id: str,
+    data: RemoveLeadRequest = RemoveLeadRequest(),
+    user: dict = Depends(require_admin)
+):
+    """
+    Retirer un lead d'une livraison.
+    
+    - delivery.outcome = "removed" (status + CSV inchangés)
+    - lead.status = "new" (re-routable)
+    - Event log écrit
+    - billable = status=sent AND outcome=accepted (removed = non facturable)
+    - Idempotent
+    """
+    delivery = await db.deliveries.find_one({"id": delivery_id}, {"_id": 0})
+    if not delivery:
+        raise HTTPException(status_code=404, detail="Delivery non trouvée")
+    
+    if delivery.get("status") != "sent":
+        raise HTTPException(status_code=400, detail=f"Retrait impossible: status={delivery.get('status')} (doit être sent)")
+    
+    # Idempotent
+    if delivery.get("outcome") == "removed":
+        return {"success": True, "delivery_id": delivery_id, "outcome": "removed", "already_removed": True}
+    
+    # Cannot remove if already rejected
+    if delivery.get("outcome") == "rejected":
+        raise HTTPException(status_code=400, detail="Delivery déjà rejetée — utiliser reject-leads pour les rejets client")
+    
+    reason = data.reason or "autre"
+    now = now_iso()
+    lead_id = delivery.get("lead_id")
+    
+    # 1. Annotate delivery
+    await db.deliveries.update_one(
+        {"id": delivery_id},
+        {"$set": {
+            "outcome": "removed",
+            "removed_at": now,
+            "removed_by": user.get("email"),
+            "removal_reason": reason,
+            "removal_detail": data.reason_detail or "",
+            "updated_at": now
+        }}
+    )
+    
+    # 2. Reset lead to new (re-routable)
+    await db.leads.update_one(
+        {"id": lead_id},
+        {
+            "$set": {"status": "new", "updated_at": now},
+            "$unset": {
+                "delivered_at": "",
+                "delivered_to_client_id": "",
+                "delivered_to_client_name": "",
+                "delivery_commande_id": "",
+                "delivery_id": "",
+                "routed_at": "",
+                "delivery_client_id": "",
+                "delivery_client_name": ""
+            }
+        }
+    )
+    
+    # 3. Event log
+    import uuid as _uuid
+    await db.event_log.insert_one({
+        "id": str(_uuid.uuid4()),
+        "action": "lead_removed_from_delivery",
+        "entity_type": "delivery",
+        "entity_id": delivery_id,
+        "related": {"lead_id": lead_id, "client_id": delivery.get("client_id"), "client_name": delivery.get("client_name"), "produit": delivery.get("produit")},
+        "reason": reason,
+        "detail": data.reason_detail or "",
+        "user": user.get("email"),
+        "created_at": now
+    })
+    
+    logger.info(f"[REMOVE] delivery={delivery_id} lead={lead_id} reason={reason} by={user.get('email')}")
+    
+    return {
+        "success": True,
+        "delivery_id": delivery_id,
+        "lead_id": lead_id,
+        "outcome": "removed",
+        "reason": reason,
+        "already_removed": False
+    }
+
+
 # ---- Download CSV ----
 
 @router.get("/{delivery_id}/download")
