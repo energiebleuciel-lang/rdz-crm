@@ -18,6 +18,7 @@ import AdminDepartements from './pages/AdminDepartements';
 import AdminFacturation from './pages/AdminFacturation';
 import AdminUsers from './pages/AdminUsers';
 import AdminInvoices from './pages/AdminInvoices';
+import AdminMonitoring from './pages/AdminMonitoring';
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
