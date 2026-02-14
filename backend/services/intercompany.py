@@ -37,15 +37,13 @@ async def maybe_create_intercompany_transfer(
     if not owner_entity or owner_entity == target_entity:
         return {"created": False, "transfer_id": None, "reason": "same_entity"}
 
-    # 3. Anti-double: check existing transfer for this lead+direction
+    # 3. Anti-double: check existing transfer for this delivery
     existing = await db.intercompany_transfers.find_one({
-        "lead_id": lead_id,
-        "from_entity": owner_entity,
-        "to_entity": target_entity,
+        "delivery_id": delivery_id,
     }, {"_id": 0, "id": 1})
 
     if existing:
-        logger.info(f"[INTERCO] Skip duplicate transfer lead={lead_id[:8]}... already exists")
+        logger.info(f"[INTERCO] Skip duplicate transfer delivery={delivery_id[:8]}... already exists")
         return {"created": False, "transfer_id": existing["id"], "reason": "already_exists"}
 
     # 4. Fetch pricing
