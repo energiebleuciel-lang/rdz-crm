@@ -76,7 +76,7 @@ export default function AdminActivity() {
       if (aRes.ok) { const d = await aRes.json(); setActions(d.actions || []); }
     } catch (e) { console.error(e); }
     setLoading(false);
-  }, [page, filters, authFetch]);
+  }, [page, week, filters, authFetch]);
 
   useEffect(() => { load(); }, [load]);
 
