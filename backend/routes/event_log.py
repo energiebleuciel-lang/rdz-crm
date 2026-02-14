@@ -16,6 +16,7 @@ async def list_events(
     entity_type: Optional[str] = None,
     entity_id: Optional[str] = None,
     entity: Optional[str] = None,
+    week: Optional[str] = None,
     user: Optional[str] = Query(None, alias="user_filter"),
     search: Optional[str] = None,
     limit: int = 100,
@@ -38,6 +39,10 @@ async def list_events(
         ]
     if entity:
         query["entity"] = entity.upper()
+    if week:
+        from services.routing_engine import week_key_to_range
+        ws, we = week_key_to_range(week)
+        query["created_at"] = {"$gte": ws, "$lte": we}
     if user:
         query["user"] = {"$regex": user, "$options": "i"}
     if search:
