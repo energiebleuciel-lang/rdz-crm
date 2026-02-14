@@ -42,20 +42,26 @@ async def get_lead_stats(
 @router.get("/dashboard-stats")
 async def get_dashboard_stats(
     week: Optional[str] = None,
+    request = None,
     user: dict = Depends(require_permission("leads.view"))
 ):
     """
     Stats agrégées pour le cockpit dashboard.
-    Un seul appel = toutes les données nécessaires.
+    Scoped by X-Entity-Scope header.
     """
+    from fastapi import Request as Req
     from services.settings import is_delivery_day_enabled, get_email_denylist_settings
     from models.client import check_client_deliverable
     from services.routing_engine import resolve_week_range
+    from services.permissions import get_entity_scope_from_request, build_entity_filter
+
+    scope = get_entity_scope_from_request(user, request)
+    entity_filter = build_entity_filter(scope)
 
     week_start, week_end = resolve_week_range(week)
 
-    # Lead stats by status (scoped to selected week)
-    lead_pipeline = [{"$match": {"created_at": {"$gte": week_start, "$lte": week_end}}}, {"$group": {"_id": "$status", "count": {"$sum": 1}}}]
+    # Lead stats by status (scoped)
+    lead_pipeline = [{"$match": {**entity_filter, "created_at": {"$gte": week_start, "$lte": week_end}}}, {"$group": {"_id": "$status", "count": {"$sum": 1}}}]
     lead_stats_raw = await db.leads.aggregate(lead_pipeline).to_list(20)
     lead_stats = {r["_id"]: r["count"] for r in lead_stats_raw if r["_id"]}
 
