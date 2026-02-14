@@ -73,6 +73,24 @@ def get_week_key() -> str:
     return f"{iso[0]}-W{iso[1]:02d}"
 
 
+def week_key_to_range(week_key: str):
+    """Convertit YYYY-W## en (monday_iso, sunday_iso)"""
+    parts = week_key.split("-W")
+    year, wn = int(parts[0]), int(parts[1])
+    jan4 = datetime(year, 1, 4, tzinfo=timezone.utc)
+    monday = jan4 - timedelta(days=jan4.weekday()) + timedelta(weeks=wn - 1)
+    monday = monday.replace(hour=0, minute=0, second=0, microsecond=0)
+    sunday = monday + timedelta(days=6, hours=23, minutes=59, seconds=59)
+    return monday.isoformat(), sunday.isoformat()
+
+
+def resolve_week_range(week_key=None):
+    """Retourne (week_start, week_end) pour une semaine donnée ou la semaine courante"""
+    if week_key:
+        return week_key_to_range(week_key)
+    return get_week_start(), get_week_end()
+
+
 async def get_commande_stats(commande_id: str, week_start: str) -> Dict[str, int]:
     """
     Stats de la commande pour la semaine en cours.
