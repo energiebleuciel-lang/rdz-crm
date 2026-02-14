@@ -44,7 +44,7 @@ class SourceGatingUpdate(BaseModel):
 # ---- Endpoints ----
 
 @router.get("")
-async def list_settings(user: dict = Depends(get_current_user)):
+async def list_settings(user: dict = Depends(require_permission("settings.access"))):
     """Liste tous les settings"""
     docs = await db.settings.find({}, {"_id": 0}).to_list(50)
 
@@ -59,7 +59,7 @@ async def list_settings(user: dict = Depends(get_current_user)):
 
 
 @router.get("/cross-entity")
-async def get_cross_entity(user: dict = Depends(get_current_user)):
+async def get_cross_entity(user: dict = Depends(require_permission("settings.access"))):
     """Recupere les settings cross-entity"""
     return await get_cross_entity_settings()
 
@@ -92,7 +92,7 @@ async def update_cross_entity(
 
 
 @router.get("/source-gating")
-async def get_source_gating(user: dict = Depends(get_current_user)):
+async def get_source_gating(user: dict = Depends(require_permission("settings.access"))):
     """Recupere les settings source gating"""
     return await get_source_gating_settings()
 
@@ -129,7 +129,7 @@ class FormsConfigUpdate(BaseModel):
 
 
 @router.get("/forms-config")
-async def get_forms_config(user: dict = Depends(get_current_user)):
+async def get_forms_config(user: dict = Depends(require_permission("settings.access"))):
     """Recupere la config des formulaires (form_code -> entity + produit)"""
     doc = await get_setting("forms_config")
     if not doc:
@@ -188,7 +188,7 @@ class EmailDenylistUpdate(BaseModel):
 
 
 @router.get("/email-denylist")
-async def get_email_denylist(user: dict = Depends(get_current_user)):
+async def get_email_denylist(user: dict = Depends(require_permission("settings.access"))):
     """Récupère la config email denylist"""
     from services.settings import get_email_denylist_settings
     return await get_email_denylist_settings()
@@ -223,7 +223,7 @@ class DeliveryCalendarUpdate(BaseModel):
 
 
 @router.get("/delivery-calendar")
-async def get_delivery_calendar(user: dict = Depends(get_current_user)):
+async def get_delivery_calendar(user: dict = Depends(require_permission("settings.access"))):
     """Récupère le calendrier de livraison par entity"""
     from services.settings import get_delivery_calendar_settings
     return await get_delivery_calendar_settings()
