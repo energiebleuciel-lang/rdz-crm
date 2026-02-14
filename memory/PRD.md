@@ -172,6 +172,15 @@ Guard:
   - Settings: banners status (simulation + calendrier ZR7/MDL)
   - Backend: clients enrichis (has_valid_channel, deliverable_reason, auto_send_enabled)
   - Tests: 5/5 passes (iteration 23)
+- **Phase 3.2 (Feb 2025)** : Client 360 Upgrade
+  - Page detail client /admin/clients/{id} avec 4 tabs
+  - Top summary: ratings (global/paiement/satisfaction/discount 1-5), client_status (VIP/Normal/Watchlist/Blocked), auto_send, next delivery day, jours calendrier
+  - Performance tab: aggregation par day/week/month, sent/billable/rejected/reject_rate, breakdown produit
+  - CRM & Paiement tab: status, accounting, payment_terms/method, derniers paiements, tags, notes internes
+  - Activite tab: timeline rejets/MAJ CRM/notes avec timestamps
+  - Backend: GET /summary, PUT /crm, POST /notes, GET /activity
+  - GET /clients/{id} enrichi (has_valid_channel, deliverable_reason, auto_send_enabled, week stats)
+  - Tests: 10/10 frontend + 25/25 backend (iteration 24)
 
 ## NEXT
 
