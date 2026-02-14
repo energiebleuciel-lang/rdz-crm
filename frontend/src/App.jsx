@@ -15,6 +15,7 @@ import AdminLeads from './pages/AdminLeads';
 import AdminLeadDetail from './pages/AdminLeadDetail';
 import AdminActivity from './pages/AdminActivity';
 import AdminDepartements from './pages/AdminDepartements';
+import AdminFacturation from './pages/AdminFacturation';
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
