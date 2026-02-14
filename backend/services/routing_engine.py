@@ -227,15 +227,23 @@ async def route_lead(
     """
     Route un lead vers le meilleur client avec une commande OPEN.
 
-    1. Chercher commandes OPEN dans l'entite
-    2. Filtrer doublons 30 jours
-    3. Si aucune -> tenter cross-entity fallback (si autorise ET entity_locked=False)
+    ORDRE DE PRIORITÉ:
+    1. Calendar gating - si jour OFF → no_open_orders (delivery_day_disabled)
+    2. Chercher commandes OPEN dans l'entite (client livrable)
+    3. Filtrer doublons 30 jours
+    4. Si aucune -> tenter cross-entity fallback (si autorise ET entity_locked=False)
     """
     logger.info(
         f"[ROUTING] entity={entity} produit={produit} dept={departement} "
         f"phone=***{phone[-4:] if len(phone) >= 4 else phone} is_lb={is_lb} "
         f"entity_locked={entity_locked}"
     )
+
+    # 0. CALENDAR GATING - Vérifier si c'est un jour de livraison
+    day_enabled, day_reason = await is_delivery_day_enabled(entity)
+    if not day_enabled:
+        logger.info(f"[ROUTING] {entity}: {day_reason} - aucune livraison ce jour")
+        return RoutingResult(success=False, reason=day_reason)
 
     # 1. Commandes OPEN dans l'entite principale
     commandes = await find_open_commandes(entity, produit, departement, is_lb)
