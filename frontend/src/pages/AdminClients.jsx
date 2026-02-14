@@ -7,7 +7,7 @@ import { Edit2, X, Check, AlertTriangle, Mail, Globe, Phone, Truck, Eye, Plus, U
 const DAY_SHORT = ['L', 'M', 'Me', 'J', 'V', 'S', 'D'];
 
 export default function AdminClients() {
-  const { authFetch } = useAuth();
+  const { authFetch, entityScope, isSuperAdmin, hasPermission, isWriteBlocked } = useAuth();
   const navigate = useNavigate();
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -38,8 +38,8 @@ export default function AdminClients() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const entities = entityFilter ? [entityFilter] : ['ZR7', 'MDL'];
-      const results = await Promise.all(entities.map(e => authFetch(`${API}/api/clients?entity=${e}`)));
+      const baseEntities = entityFilter ? [entityFilter] : (entityScope === 'BOTH' ? ['ZR7', 'MDL'] : [entityScope || 'ZR7']);
+      const results = await Promise.all(baseEntities.map(e => authFetch(`${API}/api/clients?entity=${e}`)));
       let all = [];
       for (const r of results) { if (r.ok) { const d = await r.json(); all = all.concat(d.clients || []); } }
       setClients(all);
