@@ -18,6 +18,7 @@ const NAV_ITEMS = [
   { path: '/admin/invoices', icon: FileCheck, label: 'Factures', permission: 'billing.view' },
   { path: '/admin/activity', icon: Clock, label: 'Activity', permission: 'activity.view' },
   { path: '/admin/users', icon: UserCog, label: 'Utilisateurs', permission: 'users.manage' },
+  { path: '/admin/monitoring', icon: Zap, label: 'Monitoring', permission: 'dashboard.view' },
   { path: '/admin/settings', icon: Settings, label: 'Settings', permission: 'settings.access' },
 ];
 
