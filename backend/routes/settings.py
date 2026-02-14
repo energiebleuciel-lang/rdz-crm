@@ -257,7 +257,7 @@ async def update_delivery_calendar(
 @router.get("/delivery-calendar/check/{entity}")
 async def check_delivery_day(
     entity: str,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_permission("settings.access"))
 ):
     """Vérifie si aujourd'hui est un jour de livraison pour l'entity"""
     from services.settings import is_delivery_day_enabled
