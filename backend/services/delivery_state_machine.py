@@ -321,16 +321,36 @@ async def batch_mark_deliveries_sent(
     """
     🔒 Marque un batch de deliveries comme "sent" de manière atomique
     
-    Utilisé après un envoi CSV réussi pour plusieurs leads.
+    FAIL-FAST: Refuse si les invariants ne sont pas respectés.
+    Vérifie que TOUTES les deliveries sont dans un état source valide.
     """
     now = now_iso()
     
-    # Vérifier les invariants
+    # Vérifier les invariants AVANT toute modification
     check_sent_invariants(sent_to, now, 1)
     
-    # Mettre à jour les deliveries
+    # Guard: vérifier que les deliveries sont dans un état source valide
+    invalid_deliveries = await db.deliveries.count_documents({
+        "id": {"$in": delivery_ids},
+        "status": {"$nin": ["pending_csv", "ready_to_send", "sending", "failed"]}
+    })
+    
+    if invalid_deliveries > 0:
+        # Trouver les IDs invalides pour le log
+        bad = await db.deliveries.find(
+            {"id": {"$in": delivery_ids}, "status": {"$nin": ["pending_csv", "ready_to_send", "sending", "failed"]}},
+            {"_id": 0, "id": 1, "status": 1}
+        ).to_list(10)
+        raise DeliveryInvariantError(
+            f"BATCH BLOCKED: {invalid_deliveries} deliveries dans un état invalide pour -> sent: {bad}"
+        )
+    
+    # Mettre à jour les deliveries (ONLY from valid source states)
     result_deliveries = await db.deliveries.update_many(
-        {"id": {"$in": delivery_ids}},
+        {
+            "id": {"$in": delivery_ids},
+            "status": {"$in": ["pending_csv", "ready_to_send", "sending", "failed"]}
+        },
         {"$set": {
             "status": "sent",
             "sent_to": sent_to,
@@ -355,8 +375,8 @@ async def batch_mark_deliveries_sent(
     )
     
     logger.info(
-        f"[STATE_MACHINE_BATCH] {len(delivery_ids)} deliveries -> sent | "
-        f"{len(lead_ids)} leads -> livre | sent_to={sent_to}"
+        f"[STATE_MACHINE_BATCH] {result_deliveries.modified_count} deliveries -> sent | "
+        f"{result_leads.modified_count} leads -> livre | sent_to={sent_to}"
     )
     
     return {
@@ -374,12 +394,30 @@ async def batch_mark_deliveries_ready_to_send(
     """
     🔒 Marque un batch de deliveries comme "ready_to_send"
     
-    Les leads restent "routed".
+    Les leads restent "routed". Vérifie les états sources.
     """
     now = now_iso()
     
+    # Guard: vérifier que les deliveries sont dans un état source valide
+    invalid = await db.deliveries.count_documents({
+        "id": {"$in": delivery_ids},
+        "status": {"$nin": ["pending_csv"]}
+    })
+    
+    if invalid > 0:
+        bad = await db.deliveries.find(
+            {"id": {"$in": delivery_ids}, "status": {"$nin": ["pending_csv"]}},
+            {"_id": 0, "id": 1, "status": 1}
+        ).to_list(10)
+        raise DeliveryInvariantError(
+            f"BATCH BLOCKED: {invalid} deliveries dans un état invalide pour -> ready_to_send: {bad}"
+        )
+    
     result = await db.deliveries.update_many(
-        {"id": {"$in": delivery_ids}},
+        {
+            "id": {"$in": delivery_ids},
+            "status": "pending_csv"
+        },
         {"$set": {
             "status": "ready_to_send",
             "csv_content": csv_content,
@@ -389,7 +427,7 @@ async def batch_mark_deliveries_ready_to_send(
         }}
     )
     
-    logger.info(f"[STATE_MACHINE_BATCH] {len(delivery_ids)} deliveries -> ready_to_send")
+    logger.info(f"[STATE_MACHINE_BATCH] {result.modified_count} deliveries -> ready_to_send")
     
     return {
         "deliveries_updated": result.modified_count,
@@ -403,11 +441,27 @@ async def batch_mark_deliveries_failed(
 ) -> Dict[str, Any]:
     """
     🔒 Marque un batch de deliveries comme "failed"
+    
+    Guard: vérifie que les deliveries ne sont PAS déjà sent (terminal).
     """
     now = now_iso()
     
+    # Guard: bloquer si déjà sent (état terminal)
+    already_sent = await db.deliveries.count_documents({
+        "id": {"$in": delivery_ids},
+        "status": "sent"
+    })
+    
+    if already_sent > 0:
+        raise DeliveryInvariantError(
+            f"BATCH BLOCKED: {already_sent} deliveries déjà en status 'sent' (terminal)"
+        )
+    
     result = await db.deliveries.update_many(
-        {"id": {"$in": delivery_ids}},
+        {
+            "id": {"$in": delivery_ids},
+            "status": {"$in": ["pending_csv", "ready_to_send", "sending"]}
+        },
         {"$set": {
             "status": "failed",
             "last_error": error,
@@ -416,7 +470,7 @@ async def batch_mark_deliveries_failed(
         "$inc": {"send_attempts": 1}}
     )
     
-    logger.warning(f"[STATE_MACHINE_BATCH] {len(delivery_ids)} deliveries -> failed | error={error}")
+    logger.warning(f"[STATE_MACHINE_BATCH] {result.modified_count} deliveries -> failed | error={error}")
     
     return {
         "deliveries_updated": result.modified_count,
