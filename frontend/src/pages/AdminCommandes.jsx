@@ -117,15 +117,17 @@ export default function AdminCommandes() {
         <h1 className="text-lg font-semibold text-white">Commandes</h1>
         <div className="flex gap-2 items-center">
           <WeekNavStandard week={week} onChange={handleWeekNav} />
-          {['', 'ZR7', 'MDL'].map(e => (
+          {isSuperAdmin && entityScope === 'BOTH' && ['', 'ZR7', 'MDL'].map(e => (
             <button key={e} onClick={() => setEntityFilter(e)}
               className={`px-2.5 py-1 text-[10px] rounded-full border transition-colors ${entityFilter === e ? 'bg-teal-500/20 text-teal-400 border-teal-500/40' : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:border-zinc-700'}`}>
               {e || 'Toutes'}
             </button>
           ))}
-          <button onClick={() => setShowCreate(true)} className="flex items-center gap-1 px-3 py-1 text-xs bg-teal-500/10 text-teal-400 rounded-md hover:bg-teal-500/20 border border-teal-500/30" data-testid="create-commande-btn">
-            <Plus className="w-3 h-3" /> Nouvelle
-          </button>
+          {hasPermission('commandes.create') && (
+            <button onClick={() => setShowCreate(true)} className="flex items-center gap-1 px-3 py-1 text-xs bg-teal-500/10 text-teal-400 rounded-md hover:bg-teal-500/20 border border-teal-500/30" data-testid="create-commande-btn">
+              <Plus className="w-3 h-3" /> Nouvelle
+            </button>
+          )}
         </div>
       </div>
 
