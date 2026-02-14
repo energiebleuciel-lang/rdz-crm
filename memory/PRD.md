@@ -245,6 +245,16 @@ Guard:
   - Composant partagé WeekNavStandard + lib/weekUtils.js
   - TVA ajoutée au backend billing (tva_rate sur client_pricing, tva_amount/ttc dans dashboard)
   - Tests: 100% frontend + backend TVA (iteration 30)
+- **Billing Simplifié — billing_records (Feb 2026)** :
+  - Remplacement invoices (draft→frozen→sent→paid) par billing_records (suivi externe)
+  - billing_records: per client+product+order+week, status: not_invoiced | invoiced | paid | overdue
+  - Suivi externe: external_invoice_number, external_invoice_ttc, issued_at, due_date, paid_at
+  - Credits: order_id + product_code obligatoires, non reportables, surplus perdu
+  - build-ledger crée ledger + billing_records en un seul appel, bloqué si record invoiced/paid
+  - Dashboard: mode "Aperçu" (preview from deliveries) ou "Ledger construit" (from billing_records)
+  - Inline edit sur chaque ligne pour suivi externe (N facture, statut, échéance, paiement)
+  - Offers tab: sélecteur de commande (order_id) obligatoire
+  - Tests: 31/31 backend + 100% frontend (iteration 31)
 
 ## NEXT
 
