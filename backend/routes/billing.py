@@ -392,6 +392,8 @@ async def billing_week_dashboard(week_key: Optional[str] = None, user: dict = De
             else:
                 weekly_rows.append(row)
                 totals["units_billable"] += s["billable"]
+                totals["units_leads"] += s["billable_leads"]
+                totals["units_lb"] += s["billable_lb"]
                 totals["net_ht"] += net_val
                 totals["ttc"] += ttc
 
