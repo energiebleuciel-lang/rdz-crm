@@ -80,7 +80,7 @@ async def get_dashboard_stats(
 
     # Top clients semaine (by delivery count)
     top_clients_pipeline = [
-        {"$match": {"status": "sent", "created_at": {"$gte": week_start, "$lte": week_end}}},
+        {"$match": {"status": "sent", **entity_filter, "created_at": {"$gte": week_start, "$lte": week_end}}},
         {"$group": {
             "_id": "$client_id",
             "client_name": {"$first": "$client_name"},
