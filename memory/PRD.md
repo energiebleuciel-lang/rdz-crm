@@ -219,11 +219,27 @@ Guard:
   - Navigation: Départements ajouté à la sidebar (MapPin icon)
   - Wildcard departements (*) supporté dans la couverture commandes
   - Tests: 25/25 backend + 100% frontend (iteration 28)
+- **Pricing & Billing Engine Phase A (Feb 2026)** : Backend complet
+  - Collection `products` (PV/PAC/ITE extensible) + CRUD API
+  - `client_pricing` (discount_pct_global) + `client_product_pricing` (unit_price, discount_pct, billing_mode)
+  - billing_mode: WEEKLY_INVOICE | PREPAID
+  - `billing_credits` (free units par client+produit+semaine, raisons obligatoires)
+  - `prepayment_balances` (par client+produit: purchased/delivered/remaining)
+  - Blocage automatique routing si PREPAID + remaining <= 0 (routing_engine.py)
+  - Décrément balance prépaiement au mark_delivery_sent (delivery_state_machine.py)
+  - `billing_ledger` : snapshot immutable prix/remise au build-ledger
+  - Ledger rebuildable tant que invoice draft, bloqué si frozen
+  - `invoices` : par client+produit+semaine, workflow draft→frozen→sent→paid
+  - GET /api/billing/week : dashboard vendredi (weekly_invoice + prepaid rows séparés)
+  - Event logging complet: pricing_update, credit_added/deleted, ledger_built, invoice_frozen/sent/paid
+  - Tests: 40/40 backend (iteration 29)
 
 ## NEXT
 
+- [ ] Phase B UI: Page /admin/facturation (dashboard vendredi)
+- [ ] Phase B UI: Client 360 onglets Pricing + Offres
+- [ ] Standardisation affichage semaine (DD/MM/YYYY au DD/MM/YYYY)
 - [ ] Permissions simples (admin / ops / viewer)
-- [ ] Pricing Engine (moteur de tarification)
 
 ## BACKLOG
 
@@ -231,6 +247,7 @@ Guard:
 - Breakdown par produit sur le dashboard
 - Livraison API POST pour clients
 - Facturation inter-entités
+- Credit note post-freeze (V2)
 - Audit final E2E + tracking scripts
 
 ## CREDENTIALS
