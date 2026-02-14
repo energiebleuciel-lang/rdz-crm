@@ -28,6 +28,7 @@ from models import (
     validate_entity
 )
 from services.routing_engine import get_week_start, get_commande_stats, resolve_week_range
+from services.permissions import require_permission, validate_entity_access, user_has_permission
 
 router = APIRouter(prefix="/commandes", tags=["Commandes"])
 
@@ -39,7 +40,7 @@ async def list_commandes(
     produit: Optional[str] = Query(None, description="Filtrer par produit"),
     active_only: bool = Query(True, description="Uniquement les commandes actives"),
     week: Optional[str] = Query(None, description="Semaine YYYY-W## (défaut: courante)"),
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_permission("commandes.view"))
 ):
     """
     Liste les commandes d'une entité
