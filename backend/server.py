@@ -289,6 +289,7 @@ app.add_middleware(
 # Routes
 from routes import auth, public, clients, commandes, settings, providers, deliveries, leads, event_log, departements, billing, invoices, intercompany
 from routes.system_health import router as system_health_router
+from routes.monitoring import router as monitoring_router
 
 app.include_router(auth.router, prefix="/api")
 app.include_router(public.router, prefix="/api")
