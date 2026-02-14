@@ -160,6 +160,7 @@ async def list_leads(
     departement: Optional[str] = None,
     client_id: Optional[str] = None,
     search: Optional[str] = None,
+    week: Optional[str] = None,
     limit: int = 50,
     skip: int = 0,
     user: dict = Depends(get_current_user)
@@ -189,6 +190,10 @@ async def list_leads(
             {"nom": {"$regex": search, "$options": "i"}},
             {"email": {"$regex": search, "$options": "i"}}
         ]
+    if week:
+        from services.routing_engine import week_key_to_range
+        ws, we = week_key_to_range(week)
+        query["created_at"] = {"$gte": ws, "$lte": we}
     
     leads = await db.leads.find(
         query, {"_id": 0}
