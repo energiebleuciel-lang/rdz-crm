@@ -13,7 +13,7 @@ import uuid
 import json
 import logging
 
-from config import db, now_iso, timestamp, validate_phone_fr
+from config import db, now_iso, timestamp, validate_phone_fr, normalize_phone_fr
 from services.routing_engine import route_lead, RoutingResult
 from services.settings import get_form_config, is_source_allowed
 
