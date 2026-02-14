@@ -221,6 +221,22 @@ async def find_open_commandes(
             )
             continue
 
+        # PREPAID BLOCK: Skip if billing_mode=PREPAID and balance empty
+        prepay_pricing = await db.client_product_pricing.find_one(
+            {"client_id": cmd.get("client_id"), "product_code": produit, "billing_mode": "PREPAID", "active": True},
+            {"_id": 0, "billing_mode": 1}
+        )
+        if prepay_pricing:
+            balance = await db.prepayment_balances.find_one(
+                {"client_id": cmd.get("client_id"), "product_code": produit},
+                {"_id": 0, "units_remaining": 1}
+            )
+            if not balance or balance.get("units_remaining", 0) <= 0:
+                logger.info(
+                    f"[ROUTING] Skip {client.get('name')}: PREPAID balance empty for {produit}"
+                )
+                continue
+
         cmd["quota_remaining"] = stats["quota_remaining"]
         cmd["leads_delivered_this_week"] = stats["leads_delivered"]
         cmd["lb_delivered_this_week"] = stats["lb_delivered"]
