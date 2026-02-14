@@ -3,6 +3,8 @@ import { useAuth } from '../hooks/useAuth';
 import { API } from '../hooks/useApi';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Eye, RefreshCw, Filter, X, Search } from 'lucide-react';
+import { getCurrentWeekKey, shiftWeekKey } from '../lib/weekUtils';
+import { WeekNavStandard } from '../components/WeekNav';
 
 const STATUS_BADGE = {
   new: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30',
