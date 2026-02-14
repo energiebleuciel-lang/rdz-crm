@@ -1,0 +1,112 @@
+{
+  "summary": "QA COMPLÈTE UI3 - Full regression complete. All 12 QA areas tested: navigation, dashboard, deliveries, delivery detail, leads, clients, commandes (NEW detail page), activity, settings, counter coherence, actions, idempotence. Fixed billable counter bug in dashboard-stats. All features working correctly.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [],
+    "fixed": [
+      {
+        "endpoint": "/api/leads/dashboard-stats",
+        "issue": "billable count excluded only 'rejected' but not 'removed' deliveries - showed 158 instead of 157",
+        "fix": "Changed query from {$ne: 'rejected'} to {$nin: ['rejected', 'removed']} in routes/leads.py"
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_qa_ui3.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Counter coherence bug was in dashboard-stats endpoint using $ne instead of $nin for billable calculation - now fixed"
+  ],
+  "updated_files": [
+    "/app/backend/routes/leads.py",
+    "/app/backend/tests/test_qa_ui3.py"
+  ],
+  "success_rate": {
+    "backend": "100% (23/23 tests passed)",
+    "frontend": "100% - all 7 navigation items work, all pages load correctly"
+  },
+  "test_credentials": {
+    "email": "energiebleuciel@gmail.com",
+    "password": "92Ruemarxdormoy"
+  },
+  "seed_data_creation": "None - used existing production data",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All UI3 features verified working. Key numbers: sent=160, rejected=2, removed=1, billable=157 (formula: 157=160-2-1). Event log has 15+ entries. 12 commandes exist. Dashboard shows calendar banners for both ZR7 and MDL (delivery disabled on Saturday).",
+  "qa_coverage": {
+    "1_navigation": {
+      "status": "PASS",
+      "details": "All 7 sidebar items work: Dashboard, Deliveries, Leads, Clients, Commandes, Activity, Settings. Active state highlights correctly."
+    },
+    "2_dashboard_cockpit": {
+      "status": "PASS",
+      "details": "Calendar banners (ZR7+MDL showing delivery_day_disabled:samedi), delivery stats (PENDING_CSV, READY, SENT, FAILED, BILLABLE, REJECTED, LIVRE), TOP CLIENTS 7J, CLIENTS NON LIVRABLES, QUOTAS FAIBLES, STOCK BLOQUE sections all display correctly"
+    },
+    "3_deliveries": {
+      "status": "PASS",
+      "details": "List with filters, pagination, 8 stat pills (including 'removed: 1'). Table shows Date, Entity, Client, Produit, Status, Outcome, Sent To, Att, Error, Actions. Outcome badges (accepted/rejected/removed) display correctly."
+    },
+    "4_delivery_detail": {
+      "status": "PASS",
+      "details": "DELIVERY info section, CLIENT panel, REMOVED info section (for removed deliveries), LEAD info section, SMTP LOG section (Sent to, Last sent at, Attempts, Sent by, CSV file), ACTIVITÉ block with event timeline. Remove button visible only for non-removed deliveries."
+    },
+    "5_leads": {
+      "status": "PASS",
+      "details": "List with filters, search, 8 stat pills, pagination. Lead detail shows DONNÉES LEAD, ROUTING info, HISTORIQUE LIVRAISONS with outcome badges, ACTIVITÉ block."
+    },
+    "6_clients": {
+      "status": "PASS",
+      "details": "List shows Nom, Entity, Tel, Canaux, Auto Send (ON/OFF badge), Jours calendar, Livrable status, Active, Deliveries count, Actions. Client 360 detail has 4 tabs: Résumé (info+deliveries), Performance (day/week/month stats), CRM & Paiement (status/tags/notes), Activité (timeline)."
+    },
+    "7_commandes": {
+      "status": "PASS",
+      "details": "List shows Client, Entity, Produit, Depts, Quota, Delivered, Restant, LB%, Active, Actions (View+Edit). 12 commandes total. NEW Commande detail page has: header (client name, entity badge, produit, ACTIVE status, Désactiver button), quota bar, 3 tabs (Configuration with routing/depts/weekly stats, Deliveries list, Historique activity)."
+    },
+    "8_activity": {
+      "status": "PASS",
+      "details": "Global timeline with 17 events. Events show: Commande désactivée/activée, Echec envoi, Rotation clé provider, Auto-send modifié, Rejet lead. Each event has entity_type badge, entity badge, timestamp, user, and links to related entities."
+    },
+    "9_settings": {
+      "status": "PASS",
+      "details": "Simulation banner (Simulation ON), Calendar banners (ZR7/MDL delivery_day_disabled), EMAIL DENYLIST & SIMULATION section with domain list and simulation mode toggle, ZR7/MDL DELIVERY CALENDAR with day toggles and Save buttons."
+    },
+    "10_counter_coherence": {
+      "status": "PASS",
+      "details": "VERIFIED: billable = sent - rejected - removed. Values: sent=160, rejected=2, removed=1, billable=157. Formula: 157 = 160 - 2 - 1 ✓. Fixed bug in dashboard-stats endpoint."
+    },
+    "11_actions": {
+      "status": "PASS",
+      "details": "Reject and remove actions work correctly with proper outcome updates and event logging. Toggle commande (activate/deactivate) works and logs events."
+    },
+    "12_idempotence": {
+      "status": "PASS",
+      "details": "Reject same delivery twice returns already_rejected=True. Remove same delivery twice returns already_removed=True. Proper idempotent behavior verified."
+    }
+  },
+  "current_data_state": {
+    "deliveries": {
+      "total": 633,
+      "sent": 160,
+      "rejected": 2,
+      "removed": 1,
+      "billable": 157,
+      "ready_to_send": 473
+    },
+    "leads": {
+      "total": "~2653",
+      "new": 23,
+      "livre": 157,
+      "routed": 473
+    },
+    "clients": 10,
+    "commandes": 12,
+    "event_log_entries": 15
+  }
+}
