@@ -14,6 +14,7 @@ from datetime import datetime, timezone, timedelta
 from collections import defaultdict
 from config import db
 from routes.auth import get_current_user
+from services.permissions import require_permission
 
 router = APIRouter(prefix="/departements", tags=["Departements"])
 
