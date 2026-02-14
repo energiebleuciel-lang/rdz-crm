@@ -208,6 +208,12 @@ export default function AdminLeadDetail() {
         </div>
       )}
 
+      {/* Activity log for this lead */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 mt-4" data-testid="lead-activity-section">
+        <h2 className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-3 flex items-center gap-2"><Clock className="w-3.5 h-3.5" /> Activité</h2>
+        <ActivityBlock entityType="delivery" entityId={l.delivery_id || deliveries[0]?.id} />
+      </div>
+
       {/* Remove modal */}
       {removeModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" data-testid="remove-modal">
