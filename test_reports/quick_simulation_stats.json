@@ -1,0 +1,79 @@
+{
+  "total_leads": 240,
+  "by_entity": {
+    "ZR7": 130,
+    "MDL": 100
+  },
+  "by_status": {
+    "no_open_orders": 204,
+    "routed": 16,
+    "pending_config": 10,
+    "hold_source": 10
+  },
+  "by_produit": {
+    "PV": 86,
+    "PAC": 80,
+    "ITE": 74
+  },
+  "deliveries": 16,
+  "duplicates": 0,
+  "no_open_orders": 204,
+  "pending_config": 10,
+  "hold_source": 10,
+  "provider_leads": 20,
+  "errors_count": 0,
+  "setup_info": {
+    "ZR7": {
+      "clients": 3,
+      "commandes": 3
+    },
+    "MDL": {
+      "clients": 5,
+      "commandes": 4
+    }
+  },
+  "validations": [
+    [
+      "Total Leads",
+      "PASS",
+      "240 created"
+    ],
+    [
+      "Deliveries",
+      "PASS",
+      "16 created"
+    ],
+    [
+      "Duplicate Detection",
+      "WARN",
+      "No duplicates detected"
+    ],
+    [
+      "Pending Config",
+      "PASS",
+      "10 leads"
+    ],
+    [
+      "Hold Source",
+      "PASS",
+      "10 leads"
+    ],
+    [
+      "Provider Leads",
+      "PASS",
+      "20 leads"
+    ],
+    [
+      "Entity Distribution",
+      "PASS",
+      "ZR7=130, MDL=100"
+    ],
+    [
+      "Produit Distribution",
+      "PASS",
+      "3 products"
+    ]
+  ],
+  "elapsed_seconds": 68.2031044960022,
+  "timestamp": "2026-02-14T00:24:37.454231+00:00"
+}
