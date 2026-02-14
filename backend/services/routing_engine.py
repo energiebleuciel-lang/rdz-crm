@@ -156,9 +156,12 @@ async def find_open_commandes(
     Trouve les commandes OPEN pour un lead.
 
     OPEN = active + semaine courante + delivered < quota
-    + departement compatible + client actif
+    + departement compatible + client actif ET livrable
     + si LB: lb_percent_max > 0 et % LB non depasse
     """
+    from models.client import check_client_deliverable
+    from services.settings import get_email_denylist_settings
+    
     week_start = get_week_start()
 
     query = {
@@ -173,18 +176,42 @@ async def find_open_commandes(
 
     commandes = await db.commandes.find(query, {"_id": 0}).sort("priorite", 1).to_list(100)
 
+    # Récupérer la denylist pour vérification client livrable
+    denylist_settings = await get_email_denylist_settings()
+    denylist = denylist_settings.get("domains", [])
+
     open_commandes = []
 
     for cmd in commandes:
-        # Client actif ?
+        # Client actif ET livrable ?
         client = await db.clients.find_one(
             {"id": cmd.get("client_id")},
-            {"_id": 0, "name": 1, "active": 1}
+            {"_id": 0, "name": 1, "active": 1, "email": 1, "delivery_emails": 1, "api_endpoint": 1}
         )
-        if not client or not client.get("active", True):
+        if not client:
+            continue
+        
+        if not client.get("active", True):
+            logger.debug(f"[ROUTING] Skip client {client.get('name')}: inactive")
+            continue
+        
+        # Vérifier si client est livrable (a un canal valide)
+        deliverable_check = check_client_deliverable(
+            email=client.get("email", ""),
+            delivery_emails=client.get("delivery_emails", []),
+            api_endpoint=client.get("api_endpoint", ""),
+            denylist=denylist
+        )
+        
+        if not deliverable_check["deliverable"]:
+            logger.debug(
+                f"[ROUTING] Skip client {client.get('name')}: non livrable - {deliverable_check['reason']}"
+            )
             continue
 
         cmd["client_name"] = client.get("name", "")
+        cmd["client_delivery_emails"] = client.get("delivery_emails", [])
+        cmd["client_email"] = client.get("email", "")
 
         # OPEN ?
         is_open, stats = await is_commande_open(cmd, week_start)
