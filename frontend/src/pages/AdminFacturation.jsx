@@ -3,17 +3,17 @@ import { useAuth } from '../hooks/useAuth';
 import { API } from '../hooks/useApi';
 import { Link } from 'react-router-dom';
 import {
-  RefreshCw, Receipt, AlertTriangle, Check, Lock, Send, CreditCard,
-  FileText, DollarSign, TrendingUp, Package
+  RefreshCw, Receipt, AlertTriangle, CreditCard,
+  FileText, DollarSign, TrendingUp, Package, Check, X, Edit3
 } from 'lucide-react';
 import { getCurrentWeekKey, shiftWeekKey } from '../lib/weekUtils';
 import { WeekNavStandard } from '../components/WeekNav';
 
-const INV_STATUS = {
-  draft: { label: 'Draft', cls: 'bg-zinc-700/60 text-zinc-300 border-zinc-600' },
-  frozen: { label: 'Frozen', cls: 'bg-blue-500/15 text-blue-400 border-blue-500/30' },
-  sent: { label: 'Sent', cls: 'bg-amber-500/15 text-amber-400 border-amber-500/30' },
-  paid: { label: 'Paid', cls: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' },
+const REC_STATUS = {
+  not_invoiced: { label: 'Non facturé', cls: 'bg-zinc-700/60 text-zinc-300 border-zinc-600' },
+  invoiced: { label: 'Facturé', cls: 'bg-blue-500/15 text-blue-400 border-blue-500/30' },
+  paid: { label: 'Payé', cls: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' },
+  overdue: { label: 'Impayé', cls: 'bg-red-500/15 text-red-400 border-red-500/30' },
 };
 const PREPAID_STATUS = {
   OK: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
@@ -21,9 +21,9 @@ const PREPAID_STATUS = {
   BLOCKED: 'bg-red-500/15 text-red-400 border-red-500/30',
 };
 
-function Pill({ status, map }) {
+function StatusPill({ status, map }) {
   const cfg = map[status] || { label: status, cls: 'bg-zinc-800 text-zinc-400 border-zinc-700' };
-  return <span className={`text-[10px] px-2 py-0.5 rounded-full border ${cfg.cls}`}>{cfg.label || status}</span>;
+  return <span className={`text-[10px] px-2 py-0.5 rounded-full border whitespace-nowrap ${cfg.cls}`}>{cfg.label || status}</span>;
 }
 
 function KpiCard({ label, value, sub, icon: Icon, color = 'text-white' }) {
@@ -39,12 +39,86 @@ function KpiCard({ label, value, sub, icon: Icon, color = 'text-white' }) {
   );
 }
 
+/* Inline edit row for external tracking */
+function EditRow({ record, authFetch, onDone }) {
+  const [form, setForm] = useState({
+    external_invoice_number: record.external_invoice_number || '',
+    external_invoice_ttc: record.external_invoice_ttc || '',
+    status: record.status || 'not_invoiced',
+    due_date: record.due_date || '',
+    paid_at: record.paid_at || '',
+  });
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    setSaving(true);
+    const body = {};
+    if (form.external_invoice_number) body.external_invoice_number = form.external_invoice_number;
+    if (form.external_invoice_ttc) body.external_invoice_ttc = Number(form.external_invoice_ttc);
+    if (form.status) body.status = form.status;
+    if (form.due_date) body.due_date = form.due_date;
+    if (form.paid_at) body.paid_at = form.paid_at;
+    if (form.status === 'invoiced' && !record.issued_at) body.issued_at = new Date().toISOString();
+    try {
+      await authFetch(`${API}/api/billing/records/${record.id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      onDone();
+    } catch (e) { console.error(e); }
+    setSaving(false);
+  };
+
+  return (
+    <tr className="bg-zinc-800/60 border-b border-zinc-700">
+      <td colSpan={14} className="px-3 py-2">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div>
+            <label className="text-[9px] text-zinc-500 block">N facture ext.</label>
+            <input value={form.external_invoice_number} onChange={e => setForm(f => ({ ...f, external_invoice_number: e.target.value }))}
+              className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-300 w-28" data-testid="edit-ext-number" />
+          </div>
+          <div>
+            <label className="text-[9px] text-zinc-500 block">TTC ext. (EUR)</label>
+            <input type="number" value={form.external_invoice_ttc} onChange={e => setForm(f => ({ ...f, external_invoice_ttc: e.target.value }))}
+              className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-300 w-20" data-testid="edit-ext-ttc" />
+          </div>
+          <div>
+            <label className="text-[9px] text-zinc-500 block">Statut</label>
+            <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
+              className="bg-zinc-900 text-zinc-300 text-xs rounded px-2 py-1 border border-zinc-700" data-testid="edit-status">
+              {Object.entries(REC_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-[9px] text-zinc-500 block">Échéance</label>
+            <input type="date" value={form.due_date?.slice(0, 10) || ''} onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))}
+              className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-300" data-testid="edit-due-date" />
+          </div>
+          <div>
+            <label className="text-[9px] text-zinc-500 block">Payé le</label>
+            <input type="date" value={form.paid_at?.slice(0, 10) || ''} onChange={e => setForm(f => ({ ...f, paid_at: e.target.value }))}
+              className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-300" data-testid="edit-paid-at" />
+          </div>
+          <button onClick={save} disabled={saving} className="p-1.5 text-emerald-400 hover:bg-emerald-500/10 rounded border border-emerald-500/30" data-testid="save-record-btn">
+            <Check className="w-3.5 h-3.5" />
+          </button>
+          <button onClick={onDone} className="p-1.5 text-zinc-400 hover:bg-zinc-700 rounded border border-zinc-700">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
 export default function AdminFacturation() {
   const { authFetch } = useAuth();
   const [week, setWeek] = useState(getCurrentWeekKey());
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState('');
+  const [editingId, setEditingId] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -59,32 +133,27 @@ export default function AdminFacturation() {
 
   const handleWeekNav = (dir) => setWeek(w => shiftWeekKey(w, dir));
 
-  const doAction = async (url, label) => {
-    setActionLoading(label);
+  const buildLedger = async () => {
+    setActionLoading('ledger');
     try {
-      const r = await authFetch(`${API}${url}`, { method: 'POST' });
+      const r = await authFetch(`${API}/api/billing/week/${week}/build-ledger`, { method: 'POST' });
       if (!r.ok) { const d = await r.json(); alert(d.detail || 'Erreur'); }
       else { load(); }
     } catch (e) { alert(e.message); }
     setActionLoading('');
   };
 
-  const buildLedger = () => doAction(`/api/billing/week/${week}/build-ledger`, 'ledger');
-  const generateInvoices = () => doAction(`/api/billing/week/${week}/generate-invoices`, 'invoices');
-  const freezeInvoice = (id) => doAction(`/api/invoices/${id}/freeze`, `freeze-${id}`);
-  const markSent = (id) => doAction(`/api/invoices/${id}/mark-sent`, `sent-${id}`);
-  const markPaid = (id) => doAction(`/api/invoices/${id}/mark-paid`, `paid-${id}`);
-
   const s = data?.summary || {};
-  const t = data?.totals_invoice || {};
+  const t = data?.totals || {};
 
   return (
     <div data-testid="admin-facturation">
-      {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
           <Receipt className="w-5 h-5 text-teal-400" />
           <h1 className="text-lg font-semibold text-white">Facturation</h1>
+          {data?.has_records && <span className="text-[10px] bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30">Ledger construit</span>}
+          {data && !data.has_records && <span className="text-[10px] bg-zinc-700/60 text-zinc-400 px-2 py-0.5 rounded-full border border-zinc-600">Aperçu</span>}
         </div>
         <div className="flex items-center gap-2">
           <WeekNavStandard week={week} onChange={handleWeekNav} />
@@ -100,31 +169,26 @@ export default function AdminFacturation() {
         </div>
       ) : data ? (
         <>
-          {/* KPI Cards */}
+          {/* KPIs */}
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-5">
             <KpiCard label="Leads produits" value={s.leads_produced ?? 0} icon={Package} />
             <KpiCard label="Units livrées" value={s.units_delivered ?? 0} icon={TrendingUp} />
             <KpiCard label="Units billable" value={s.units_billable ?? 0} icon={DollarSign} color="text-emerald-400" />
             <KpiCard label="Non-billable" value={s.units_non_billable ?? 0} icon={AlertTriangle} color="text-amber-400" />
-            <KpiCard label="CA HT net" value={`${(t.net || 0).toFixed(2)} EUR`} icon={CreditCard} color="text-teal-400" />
-            <KpiCard label="Units offertes" value={t.units_free ?? 0} icon={FileText} color="text-violet-400" />
+            <KpiCard label="CA HT net" value={`${(t.net_ht || 0).toFixed(2)} EUR`} icon={CreditCard} color="text-teal-400" />
+            <KpiCard label="CA TTC" value={`${(t.ttc || 0).toFixed(2)} EUR`} icon={Receipt} color="text-white" />
           </div>
 
-          {/* Actions */}
+          {/* Build Ledger action */}
           <div className="flex gap-2 mb-5">
             <button onClick={buildLedger} disabled={!!actionLoading}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-zinc-800 text-zinc-300 rounded-md hover:bg-zinc-700 border border-zinc-700 disabled:opacity-50" data-testid="build-ledger-btn">
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-teal-500/15 text-teal-400 rounded-md hover:bg-teal-500/25 border border-teal-500/30 disabled:opacity-50" data-testid="build-ledger-btn">
               {actionLoading === 'ledger' ? <RefreshCw className="w-3 h-3 animate-spin" /> : <FileText className="w-3 h-3" />}
-              Build Ledger
-            </button>
-            <button onClick={generateInvoices} disabled={!!actionLoading}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-teal-500/15 text-teal-400 rounded-md hover:bg-teal-500/25 border border-teal-500/30 disabled:opacity-50" data-testid="generate-invoices-btn">
-              {actionLoading === 'invoices' ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Receipt className="w-3 h-3" />}
-              Générer Factures
+              {data.has_records ? 'Reconstruire Ledger' : 'Construire Ledger'}
             </button>
           </div>
 
-          {/* WEEKLY INVOICE SECTION */}
+          {/* WEEKLY INVOICE TABLE */}
           <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
             <Receipt className="w-4 h-4 text-teal-400" /> Facturation hebdomadaire
             <span className="text-[10px] text-zinc-500 font-normal">({(data.weekly_invoice || []).length} lignes)</span>
@@ -135,77 +199,67 @@ export default function AdminFacturation() {
                 <tr className="border-b border-zinc-800 text-zinc-500 text-[10px]">
                   <th className="text-left px-3 py-2 font-medium">Client</th>
                   <th className="px-2 py-2 font-medium">Produit</th>
-                  <th className="text-right px-2 py-2 font-medium">Units</th>
+                  <th className="text-right px-2 py-2 font-medium">Billable</th>
                   <th className="text-right px-2 py-2 font-medium">Leads</th>
                   <th className="text-right px-2 py-2 font-medium">LB</th>
                   <th className="text-right px-2 py-2 font-medium">Offerts</th>
                   <th className="text-right px-2 py-2 font-medium">Facturés</th>
                   <th className="text-right px-2 py-2 font-medium">Prix HT</th>
                   <th className="text-right px-2 py-2 font-medium">Remise</th>
-                  <th className="text-right px-2 py-2 font-medium">HT brut</th>
                   <th className="text-right px-2 py-2 font-medium">HT net</th>
                   <th className="text-right px-2 py-2 font-medium">TVA</th>
                   <th className="text-right px-2 py-2 font-medium">TTC</th>
                   <th className="px-2 py-2 font-medium text-center">Statut</th>
-                  <th className="px-2 py-2 font-medium">Actions</th>
+                  <th className="px-2 py-2 font-medium"></th>
                 </tr>
               </thead>
               <tbody>
-                {(data.weekly_invoice || []).map((r, i) => (
-                  <tr key={i} className={`border-b border-zinc-800/50 hover:bg-zinc-800/30 ${r.pricing_missing ? 'bg-red-500/5' : ''}`}
-                    data-testid={`invoice-row-${r.client_id}-${r.product_code}`}>
-                    <td className="px-3 py-2">
-                      <Link to={`/admin/clients/${r.client_id}`} className="text-teal-400 hover:underline font-medium">
-                        {r.client_name || r.client_id?.slice(0, 8)}
-                      </Link>
-                      {r.pricing_missing && (
-                        <div className="flex items-center gap-1 mt-0.5">
-                          <AlertTriangle className="w-3 h-3 text-red-400" />
-                          <span className="text-[9px] text-red-400">Pricing manquant</span>
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-2 py-2 text-center"><span className="bg-zinc-800 text-zinc-300 px-1.5 py-0.5 rounded text-[10px]">{r.product_code}</span></td>
-                    <td className="px-2 py-2 text-right text-zinc-300 font-medium">{r.units_billable}</td>
-                    <td className="px-2 py-2 text-right text-zinc-400">{r.units_leads}</td>
-                    <td className="px-2 py-2 text-right text-zinc-400">{r.units_lb}</td>
-                    <td className="px-2 py-2 text-right text-violet-400">{r.units_free_applied || 0}</td>
-                    <td className="px-2 py-2 text-right text-white font-medium">{r.units_invoiced}</td>
-                    <td className="px-2 py-2 text-right text-zinc-300">{r.unit_price_eur} EUR</td>
-                    <td className="px-2 py-2 text-right text-zinc-400">{r.discount_pct}%</td>
-                    <td className="px-2 py-2 text-right text-zinc-300">{r.gross_total?.toFixed(2)}</td>
-                    <td className="px-2 py-2 text-right text-teal-400 font-medium">{r.net_total?.toFixed(2)}</td>
-                    <td className="px-2 py-2 text-right text-zinc-400">{r.tva_amount?.toFixed(2)}</td>
-                    <td className="px-2 py-2 text-right text-white font-medium">{r.ttc?.toFixed(2)}</td>
-                    <td className="px-2 py-2 text-center">
-                      {r.invoice_status ? <Pill status={r.invoice_status} map={INV_STATUS} /> : <span className="text-[10px] text-zinc-600">-</span>}
-                    </td>
-                    <td className="px-2 py-2">
-                      <div className="flex gap-1">
-                        {r.invoice_id && r.invoice_status === 'draft' && (
-                          <button onClick={() => freezeInvoice(r.invoice_id)} title="Freeze" disabled={!!actionLoading}
-                            className="p-1 text-blue-400 hover:bg-blue-500/10 rounded" data-testid={`freeze-${r.invoice_id}`}>
-                            <Lock className="w-3 h-3" />
+                {(data.weekly_invoice || []).map((r, i) => {
+                  const isEditing = editingId === r.id;
+                  return isEditing ? (
+                    <EditRow key={r.id} record={r} authFetch={authFetch} onDone={() => { setEditingId(null); load(); }} />
+                  ) : (
+                    <tr key={i} className={`border-b border-zinc-800/50 hover:bg-zinc-800/30 ${r.pricing_missing ? 'bg-red-500/5' : ''}`}
+                      data-testid={`billing-row-${r.client_id}-${r.product_code}`}>
+                      <td className="px-3 py-2">
+                        <Link to={`/admin/clients/${r.client_id}`} className="text-teal-400 hover:underline font-medium text-xs">
+                          {r.client_name || r.client_id?.slice(0, 8)}
+                        </Link>
+                        {r.external_invoice_number && (
+                          <div className="text-[9px] text-zinc-500 mt-0.5">{r.external_invoice_number}</div>
+                        )}
+                        {r.pricing_missing && (
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <AlertTriangle className="w-2.5 h-2.5 text-red-400" />
+                            <span className="text-[9px] text-red-400">Pricing manquant</span>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-2 py-2 text-center"><span className="bg-zinc-800 text-zinc-300 px-1.5 py-0.5 rounded text-[10px]">{r.product_code}</span></td>
+                      <td className="px-2 py-2 text-right text-zinc-300 font-medium">{r.units_billable}</td>
+                      <td className="px-2 py-2 text-right text-zinc-400">{r.units_leads ?? '-'}</td>
+                      <td className="px-2 py-2 text-right text-zinc-400">{r.units_lb ?? '-'}</td>
+                      <td className="px-2 py-2 text-right text-violet-400">{r.units_free || 0}</td>
+                      <td className="px-2 py-2 text-right text-white font-medium">{r.units_invoiced}</td>
+                      <td className="px-2 py-2 text-right text-zinc-300">{(r.unit_price_ht_snapshot ?? r.unit_price_eur ?? 0)} EUR</td>
+                      <td className="px-2 py-2 text-right text-zinc-400">{(r.discount_pct_snapshot ?? r.discount_pct ?? 0)}%</td>
+                      <td className="px-2 py-2 text-right text-teal-400 font-medium">{(r.net_total_ht ?? 0).toFixed(2)}</td>
+                      <td className="px-2 py-2 text-right text-zinc-400">{(r.vat_amount ?? 0).toFixed(2)}</td>
+                      <td className="px-2 py-2 text-right text-white font-medium">{(r.total_ttc_expected ?? 0).toFixed(2)}</td>
+                      <td className="px-2 py-2 text-center"><StatusPill status={r.status || 'not_invoiced'} map={REC_STATUS} /></td>
+                      <td className="px-2 py-2">
+                        {r.id && !r.is_preview && (
+                          <button onClick={() => setEditingId(r.id)} title="Suivi externe"
+                            className="p-1 text-zinc-400 hover:text-teal-400 hover:bg-teal-500/10 rounded" data-testid={`edit-${r.id}`}>
+                            <Edit3 className="w-3 h-3" />
                           </button>
                         )}
-                        {r.invoice_id && r.invoice_status === 'frozen' && (
-                          <button onClick={() => markSent(r.invoice_id)} title="Mark Sent" disabled={!!actionLoading}
-                            className="p-1 text-amber-400 hover:bg-amber-500/10 rounded" data-testid={`send-${r.invoice_id}`}>
-                            <Send className="w-3 h-3" />
-                          </button>
-                        )}
-                        {r.invoice_id && (r.invoice_status === 'sent' || r.invoice_status === 'frozen') && (
-                          <button onClick={() => markPaid(r.invoice_id)} title="Mark Paid" disabled={!!actionLoading}
-                            className="p-1 text-emerald-400 hover:bg-emerald-500/10 rounded" data-testid={`paid-${r.invoice_id}`}>
-                            <Check className="w-3 h-3" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  );
+                })}
                 {(data.weekly_invoice || []).length === 0 && (
-                  <tr><td colSpan={15} className="px-3 py-8 text-center text-zinc-500">Aucune facturation cette semaine</td></tr>
+                  <tr><td colSpan={14} className="px-3 py-8 text-center text-zinc-500">Aucune facturation cette semaine</td></tr>
                 )}
               </tbody>
             </table>
@@ -222,7 +276,7 @@ export default function AdminFacturation() {
                 <tr className="border-b border-zinc-800 text-zinc-500 text-[10px]">
                   <th className="text-left px-3 py-2 font-medium">Client</th>
                   <th className="px-2 py-2 font-medium">Produit</th>
-                  <th className="text-right px-2 py-2 font-medium">Livrées sem.</th>
+                  <th className="text-right px-2 py-2 font-medium">Billable sem.</th>
                   <th className="text-right px-2 py-2 font-medium">Achetées total</th>
                   <th className="text-right px-2 py-2 font-medium">Livrées total</th>
                   <th className="text-right px-2 py-2 font-medium">Restantes</th>
@@ -236,16 +290,14 @@ export default function AdminFacturation() {
                       <Link to={`/admin/clients/${r.client_id}`} className="text-teal-400 hover:underline font-medium">{r.client_name || r.client_id?.slice(0, 8)}</Link>
                     </td>
                     <td className="px-2 py-2 text-center"><span className="bg-zinc-800 text-zinc-300 px-1.5 py-0.5 rounded text-[10px]">{r.product_code}</span></td>
-                    <td className="px-2 py-2 text-right text-zinc-300">{r.units_billable}</td>
+                    <td className="px-2 py-2 text-right text-zinc-300">{r.units_billable ?? 0}</td>
                     <td className="px-2 py-2 text-right text-zinc-400">{r.prepaid_purchased ?? 0}</td>
                     <td className="px-2 py-2 text-right text-zinc-400">{r.prepaid_delivered ?? 0}</td>
                     <td className={`px-2 py-2 text-right font-medium ${(r.prepaid_remaining ?? 0) <= 0 ? 'text-red-400' : (r.prepaid_remaining ?? 0) <= 10 ? 'text-amber-400' : 'text-emerald-400'}`}>
                       {r.prepaid_remaining ?? 0}
                     </td>
                     <td className="px-2 py-2 text-center">
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full border ${PREPAID_STATUS[r.prepaid_status] || PREPAID_STATUS.OK}`}>
-                        {r.prepaid_status || 'OK'}
-                      </span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full border ${PREPAID_STATUS[r.prepaid_status] || PREPAID_STATUS.OK}`}>{r.prepaid_status || 'OK'}</span>
                     </td>
                   </tr>
                 ))}
