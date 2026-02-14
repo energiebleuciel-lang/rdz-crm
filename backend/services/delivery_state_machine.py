@@ -141,6 +141,8 @@ async def mark_delivery_sent(
     # 4. Mettre à jour la delivery avec TOUS les champs requis
     update_data = {
         "status": "sent",
+        "outcome": "accepted",
+        "accepted_at": now,
         "sent_to": sent_to,
         "last_sent_at": now,
         "send_attempts": send_attempts,
