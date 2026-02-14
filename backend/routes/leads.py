@@ -48,7 +48,7 @@ async def get_dashboard_stats(
     from services.routing_engine import get_week_start
 
     now = datetime.now(timezone.utc)
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()  # noqa: F841
     seven_days_ago = (now - timedelta(days=7)).isoformat()
     week_start = get_week_start()
 
