@@ -12,6 +12,7 @@ import AdminCommandes from './pages/AdminCommandes';
 import AdminSettings from './pages/AdminSettings';
 import AdminLeads from './pages/AdminLeads';
 import AdminLeadDetail from './pages/AdminLeadDetail';
+import AdminActivity from './pages/AdminActivity';
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
@@ -51,6 +52,7 @@ function AppRoutes() {
       <Route path="/admin/commandes" element={<PrivateRoute><AdminCommandes /></PrivateRoute>} />
       <Route path="/admin/leads" element={<PrivateRoute><AdminLeads /></PrivateRoute>} />
       <Route path="/admin/leads/:id" element={<PrivateRoute><AdminLeadDetail /></PrivateRoute>} />
+      <Route path="/admin/activity" element={<PrivateRoute><AdminActivity /></PrivateRoute>} />
       <Route path="/admin/settings" element={<PrivateRoute><AdminSettings /></PrivateRoute>} />
       <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
       <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
