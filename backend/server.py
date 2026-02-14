@@ -66,6 +66,12 @@ async def lifespan(app: FastAPI):
             name="idx_lb"
         )
 
+        # Index monitoring intelligence (phone_quality + lead_source_type + source)
+        await db.leads.create_index("phone_quality", background=True)
+        await db.leads.create_index("lead_source_type", background=True)
+        await db.leads.create_index("source", background=True)
+
+
         # Index anti double-submit (session + phone + created_at)
         await db.leads.create_index(
             [("session_id", 1), ("phone", 1), ("created_at", -1)],
