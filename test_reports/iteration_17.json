@@ -1,0 +1,185 @@
+{
+  "summary": "Full E2E Pipeline Validation - 25 backend tests PASSED (100%). Fixed 2 CRITICAL BUGS in process_pending_csv_deliveries(). All 8 critical validation points verified.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "bugs_fixed": [
+    {
+      "file": "/app/backend/services/daily_delivery.py",
+      "line": 790,
+      "issue": "generate_csv_content() called with wrong argument order - was (leads, entity) but should be (leads, produit, entity)",
+      "fix": "Changed to generate_csv_content(leads, produit, entity)",
+      "severity": "CRITICAL - would cause CSV generation to fail"
+    },
+    {
+      "file": "/app/backend/services/daily_delivery.py",
+      "line": 798,
+      "issue": "send_csv_email() called with client_name parameter that doesn't exist in function signature",
+      "fix": "Removed client_name parameter from call",
+      "severity": "CRITICAL - would cause runtime TypeError"
+    }
+  ],
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_e2e_pipeline_validation.py",
+    "/app/backend/tests/test_csv_batch_delivery.py",
+    "/app/test_reports/pytest/pytest_full_e2e.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "✅ PROVIDER LOCKED: Provider leads have entity_locked=true, cross-entity correctly BLOCKED even when global setting is ON",
+    "✅ INTERNAL FORM MAPPING: FORM-MDL-PV correctly resolves to entity=MDL, produit=PV. Unknown form_code returns status=pending_config",
+    "✅ DUPLICATE LOGIC: Same phone + produit + client within 30 days correctly returns status=duplicate, NO delivery created",
+    "✅ NO_OPEN_ORDERS: No matching commande returns status=no_open_orders, lead stored, no delivery",
+    "✅ HOLD_SOURCE: Blocked source (BAD_SOURCE) correctly sets status=hold_source, no routing attempted",
+    "✅ FRESH ROUTING: Active commande match creates delivery with status=pending_csv",
+    "✅ CSV INTEGRITY: CSV format validated - correct columns for ZR7 (7 cols) and MDL (8 cols)",
+    "✅ IDEMPOTENCY: Double submit detection works (5 second window)",
+    "✅ STATE TRANSITIONS: All valid statuses verified (new, routed, duplicate, hold_source, no_open_orders, pending_config, invalid, livre)"
+  ],
+  "updated_files": [
+    "/app/backend/services/daily_delivery.py",
+    "/app/backend/tests/test_e2e_pipeline_validation.py",
+    "/app/backend/tests/test_csv_batch_delivery.py"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "N/A - backend only testing"
+  },
+  "test_credentials": {
+    "email": "energiebleuciel@gmail.com",
+    "password": "92Ruemarxdormoy",
+    "provider_api_key": "prov_0vVMbevPVC1yBXXb3cPKySmiB_iP4nW1cjTjIOQ54is"
+  },
+  "seed_data_creation": "Used existing test data: ZR7 has 1 commande PV for depts 75/92/93/94, MDL has 2 commandes PV. Provider 'Taboola FR' (ZR7) exists. Form config FORM-MDL-PV -> MDL/PV. Source 'BAD_SOURCE' is blocked.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Full E2E pipeline validation completed. CRITICAL BUGS FIXED in process_pending_csv_deliveries(): (1) generate_csv_content() argument order fixed, (2) send_csv_email() extra parameter removed. All 8 validation points verified: provider entity_locked, form mapping, duplicate 30j, no_open_orders, hold_source, fresh routing, CSV integrity, idempotency. State transitions validated - no illegal jumps possible.",
+  "tests_executed": {
+    "total": 25,
+    "passed": 25,
+    "failed": 0,
+    "test_classes": [
+      {
+        "name": "TestProviderEntityLocked",
+        "tests": 2,
+        "passed": 2,
+        "details": ["test_provider_lead_has_entity_locked_true", "test_provider_duplicate_no_cross_entity_even_when_enabled"]
+      },
+      {
+        "name": "TestInternalFormMapping",
+        "tests": 2,
+        "passed": 2,
+        "details": ["test_valid_form_code_resolves_correctly", "test_invalid_form_code_returns_pending_config"]
+      },
+      {
+        "name": "TestDuplicateLogic",
+        "tests": 1,
+        "passed": 1,
+        "details": ["test_duplicate_same_phone_produit_client_30_days"]
+      },
+      {
+        "name": "TestNoOpenOrders",
+        "tests": 1,
+        "passed": 1,
+        "details": ["test_no_open_orders_lead_stored_no_delivery"]
+      },
+      {
+        "name": "TestHoldSource",
+        "tests": 1,
+        "passed": 1,
+        "details": ["test_blocked_source_hold_source_no_routing"]
+      },
+      {
+        "name": "TestFreshRouting",
+        "tests": 1,
+        "passed": 1,
+        "details": ["test_fresh_lead_creates_delivery_pending_csv"]
+      },
+      {
+        "name": "TestCSVIntegrity",
+        "tests": 1,
+        "passed": 1,
+        "details": ["test_csv_content_format"]
+      },
+      {
+        "name": "TestIdempotency",
+        "tests": 1,
+        "passed": 1,
+        "details": ["test_double_submit_detection"]
+      },
+      {
+        "name": "TestStateTransitions",
+        "tests": 5,
+        "passed": 5,
+        "details": ["test_valid_status_values", "test_new_to_routed_transition", "test_illegal_transitions_not_possible", "test_duplicate_cannot_become_routed", "test_hold_source_cannot_become_livre"]
+      },
+      {
+        "name": "TestCleanup",
+        "tests": 1,
+        "passed": 1,
+        "details": ["test_restore_settings"]
+      },
+      {
+        "name": "TestCSVBatchDelivery",
+        "tests": 2,
+        "passed": 2,
+        "details": ["test_create_lead_with_pending_csv_delivery", "test_verify_delivery_status_pending_csv"]
+      },
+      {
+        "name": "TestStateTransitionsAfterCSV",
+        "tests": 2,
+        "passed": 2,
+        "details": ["test_routed_to_livre_transition_documented", "test_delivery_status_transitions_documented"]
+      },
+      {
+        "name": "TestOrphanedRecordsCheck",
+        "tests": 2,
+        "passed": 2,
+        "details": ["test_no_orphaned_deliveries", "test_no_ghost_leads"]
+      },
+      {
+        "name": "TestCSVIdempotency",
+        "tests": 2,
+        "passed": 2,
+        "details": ["test_sent_delivery_cannot_be_resent", "test_livre_lead_cannot_be_rerouted"]
+      },
+      {
+        "name": "TestDatabaseConsistency",
+        "tests": 1,
+        "passed": 1,
+        "details": ["test_lead_delivery_consistency"]
+      }
+    ]
+  },
+  "key_validations": {
+    "1_provider_locked": "VERIFIED - Provider leads have entity_locked=true, cross-entity BLOCKED even when global setting ON",
+    "2_internal_form_mapping": "VERIFIED - FORM-MDL-PV resolves to entity=MDL, produit=PV. Unknown form_code returns pending_config",
+    "3_duplicate_logic": "VERIFIED - Same phone + produit + client within 30 days = duplicate, NO delivery created",
+    "4_no_open_orders": "VERIFIED - No matching commande returns status=no_open_orders, lead stored, no delivery",
+    "5_hold_source": "VERIFIED - Blocked source sets status=hold_source, no routing attempted",
+    "6_fresh_routing": "VERIFIED - Active commande match creates delivery with status=pending_csv",
+    "7_csv_integrity": "VERIFIED - CSV format correct (ZR7: 7 cols, MDL: 8 cols), UTF-8 encoding",
+    "8_idempotency": "VERIFIED - Double submit detection works (5 sec window)",
+    "9_state_transitions": "VERIFIED - All valid statuses, no illegal jumps possible"
+  },
+  "rca_of_bugs_fixed": {
+    "bug_1": {
+      "description": "generate_csv_content() called with wrong argument order in process_pending_csv_deliveries()",
+      "root_cause": "Function signature is (leads, produit, entity) but was called as (leads, entity)",
+      "impact": "CSV generation would fail with incorrect entity detection, potentially sending wrong format to clients",
+      "fix": "Changed call to generate_csv_content(leads, produit, entity)"
+    },
+    "bug_2": {
+      "description": "send_csv_email() called with non-existent client_name parameter",
+      "root_cause": "Function signature doesn't include client_name but it was passed in the call",
+      "impact": "Would cause TypeError at runtime when processing pending CSV deliveries",
+      "fix": "Removed client_name parameter from the function call"
+    }
+  }
+}
