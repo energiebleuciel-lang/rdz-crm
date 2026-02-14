@@ -41,6 +41,9 @@ ALL_PERMISSION_KEYS = [
     "billing.view",
     "billing.manage",
 
+    "intercompany.view",
+    "intercompany.manage",
+
     "departements.view",
 
     "activity.view",
