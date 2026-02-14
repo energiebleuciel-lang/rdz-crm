@@ -1,34 +1,48 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { API } from '../hooks/useApi';
-import { Edit2, X, Check, AlertTriangle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Edit2, X, Check, AlertTriangle, Mail, Globe, Phone, Truck, Eye } from 'lucide-react';
+
+const DAY_SHORT = ['L', 'M', 'Me', 'J', 'V', 'S', 'D'];
 
 export default function AdminClients() {
   const { authFetch } = useAuth();
+  const navigate = useNavigate();
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [entityFilter, setEntityFilter] = useState('');
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
   const [saving, setSaving] = useState(false);
+  const [clientStats, setClientStats] = useState({});
+  const [calendar, setCalendar] = useState({});
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      if (entityFilter) {
-        const res = await authFetch(`${API}/api/clients?entity=${entityFilter}`);
-        if (res.ok) { const d = await res.json(); setClients(d.clients || []); }
-      } else {
-        // Load both entities
-        const [zr7, mdl] = await Promise.all([
-          authFetch(`${API}/api/clients?entity=ZR7`),
-          authFetch(`${API}/api/clients?entity=MDL`)
-        ]);
-        let all = [];
-        if (zr7.ok) { const d = await zr7.json(); all = all.concat(d.clients || []); }
-        if (mdl.ok) { const d = await mdl.json(); all = all.concat(d.clients || []); }
-        setClients(all);
+      const entities = entityFilter ? [entityFilter] : ['ZR7', 'MDL'];
+      const results = await Promise.all(entities.map(e => authFetch(`${API}/api/clients?entity=${e}`)));
+      let all = [];
+      for (const r of results) { if (r.ok) { const d = await r.json(); all = all.concat(d.clients || []); } }
+      setClients(all);
+
+      // Load calendar
+      const calRes = await authFetch(`${API}/api/settings/delivery-calendar`);
+      if (calRes.ok) setCalendar(await calRes.json());
+
+      // Load 7d stats per client (delivery-based)
+      const stats = {};
+      for (const c of all) {
+        const sRes = await authFetch(`${API}/api/deliveries/stats?entity=${c.entity}`).catch(() => null);
+        // We get global stats, but we need per-client — use deliveries endpoint
+        const dRes = await authFetch(`${API}/api/deliveries?client_id=${c.id}&limit=1`).catch(() => null);
+        if (dRes?.ok) {
+          const dd = await dRes.json();
+          stats[c.id] = { total: dd.total || 0 };
+        }
       }
+      setClientStats(stats);
     } catch (e) { console.error(e); }
     setLoading(false);
   }, [entityFilter, authFetch]);
@@ -66,6 +80,11 @@ export default function AdminClients() {
     setSaving(false);
   };
 
+  const getDeliveryDays = (entity) => {
+    const days = calendar[entity]?.enabled_days || [];
+    return DAY_SHORT.map((d, i) => ({ name: d, on: days.includes(i) }));
+  };
+
   return (
     <div data-testid="admin-clients">
       <div className="flex items-center justify-between mb-4">
@@ -88,65 +107,94 @@ export default function AdminClients() {
               <tr className="border-b border-zinc-800 text-zinc-500">
                 <th className="text-left px-3 py-2.5 font-medium">Nom</th>
                 <th className="text-left px-3 py-2.5 font-medium">Entity</th>
-                <th className="text-left px-3 py-2.5 font-medium">Email</th>
-                <th className="text-left px-3 py-2.5 font-medium">API Endpoint</th>
+                <th className="text-left px-3 py-2.5 font-medium">Tel</th>
+                <th className="text-left px-3 py-2.5 font-medium">Canaux</th>
                 <th className="text-left px-3 py-2.5 font-medium">Auto Send</th>
-                <th className="text-left px-3 py-2.5 font-medium">Deliverable</th>
+                <th className="text-left px-3 py-2.5 font-medium">Jours</th>
+                <th className="text-left px-3 py-2.5 font-medium">Livrable</th>
                 <th className="text-left px-3 py-2.5 font-medium">Active</th>
+                <th className="text-left px-3 py-2.5 font-medium">Deliveries</th>
                 <th className="text-right px-3 py-2.5 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="text-center py-8 text-zinc-600">Chargement...</td></tr>
+                <tr><td colSpan={10} className="text-center py-8 text-zinc-600">Chargement...</td></tr>
               ) : clients.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-8 text-zinc-600">Aucun client</td></tr>
-              ) : clients.map(c => (
-                <tr key={c.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30" data-testid={`client-row-${c.id}`}>
-                  {editId === c.id ? (
-                    <>
-                      <td className="px-3 py-2 text-zinc-300">{c.name}</td>
-                      <td className="px-3 py-2"><span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${c.entity === 'ZR7' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-blue-500/10 text-blue-400'}`}>{c.entity}</span></td>
-                      <td className="px-3 py-2"><input value={editData.email} onChange={e => setEditData(d => ({...d, email: e.target.value}))} className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-zinc-300 w-full text-xs" data-testid="edit-email" /></td>
-                      <td className="px-3 py-2"><input value={editData.api_endpoint} onChange={e => setEditData(d => ({...d, api_endpoint: e.target.value}))} className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-zinc-300 w-full text-xs" data-testid="edit-api-endpoint" /></td>
-                      <td className="px-3 py-2">
-                        <button onClick={() => setEditData(d => ({...d, auto_send_enabled: !d.auto_send_enabled}))}
-                          className={`w-8 h-4 rounded-full relative transition-colors ${editData.auto_send_enabled ? 'bg-emerald-500' : 'bg-zinc-700'}`} data-testid="edit-auto-send-toggle">
-                          <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${editData.auto_send_enabled ? 'left-4' : 'left-0.5'}`} />
-                        </button>
-                      </td>
-                      <td className="px-3 py-2">{c.has_valid_channel ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <AlertTriangle className="w-3.5 h-3.5 text-red-400" />}</td>
-                      <td className="px-3 py-2">
-                        <button onClick={() => setEditData(d => ({...d, active: !d.active}))}
-                          className={`w-8 h-4 rounded-full relative transition-colors ${editData.active ? 'bg-emerald-500' : 'bg-zinc-700'}`} data-testid="edit-active-toggle">
-                          <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${editData.active ? 'left-4' : 'left-0.5'}`} />
-                        </button>
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        <div className="flex items-center justify-end gap-1">
+                <tr><td colSpan={10} className="text-center py-8 text-zinc-600">Aucun client</td></tr>
+              ) : clients.map(c => {
+                const days = getDeliveryDays(c.entity);
+                const deliverable = c.has_valid_channel;
+                return (
+                  <tr key={c.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30" data-testid={`client-row-${c.id}`}>
+                    {editId === c.id ? (
+                      <>
+                        <td className="px-3 py-2 text-zinc-300">{c.name}</td>
+                        <td className="px-3 py-2"><span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${c.entity === 'ZR7' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-blue-500/10 text-blue-400'}`}>{c.entity}</span></td>
+                        <td className="px-3 py-2 text-zinc-500">{c.phone || '-'}</td>
+                        <td className="px-3 py-2"><input value={editData.email} onChange={e => setEditData(d => ({...d, email: e.target.value}))} className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-zinc-300 w-full text-xs" placeholder="email" data-testid="edit-email" /></td>
+                        <td className="px-3 py-2">
+                          <button onClick={() => setEditData(d => ({...d, auto_send_enabled: !d.auto_send_enabled}))}
+                            className={`w-8 h-4 rounded-full relative transition-colors ${editData.auto_send_enabled ? 'bg-emerald-500' : 'bg-zinc-700'}`} data-testid="edit-auto-send-toggle">
+                            <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${editData.auto_send_enabled ? 'left-4' : 'left-0.5'}`} />
+                          </button>
+                        </td>
+                        <td className="px-3 py-2 text-zinc-500">-</td>
+                        <td className="px-3 py-2">-</td>
+                        <td className="px-3 py-2">
+                          <button onClick={() => setEditData(d => ({...d, active: !d.active}))}
+                            className={`w-8 h-4 rounded-full relative transition-colors ${editData.active ? 'bg-emerald-500' : 'bg-zinc-700'}`} data-testid="edit-active-toggle">
+                            <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${editData.active ? 'left-4' : 'left-0.5'}`} />
+                          </button>
+                        </td>
+                        <td className="px-3 py-2">-</td>
+                        <td className="px-3 py-2 text-right flex items-center justify-end gap-1">
                           <button onClick={saveEdit} disabled={saving} className="p-1 text-emerald-400 hover:bg-zinc-800 rounded" data-testid="save-edit-btn"><Check className="w-3.5 h-3.5" /></button>
                           <button onClick={() => setEditId(null)} className="p-1 text-zinc-500 hover:bg-zinc-800 rounded" data-testid="cancel-edit-btn"><X className="w-3.5 h-3.5" /></button>
-                        </div>
-                      </td>
-                    </>
-                  ) : (
-                    <>
-                      <td className="px-3 py-2 text-zinc-300">{c.name}</td>
-                      <td className="px-3 py-2"><span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${c.entity === 'ZR7' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-blue-500/10 text-blue-400'}`}>{c.entity}</span></td>
-                      <td className="px-3 py-2 text-zinc-400 max-w-[180px] truncate">{c.email}</td>
-                      <td className="px-3 py-2 text-zinc-500 max-w-[140px] truncate">{c.api_endpoint || '-'}</td>
-                      <td className="px-3 py-2">{(c.auto_send_enabled ?? true) ? <span className="text-[10px] text-emerald-400">ON</span> : <span className="text-[10px] text-amber-400">OFF</span>}</td>
-                      <td className="px-3 py-2">{c.has_valid_channel ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <AlertTriangle className="w-3.5 h-3.5 text-red-400" title="Non livrable" />}</td>
-                      <td className="px-3 py-2">{(c.active ?? true) ? <span className="text-[10px] text-emerald-400">Active</span> : <span className="text-[10px] text-red-400">Inactive</span>}</td>
-                      <td className="px-3 py-2 text-right">
-                        <button onClick={() => startEdit(c)} className="p-1 text-zinc-500 hover:text-teal-400 rounded" data-testid={`edit-btn-${c.id}`}>
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
-                    </>
-                  )}
-                </tr>
-              ))}
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-3 py-2 text-zinc-300 font-medium">{c.name}</td>
+                        <td className="px-3 py-2"><span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${c.entity === 'ZR7' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-blue-500/10 text-blue-400'}`}>{c.entity}</span></td>
+                        <td className="px-3 py-2 text-zinc-400 font-mono text-[10px]">{c.phone || '-'}</td>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-1.5">
+                            {c.email && <Mail className={`w-3 h-3 ${deliverable ? 'text-emerald-400' : 'text-red-400'}`} title={c.email} />}
+                            {c.api_endpoint && <Globe className="w-3 h-3 text-cyan-400" title={c.api_endpoint} />}
+                            {(c.delivery_emails || []).length > 0 && <span className="text-[9px] text-zinc-500">+{c.delivery_emails.length}</span>}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2">{(c.auto_send_enabled ?? true) ? <span className="text-[10px] text-emerald-400">ON</span> : <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">OFF</span>}</td>
+                        <td className="px-3 py-2">
+                          <div className="flex gap-0.5">
+                            {days.map((d, i) => (
+                              <span key={i} className={`w-4 h-4 text-[8px] flex items-center justify-center rounded ${d.on ? 'bg-teal-500/20 text-teal-400' : 'bg-zinc-800 text-zinc-700'}`}>{d.name}</span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2">
+                          {deliverable
+                            ? <Check className="w-3.5 h-3.5 text-emerald-400" />
+                            : <span className="flex items-center gap-1"><AlertTriangle className="w-3 h-3 text-red-400" /><span className="text-[9px] text-red-400/70 max-w-[80px] truncate" title={c.deliverable_reason}>{c.deliverable_reason?.split(':')[0]}</span></span>}
+                        </td>
+                        <td className="px-3 py-2">{(c.active ?? true) ? <span className="text-[10px] text-emerald-400">Active</span> : <span className="text-[10px] text-red-400">Off</span>}</td>
+                        <td className="px-3 py-2 text-zinc-500">{clientStats[c.id]?.total ?? '-'}</td>
+                        <td className="px-3 py-2 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <button onClick={() => navigate(`/admin/deliveries?client_id=${c.id}`)} className="p-1 text-zinc-500 hover:text-cyan-400 rounded" title="Voir deliveries" data-testid={`view-deliveries-btn-${c.id}`}>
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => startEdit(c)} className="p-1 text-zinc-500 hover:text-teal-400 rounded" data-testid={`edit-btn-${c.id}`}>
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
