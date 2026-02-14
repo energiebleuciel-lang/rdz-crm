@@ -722,8 +722,7 @@ function OffersTab({ clientId, authFetch }) {
           </div>
           <div>
             <label className="text-[10px] text-zinc-500 block mb-1">Semaine</label>
-            <input value={form.week_key} onChange={e => setForm(f => ({ ...f, week_key: e.target.value }))} placeholder="2026-W07"
-              className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-300 w-28" data-testid="offer-week" />
+            <WeekNavStandard week={offerWeek} onChange={(dir) => setOfferWeek(w => shiftWeekKey(w, dir))} />
           </div>
           <div>
             <label className="text-[10px] text-zinc-500 block mb-1">Units offertes</label>
