@@ -1,292 +1,141 @@
 # ARCHITECTURE OVERVIEW — RDZ CRM v1.0.0
-
-## 1. VUE D'ENSEMBLE
-
-```
-+------------------+     +------------------+     +------------------+
-|                  |     |                  |     |                  |
-|   React SPA      +---->+   FastAPI        +---->+   MongoDB        |
-|   (Port 3000)    |     |   (Port 8001)    |     |   (Port 27017)   |
-|                  |     |                  |     |                  |
-+------------------+     +-------+----------+     +------------------+
-                                 |
-                          +------+------+
-                          |             |
-                    +-----+-----+ +----+------+
-                    | APScheduler| | OVH SMTP  |
-                    | (in-proc)  | | (SSL 465) |
-                    +-----+------+ +----+------+
-                          |              |
-                   09h30 daily     CSV delivery
-                   Lun 08h00       emails
-                   intercompany
-```
-
-## 2. COMPOSANTS
-
-### 2.1 Frontend (React SPA)
-- **Framework:** React 18 + TailwindCSS + Shadcn/UI
-- **Routing:** React Router v6
-- **State:** Hooks (useAuth, useApi, useCRM, useEntityScope)
-- **Build:** CRACO (CRA override)
-- **URL config:** `REACT_APP_BACKEND_URL` (env)
-
-### 2.2 Backend (FastAPI)
-- **Framework:** FastAPI + Uvicorn
-- **Auth:** Token-based (SHA256 hash, sessions en DB, 7j TTL)
-- **RBAC:** 40+ permissions granulaires, 4 roles presets
-- **Scheduler:** APScheduler AsyncIO (in-process)
-
-### 2.3 Base de donnees (MongoDB)
-- **Driver:** Motor (async)
-- **Collections:** 42 (voir Section 5)
-- **Indexes:** 60+ (crees au demarrage)
-
-### 2.4 Services externes
-- **OVH SMTP:** `ssl0.ovh.net:465` (ZR7 + MDL)
-- **Aucune autre dependance externe**
+> Un dev doit comprendre le systeme en 10 minutes avec ce fichier.
 
 ---
 
-## 3. FLOW END-TO-END (E2E)
+## MODULES
 
-### 3.1 Flux Principal: LP Visit -> Lead -> Delivery
+### Backend (`/app/backend/`)
 
-```
-[Visiteur]
-    |
-    v
-POST /api/public/track/session
-    |  -> Cree visitor_session
-    |  -> Set cookie _rdz_vid
-    v
-POST /api/public/track/lp-visit
-    |  -> Log tracking event
-    |  -> Anti-doublon 1 par session
-    v
-POST /api/public/leads
-    |
-    |  === PIPELINE INGESTION ===
-    |
-    |  1. PROVIDER AUTH
-    |     api_key present?
-    |     +-- prov_xxx -> lookup providers -> entity_locked
-    |     +-- autre    -> is_intercrm = true
-    |     +-- absent   -> direct / LP
-    |
-    |  2. PHONE NORMALIZATION
-    |     normalize_phone_fr(phone)
-    |     -> status: valid | invalid
-    |     -> quality: valid | suspicious | invalid
-    |     -> format: 0XXXXXXXXX
-    |
-    |  3. SUSPICIOUS PHONE POLICY
-    |     provider/intercrm + suspicious?
-    |     +-- OUI -> REJECT (HTTP 200, error)
-    |     +-- NON -> continue
-    |
-    |  4. ANTI DOUBLE-SUBMIT
-    |     same session + phone < 5sec?
-    |     +-- OUI -> return existing lead_id
-    |     +-- NON -> continue
-    |
-    |  5. ENTITY + PRODUIT RESOLUTION
-    |     provider?    -> entity = provider.entity
-    |     form_code?   -> lookup settings.forms_config
-    |     body direct? -> entity + produit from body
-    |
-    |  6. SOURCE GATING
-    |     source in blocked_sources?
-    |     +-- OUI -> status = hold_source
-    |     +-- NON -> continue
-    |
-    |  7. LEAD CREATION
-    |     -> INSERT leads
-    |     -> status = new | invalid | hold_source | pending_config
-    |
-    |  8. ROUTING IMMEDIAT (si eligible)
-    |     route_lead(entity, produit, dept, phone)
-    |     |
-    |     |  a. Calendar gating
-    |     |     -> jour OFF? -> no_open_orders
-    |     |
-    |     |  b. find_open_commandes(entity)
-    |     |     -> active + quota_restant + dept_match
-    |     |     -> client_actif + deliverable + prepaid_check
-    |     |     -> LB target check (si is_lb)
-    |     |
-    |     |  c. Doublon 30 jours par client
-    |     |     -> phone + produit + client_id + 30j
-    |     |
-    |     |  d. Cross-entity fallback
-    |     |     -> si no_open_orders + !entity_locked
-    |     |     -> check settings + other entity commandes
-    |     |
-    |     +-- SUCCESS: client_id + commande_id
-    |     +-- FAIL: no_open_orders | duplicate
-    |
-    |  9. OVERLAP GUARD (si routed + guard_enabled)
-    |     check_overlap_and_find_alternative()
-    |     -> shared client? -> cross-entity delivery 30d?
-    |     -> alternative non-shared commande?
-    |     +-- OUI -> switch routing target
-    |     +-- NON -> fallback delivery (fail-open)
-    |
-    | 10. LB REPLACEMENT (si suspicious + internal_lp)
-    |     try_lb_replacement()
-    |     -> find compatible LB (atomic reserve)
-    |     +-- OUI -> deliver LB instead, mark original replaced
-    |     +-- NON -> deliver suspicious normally
-    |
-    | 11. DELIVERY CREATION
-    |     -> INSERT deliveries (status=pending_csv)
-    |     -> UPDATE lead (status=routed)
-    |
-    v
-[Delivery pending_csv]
-```
+| Dossier | Fichiers | Role |
+|---------|----------|------|
+| `server.py` | Entrypoint | App FastAPI, indexes DB, cron APScheduler |
+| `config.py` | Config | DB connection, helpers (hash, token, phone normalization) |
+| `models/` | 7 fichiers | Pydantic: lead, delivery, client, commande, provider, auth, entity |
+| `routes/` | 15 fichiers | API endpoints (auth, public, clients, commandes, deliveries, leads, billing, monitoring, settings, providers, invoices, intercompany, departements, event_log, system_health) |
+| `services/` | 11 fichiers | Logique metier (routing, dedup, delivery state machine, daily delivery cron, CSV email, overlap guard, LB replacement, intercompany, permissions, settings, event/activity logger) |
+| `scripts/` | 2 fichiers | seed_test_users, migrate_normalize_phones |
+| `tests/` | 35+ fichiers | pytest (E2E, unit, simulation) |
 
-### 3.2 Flux Quotidien: Cron 09h30
+### Frontend (`/app/frontend/src/`)
+
+| Dossier | Role |
+|---------|------|
+| `App.jsx` | Router principal, routes protegees |
+| `pages/` | 25 pages (Dashboard, Leads, Clients, Commandes, Deliveries, Billing, Monitoring, Settings, Users, etc.) |
+| `components/` | Layout, WeekNav, AdminLayout, UI components |
+| `hooks/` | useAuth, useApi, useCRM, useEntityScope |
+
+### Cron (APScheduler, in-process)
+
+| Job | Quand | Quoi |
+|-----|-------|------|
+| `daily_delivery` | 09h30 Europe/Paris, tous les jours | Traite pending_csv, marque LB, livre par entity |
+| `intercompany_invoices` | Lundi 08h00 Europe/Paris | Genere factures intercompany semaine N-1 |
+
+---
+
+## FLOW E2E — 10 ETAPES
 
 ```
-run_daily_delivery()
-    |
-    |  1. process_pending_csv_deliveries()
-    |     -> Pour chaque delivery pending_csv:
-    |        a. Calendar gating (skip si jour OFF)
-    |        b. Client deliverable check
-    |        c. auto_send_enabled?
-    |           +-- OUI: send CSV email -> mark sent/livre
-    |           +-- NON: mark ready_to_send (CSV genere)
-    |
-    |  2. mark_leads_as_lb()
-    |     -> new/non_livre > 8 jours -> LB
-    |     -> livre (any age) -> LB
-    |
-    |  3. process_entity_deliveries("ZR7")
-    |  4. process_entity_deliveries("MDL")
-    |     -> Pour chaque entity:
-    |        a. Get fresh_leads + lb_leads
-    |        b. Get active_commandes
-    |        c. Pour chaque commande:
-    |           - LB target dynamic mix
-    |           - 3 passes: fresh -> LB new -> LB recycled
-    |           - Doublon check per lead/client
-    |        d. deliver_leads_to_client() via state_machine
-    |
-    |  5. Save delivery_report
-    v
-[Report saved]
-```
+1. LP VISIT
+   POST /api/public/track/session → cree visitor_session + cookie _rdz_vid
+   POST /api/public/track/lp-visit → log tracking event
 
-### 3.3 Flux Intercompany
+2. FORM SUBMIT
+   POST /api/public/leads
+   Body: { phone, nom, departement, session_id, form_code, ... }
 
-```
-delivery_state_machine.mark_delivery_sent()
-    |
-    +-> maybe_create_intercompany_transfer()
-        |  lead.lead_owner_entity != target_entity?
-        |  +-- OUI -> create transfer record (pending)
-        |  +-- NON -> no transfer needed
-        |
-        +-> Cron Monday 08h00:
-            generate_weekly_invoices_internal()
-            -> Aggregate transfers by week
-            -> Create interfacturation_records
+3. PHONE NORMALIZATION
+   normalize_phone_fr(phone) → format 0XXXXXXXXX
+   Qualite: valid | suspicious | invalid
+   Provider/interCRM + suspicious → REJECT immediat
+
+4. ANTI DOUBLE-SUBMIT
+   Meme session + meme phone < 5 sec → retourne lead existant
+
+5. ENTITY + PRODUIT RESOLUTION
+   Provider api_key → entity = provider.entity (verrouillee)
+   Sinon → form_code → settings.forms_config → entity + produit
+   Sinon → body direct
+
+6. DEDUP 30 JOURS
+   Meme phone + meme produit + meme client + < 30 jours → skip ce client
+   (le lead peut aller vers un AUTRE client)
+
+7. ROUTING
+   Cherche commandes OPEN: active + quota_restant + dept_match + client_livrable
+   Priorite: 1 (haute) → 10 (basse)
+   Si aucune → cross-entity fallback (si autorise + entity non verrouilee)
+
+8. OVERLAP GUARD (optionnel, fail-open)
+   Client partage entre ZR7/MDL + delivery cross-entity < 30j?
+   → Cherche alternative non-partagee (max 10 candidats, timeout 500ms)
+   → Sinon: livre quand meme (fallback)
+
+9. LB REPLACEMENT (optionnel, fail-open)
+   Phone suspect + source internal_lp?
+   → Cherche LB compatible (reservation atomique)
+   → Sinon: livre le suspect tel quel
+
+10. DELIVERY
+    Cree delivery (status=pending_csv) + lead (status=routed)
+    → Cron 09h30: genere CSV, envoie email SMTP OVH
+    → State machine: pending_csv → [ready_to_send] → sending → sent
+    → Lead: routed → livre (UNIQUEMENT via state machine)
 ```
 
 ---
 
-## 4. FRONTIERES: CORE vs EXTENSIONS
+## FAIL-OPEN & KILL SWITCHES
 
-```
-+================================================================+
-|                      CORE (GELE / FREEZE)                      |
-|                                                                |
-|  routing_engine.py    duplicate_detector.py                    |
-|  delivery_state_machine.py    daily_delivery.py                |
-|  auth.py (login/session)    permissions.py                     |
-|  entity isolation    RBAC enforcement                          |
-|                                                                |
-|  REGLE: Aucune modification sans E2E test pass (114 tests)     |
-+================================================================+
-
-+---------------------------+  +-----------------------------+
-|   EXTENSION: Data Quality |  |   EXTENSION: Monitoring     |
-|                           |  |                             |
-| normalize_phone_fr()      |  | monitoring.py (READ-ONLY)   |
-| lb_replacement.py         |  | system_health.py            |
-| overlap_guard.py          |  | AdminMonitoringIntelligence |
-|                           |  |                             |
-| REGLE: Fail-open,         |  | REGLE: Fail-open per-widget|
-| jamais bloquer delivery   |  | Jamais modifier les donnees |
-+---------------------------+  +-----------------------------+
-
-+---------------------------+  +-----------------------------+
-| EXTENSION: Billing        |  | EXTENSION: Tracking         |
-|                           |  |                             |
-| billing.py                |  | public.py (track/*)         |
-| invoices.py               |  | visitor_sessions            |
-| intercompany.py           |  | tracking events             |
-|                           |  |                             |
-| REGLE: Calcul seulement,  |  | REGLE: Fire-and-forget,    |
-| ne bloque jamais delivery |  | jamais bloquer ingestion    |
-+---------------------------+  +-----------------------------+
-```
+| Module | Comportement en cas d'erreur | Kill switch |
+|--------|------------------------------|-------------|
+| **Overlap Guard** | Exception/timeout → livre normalement | `settings.overlap_guard.enabled` (DB) |
+| **LB Replacement** | Pas de LB dispo → livre le suspect | Aucun (toujours actif si conditions remplies) |
+| **Intercompany** | Erreur → log + record status=error, delivery OK | Aucun (fire-and-forget) |
+| **Dashboard widgets** | Widget crash → `_errors[]` partiel, autres widgets OK | Aucun |
+| **Monitoring** | Widget crash → `_errors[]` partiel | Aucun |
+| **Calendar gating** | Jour OFF → deliveries restent pending_csv (pas failed) | `settings.delivery_calendar` (DB) |
+| **Source gating** | Source bloquee → lead cree avec status=hold_source | `settings.source_gating.blocked_sources` (DB) |
+| **Cross-entity** | Bloque → lead stocke, pas de fallback | `settings.cross_entity.per_entity.out_enabled` (DB) |
 
 ---
 
-## 5. COLLECTIONS MONGODB (42)
+## ENDPOINTS CLES
 
-| Collection | Description | Indexes |
-|------------|-------------|---------|
-| `users` | Comptes utilisateurs | email (unique) |
-| `sessions` | Sessions auth (token, TTL 7j) | token, expires_at |
-| `leads` | Leads (3392 docs) | 16 indexes (phone, entity, produit, status, routing composite, LB, monitoring, double-submit) |
-| `clients` | Clients acheteurs | entity, (entity+email unique) |
-| `commandes` | Commandes hebdo | entity, (entity+client+produit+active) |
-| `deliveries` | Livraisons individuelles | 11 indexes (entity, status, client, lead, commande, overlap) |
-| `delivery_batches` | Batches CSV historiques | entity, sent_at |
-| `delivery_reports` | Rapports cron quotidiens | run_at |
-| `providers` | Fournisseurs externes | slug (unique), api_key (unique), entity |
-| `settings` | Config dynamique (cross-entity, source gating, calendar, forms, denylist, overlap_guard) | key |
-| `tracking` | Events LP/Form | session_id, lp_code, form_code |
-| `visitor_sessions` | Sessions visiteurs | id (unique), visitor_id, lp_code, status |
-| `event_log` | Audit trail systeme | created_at, action, entity |
-| `activity_logs` | Audit trail utilisateur | created_at |
-| `products` | Catalogue produits | code (unique) |
-| `client_pricing` | Prix global par client | client_id (unique) |
-| `client_product_pricing` | Prix par client/produit | (client_id+product_code unique) |
-| `billing_credits` | Offres/credits | (client_id+week_key) |
-| `billing_ledger` | Ledger immutable par semaine | week_key, (week_key+client_id+product_code) |
-| `billing_records` | Records facturation | (week_key+client_id+product_code+order_id), status |
-| `prepayment_balances` | Soldes prepaid | (client_id+product_code unique) |
-| `invoices` | Factures | entity, status, client_id, type |
-| `entity_transfer_pricing` | Prix transfert interentite | (from+to+product unique) |
-| `intercompany_pricing` | Prix intercompany (legacy) | (from+to+product unique) |
-| `intercompany_transfers` | Transferts interco | delivery_id (unique), week_key |
-| `interfacturation_records` | Records interfacturation | (week_key+from+to) |
-| `cron_logs` | Logs execution cron | (job+week_key) |
-| `client_activity` | Timeline client CRM | client_id |
-| `system_config` | Config systeme (API key) | type |
+### Public (pas d'auth)
 
----
+| Method | Path | Role |
+|--------|------|------|
+| POST | `/api/public/track/session` | Cree session visiteur |
+| POST | `/api/public/track/lp-visit` | Log visite LP |
+| POST | `/api/public/track/event` | Log event generique |
+| POST | `/api/public/leads` | **Soumettre un lead** (ingestion principale) |
+| GET | `/api/system/version` | Version, tag, git SHA |
 
-## 6. POINTS DE DECISION
+### Admin (auth requise — token Bearer)
 
-| Point | Acteur | Regle |
-|-------|--------|-------|
-| Entity routing | Provider API key | Verouille par provider.entity |
-| Cross-entity fallback | Settings | cross_entity_enabled + per_entity.out/in |
-| Calendar gating | Settings | enabled_days + disabled_dates par entity |
-| Doublon 30j | Routing engine | phone + produit + client_id + 30 jours |
-| LB classification | Cron daily | age >= 8j OU deja livre |
-| Quota check | Routing engine | delivered_this_week < quota_semaine |
-| Client deliverable | Client model | Au moins 1 email valide OU API endpoint |
-| Source gating | Settings | Blacklist mode |
-| Suspicious policy | Public.py | Provider/interCRM -> reject; LP -> LB replace |
-| Overlap guard | Settings | Kill switch + 30d window + alternative search |
-| Billing: billable | State machine | delivery.status=sent AND outcome=accepted |
-| Prepaid block | Routing engine | billing_mode=PREPAID AND units_remaining <= 0 |
-| RBAC | Permissions service | 40+ granular permission keys, 4 role presets |
-| Entity isolation | Permissions | Non-super_admin forces user.entity, super_admin uses X-Entity-Scope |
+| Method | Path | Permission | Role |
+|--------|------|-----------|------|
+| POST | `/api/auth/login` | - | Login |
+| GET | `/api/auth/me` | - | User courant |
+| GET | `/api/leads/list` | leads.view | Liste leads filtree |
+| GET | `/api/leads/dashboard-stats` | leads.view | KPIs cockpit |
+| GET | `/api/clients?entity=ZR7` | clients.view | Liste clients |
+| GET | `/api/commandes?entity=ZR7` | commandes.view | Liste commandes |
+| GET | `/api/deliveries` | deliveries.view | Liste deliveries |
+| POST | `/api/deliveries/{id}/send` | admin | Envoyer manuellement |
+| POST | `/api/deliveries/{id}/reject-leads` | admin | Rejet client |
+| GET | `/api/monitoring/intelligence` | dashboard.view | Dashboard strategique |
+| GET | `/api/system/health` | dashboard.view | Sante systeme |
+| GET | `/api/billing/week` | billing.view | Dashboard facturation |
+| POST | `/api/billing/week/{wk}/build-ledger` | billing.manage | Construire ledger |
+| GET | `/api/settings` | settings.access | Tous les settings |
+| GET | `/api/providers` | providers.access | Liste providers |
+
+### Provider (auth par API key)
+
+| Method | Path | Auth |
+|--------|------|------|
+| POST | `/api/public/leads` | `api_key: prov_xxx` dans body ou header `Authorization: Bearer prov_xxx` |
