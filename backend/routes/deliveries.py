@@ -204,7 +204,7 @@ async def send_delivery(
         csv_filename = delivery.get("csv_filename") or f"lead_{entity}_{produit}_{lead.get('id')[:8]}.csv"
         
         # Envoyer
-        result = await send_csv_email(
+        await send_csv_email(
             entity=entity,
             to_emails=to_emails,
             csv_content=csv_content,
