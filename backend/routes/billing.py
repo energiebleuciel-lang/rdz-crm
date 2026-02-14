@@ -490,12 +490,16 @@ async def build_ledger(week_key: str, user: dict = Depends(get_current_user)):
         pkey = f"{cid}:{pc}"
         pp = pp_map.get(pkey)
         gp = gp_map.get(cid, {})
+        li = lead_info.get(d.get("lead_id", ""), {})
 
         uprice = pp.get("unit_price_eur", 0) if pp else 0
         disc = pp.get("discount_pct", gp.get("discount_pct_global", 0)) if pp else gp.get("discount_pct_global", 0)
         bmode = pp.get("billing_mode", "WEEKLY_INVOICE") if pp else "WEEKLY_INVOICE"
         tva = gp.get("tva_rate", 20.0)
         psource = "client_product_pricing" if pp else ("client_pricing_global" if gp.get("discount_pct_global") else "none")
+
+        source_entity = li.get("entity", d.get("entity", ""))
+        billing_entity = client_map.get(cid, {}).get("entity", "")
 
         agross = round(uprice, 2) if billable else 0
         anet = round(agross * (1 - disc / 100), 2) if billable else 0
@@ -504,8 +508,9 @@ async def build_ledger(week_key: str, user: dict = Depends(get_current_user)):
             "id": str(uuid.uuid4()), "week_key": week_key,
             "client_id": cid, "order_id": d.get("commande_id", ""),
             "delivery_id": d.get("id", ""), "lead_id": d.get("lead_id", ""),
-            "product_code": pc, "dept": lead_dept.get(d.get("lead_id", ""), "??"),
+            "product_code": pc, "dept": li.get("dept", "??"),
             "unit_type": "lb" if d.get("is_lb") else "lead",
+            "source_entity": source_entity, "billing_entity": billing_entity,
             "outcome": outcome, "is_billable": billable,
             "unit_price_eur_snapshot": uprice, "discount_pct_snapshot": disc,
             "billing_mode_snapshot": bmode, "pricing_source": psource,
