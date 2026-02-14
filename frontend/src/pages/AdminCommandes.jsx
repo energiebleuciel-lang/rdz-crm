@@ -27,8 +27,8 @@ export default function AdminCommandes() {
     try {
       const loadBoth = async (endpoint) => {
         const [zr7, mdl] = await Promise.all([
-          authFetch(`${API}${endpoint}?entity=ZR7`),
-          authFetch(`${API}${endpoint}?entity=MDL`)
+          authFetch(`${API}${endpoint}?entity=ZR7&week=${week}`),
+          authFetch(`${API}${endpoint}?entity=MDL&week=${week}`)
         ]);
         let all = [];
         if (zr7.ok) { const d = await zr7.json(); all = all.concat(d.commandes || d.clients || []); }
@@ -38,7 +38,7 @@ export default function AdminCommandes() {
 
       if (entityFilter) {
         const [cRes, clRes] = await Promise.all([
-          authFetch(`${API}/api/commandes?entity=${entityFilter}`),
+          authFetch(`${API}/api/commandes?entity=${entityFilter}&week=${week}`),
           Promise.all([authFetch(`${API}/api/clients?entity=ZR7`), authFetch(`${API}/api/clients?entity=MDL`)])
         ]);
         if (cRes.ok) { const d = await cRes.json(); setCommandes(d.commandes || []); }
@@ -46,12 +46,10 @@ export default function AdminCommandes() {
         for (const r of clRes) { if (r.ok) { const d = await r.json(); allClients = allClients.concat(d.clients || []); } }
         setClients(allClients);
       } else {
-        const [cmds, cls] = await Promise.all([
+        const [cmds] = await Promise.all([
           loadBoth('/api/commandes'),
-          loadBoth('/api/clients')
         ]);
         setCommandes(cmds);
-        // clients from loadBoth uses d.commandes || d.clients, need to fix
         const [clZr7, clMdl] = await Promise.all([
           authFetch(`${API}/api/clients?entity=ZR7`),
           authFetch(`${API}/api/clients?entity=MDL`)
@@ -63,7 +61,7 @@ export default function AdminCommandes() {
       }
     } catch (e) { console.error(e); }
     setLoading(false);
-  }, [entityFilter, authFetch]);
+  }, [entityFilter, week, authFetch]);
 
   useEffect(() => { load(); }, [load]);
 
