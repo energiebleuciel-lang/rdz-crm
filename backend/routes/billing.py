@@ -1,15 +1,16 @@
 """
-RDZ CRM - Billing & Pricing Engine (Phase A)
+RDZ CRM - Billing & Pricing Engine (Simplified)
 
 Collections:
   products, client_pricing, client_product_pricing,
-  billing_credits, prepayment_balances, billing_ledger, invoices
+  billing_credits, prepayment_balances, billing_ledger, billing_records
 
 Rules:
   billable = delivery.status=sent AND outcome=accepted
   LB facturé au même prix qu'un lead (1 unité)
   Ledger = snapshot immutable (prix/remise copiés au build-ledger)
-  Invoice frozen = immutable
+  billing_records = suivi financier interne (pas de facture générée)
+  Credits toujours sur order_id + product_code + week_key, non reportables
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -26,19 +27,18 @@ router = APIRouter(tags=["Billing"])
 
 CREDIT_REASONS = ["fin_de_semaine", "geste_commercial", "retard", "qualite", "bug", "autre"]
 BILLING_MODES = ["WEEKLY_INVOICE", "PREPAID"]
+RECORD_STATUSES = ["not_invoiced", "invoiced", "paid", "overdue"]
 
 
 def _parse_week(week_str: str):
     try:
         parts = week_str.split("-W")
-        if len(parts) != 2:
-            raise HTTPException(400, f"Invalid week format: {week_str}. Expected YYYY-W##")
         year, wn = int(parts[0]), int(parts[1])
         start = datetime.fromisocalendar(year, wn, 1).replace(tzinfo=timezone.utc)
         end = start + timedelta(days=7)
         return start.isoformat(), end.isoformat()
-    except ValueError as e:
-        raise HTTPException(400, f"Invalid week: {week_str}. {str(e)}")
+    except Exception:
+        raise HTTPException(400, f"Invalid week format: {week_str}. Expected YYYY-W##")
 
 
 def _current_week_key():
@@ -103,7 +103,7 @@ class ProductPricingUpsert(BaseModel):
 async def get_client_pricing(client_id: str, user: dict = Depends(get_current_user)):
     gp = await db.client_pricing.find_one({"client_id": client_id}, {"_id": 0})
     if not gp:
-        gp = {"client_id": client_id, "discount_pct_global": 0}
+        gp = {"client_id": client_id, "discount_pct_global": 0, "tva_rate": 20.0}
     products = await db.client_product_pricing.find(
         {"client_id": client_id}, {"_id": 0}
     ).to_list(50)
@@ -122,7 +122,7 @@ async def update_global_pricing(
         upsert=True,
     )
     await log_event("pricing_update", "client", client_id, user=user.get("email"),
-                     details={"discount_pct_global": data.discount_pct_global})
+                     details={"discount_pct_global": data.discount_pct_global, "tva_rate": data.tva_rate})
     return {"success": True}
 
 
@@ -134,38 +134,27 @@ async def upsert_product_pricing(
     if data.billing_mode not in BILLING_MODES:
         raise HTTPException(400, f"billing_mode must be one of {BILLING_MODES}")
     pc = data.product_code.upper()
-
     doc = {
         "client_id": client_id, "product_code": pc,
         "unit_price_eur": data.unit_price_eur, "discount_pct": data.discount_pct,
         "billing_mode": data.billing_mode, "active": data.active,
         "valid_from": data.valid_from, "updated_at": now_iso(),
     }
-
-    existing = await db.client_product_pricing.find_one(
-        {"client_id": client_id, "product_code": pc}
-    )
+    existing = await db.client_product_pricing.find_one({"client_id": client_id, "product_code": pc})
     if existing:
-        await db.client_product_pricing.update_one(
-            {"client_id": client_id, "product_code": pc}, {"$set": doc}
-        )
+        await db.client_product_pricing.update_one({"client_id": client_id, "product_code": pc}, {"$set": doc})
     else:
         doc["id"] = str(uuid.uuid4())
         doc["created_at"] = now_iso()
         await db.client_product_pricing.insert_one(doc)
         doc.pop("_id", None)
-
     if data.billing_mode == "PREPAID":
-        bal = await db.prepayment_balances.find_one(
-            {"client_id": client_id, "product_code": pc}
-        )
-        if not bal:
+        if not await db.prepayment_balances.find_one({"client_id": client_id, "product_code": pc}):
             await db.prepayment_balances.insert_one({
                 "client_id": client_id, "product_code": pc,
                 "units_purchased_total": 0, "units_delivered_total": 0,
                 "units_remaining": 0, "updated_at": now_iso(),
             })
-
     await log_event("pricing_update", "client", client_id, user=user.get("email"),
                      details={"product": pc, "unit_price": data.unit_price_eur,
                               "discount_pct": data.discount_pct, "billing_mode": data.billing_mode})
@@ -173,13 +162,8 @@ async def upsert_product_pricing(
 
 
 @router.delete("/clients/{client_id}/pricing/product/{product_code}")
-async def delete_product_pricing(
-    client_id: str, product_code: str,
-    user: dict = Depends(get_current_user)
-):
-    r = await db.client_product_pricing.delete_one(
-        {"client_id": client_id, "product_code": product_code.upper()}
-    )
+async def delete_product_pricing(client_id: str, product_code: str, user: dict = Depends(get_current_user)):
+    r = await db.client_product_pricing.delete_one({"client_id": client_id, "product_code": product_code.upper()})
     if r.deleted_count == 0:
         raise HTTPException(404, "Product pricing not found")
     await log_event("pricing_delete", "client", client_id, user=user.get("email"),
@@ -188,11 +172,12 @@ async def delete_product_pricing(
 
 
 # ═══════════════════════════════════════════════════
-# BILLING CREDITS (free units / offers)
+# BILLING CREDITS (offres — toujours sur order_id)
 # ═══════════════════════════════════════════════════
 
 class CreditCreate(BaseModel):
-    product_code: Optional[str] = None
+    order_id: str
+    product_code: str
     week_key: str
     quantity_units_free: int
     reason: str
@@ -200,10 +185,7 @@ class CreditCreate(BaseModel):
 
 
 @router.get("/clients/{client_id}/credits")
-async def list_credits(
-    client_id: str, week_key: Optional[str] = None,
-    user: dict = Depends(get_current_user)
-):
+async def list_credits(client_id: str, week_key: Optional[str] = None, user: dict = Depends(get_current_user)):
     q = {"client_id": client_id}
     if week_key:
         q["week_key"] = week_key
@@ -212,38 +194,34 @@ async def list_credits(
 
 
 @router.post("/clients/{client_id}/credits")
-async def add_credit(
-    client_id: str, data: CreditCreate,
-    user: dict = Depends(get_current_user)
-):
+async def add_credit(client_id: str, data: CreditCreate, user: dict = Depends(get_current_user)):
     if data.reason not in CREDIT_REASONS:
         raise HTTPException(400, f"reason must be one of {CREDIT_REASONS}")
+    if not data.order_id:
+        raise HTTPException(400, "order_id is required")
+    if not data.product_code:
+        raise HTTPException(400, "product_code is required")
     doc = {
         "id": str(uuid.uuid4()), "client_id": client_id,
-        "product_code": data.product_code.upper() if data.product_code else None,
+        "order_id": data.order_id,
+        "product_code": data.product_code.upper(),
         "week_key": data.week_key, "quantity_units_free": data.quantity_units_free,
         "reason": data.reason, "note": data.note,
         "created_by": user.get("email"), "created_at": now_iso(),
-        "applied_invoice_id": None,
     }
     await db.billing_credits.insert_one(doc)
     doc.pop("_id", None)
     await log_event("credit_added", "client", client_id, user=user.get("email"),
-                     details={"product": data.product_code, "week": data.week_key,
-                              "units_free": data.quantity_units_free, "reason": data.reason})
+                     details={"order_id": data.order_id, "product": data.product_code,
+                              "week": data.week_key, "units_free": data.quantity_units_free, "reason": data.reason})
     return {"success": True, "credit": doc}
 
 
 @router.delete("/clients/{client_id}/credits/{credit_id}")
-async def delete_credit(
-    client_id: str, credit_id: str,
-    user: dict = Depends(get_current_user)
-):
+async def delete_credit(client_id: str, credit_id: str, user: dict = Depends(get_current_user)):
     c = await db.billing_credits.find_one({"id": credit_id, "client_id": client_id})
     if not c:
         raise HTTPException(404, "Credit not found")
-    if c.get("applied_invoice_id"):
-        raise HTTPException(400, "Cannot delete credit applied to invoice")
     await db.billing_credits.delete_one({"id": credit_id})
     await log_event("credit_deleted", "client", client_id, user=user.get("email"),
                      details={"credit_id": credit_id})
@@ -267,10 +245,7 @@ async def get_prepayment(client_id: str, user: dict = Depends(get_current_user))
 
 
 @router.post("/clients/{client_id}/prepayment/add-units")
-async def add_prepayment_units(
-    client_id: str, data: PrepaymentAddUnits,
-    user: dict = Depends(get_current_user)
-):
+async def add_prepayment_units(client_id: str, data: PrepaymentAddUnits, user: dict = Depends(get_current_user)):
     pc = data.product_code.upper()
     await db.prepayment_balances.update_one(
         {"client_id": client_id, "product_code": pc},
@@ -279,9 +254,7 @@ async def add_prepayment_units(
          "$setOnInsert": {"client_id": client_id, "product_code": pc, "units_delivered_total": 0}},
         upsert=True,
     )
-    bal = await db.prepayment_balances.find_one(
-        {"client_id": client_id, "product_code": pc}, {"_id": 0}
-    )
+    bal = await db.prepayment_balances.find_one({"client_id": client_id, "product_code": pc}, {"_id": 0})
     await log_event("prepayment_units_added", "client", client_id, user=user.get("email"),
                      details={"product": pc, "units_added": data.units_to_add,
                               "remaining": bal.get("units_remaining"), "note": data.note})
@@ -293,41 +266,186 @@ async def add_prepayment_units(
 # ═══════════════════════════════════════════════════
 
 @router.get("/billing/week")
-async def billing_week_dashboard(
-    week_key: Optional[str] = None,
-    user: dict = Depends(get_current_user),
-):
+async def billing_week_dashboard(week_key: Optional[str] = None, user: dict = Depends(get_current_user)):
     wk = week_key or _current_week_key()
     ws, we = _parse_week(wk)
 
-    # Clients
-    all_clients = await db.clients.find({"active": True}, {"_id": 0, "id": 1, "name": 1, "entity": 1}).to_list(500)
-    cmap = {c["id"]: c for c in all_clients}
+    # Check if billing_records exist
+    records = await db.billing_records.find({"week_key": wk}, {"_id": 0}).to_list(5000)
+    has_records = len(records) > 0
 
-    # Deliveries
+    # Always compute summary from deliveries (live)
+    cmap = {c["id"]: c for c in await db.clients.find({"active": True}, {"_id": 0, "id": 1, "name": 1, "entity": 1}).to_list(500)}
     deliveries = await db.deliveries.find(
         {"created_at": {"$gte": ws, "$lt": we}},
-        {"_id": 0, "id": 1, "lead_id": 1, "client_id": 1, "commande_id": 1,
-         "produit": 1, "status": 1, "outcome": 1, "is_lb": 1},
+        {"_id": 0, "id": 1, "client_id": 1, "produit": 1, "status": 1, "outcome": 1, "is_lb": 1},
     ).to_list(50000)
 
-    grp = defaultdict(lambda: {"leads": 0, "lb": 0, "sent": 0,
-                                "billable": 0, "billable_leads": 0, "billable_lb": 0,
-                                "rejected": 0, "removed": 0})
-    for d in deliveries:
-        k = f"{d['client_id']}:{d.get('produit', '')}"
-        is_lb = d.get("is_lb", False)
-        grp[k]["lb" if is_lb else "leads"] += 1
-        outcome = d.get("outcome") or "accepted"
-        if d.get("status") == "sent":
-            grp[k]["sent"] += 1
-            if outcome == "accepted":
-                grp[k]["billable"] += 1
-                grp[k]["billable_lb" if is_lb else "billable_leads"] += 1
-        if outcome == "rejected":
-            grp[k]["rejected"] += 1
-        elif outcome == "removed":
-            grp[k]["removed"] += 1
+    total_delivered = len(deliveries)
+    total_billable = sum(1 for d in deliveries if d.get("status") == "sent" and (d.get("outcome") or "accepted") == "accepted")
+    total_nonbill = sum(1 for d in deliveries if (d.get("outcome") or "accepted") in ("rejected", "removed"))
+    leads_produced = await db.leads.count_documents({"created_at": {"$gte": ws, "$lt": we}})
+
+    # Prepaid data
+    prepay_raw = await db.prepayment_balances.find({}, {"_id": 0}).to_list(500)
+    prepay_map = {f"{p['client_id']}:{p['product_code']}": p for p in prepay_raw}
+    all_pp = await db.client_product_pricing.find({}, {"_id": 0}).to_list(5000)
+    pp_map = {f"{p['client_id']}:{p['product_code']}": p for p in all_pp}
+
+    if has_records:
+        # Use billing_records for the table
+        weekly_rows = []
+        prepaid_rows = []
+        totals = {"units_billable": 0, "units_free": 0, "net_ht": 0, "ttc": 0}
+
+        for r in records:
+            bmode = r.get("billing_mode", "WEEKLY_INVOICE")
+            r["client_name"] = r.get("client_name") or cmap.get(r.get("client_id"), {}).get("name", "")
+            r["entity"] = cmap.get(r.get("client_id"), {}).get("entity", "")
+            r["pricing_missing"] = r.get("unit_price_ht_snapshot", 0) <= 0
+
+            if bmode == "PREPAID":
+                b = prepay_map.get(f"{r['client_id']}:{r['product_code']}", {})
+                r["prepaid_remaining"] = b.get("units_remaining", 0)
+                r["prepaid_purchased"] = b.get("units_purchased_total", 0)
+                r["prepaid_delivered"] = b.get("units_delivered_total", 0)
+                r["prepaid_status"] = "BLOCKED" if b.get("units_remaining", 0) <= 0 else "LOW" if b.get("units_remaining", 0) <= 10 else "OK"
+                prepaid_rows.append(r)
+            else:
+                weekly_rows.append(r)
+                totals["units_billable"] += r.get("units_billable", 0)
+                totals["units_free"] += r.get("units_free", 0)
+                totals["net_ht"] += r.get("net_total_ht", 0)
+                totals["ttc"] += r.get("total_ttc_expected", 0)
+
+        totals["net_ht"] = round(totals["net_ht"], 2)
+        totals["ttc"] = round(totals["ttc"], 2)
+    else:
+        # Compute preview from deliveries
+        grp = defaultdict(lambda: {"leads": 0, "lb": 0, "billable": 0, "billable_leads": 0, "billable_lb": 0, "rejected": 0, "removed": 0})
+        for d in deliveries:
+            k = f"{d['client_id']}:{d.get('produit', '')}"
+            is_lb = d.get("is_lb", False)
+            grp[k]["lb" if is_lb else "leads"] += 1
+            outcome = d.get("outcome") or "accepted"
+            if d.get("status") == "sent":
+                if outcome == "accepted":
+                    grp[k]["billable"] += 1
+                    grp[k]["billable_lb" if is_lb else "billable_leads"] += 1
+            if outcome == "rejected":
+                grp[k]["rejected"] += 1
+            elif outcome == "removed":
+                grp[k]["removed"] += 1
+
+        all_gp = await db.client_pricing.find({}, {"_id": 0}).to_list(500)
+        gp_map = {g["client_id"]: g for g in all_gp}
+
+        weekly_rows, prepaid_rows = [], []
+        totals = {"units_billable": 0, "units_free": 0, "net_ht": 0, "ttc": 0}
+
+        for key, s in sorted(grp.items()):
+            parts = key.split(":", 1)
+            if len(parts) != 2:
+                continue
+            cid, pc = parts
+            cl = cmap.get(cid, {})
+            pp = pp_map.get(key)
+            gd = gp_map.get(cid, {}).get("discount_pct_global", 0)
+            tva = gp_map.get(cid, {}).get("tva_rate", 20.0)
+
+            bmode = pp.get("billing_mode", "WEEKLY_INVOICE") if pp else "WEEKLY_INVOICE"
+            uprice = pp.get("unit_price_eur", 0) if pp else 0
+            disc = pp.get("discount_pct", gd) if pp else gd
+            pmissing = not pp or uprice <= 0
+
+            gross = round(s["billable"] * uprice, 2)
+            net_val = round(gross * (1 - disc / 100), 2)
+            tva_amt = round(net_val * tva / 100, 2)
+            ttc = round(net_val + tva_amt, 2)
+
+            row = {
+                "client_id": cid, "client_name": cl.get("name", ""), "entity": cl.get("entity", ""),
+                "product_code": pc, "billing_mode": bmode, "pricing_missing": pmissing,
+                "units_billable": s["billable"], "units_leads": s["billable_leads"], "units_lb": s["billable_lb"],
+                "units_free": 0, "units_invoiced": s["billable"],
+                "unit_price_ht_snapshot": uprice, "discount_pct_snapshot": disc,
+                "net_total_ht": net_val, "vat_rate_snapshot": tva, "vat_amount": tva_amt,
+                "total_ttc_expected": ttc,
+                "status": "not_invoiced", "is_preview": True,
+            }
+
+            if bmode == "PREPAID":
+                b = prepay_map.get(key, {})
+                row["prepaid_remaining"] = b.get("units_remaining", 0)
+                row["prepaid_purchased"] = b.get("units_purchased_total", 0)
+                row["prepaid_delivered"] = b.get("units_delivered_total", 0)
+                row["prepaid_status"] = "BLOCKED" if b.get("units_remaining", 0) <= 0 else "LOW" if b.get("units_remaining", 0) <= 10 else "OK"
+                prepaid_rows.append(row)
+            else:
+                weekly_rows.append(row)
+                totals["units_billable"] += s["billable"]
+                totals["net_ht"] += net_val
+                totals["ttc"] += ttc
+
+        totals["net_ht"] = round(totals["net_ht"], 2)
+        totals["ttc"] = round(totals["ttc"], 2)
+
+    return {
+        "week_key": wk,
+        "has_records": has_records,
+        "summary": {
+            "leads_produced": leads_produced,
+            "units_delivered": total_delivered,
+            "units_billable": total_billable,
+            "units_non_billable": total_nonbill,
+        },
+        "totals": totals,
+        "weekly_invoice": weekly_rows,
+        "prepaid": prepaid_rows,
+    }
+
+
+# ═══════════════════════════════════════════════════
+# BUILD LEDGER + BILLING RECORDS
+# ═══════════════════════════════════════════════════
+
+@router.post("/billing/week/{week_key}/build-ledger")
+async def build_ledger(week_key: str, user: dict = Depends(get_current_user)):
+    ws, we = _parse_week(week_key)
+
+    # Block if any billing_record is invoiced/paid
+    locked = await db.billing_records.find_one(
+        {"week_key": week_key, "status": {"$in": ["invoiced", "paid"]}}
+    )
+    if locked:
+        raise HTTPException(400, f"Cannot rebuild: record for {locked.get('client_name')} / {locked.get('product_code')} is '{locked.get('status')}'")
+
+    # Preserve external tracking from existing records
+    existing_records = {}
+    async for r in db.billing_records.find({"week_key": week_key}, {"_id": 0}):
+        existing_records[f"{r['client_id']}:{r['product_code']}:{r.get('order_id', '')}"] = {
+            "external_invoice_number": r.get("external_invoice_number"),
+            "external_invoice_ttc": r.get("external_invoice_ttc"),
+            "issued_at": r.get("issued_at"),
+            "due_date": r.get("due_date"),
+            "paid_at": r.get("paid_at"),
+            "status": r.get("status", "not_invoiced"),
+        }
+
+    # Delete existing ledger + records
+    del_ledger = await db.billing_ledger.delete_many({"week_key": week_key})
+    await db.billing_records.delete_many({"week_key": week_key})
+
+    # Get all deliveries
+    deliveries = await db.deliveries.find({"created_at": {"$gte": ws, "$lt": we}}, {"_id": 0}).to_list(50000)
+
+    # Lead departments
+    lead_ids = list({d["lead_id"] for d in deliveries})
+    lead_dept = {}
+    for i in range(0, len(lead_ids), 5000):
+        chunk = lead_ids[i:i + 5000]
+        for ld in await db.leads.find({"id": {"$in": chunk}}, {"_id": 0, "id": 1, "departement": 1}).to_list(len(chunk)):
+            lead_dept[ld["id"]] = ld.get("departement", "??")
 
     # Pricing maps
     all_pp = await db.client_product_pricing.find({}, {"_id": 0}).to_list(5000)
@@ -335,139 +453,16 @@ async def billing_week_dashboard(
     all_gp = await db.client_pricing.find({}, {"_id": 0}).to_list(500)
     gp_map = {g["client_id"]: g for g in all_gp}
 
-    # Credits
-    credits = await db.billing_credits.find({"week_key": wk}, {"_id": 0}).to_list(500)
-    cr_prod = defaultdict(int)
-    cr_global = defaultdict(int)
+    # Client names
+    cnames = {c["id"]: c["name"] for c in await db.clients.find({}, {"_id": 0, "id": 1, "name": 1}).to_list(500)}
+
+    # Credits map: key = client_id:product_code:order_id:week_key
+    credits = await db.billing_credits.find({"week_key": week_key}, {"_id": 0}).to_list(500)
+    credit_map = defaultdict(int)
     for c in credits:
-        if c.get("product_code"):
-            cr_prod[f"{c['client_id']}:{c['product_code']}"] += c["quantity_units_free"]
-        else:
-            cr_global[c["client_id"]] += c["quantity_units_free"]
+        credit_map[f"{c['client_id']}:{c['product_code']}:{c['order_id']}"] += c["quantity_units_free"]
 
-    # Invoices
-    invs = await db.invoices.find({"week_key": wk}, {"_id": 0}).to_list(500)
-    inv_map = {f"{i['client_id']}:{i.get('product_code', '')}": i for i in invs}
-
-    # Prepay
-    prepay_raw = await db.prepayment_balances.find({}, {"_id": 0}).to_list(500)
-    prepay_map = {f"{p['client_id']}:{p['product_code']}": p for p in prepay_raw}
-
-    weekly_rows, prepaid_rows = [], []
-    inv_totals = {"units_billable": 0, "units_free": 0, "gross": 0, "net": 0}
-
-    for key, s in sorted(grp.items()):
-        parts = key.split(":", 1)
-        if len(parts) != 2:
-            continue
-        cid, pc = parts
-        cl = cmap.get(cid, {})
-        pp = pp_map.get(key)
-        gd = gp_map.get(cid, {}).get("discount_pct_global", 0)
-
-        bmode = pp.get("billing_mode", "WEEKLY_INVOICE") if pp else "WEEKLY_INVOICE"
-        uprice = pp.get("unit_price_eur", 0) if pp else 0
-        disc = pp.get("discount_pct", gd) if pp else gd
-        pmissing = not pp or uprice <= 0
-        tva = gp_map.get(cid, {}).get("tva_rate", 20.0)
-
-        total_credits = cr_prod.get(key, 0) + cr_global.get(cid, 0)
-        ufree = min(total_credits, s["billable"])
-        uinv = max(0, s["billable"] - ufree)
-        gross = round(uinv * uprice, 2)
-        net_val = round(gross * (1 - disc / 100), 2)
-        tva_amount = round(net_val * tva / 100, 2)
-        ttc = round(net_val + tva_amount, 2)
-
-        inv = inv_map.get(key)
-
-        row = {
-            "client_id": cid, "client_name": cl.get("name", ""), "entity": cl.get("entity", ""),
-            "product_code": pc, "billing_mode": bmode, "pricing_missing": pmissing,
-            "unit_price_eur": uprice, "discount_pct": disc, "tva_rate": tva,
-            "units_leads": s["billable_leads"], "units_lb": s["billable_lb"],
-            "units_total_delivered": s["leads"] + s["lb"],
-            "units_billable": s["billable"], "units_rejected": s["rejected"],
-            "units_removed": s["removed"],
-            "units_free_applied": ufree, "units_invoiced": uinv,
-            "gross_total": gross, "discount_amount": round(gross - net_val, 2), "net_total": net_val,
-            "tva_amount": tva_amount, "ttc": ttc,
-            "invoice_status": inv.get("status") if inv else None,
-            "invoice_id": inv.get("id") if inv else None,
-            "invoice_number": inv.get("invoice_number") if inv else None,
-        }
-
-        if bmode == "PREPAID":
-            b = prepay_map.get(key, {})
-            row["prepaid_remaining"] = b.get("units_remaining", 0)
-            row["prepaid_purchased"] = b.get("units_purchased_total", 0)
-            row["prepaid_delivered"] = b.get("units_delivered_total", 0)
-            row["prepaid_status"] = (
-                "BLOCKED" if b.get("units_remaining", 0) <= 0
-                else "LOW" if b.get("units_remaining", 0) <= 10
-                else "OK"
-            )
-            prepaid_rows.append(row)
-        else:
-            weekly_rows.append(row)
-            inv_totals["units_billable"] += s["billable"]
-            inv_totals["units_free"] += ufree
-            inv_totals["gross"] += gross
-            inv_totals["net"] += net_val
-
-    inv_totals["gross"] = round(inv_totals["gross"], 2)
-    inv_totals["net"] = round(inv_totals["net"], 2)
-
-    leads_produced = await db.leads.count_documents({"created_at": {"$gte": ws, "$lt": we}})
-
-    return {
-        "week_key": wk,
-        "summary": {
-            "leads_produced": leads_produced,
-            "units_delivered": sum(s["leads"] + s["lb"] for s in grp.values()),
-            "units_billable": sum(s["billable"] for s in grp.values()),
-            "units_non_billable": sum(s["rejected"] + s["removed"] for s in grp.values()),
-        },
-        "totals_invoice": inv_totals,
-        "weekly_invoice": weekly_rows,
-        "prepaid": prepaid_rows,
-    }
-
-
-# ═══════════════════════════════════════════════════
-# BUILD LEDGER
-# ═══════════════════════════════════════════════════
-
-@router.post("/billing/week/{week_key}/build-ledger")
-async def build_ledger(week_key: str, user: dict = Depends(get_current_user)):
-    ws, we = _parse_week(week_key)
-
-    frozen = await db.invoices.find_one(
-        {"week_key": week_key, "status": {"$in": ["frozen", "sent", "paid"]}}
-    )
-    if frozen:
-        raise HTTPException(
-            400, f"Cannot rebuild ledger: invoice {frozen.get('invoice_number')} is {frozen.get('status')}"
-        )
-
-    deleted = await db.billing_ledger.delete_many({"week_key": week_key})
-
-    deliveries = await db.deliveries.find(
-        {"created_at": {"$gte": ws, "$lt": we}}, {"_id": 0}
-    ).to_list(50000)
-
-    lead_ids = list({d["lead_id"] for d in deliveries})
-    lead_dept = {}
-    for i in range(0, len(lead_ids), 5000):
-        chunk = lead_ids[i : i + 5000]
-        for ld in await db.leads.find({"id": {"$in": chunk}}, {"_id": 0, "id": 1, "departement": 1}).to_list(len(chunk)):
-            lead_dept[ld["id"]] = ld.get("departement", "??")
-
-    all_pp = await db.client_product_pricing.find({}, {"_id": 0}).to_list(5000)
-    pp_map = {f"{p['client_id']}:{p['product_code']}": p for p in all_pp}
-    all_gp = await db.client_pricing.find({}, {"_id": 0}).to_list(500)
-    gp_map = {g["client_id"]: g for g in all_gp}
-
+    # 1. Build ledger entries
     entries = []
     for d in deliveries:
         outcome = d.get("outcome") or "accepted"
@@ -475,13 +470,13 @@ async def build_ledger(week_key: str, user: dict = Depends(get_current_user)):
         cid = d.get("client_id", "")
         pc = d.get("produit", "")
         pkey = f"{cid}:{pc}"
-
         pp = pp_map.get(pkey)
         gp = gp_map.get(cid, {})
 
         uprice = pp.get("unit_price_eur", 0) if pp else 0
         disc = pp.get("discount_pct", gp.get("discount_pct_global", 0)) if pp else gp.get("discount_pct_global", 0)
         bmode = pp.get("billing_mode", "WEEKLY_INVOICE") if pp else "WEEKLY_INVOICE"
+        tva = gp.get("tva_rate", 20.0)
         psource = "client_product_pricing" if pp else ("client_pricing_global" if gp.get("discount_pct_global") else "none")
 
         agross = round(uprice, 2) if billable else 0
@@ -496,6 +491,7 @@ async def build_ledger(week_key: str, user: dict = Depends(get_current_user)):
             "outcome": outcome, "is_billable": billable,
             "unit_price_eur_snapshot": uprice, "discount_pct_snapshot": disc,
             "billing_mode_snapshot": bmode, "pricing_source": psource,
+            "vat_rate_snapshot": tva,
             "amount_gross_eur": agross, "amount_net_eur": anet,
             "created_at": now_iso(), "source_event_id": None,
         })
@@ -505,114 +501,78 @@ async def build_ledger(week_key: str, user: dict = Depends(get_current_user)):
         for e in entries:
             e.pop("_id", None)
 
-    await log_event("ledger_built", "billing", week_key, user=user.get("email"),
-                     details={"entries": len(entries), "deleted_previous": deleted.deleted_count})
-
-    return {"success": True, "week_key": week_key,
-            "entries_created": len(entries), "entries_deleted_previous": deleted.deleted_count}
-
-
-# ═══════════════════════════════════════════════════
-# GENERATE INVOICES
-# ═══════════════════════════════════════════════════
-
-@router.post("/billing/week/{week_key}/generate-invoices")
-async def generate_invoices(week_key: str, user: dict = Depends(get_current_user)):
-    lc = await db.billing_ledger.count_documents({"week_key": week_key})
-    if lc == 0:
-        raise HTTPException(400, "No ledger entries. Run build-ledger first.")
-
-    ledger = await db.billing_ledger.find(
-        {"week_key": week_key, "is_billable": True}, {"_id": 0}
-    ).to_list(50000)
-
-    groups = defaultdict(list)
-    for e in ledger:
-        groups[f"{e['client_id']}:{e['product_code']}"].append(e)
-
-    credits = await db.billing_credits.find({"week_key": week_key}, {"_id": 0}).to_list(500)
-    cr_prod = defaultdict(int)
-    cr_global = defaultdict(int)
-    for c in credits:
-        if c.get("product_code"):
-            cr_prod[f"{c['client_id']}:{c['product_code']}"] += c["quantity_units_free"]
-        else:
-            cr_global[c["client_id"]] += c["quantity_units_free"]
-
-    cnames = {c["id"]: c["name"] for c in await db.clients.find({}, {"_id": 0, "id": 1, "name": 1}).to_list(500)}
-
-    last_inv = await db.invoices.find_one({}, {"_id": 0, "invoice_number": 1}, sort=[("created_at", -1)])
-    counter = 1
-    if last_inv and last_inv.get("invoice_number"):
-        try:
-            counter = int(last_inv["invoice_number"].split("-")[-1]) + 1
-        except ValueError:
-            pass
-
-    created = []
-    for key, entries in sorted(groups.items()):
-        cid, pc = key.split(":", 1)
-
-        frozen_inv = await db.invoices.find_one(
-            {"week_key": week_key, "client_id": cid, "product_code": pc,
-             "status": {"$in": ["frozen", "sent", "paid"]}}
-        )
-        if frozen_inv:
+    # 2. Aggregate into billing_records (per client + product + order + week)
+    agg = defaultdict(lambda: {"leads": 0, "lb": 0, "billable": 0, "uprice": 0, "disc": 0, "bmode": "WEEKLY_INVOICE", "tva": 20.0})
+    for e in entries:
+        if not e["is_billable"]:
             continue
+        rk = f"{e['client_id']}:{e['product_code']}:{e['order_id']}"
+        agg[rk]["billable"] += 1
+        agg[rk]["lb" if e["unit_type"] == "lb" else "leads"] += 1
+        agg[rk]["uprice"] = e["unit_price_eur_snapshot"]
+        agg[rk]["disc"] = e["discount_pct_snapshot"]
+        agg[rk]["bmode"] = e["billing_mode_snapshot"]
+        agg[rk]["tva"] = e.get("vat_rate_snapshot", 20.0)
 
-        u_leads = sum(1 for e in entries if e["unit_type"] == "lead")
-        u_lb = sum(1 for e in entries if e["unit_type"] == "lb")
-        u_total = u_leads + u_lb
+    # Also include non-billable-only groups (for visibility)
+    for e in entries:
+        rk = f"{e['client_id']}:{e['product_code']}:{e['order_id']}"
+        if rk not in agg:
+            agg[rk]["uprice"] = e["unit_price_eur_snapshot"]
+            agg[rk]["disc"] = e["discount_pct_snapshot"]
+            agg[rk]["bmode"] = e["billing_mode_snapshot"]
+            agg[rk]["tva"] = e.get("vat_rate_snapshot", 20.0)
 
-        total_credits = cr_prod.get(key, 0) + cr_global.get(cid, 0)
-        u_free = min(total_credits, u_total)
-        u_inv = max(0, u_total - u_free)
+    records_created = 0
+    for rk, s in agg.items():
+        parts = rk.split(":", 2)
+        cid, pc, oid = parts[0], parts[1], parts[2] if len(parts) > 2 else ""
 
-        uprice = entries[0]["unit_price_eur_snapshot"] if entries else 0
-        disc = entries[0]["discount_pct_snapshot"] if entries else 0
-        bmode = entries[0].get("billing_mode_snapshot", "WEEKLY_INVOICE")
+        ufree = min(credit_map.get(rk, 0), s["billable"])
+        uinv = max(0, s["billable"] - ufree)
+        gross = round(uinv * s["uprice"], 2)
+        net_val = round(gross * (1 - s["disc"] / 100), 2)
+        tva_amt = round(net_val * s["tva"] / 100, 2)
+        ttc = round(net_val + tva_amt, 2)
 
-        gross = round(u_inv * uprice, 2)
-        disc_amt = round(gross * disc / 100, 2)
-        net_val = round(gross - disc_amt, 2)
+        # Restore external tracking if existed
+        ext = existing_records.get(rk, {})
 
-        await db.invoices.delete_many(
-            {"week_key": week_key, "client_id": cid, "product_code": pc, "status": "draft"}
-        )
-
-        inv_num = f"INV-{week_key}-{counter:04d}"
-        counter += 1
-
-        inv = {
-            "id": str(uuid.uuid4()), "invoice_number": inv_num,
-            "week_key": week_key, "client_id": cid,
-            "client_name": cnames.get(cid, ""), "product_code": pc,
-            "billing_mode": bmode, "status": "draft",
-            "generated_at": now_iso(),
-            "units_leads": u_leads, "units_lb": u_lb, "units_total": u_total,
-            "units_free_applied": u_free, "units_invoiced": u_inv,
-            "unit_price_eur": uprice, "discount_pct": disc,
-            "gross_total": gross, "discount_total": disc_amt, "net_total": net_val,
-            "notes": "", "pdf_url": None,
-            "sent_at": None, "paid_at": None, "frozen_at": None,
+        record = {
+            "id": str(uuid.uuid4()), "week_key": week_key,
+            "client_id": cid, "client_name": cnames.get(cid, ""),
+            "product_code": pc, "order_id": oid,
+            "billing_mode": s["bmode"],
+            "units_billable": s["billable"], "units_leads": s["leads"], "units_lb": s["lb"],
+            "units_free": ufree, "units_invoiced": uinv,
+            "unit_price_ht_snapshot": s["uprice"], "discount_pct_snapshot": s["disc"],
+            "net_total_ht": net_val, "vat_rate_snapshot": s["tva"],
+            "vat_amount": tva_amt, "total_ttc_expected": ttc,
+            "external_invoice_number": ext.get("external_invoice_number"),
+            "external_invoice_ttc": ext.get("external_invoice_ttc"),
+            "issued_at": ext.get("issued_at"), "due_date": ext.get("due_date"),
+            "paid_at": ext.get("paid_at"),
+            "status": ext.get("status", "not_invoiced"),
             "created_at": now_iso(), "updated_at": now_iso(),
         }
-        await db.invoices.insert_one(inv)
-        inv.pop("_id", None)
-        created.append(inv)
+        await db.billing_records.insert_one(record)
+        record.pop("_id", None)
+        records_created += 1
 
-    await log_event("invoices_generated", "billing", week_key, user=user.get("email"),
-                     details={"count": len(created)})
+    await log_event("ledger_built", "billing", week_key, user=user.get("email"),
+                     details={"ledger_entries": len(entries), "billing_records": records_created,
+                              "deleted_previous": del_ledger.deleted_count})
+
     return {"success": True, "week_key": week_key,
-            "invoices_created": len(created), "invoices": created}
+            "ledger_entries": len(entries), "billing_records_created": records_created}
 
 
 # ═══════════════════════════════════════════════════
-# INVOICES LIST + ACTIONS
+# BILLING RECORDS — LIST + EXTERNAL TRACKING
 # ═══════════════════════════════════════════════════
 
-@router.get("/invoices")
-async def list_invoices(
+@router.get("/billing/records")
+async def list_billing_records(
     week_key: Optional[str] = None, client_id: Optional[str] = None,
     status: Optional[str] = None, user: dict = Depends(get_current_user),
 ):
@@ -623,54 +583,35 @@ async def list_invoices(
         q["client_id"] = client_id
     if status:
         q["status"] = status
-    invs = await db.invoices.find(q, {"_id": 0}).sort("created_at", -1).to_list(500)
-    return {"invoices": invs, "count": len(invs)}
+    recs = await db.billing_records.find(q, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    return {"records": recs, "count": len(recs)}
 
 
-@router.post("/invoices/{invoice_id}/freeze")
-async def freeze_invoice(invoice_id: str, user: dict = Depends(get_current_user)):
-    inv = await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
-    if not inv:
-        raise HTTPException(404, "Invoice not found")
-    if inv["status"] != "draft":
-        raise HTTPException(400, f"Cannot freeze: status is '{inv['status']}', must be draft")
-    await db.invoices.update_one(
-        {"id": invoice_id},
-        {"$set": {"status": "frozen", "frozen_at": now_iso(), "updated_at": now_iso()}},
-    )
-    await log_event("invoice_frozen", "invoice", invoice_id, user=user.get("email"),
-                     details={"invoice_number": inv.get("invoice_number"),
-                              "client_id": inv.get("client_id"), "net_total": inv.get("net_total")})
-    return {"success": True, "status": "frozen"}
+class BillingRecordUpdate(BaseModel):
+    external_invoice_number: Optional[str] = None
+    external_invoice_ttc: Optional[float] = None
+    issued_at: Optional[str] = None
+    due_date: Optional[str] = None
+    paid_at: Optional[str] = None
+    status: Optional[str] = None
 
 
-@router.post("/invoices/{invoice_id}/mark-sent")
-async def mark_invoice_sent(invoice_id: str, user: dict = Depends(get_current_user)):
-    inv = await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
-    if not inv:
-        raise HTTPException(404, "Invoice not found")
-    if inv["status"] != "frozen":
-        raise HTTPException(400, f"Cannot send: status is '{inv['status']}', must be frozen")
-    await db.invoices.update_one(
-        {"id": invoice_id},
-        {"$set": {"status": "sent", "sent_at": now_iso(), "updated_at": now_iso()}},
-    )
-    await log_event("invoice_sent", "invoice", invoice_id, user=user.get("email"),
-                     details={"invoice_number": inv.get("invoice_number")})
-    return {"success": True, "status": "sent"}
+@router.put("/billing/records/{record_id}")
+async def update_billing_record(
+    record_id: str, data: BillingRecordUpdate,
+    user: dict = Depends(get_current_user),
+):
+    rec = await db.billing_records.find_one({"id": record_id}, {"_id": 0})
+    if not rec:
+        raise HTTPException(404, "Billing record not found")
+    if data.status and data.status not in RECORD_STATUSES:
+        raise HTTPException(400, f"status must be one of {RECORD_STATUSES}")
 
+    update = {k: v for k, v in data.dict().items() if v is not None}
+    update["updated_at"] = now_iso()
 
-@router.post("/invoices/{invoice_id}/mark-paid")
-async def mark_invoice_paid(invoice_id: str, user: dict = Depends(get_current_user)):
-    inv = await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
-    if not inv:
-        raise HTTPException(404, "Invoice not found")
-    if inv["status"] not in ("sent", "frozen"):
-        raise HTTPException(400, f"Cannot mark paid from '{inv['status']}'")
-    await db.invoices.update_one(
-        {"id": invoice_id},
-        {"$set": {"status": "paid", "paid_at": now_iso(), "updated_at": now_iso()}},
-    )
-    await log_event("invoice_paid", "invoice", invoice_id, user=user.get("email"),
-                     details={"invoice_number": inv.get("invoice_number")})
-    return {"success": True, "status": "paid"}
+    await db.billing_records.update_one({"id": record_id}, {"$set": update})
+
+    await log_event("billing_record_updated", "billing", record_id, user=user.get("email"),
+                     details=update)
+    return {"success": True}
