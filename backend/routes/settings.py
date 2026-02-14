@@ -12,6 +12,7 @@ from typing import Optional, List, Dict
 
 from config import db, now_iso
 from routes.auth import get_current_user, require_admin
+from services.permissions import require_permission
 from services.settings import (
     get_setting,
     upsert_setting,
