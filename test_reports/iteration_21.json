@@ -1,0 +1,107 @@
+{
+  "summary": "Delivery State Machine Audit Complete - 45/45 tests PASSED. Static code audit confirms NO direct status writes ('sent'/'livre'/'failed'/'ready_to_send') exist outside delivery_state_machine.py. All routes and services properly use state machine functions.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_delivery_state_machine_audit.py",
+    "/app/backend/tests/test_state_machine_transitions.py",
+    "/app/test_reports/pytest/pytest_state_machine_complete.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "✅ STATIC AUDIT: No direct status writes found in routes/ or services/ outside state_machine.py",
+    "✅ deliveries.py: All status transitions use mark_delivery_sent(), mark_delivery_sending(), mark_delivery_failed()",
+    "✅ daily_delivery.py: Uses batch_mark_deliveries_sent(), batch_mark_deliveries_ready_to_send(), batch_mark_deliveries_failed()",
+    "✅ csv_delivery.py: deliver_to_client() dead code removed - NOTE in file confirms all delivery must go through state machine",
+    "✅ Invariants enforced: sent_to non-empty, last_sent_at non-null, send_attempts >= 1 for all status='sent'",
+    "✅ Terminal state 'sent': Cannot transition to any other state - validated via API test",
+    "✅ Batch guards: batch_mark_deliveries_sent() verifies source states, blocks already-sent deliveries",
+    "✅ Calendar gating: Today is Saturday - delivery_day_disabled:samedi for both ZR7 and MDL"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_delivery_state_machine_audit.py - New API endpoint tests",
+    "/app/backend/tests/test_state_machine_transitions.py - New state machine unit tests"
+  ],
+  "success_rate": {
+    "backend": "100% (45/45 tests passed)",
+    "frontend": "N/A - backend only testing"
+  },
+  "test_credentials": {
+    "email": "energiebleuciel@gmail.com",
+    "password": "92Ruemarxdormoy"
+  },
+  "seed_data_creation": "No new seed data created - tested against existing DB state",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "State machine audit complete. Key findings: 1) delivery_state_machine.py is the ONLY module that writes status values to deliveries collection. 2) All 3 code paths (send_delivery route, batch_send_ready route, process_pending_csv_deliveries) correctly use state machine functions. 3) Invariants are enforced - verified 7 sent deliveries all have sent_to, last_sent_at, send_attempts>=1. 4) Calendar gating working - Saturday blocks deliveries for both entities.",
+  "verified_features": {
+    "static_code_audit": {
+      "finding": "NO direct status writes outside state_machine.py",
+      "status": "VERIFIED"
+    },
+    "POST /api/deliveries/batch/generate-csv": {
+      "uses_state_machine": "mark_delivery_ready_to_send()",
+      "status": "VERIFIED"
+    },
+    "POST /api/deliveries/batch/send-ready": {
+      "uses_state_machine": "batch_mark_deliveries_sent() after real email send",
+      "calendar_gating": "Respects enabled_days",
+      "status": "VERIFIED"
+    },
+    "POST /api/deliveries/{id}/send": {
+      "uses_state_machine": "mark_delivery_sending() then mark_delivery_sent()",
+      "invariants_enforced": "sent_to, last_sent_at, send_attempts verified",
+      "status": "VERIFIED"
+    },
+    "GET /api/deliveries/{id}/download": {
+      "returns_csv": "Content-Type: text/csv",
+      "status": "VERIFIED"
+    },
+    "terminal_state_sent": {
+      "cannot_transition": "sent -> any other state BLOCKED",
+      "resend_requires_force": "400 error without force=true",
+      "status": "VERIFIED"
+    },
+    "batch_guards": {
+      "blocks_already_sent": "batch_mark_deliveries_sent checks source states",
+      "status": "VERIFIED in code"
+    },
+    "calendar_gating": {
+      "today": "Saturday (disabled)",
+      "zr7_result": "delivery_day_disabled:samedi",
+      "mdl_result": "delivery_day_disabled:samedi",
+      "status": "VERIFIED"
+    },
+    "auto_send_enabled": {
+      "true_behavior": "delivery=sent, lead=livre",
+      "false_behavior": "delivery=ready_to_send, lead stays routed",
+      "status": "VERIFIED (from iteration_20)"
+    },
+    "client_deliverability": {
+      "check_function": "check_client_deliverable() in models/client.py",
+      "marks_failed": "batch_mark_deliveries_failed() for non-deliverable",
+      "status": "VERIFIED in code"
+    }
+  },
+  "delivery_stats": {
+    "pending_csv": 0,
+    "ready_to_send": 624,
+    "sending": 0,
+    "sent": 7,
+    "failed": 0,
+    "total": 631
+  },
+  "invariant_verification": {
+    "sample_size": "7 sent deliveries",
+    "sent_to_non_empty": "100% compliant",
+    "last_sent_at_non_null": "100% compliant",
+    "send_attempts_gte_1": "100% compliant"
+  }
+}
