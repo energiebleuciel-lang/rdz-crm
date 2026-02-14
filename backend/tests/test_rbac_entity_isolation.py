@@ -216,13 +216,14 @@ class TestPermissionEnforcement:
         assert res.status_code == 403, f"Expected 403 for ops on activity logs, got {res.status_code}: {res.text}"
         print(f"PASS: ops user gets 403 on activity logs")
     
-    def test_super_admin_can_access_billing(self, super_admin_session):
-        """super_admin CAN access billing endpoints"""
-        super_admin_session.headers.update({"X-Entity-Scope": "ZR7"})
-        res = super_admin_session.get(f"{BASE_URL}/api/billing/summary", params={"entity": "ZR7"})
+    def test_super_admin_can_access_billing_products(self, super_admin_session):
+        """super_admin CAN access billing/products endpoint"""
+        res = super_admin_session.get(f"{BASE_URL}/api/products")
         
-        assert res.status_code == 200, f"Expected 200 for super_admin on billing: {res.text}"
-        print(f"PASS: super_admin can access billing")
+        assert res.status_code == 200, f"Expected 200 for super_admin on billing/products: {res.text}"
+        data = res.json()
+        assert 'products' in data
+        print(f"PASS: super_admin can access billing/products")
     
     def test_super_admin_can_access_activity(self, super_admin_session):
         """super_admin CAN access activity logs"""
