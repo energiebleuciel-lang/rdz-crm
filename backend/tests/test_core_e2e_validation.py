@@ -281,64 +281,69 @@ class TestCDeduplication:
 
     def test_c2_same_phone_same_product_different_client(self):
         """Same phone+produit but different client: NOT duplicate."""
-        import asyncio
-        from motor.motor_asyncio import AsyncIOMotorClient
-
-        async def run():
-            client = AsyncIOMotorClient("mongodb://localhost:27017")
-            db = client["test_database"]
+        import sys
+        sys.path.insert(0, "/app/backend")
+        loop = asyncio.new_event_loop()
+        try:
+            from motor.motor_asyncio import AsyncIOMotorClient
             from services.duplicate_detector import check_duplicate_30_days
 
-            test_phone = "0699990002"
-            await db.leads.insert_one({
-                "id": str(uuid.uuid4()),
-                "phone": test_phone,
-                "produit": "PV",
-                "delivery_client_id": "client_A",
-                "status": "routed",
-                "routed_at": datetime.now(timezone.utc).isoformat(),
-                "entity": "ZR7",
-                "created_at": datetime.now(timezone.utc).isoformat(),
-            })
+            async def run():
+                client = AsyncIOMotorClient("mongodb://localhost:27017")
+                db = client["test_database"]
 
-            # Different client
-            result = await check_duplicate_30_days(test_phone, "PV", "client_B")
-            assert result.is_duplicate is False, "Different client = not duplicate"
+                test_phone = "0699990002"
+                await db.leads.insert_one({
+                    "id": str(uuid.uuid4()),
+                    "phone": test_phone,
+                    "produit": "PV",
+                    "delivery_client_id": "client_A",
+                    "status": "routed",
+                    "routed_at": datetime.now(timezone.utc).isoformat(),
+                    "entity": "ZR7",
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                })
+                result = await check_duplicate_30_days(test_phone, "PV", "client_B")
+                assert result.is_duplicate is False, "Different client = not duplicate"
+                await db.leads.delete_many({"phone": test_phone})
+                client.close()
 
-            await db.leads.delete_many({"phone": test_phone})
-            client.close()
-
-        asyncio.run(run())
+            loop.run_until_complete(run())
+        finally:
+            loop.close()
 
     def test_c3_same_phone_different_product(self):
         """Same phone but different product: NOT duplicate."""
-        import asyncio
-        from motor.motor_asyncio import AsyncIOMotorClient
-
-        async def run():
-            client = AsyncIOMotorClient("mongodb://localhost:27017")
-            db = client["test_database"]
+        import sys
+        sys.path.insert(0, "/app/backend")
+        loop = asyncio.new_event_loop()
+        try:
+            from motor.motor_asyncio import AsyncIOMotorClient
             from services.duplicate_detector import check_duplicate_30_days
 
-            test_phone = "0699990003"
-            await db.leads.insert_one({
-                "id": str(uuid.uuid4()),
-                "phone": test_phone,
-                "produit": "PV",
-                "delivery_client_id": "client_X",
-                "status": "routed",
-                "routed_at": datetime.now(timezone.utc).isoformat(),
-                "entity": "ZR7",
-                "created_at": datetime.now(timezone.utc).isoformat(),
-            })
+            async def run():
+                client = AsyncIOMotorClient("mongodb://localhost:27017")
+                db = client["test_database"]
 
-            result = await check_duplicate_30_days(test_phone, "PAC", "client_X")
-            assert result.is_duplicate is False, "Different product = not duplicate"
+                test_phone = "0699990003"
+                await db.leads.insert_one({
+                    "id": str(uuid.uuid4()),
+                    "phone": test_phone,
+                    "produit": "PV",
+                    "delivery_client_id": "client_X",
+                    "status": "routed",
+                    "routed_at": datetime.now(timezone.utc).isoformat(),
+                    "entity": "ZR7",
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                })
+                result = await check_duplicate_30_days(test_phone, "PAC", "client_X")
+                assert result.is_duplicate is False, "Different product = not duplicate"
+                await db.leads.delete_many({"phone": test_phone})
+                client.close()
 
-            await db.leads.delete_many({"phone": test_phone})
-            client.close()
-
-        asyncio.run(run())
+            loop.run_until_complete(run())
+        finally:
+            loop.close()
 
     def test_c4_phone_normalization(self):
         """Phone formats: spaces, 9-digit etc. normalize correctly.
