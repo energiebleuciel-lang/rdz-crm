@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { API } from '../hooks/useApi';
 import { useNavigate } from 'react-router-dom';
-import { Edit2, X, Check, AlertTriangle, Mail, Globe, Phone, Truck, Eye } from 'lucide-react';
+import { Edit2, X, Check, AlertTriangle, Mail, Globe, Phone, Truck, Eye, Plus, Users } from 'lucide-react';
 
 const DAY_SHORT = ['L', 'M', 'Me', 'J', 'V', 'S', 'D'];
 
