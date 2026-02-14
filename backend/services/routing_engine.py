@@ -33,7 +33,8 @@ class RoutingResult:
         client_name: Optional[str] = None,
         commande_id: Optional[str] = None,
         is_lb: bool = False,
-        reason: str = ""
+        reason: str = "",
+        routing_mode: str = "normal"
     ):
         self.success = success
         self.client_id = client_id
@@ -41,6 +42,7 @@ class RoutingResult:
         self.commande_id = commande_id
         self.is_lb = is_lb
         self.reason = reason
+        self.routing_mode = routing_mode  # "normal" | "fallback_no_orders"
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -49,7 +51,8 @@ class RoutingResult:
             "client_name": self.client_name,
             "commande_id": self.commande_id,
             "is_lb": self.is_lb,
-            "reason": self.reason
+            "reason": self.reason,
+            "routing_mode": self.routing_mode,
         }
 
 
