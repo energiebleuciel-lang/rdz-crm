@@ -317,155 +317,175 @@ async def process_commande_delivery(
     week_start: str
 ) -> Dict:
     """
-    Traite une commande selon l'ordre de priorité:
-    
-    PASS 1 → Fresh
-    PASS 2 → LB jamais livrés à ce client
-    PASS 3 → LB déjà livrés à ce client (>30j) - dernier recours
-    
-    ⚠️ RÈGLE IMPORTANTE - REMPLACEMENT AUTOMATIQUE:
-    Si un lead est doublon pour ce client, il est SAUTÉ et REMPLACÉ
-    par le lead suivant compatible. On ne force JAMAIS un doublon.
-    On continue jusqu'à remplir le quota ou épuiser les leads disponibles.
+    Traite une commande avec LB target dynamique.
+
+    Le mix LB/Fresh est piloté au fil de l'eau selon lb_target_pct.
+    À chaque attribution: lb_needed = ceil(target * (delivered + 1)) - lb_delivered
+
+    Si lb_needed > 0 → prioriser LB (si dispo)
+    Sinon → prioriser Fresh
+    Ne jamais bloquer: si type priorisé indisponible, attribuer l'autre type.
+
+    target = 0 → Fresh uniquement (aucun LB volontaire)
     """
+    from math import ceil
+    from services.routing_engine import get_accepted_stats_for_lb_target, get_week_end
+
     client_id = cmd.get("client_id")
     client_name = cmd.get("client_name", "")
     produit = cmd.get("produit")
     departements = cmd.get("departements", [])
     quota = cmd.get("quota_semaine", 0)
-    lb_max_percent = cmd.get("lb_percent_max", 0)
-    
-    # Stats actuelles
+    lb_target_pct = cmd.get("lb_target_pct", 0)
+
+    # Stats acceptées cette semaine (delivery.status=sent, outcome=accepted)
+    week_end = get_week_end()
+    accepted = await get_accepted_stats_for_lb_target(cmd.get("id"), week_start, week_end)
+    already_delivered = accepted["units_accepted"]
+    already_lb = accepted["lb_accepted"]
+
+    # Quota restant (basé sur les stats de leads comme avant pour la compat)
     stats = await get_commande_stats_delivery(cmd.get("id"), week_start)
-    already_delivered = stats.get("leads_delivered", 0)
-    already_lb = stats.get("lb_delivered", 0)
-    
-    # Quota restant
+    total_in_pipeline = stats.get("leads_delivered", 0)
+
     if quota > 0:
-        quota_remaining = quota - already_delivered
+        quota_remaining = quota - total_in_pipeline
         if quota_remaining <= 0:
-            return {"leads": [], "lb_count": 0, "skipped": "quota_full"}
+            return {"leads": [], "lb_count": 0, "fresh_count": 0, "skipped": "quota_full"}
     else:
         quota_remaining = 999999
-    
-    # Calcul max LB autorisés
-    if lb_max_percent > 0:
-        max_lb_for_quota = int(quota * lb_max_percent / 100) if quota > 0 else 999999
-        lb_remaining = max_lb_for_quota - already_lb
-    else:
-        lb_remaining = 0
-    
+
     to_deliver = []
     lb_count = 0
-    skipped_duplicates = 0  # Compteur de doublons sautés
-    
+    skipped_duplicates = 0
+    lb_shortfall_logged = False
+
     def matches_dept(lead):
         dept = lead.get("departement", "")
         return "*" in departements or dept in departements
-    
+
     def matches_produit(lead):
         return lead.get("produit") == produit
-    
-    # ════════════════════════════════════════════════════════════════════
-    # PASS 1: Fresh (priorité absolue)
-    # ════════════════════════════════════════════════════════════════════
-    for lead in fresh_leads:
-        if len(to_deliver) >= quota_remaining:
-            break
-        
-        lead_id = lead.get("id")
-        if lead_id in used_lead_ids:
-            continue
-        
-        if not matches_dept(lead) or not matches_produit(lead):
-            continue
-        
-        # Vérifier doublon 30j pour ce client
-        # ⚠️ Si doublon → SAUTER et REMPLACER par le suivant
-        if await is_duplicate_blocked(lead.get("phone"), produit, client_id):
-            skipped_duplicates += 1
-            continue  # REMPLACEMENT: on passe au lead suivant
-        
+
+    # Pré-filtrer les leads compatibles
+    def filter_leads(leads_list):
+        return [l for l in leads_list if l.get("id") not in used_lead_ids
+                and matches_dept(l) and matches_produit(l)]
+
+    available_fresh = filter_leads(fresh_leads)
+    # LB: séparer en "jamais livré à ce client" et "déjà livré (>30j)"
+    available_lb_new = []
+    available_lb_recycled = []
+    for lead in filter_leads(lb_leads):
+        was_del, _ = await was_delivered_to_client(lead.get("phone"), produit, client_id)
+        if not was_del:
+            available_lb_new.append(lead)
+        else:
+            available_lb_recycled.append(lead)
+
+    fresh_idx = 0
+    lb_new_idx = 0
+    lb_recycled_idx = 0
+
+    async def pick_fresh():
+        nonlocal fresh_idx, skipped_duplicates
+        while fresh_idx < len(available_fresh):
+            lead = available_fresh[fresh_idx]
+            fresh_idx += 1
+            if lead.get("id") in used_lead_ids:
+                continue
+            if await is_duplicate_blocked(lead.get("phone"), produit, client_id):
+                skipped_duplicates += 1
+                continue
+            return lead
+        return None
+
+    async def pick_lb():
+        nonlocal lb_new_idx, lb_recycled_idx, skipped_duplicates
+        # D'abord LB jamais livrés à ce client
+        while lb_new_idx < len(available_lb_new):
+            lead = available_lb_new[lb_new_idx]
+            lb_new_idx += 1
+            if lead.get("id") in used_lead_ids:
+                continue
+            if await is_duplicate_blocked(lead.get("phone"), produit, client_id):
+                skipped_duplicates += 1
+                continue
+            return lead
+        # Ensuite LB déjà livrés (>30j, doublon expiré)
+        while lb_recycled_idx < len(available_lb_recycled):
+            lead = available_lb_recycled[lb_recycled_idx]
+            lb_recycled_idx += 1
+            if lead.get("id") in used_lead_ids:
+                continue
+            if await is_duplicate_blocked(lead.get("phone"), produit, client_id):
+                skipped_duplicates += 1
+                continue
+            return lead
+        return None
+
+    # Boucle principale: attribution dynamique
+    while len(to_deliver) < quota_remaining:
+        # Calcul du besoin LB en temps réel
+        current_total = already_delivered + len(to_deliver)
+        current_lb = already_lb + lb_count
+        lb_needed = ceil(lb_target_pct * (current_total + 1)) - current_lb if lb_target_pct > 0 else 0
+
+        lead = None
+        is_lb_pick = False
+
+        if lb_needed > 0:
+            # Prioriser LB
+            lead = await pick_lb()
+            if lead:
+                is_lb_pick = True
+            else:
+                # LB shortfall: log event si pas encore fait
+                if not lb_shortfall_logged:
+                    lb_shortfall_logged = True
+                    from services.event_logger import log_event
+                    from services.routing_engine import get_week_key
+                    current_pct = (current_lb / current_total * 100) if current_total > 0 else 0
+                    avail_lb = (len(available_lb_new) - lb_new_idx) + (len(available_lb_recycled) - lb_recycled_idx)
+                    await log_event(
+                        action="lb_shortfall",
+                        entity_type="commande",
+                        entity_id=cmd.get("id", ""),
+                        entity=cmd.get("entity", ""),
+                        user="system",
+                        details={
+                            "week_key": get_week_key(),
+                            "target_pct": lb_target_pct,
+                            "current_pct": round(current_pct, 2),
+                            "lb_needed": lb_needed,
+                            "available_lb": avail_lb
+                        },
+                        related={"client_id": client_id, "client_name": client_name}
+                    )
+                # Fallback: prendre un Fresh
+                lead = await pick_fresh()
+        else:
+            # Prioriser Fresh
+            lead = await pick_fresh()
+            if not lead and lb_target_pct > 0:
+                # Fallback: prendre un LB si target > 0
+                lead = await pick_lb()
+                if lead:
+                    is_lb_pick = True
+
+        if not lead:
+            break  # Plus aucun lead disponible
+
         to_deliver.append(lead)
-        used_lead_ids.add(lead_id)
-    
-    # ════════════════════════════════════════════════════════════════════
-    # PASS 2: LB jamais livrés à ce client
-    # ⚠️ Si doublon → SAUTER et REMPLACER par le suivant
-    # ════════════════════════════════════════════════════════════════════
-    if lb_remaining > 0 and len(to_deliver) < quota_remaining:
-        for lead in lb_leads:
-            if len(to_deliver) >= quota_remaining:
-                break
-            if lb_count >= lb_remaining:
-                break
-            
-            lead_id = lead.get("id")
-            if lead_id in used_lead_ids:
-                continue
-            
-            if not matches_dept(lead):
-                continue
-            
-            # Vérifier si jamais livré à ce client
-            was_delivered, _ = await was_delivered_to_client(
-                lead.get("phone"), produit, client_id
-            )
-            if was_delivered:
-                continue  # Réservé pour PASS 3
-            
-            # Vérifier doublon 30j
-            # ⚠️ Si doublon → SAUTER et REMPLACER par le suivant
-            if await is_duplicate_blocked(lead.get("phone"), produit, client_id):
-                skipped_duplicates += 1
-                continue  # REMPLACEMENT: on passe au lead suivant
-            
-            to_deliver.append(lead)
-            used_lead_ids.add(lead_id)
+        used_lead_ids.add(lead.get("id"))
+        if is_lb_pick:
             lb_count += 1
-    
-    # ════════════════════════════════════════════════════════════════════
-    # PASS 3: LB déjà livrés à ce client (>30j) - DERNIER RECOURS
-    # ⚠️ Si encore bloqué → SAUTER et REMPLACER par le suivant
-    # ════════════════════════════════════════════════════════════════════
-    if lb_remaining > lb_count and len(to_deliver) < quota_remaining:
-        for lead in lb_leads:
-            if len(to_deliver) >= quota_remaining:
-                break
-            if lb_count >= lb_remaining:
-                break
-            
-            lead_id = lead.get("id")
-            if lead_id in used_lead_ids:
-                continue
-            
-            if not matches_dept(lead):
-                continue
-            
-            # Vérifier si déjà livré à ce client
-            was_delivered, delivered_at = await was_delivered_to_client(
-                lead.get("phone"), produit, client_id
-            )
-            if not was_delivered:
-                continue  # Déjà traité en PASS 2
-            
-            # Vérifier que > 30 jours (doublon expiré)
-            # ⚠️ Si encore bloqué → SAUTER et REMPLACER par le suivant
-            if await is_duplicate_blocked(lead.get("phone"), produit, client_id):
-                skipped_duplicates += 1
-                continue  # REMPLACEMENT: on passe au lead suivant
-            
-            # OK - doublon expiré, on peut re-livrer
-            to_deliver.append(lead)
-            used_lead_ids.add(lead_id)
-            lb_count += 1
-    
-    # Log si des doublons ont été sautés
+
     if skipped_duplicates > 0:
         logger.debug(
             f"[ROUTING] {client_name}: {skipped_duplicates} doublons sautés et remplacés"
         )
-    
+
     return {
         "leads": to_deliver,
         "lb_count": lb_count,
