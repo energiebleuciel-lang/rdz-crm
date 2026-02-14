@@ -300,7 +300,7 @@ async def billing_week_dashboard(week_key: Optional[str] = None, user: dict = De
         # Use billing_records for the table
         weekly_rows = []
         prepaid_rows = []
-        totals = {"units_billable": 0, "units_free": 0, "net_ht": 0, "ttc": 0}
+        totals = {"units_billable": 0, "units_free": 0, "net_ht": 0, "ttc": 0, "units_leads": 0, "units_lb": 0}
 
         for r in records:
             bmode = r.get("billing_mode", "WEEKLY_INVOICE")
@@ -314,11 +314,15 @@ async def billing_week_dashboard(week_key: Optional[str] = None, user: dict = De
                 r["prepaid_purchased"] = b.get("units_purchased_total", 0)
                 r["prepaid_delivered"] = b.get("units_delivered_total", 0)
                 r["prepaid_status"] = "BLOCKED" if b.get("units_remaining", 0) <= 0 else "LOW" if b.get("units_remaining", 0) <= 10 else "OK"
+                r["units_leads"] = r.get("units_leads", 0)
+                r["units_lb"] = r.get("units_lb", 0)
                 prepaid_rows.append(r)
             else:
                 weekly_rows.append(r)
                 totals["units_billable"] += r.get("units_billable", 0)
                 totals["units_free"] += r.get("units_free", 0)
+                totals["units_leads"] += r.get("units_leads", 0)
+                totals["units_lb"] += r.get("units_lb", 0)
                 totals["net_ht"] += r.get("net_total_ht", 0)
                 totals["ttc"] += r.get("total_ttc_expected", 0)
 
