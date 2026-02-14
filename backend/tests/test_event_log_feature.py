@@ -15,7 +15,7 @@ import requests
 import os
 import time
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://rdz-crm-hub-1.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://overlap-monitor.preview.emergentagent.com').rstrip('/')
 TEST_EMAIL = "energiebleuciel@gmail.com"
 TEST_PASSWORD = "92Ruemarxdormoy"
 
