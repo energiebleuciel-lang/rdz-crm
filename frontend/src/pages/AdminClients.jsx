@@ -114,8 +114,54 @@ export default function AdminClients() {
               {e || 'Tous'}
             </button>
           ))}
+          <button onClick={() => setShowCreate(true)} className="flex items-center gap-1 px-3 py-1 text-xs bg-teal-500/10 text-teal-400 rounded-md hover:bg-teal-500/20 border border-teal-500/30" data-testid="create-client-btn">
+            <Plus className="w-3 h-3" /> Ajouter
+          </button>
         </div>
       </div>
+
+      {showCreate && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" data-testid="create-client-modal">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2"><Users className="w-4 h-4 text-teal-400" /> Nouveau Client</h2>
+            {createError && <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded px-3 py-1.5 mb-3">{createError}</div>}
+            <div className="space-y-3">
+              <div>
+                <label className="text-[10px] text-zinc-500 block mb-1">Entity</label>
+                <select value={createForm.entity} onChange={e => setCreateForm(f => ({ ...f, entity: e.target.value }))}
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-300" data-testid="create-entity">
+                  <option value="ZR7">ZR7</option><option value="MDL">MDL</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] text-zinc-500 block mb-1">Nom</label>
+                <input value={createForm.name} onChange={e => setCreateForm(f => ({ ...f, name: e.target.value }))}
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-300" data-testid="create-name" />
+              </div>
+              <div>
+                <label className="text-[10px] text-zinc-500 block mb-1">Email</label>
+                <input type="email" value={createForm.email} onChange={e => setCreateForm(f => ({ ...f, email: e.target.value }))}
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-300" data-testid="create-email" />
+              </div>
+              <div>
+                <label className="text-[10px] text-zinc-500 block mb-1">Téléphone</label>
+                <input value={createForm.phone} onChange={e => setCreateForm(f => ({ ...f, phone: e.target.value }))}
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-300" data-testid="create-phone" />
+              </div>
+              <div>
+                <label className="text-[10px] text-zinc-500 block mb-1">Emails livraison (virgule)</label>
+                <input value={createForm.delivery_emails} onChange={e => setCreateForm(f => ({ ...f, delivery_emails: e.target.value }))}
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-300" placeholder="a@b.com, c@d.com" data-testid="create-delivery-emails" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => setShowCreate(false)} className="px-3 py-1.5 text-xs text-zinc-400">Annuler</button>
+              <button onClick={handleCreate} disabled={createSaving || !createForm.name || !createForm.email}
+                className="px-3 py-1.5 text-xs bg-teal-500/20 text-teal-400 rounded-md hover:bg-teal-500/30 border border-teal-500/30 disabled:opacity-50" data-testid="create-submit-btn">Créer</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
