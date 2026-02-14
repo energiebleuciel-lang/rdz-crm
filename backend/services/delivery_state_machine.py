@@ -430,6 +430,24 @@ async def batch_mark_deliveries_sent(
                      "$set": {"updated_at": now_iso()}}
                 )
 
+    # Intercompany transfer check for each delivery in batch
+    try:
+        from services.intercompany import maybe_create_intercompany_transfer
+        batch_deliveries = await db.deliveries.find(
+            {"id": {"$in": delivery_ids}},
+            {"_id": 0, "id": 1, "lead_id": 1, "commande_id": 1, "produit": 1, "entity": 1}
+        ).to_list(len(delivery_ids))
+        for bd in batch_deliveries:
+            await maybe_create_intercompany_transfer(
+                delivery_id=bd.get("id", ""),
+                lead_id=bd.get("lead_id", ""),
+                commande_id=bd.get("commande_id", commande_id),
+                product=bd.get("produit", ""),
+                target_entity=bd.get("entity", ""),
+            )
+    except Exception as e:
+        logger.error(f"[STATE_MACHINE_BATCH] Intercompany check failed: {e}")
+
     return {
         "deliveries_updated": result_deliveries.modified_count,
         "leads_updated": result_leads.modified_count,
