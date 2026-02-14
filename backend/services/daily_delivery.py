@@ -716,17 +716,29 @@ async def process_pending_csv_deliveries() -> Dict:
     """
     📤 Traite les deliveries créées par le routing immédiat (Phase 2)
     
-    Ces deliveries ont status=pending_csv et doivent être groupées par
-    client/commande pour envoi CSV.
+    ORDRE DE PRIORITÉ STRICT:
+    1. Calendar gating (hard stop) - Si jour OFF → ne rien faire
+    2. Client deliverable check - Skip si client non livrable
+    3. auto_send_enabled check - Si false → ready_to_send (pas d'envoi)
+    
+    COMPORTEMENT:
+    - Jour OFF → deliveries restent pending_csv
+    - Jour OK + auto_send=true → sent + leads=livre
+    - Jour OK + auto_send=false → ready_to_send (CSV généré, pas envoyé)
     
     Returns:
         Dict avec stats de traitement
     """
     from services.csv_delivery import send_csv_email, generate_csv_content
+    from services.settings import is_delivery_day_enabled, get_email_denylist_settings, get_simulation_email_override
+    from models.client import check_client_deliverable
     
     results = {
         "processed": 0,
         "sent": 0,
+        "ready_to_send": 0,
+        "skipped_calendar": 0,
+        "skipped_not_deliverable": 0,
         "errors": []
     }
     
@@ -743,16 +755,32 @@ async def process_pending_csv_deliveries() -> Dict:
     results["processed"] = len(pending)
     logger.info(f"[PENDING_CSV] {len(pending)} deliveries à traiter")
     
-    # Grouper par client_id + commande_id
+    # Récupérer la denylist et le mode simulation
+    denylist_settings = await get_email_denylist_settings()
+    denylist = denylist_settings.get("domains", [])
+    simulation_email = await get_simulation_email_override()
+    
+    # Grouper par client_id + commande_id + entity
     grouped = defaultdict(list)
     
     for delivery in pending:
-        key = (delivery.get("client_id"), delivery.get("commande_id"))
+        key = (delivery.get("client_id"), delivery.get("commande_id"), delivery.get("entity"))
         grouped[key].append(delivery)
     
     # Traiter chaque groupe
-    for (client_id, commande_id), deliveries in grouped.items():
+    for (client_id, commande_id, entity), deliveries in grouped.items():
         try:
+            # ════════════════════════════════════════════════════════════
+            # PRIORITÉ 1: CALENDAR GATING
+            # ════════════════════════════════════════════════════════════
+            day_enabled, day_reason = await is_delivery_day_enabled(entity)
+            if not day_enabled:
+                logger.info(
+                    f"[PENDING_CSV] {entity}: {day_reason} - {len(deliveries)} deliveries skipped"
+                )
+                results["skipped_calendar"] += len(deliveries)
+                continue  # Reste pending_csv
+            
             # Récupérer les leads associés
             lead_ids = [d.get("lead_id") for d in deliveries]
             leads = await db.leads.find(
@@ -769,68 +797,155 @@ async def process_pending_csv_deliveries() -> Dict:
             
             if not client or not commande:
                 logger.error(f"[PENDING_CSV] Client ou commande introuvable: {client_id}/{commande_id}")
+                results["errors"].append({"client_id": client_id, "error": "client_or_commande_not_found"})
                 continue
             
-            entity = commande.get("entity", deliveries[0].get("entity", ""))
             produit = commande.get("produit", deliveries[0].get("produit", ""))
             client_name = client.get("name", "")
             
-            # Emails de livraison
-            emails = client.get("delivery_emails", [])
-            if not emails and client.get("email"):
-                emails = [client.get("email")]
+            # ════════════════════════════════════════════════════════════
+            # PRIORITÉ 2: CLIENT DELIVERABLE
+            # ════════════════════════════════════════════════════════════
+            deliverable_check = check_client_deliverable(
+                email=client.get("email", ""),
+                delivery_emails=client.get("delivery_emails", []),
+                api_endpoint=client.get("api_endpoint", ""),
+                denylist=denylist
+            )
+            
+            if not deliverable_check["deliverable"]:
+                logger.warning(
+                    f"[PENDING_CSV] Client {client_name} non livrable: {deliverable_check['reason']}"
+                )
+                results["skipped_not_deliverable"] += len(deliveries)
+                # Marquer comme failed avec raison
+                delivery_ids = [d.get("id") for d in deliveries]
+                await db.deliveries.update_many(
+                    {"id": {"$in": delivery_ids}},
+                    {"$set": {
+                        "status": "failed",
+                        "last_error": f"client_not_deliverable: {deliverable_check['reason']}",
+                        "updated_at": now_iso()
+                    }}
+                )
+                results["errors"].append({"client": client_name, "error": deliverable_check["reason"]})
+                continue
+            
+            # Emails de livraison (avec simulation override)
+            if simulation_email:
+                emails = [simulation_email]
+            else:
+                emails = client.get("delivery_emails", [])
+                if not emails and client.get("email"):
+                    emails = [client.get("email")]
             
             if not emails:
                 logger.warning(f"[PENDING_CSV] Pas d'email pour client {client_name}")
                 results["errors"].append({"client": client_name, "error": "no_email"})
                 continue
             
-            # Générer et envoyer CSV
+            # ════════════════════════════════════════════════════════════
+            # PRIORITÉ 3: AUTO_SEND_ENABLED
+            # ════════════════════════════════════════════════════════════
+            auto_send_enabled = client.get("auto_send_enabled", True)
+            
+            # Générer CSV (toujours)
             lb_count = sum(1 for lead in leads if lead.get("is_lb"))
             csv_content = generate_csv_content(leads, produit, entity)
             
             now = now_iso()
             csv_filename = f"leads_{entity}_{produit}_{now[:10].replace('-', '')}_{len(leads)}.csv"
             
-            try:
-                await send_csv_email(
-                    entity=entity,
-                    to_emails=emails,
-                    csv_content=csv_content,
-                    csv_filename=csv_filename,
-                    lead_count=len(leads),
-                    lb_count=lb_count,
-                    produit=produit
-                )
-                
-                # Marquer deliveries comme sent
-                delivery_ids = [d.get("id") for d in deliveries]
+            delivery_ids = [d.get("id") for d in deliveries]
+            
+            if not auto_send_enabled:
+                # ════════════════════════════════════════════════════════
+                # MODE MANUEL: ready_to_send (CSV généré, pas envoyé)
+                # ════════════════════════════════════════════════════════
                 await db.deliveries.update_many(
                     {"id": {"$in": delivery_ids}},
-                    {"$set": {"status": "sent", "sent_at": now}}
-                )
-                
-                # Marquer leads comme livre
-                await db.leads.update_many(
-                    {"id": {"$in": lead_ids}},
                     {"$set": {
-                        "status": "livre",
-                        "delivered_at": now,
-                        "delivered_to_client_id": client_id,
-                        "delivered_to_client_name": client_name,
-                        "delivery_commande_id": commande_id
+                        "status": "ready_to_send",
+                        "csv_content": csv_content,
+                        "csv_filename": csv_filename,
+                        "csv_generated_at": now,
+                        "updated_at": now
                     }}
                 )
                 
-                results["sent"] += len(leads)
-                logger.info(
-                    f"[PENDING_CSV] {client_name}: {len(leads)} leads envoyés "
-                    f"(entity={entity}, produit={produit})"
-                )
+                # Lead reste en "routed" (PAS livre)
+                # Ne pas modifier le statut du lead
                 
-            except Exception as e:
-                logger.error(f"[PENDING_CSV] Erreur envoi CSV {client_name}: {str(e)}")
-                results["errors"].append({"client": client_name, "error": str(e)})
+                results["ready_to_send"] += len(leads)
+                logger.info(
+                    f"[PENDING_CSV] {client_name}: {len(leads)} leads → ready_to_send "
+                    f"(auto_send_enabled=false)"
+                )
+            else:
+                # ════════════════════════════════════════════════════════
+                # MODE AUTO: Envoyer et marquer livre
+                # ════════════════════════════════════════════════════════
+                try:
+                    await send_csv_email(
+                        entity=entity,
+                        to_emails=emails,
+                        csv_content=csv_content,
+                        csv_filename=csv_filename,
+                        lead_count=len(leads),
+                        lb_count=lb_count,
+                        produit=produit
+                    )
+                    
+                    # Marquer deliveries comme sent
+                    await db.deliveries.update_many(
+                        {"id": {"$in": delivery_ids}},
+                        {"$set": {
+                            "status": "sent",
+                            "sent_to": emails,
+                            "last_sent_at": now,
+                            "send_attempts": 1,
+                            "csv_content": csv_content,
+                            "csv_filename": csv_filename,
+                            "csv_generated_at": now,
+                            "updated_at": now
+                        }}
+                    )
+                    
+                    # Marquer leads comme livre
+                    await db.leads.update_many(
+                        {"id": {"$in": lead_ids}},
+                        {"$set": {
+                            "status": "livre",
+                            "delivered_at": now,
+                            "delivered_to_client_id": client_id,
+                            "delivered_to_client_name": client_name,
+                            "delivery_commande_id": commande_id
+                        }}
+                    )
+                    
+                    results["sent"] += len(leads)
+                    logger.info(
+                        f"[PENDING_CSV] {client_name}: {len(leads)} leads envoyés → sent "
+                        f"(entity={entity}, produit={produit}, to={emails})"
+                    )
+                    
+                except Exception as e:
+                    logger.error(f"[PENDING_CSV] Erreur envoi CSV {client_name}: {str(e)}")
+                    
+                    # Marquer comme failed
+                    await db.deliveries.update_many(
+                        {"id": {"$in": delivery_ids}},
+                        {"$set": {
+                            "status": "failed",
+                            "last_error": str(e),
+                            "send_attempts": 1,
+                            "csv_content": csv_content,
+                            "csv_filename": csv_filename,
+                            "csv_generated_at": now,
+                            "updated_at": now
+                        }}
+                    )
+                    results["errors"].append({"client": client_name, "error": str(e)})
                 
         except Exception as e:
             logger.error(f"[PENDING_CSV] Erreur traitement groupe: {str(e)}")
