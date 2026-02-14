@@ -168,6 +168,7 @@ async def get_dashboard_stats(
 
 @router.get("/list")
 async def list_leads(
+    request: Request,
     entity: Optional[str] = None,
     produit: Optional[str] = None,
     status: Optional[str] = None,
@@ -180,15 +181,14 @@ async def list_leads(
     skip: int = 0,
     user: dict = Depends(require_permission("leads.view"))
 ):
-    """Liste les leads avec filtres avancés"""
-    from fastapi import Query
-    
+    """Liste les leads avec filtres avancés — scoped by X-Entity-Scope"""
     query = {}
     if entity:
         validate_entity_access(user, entity)
         query["entity"] = entity.upper()
-    elif user.get("role") != "super_admin":
-        query["entity"] = user.get("entity", "ZR7")
+    else:
+        scope = get_entity_scope_from_request(user, request)
+        query.update(build_entity_filter(scope))
     if produit:
         query["produit"] = produit.upper()
     if status:

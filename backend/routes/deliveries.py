@@ -87,13 +87,19 @@ async def list_deliveries(
 
 @router.get("/stats")
 async def get_delivery_stats(
+    request: Request,
     entity: Optional[str] = None,
     user: dict = Depends(require_permission("deliveries.view"))
 ):
-    """Stats des deliveries par statut + outcome"""
+    """Stats des deliveries par statut + outcome — scoped by X-Entity-Scope"""
+    from services.permissions import get_entity_scope_from_request, build_entity_filter
+
     match_query = {}
     if entity:
         match_query["entity"] = entity.upper()
+    else:
+        scope = get_entity_scope_from_request(user, request)
+        match_query.update(build_entity_filter(scope))
     
     pipeline = [
         {"$match": match_query},
