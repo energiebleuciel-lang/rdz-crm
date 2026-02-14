@@ -152,6 +152,27 @@ async def generate_weekly_invoices(
     invoices_created = []
 
     for (from_ent, to_ent), transfers in groups.items():
+        # IDEMPOTENT: skip if invoice already exists for this direction+week
+        existing_inv = await db.invoices.find_one({
+            "type": "intercompany",
+            "from_entity": from_ent,
+            "to_entity": to_ent,
+            "week_key": week_key,
+        }, {"_id": 0, "id": 1, "invoice_number": 1})
+        if existing_inv:
+            # Still mark transfers as invoiced (in case previous run partially failed)
+            tids = [t["id"] for t in transfers]
+            await db.intercompany_transfers.update_many(
+                {"id": {"$in": tids}, "transfer_status": "pending"},
+                {"$set": {"transfer_status": "invoiced", "invoice_id": existing_inv["id"]}}
+            )
+            invoices_created.append({
+                "invoice_number": existing_inv["invoice_number"],
+                "from_entity": from_ent, "to_entity": to_ent,
+                "skipped": True, "reason": "already_exists",
+            })
+            continue
+
         # Build line items by product
         lines_by_product = defaultdict(lambda: {"qty": 0, "unit_price_ht": 0, "transfer_ids": []})
         for t in transfers:
