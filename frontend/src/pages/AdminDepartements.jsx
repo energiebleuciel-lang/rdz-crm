@@ -270,7 +270,7 @@ function ClientCoverageTab({ week, product, authFetch, allClients }) {
 
 /* ===== MAIN PAGE ===== */
 export default function AdminDepartements() {
-  const { authFetch } = useAuth();
+  const { authFetch, entityScope } = useAuth();
   const [tab, setTab] = useState('depts');
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
@@ -306,15 +306,13 @@ export default function AdminDepartements() {
 
   const loadClients = useCallback(async () => {
     try {
-      const [r1, r2] = await Promise.all([
-        authFetch(`${API}/api/clients?entity=ZR7&active_only=false`),
-        authFetch(`${API}/api/clients?entity=MDL&active_only=false`),
-      ]);
-      const c1 = r1.ok ? (await r1.json()).clients || [] : [];
-      const c2 = r2.ok ? (await r2.json()).clients || [] : [];
-      setAllClients([...c1, ...c2]);
+      const ents = entityScope === 'BOTH' ? ['ZR7', 'MDL'] : [entityScope || 'ZR7'];
+      const results = await Promise.all(ents.map(e => authFetch(`${API}/api/clients?entity=${e}&active_only=false`)));
+      let all = [];
+      for (const r of results) { if (r.ok) { const d = await r.json(); all = all.concat(d.clients || []); } }
+      setAllClients(all);
     } catch (e) { console.error(e); }
-  }, [authFetch]);
+  }, [authFetch, entityScope]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { loadClients(); }, [loadClients]);
