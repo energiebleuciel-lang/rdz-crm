@@ -133,8 +133,15 @@ export default function AdminLayout({ children }) {
           </button>
         </div>
 
-        {/* User info */}
-        <div className={`border-t border-zinc-800 p-3 ${collapsed ? 'flex justify-center' : ''}`}>
+        {/* User info + Version */}
+        <div className={`border-t border-zinc-800 p-3 ${collapsed ? 'flex flex-col items-center gap-2' : ''}`}>
+          {!collapsed && version && (
+            <div className="mb-2 px-1" data-testid="app-version">
+              <p className="text-[9px] text-zinc-600 font-mono">
+                v{version.version} ({version.git_sha})
+              </p>
+            </div>
+          )}
           {collapsed ? (
             <button onClick={() => { logout(); navigate('/login'); }} className="p-2 text-zinc-500 hover:text-red-400 rounded-md hover:bg-zinc-800">
               <LogOut className="w-4 h-4" />
