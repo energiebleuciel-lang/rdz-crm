@@ -60,7 +60,7 @@ async def list_commandes(
     commandes = await db.commandes.find(query, {"_id": 0}).sort("priorite", 1).to_list(500)
     
     # Enrichir avec nom client et stats
-    week_start = get_week_start()
+    week_start, _ = resolve_week_range(week)
     
     for cmd in commandes:
         # Nom client
