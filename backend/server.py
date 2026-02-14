@@ -117,6 +117,13 @@ async def lifespan(app: FastAPI):
             background=True, name="idx_delivery_client_billing"
         )
 
+        # Index overlap guard (deliveries)
+        await db.deliveries.create_index(
+            [("client_group_key", 1), ("entity", 1), ("created_at", -1)],
+            background=True, name="idx_overlap_guard"
+        )
+
+
         # Index invoices
         await db.invoices.create_index("entity", background=True)
         await db.invoices.create_index("status", background=True)
