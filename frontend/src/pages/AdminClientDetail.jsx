@@ -4,7 +4,8 @@ import { useAuth } from '../hooks/useAuth';
 import { API } from '../hooks/useApi';
 import {
   ArrowLeft, Star, Shield, Phone, Mail, CalendarDays, Truck,
-  BarChart3, CreditCard, Clock, Send, AlertTriangle, Plus, Save, Tag
+  BarChart3, CreditCard, Clock, Send, AlertTriangle, Plus, Save, Tag,
+  DollarSign, Gift, Trash2
 } from 'lucide-react';
 
 const DAY_SHORT = ['L', 'M', 'Me', 'J', 'V', 'S', 'D'];
@@ -112,6 +113,8 @@ export default function AdminClientDetail() {
   const TABS = [
     { key: 'summary', label: 'Résumé', icon: Shield },
     { key: 'performance', label: 'Performance', icon: BarChart3 },
+    { key: 'pricing', label: 'Pricing', icon: DollarSign },
+    { key: 'offers', label: 'Offres', icon: Gift },
     { key: 'crm', label: 'CRM & Paiement', icon: CreditCard },
     { key: 'activity', label: 'Activité', icon: Clock },
   ];
@@ -198,6 +201,8 @@ export default function AdminClientDetail() {
       {/* TAB CONTENT */}
       {tab === 'summary' && <SummaryTab client={c} navigate={navigate} />}
       {tab === 'performance' && <PerformanceTab summary={summary} groupBy={groupBy} setGroupBy={setGroupBy} loadSummary={loadSummary} />}
+      {tab === 'pricing' && <PricingTab clientId={id} authFetch={authFetch} />}
+      {tab === 'offers' && <OffersTab clientId={id} authFetch={authFetch} />}
       {tab === 'crm' && <CRMTab client={c} saveCRM={saveCRM} saving={saving} toggleTag={toggleTag} noteText={noteText} setNoteText={setNoteText} addNote={addNote} />}
       {tab === 'activity' && <ActivityTab activities={activity} />}
     </div>
