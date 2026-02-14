@@ -248,7 +248,7 @@ async def send_csv_email(
         msg.attach(attachment)
         
         # Envoi SMTP
-        with smtplib.SMTP_SSL(config["host"], config["port"]) as server:
+        with smtplib.SMTP_SSL(config["host"], config["port"], timeout=30) as server:
             server.login(config["email"], smtp_password)
             server.send_message(msg)
         

@@ -213,12 +213,24 @@ async def list_leads(
         query["source"] = {"$regex": source, "$options": "i"}
     if departement:
         query["departement"] = departement
-    if client_id:
+    if client_id and search:
+        query["$and"] = [
+            {"$or": [
+                {"delivered_to_client_id": client_id},
+                {"delivery_client_id": client_id}
+            ]},
+            {"$or": [
+                {"phone": {"$regex": search, "$options": "i"}},
+                {"nom": {"$regex": search, "$options": "i"}},
+                {"email": {"$regex": search, "$options": "i"}}
+            ]}
+        ]
+    elif client_id:
         query["$or"] = [
             {"delivered_to_client_id": client_id},
             {"delivery_client_id": client_id}
         ]
-    if search:
+    elif search:
         query["$or"] = [
             {"phone": {"$regex": search, "$options": "i"}},
             {"nom": {"$regex": search, "$options": "i"}},
