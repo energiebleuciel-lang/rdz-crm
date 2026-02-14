@@ -446,24 +446,38 @@ export default function AdminFacturation() {
         <div className="flex items-center gap-3">
           <Receipt className="w-5 h-5 text-teal-400" />
           <h1 className="text-lg font-semibold text-white">Facturation</h1>
-          {data?.has_records && <span className="text-[10px] bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30">Ledger construit</span>}
-          {data && !data.has_records && <span className="text-[10px] bg-zinc-700/60 text-zinc-400 px-2 py-0.5 rounded-full border border-zinc-600">Aperçu</span>}
+          {/* Semaine / Mois tabs */}
+          <div className="flex rounded-md overflow-hidden border border-zinc-700 ml-2">
+            {[{ id: 'week', label: 'Semaine' }, { id: 'month', label: 'Mois' }].map(t => (
+              <button key={t.id} onClick={() => setViewTab(t.id)}
+                className={`px-3 py-1 text-xs ${viewTab === t.id ? 'bg-teal-500/20 text-teal-400' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}
+                data-testid={`tab-${t.id}`}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+          {viewTab === 'week' && data?.has_records && <span className="text-[10px] bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30">Ledger construit</span>}
+          {viewTab === 'week' && data && !data.has_records && <span className="text-[10px] bg-zinc-700/60 text-zinc-400 px-2 py-0.5 rounded-full border border-zinc-600">Aperçu</span>}
         </div>
         <div className="flex items-center gap-2">
-          <WeekNavStandard week={week} onChange={handleWeekNav} />
+          {viewTab === 'week' && <WeekNavStandard week={week} onChange={handleWeekNav} />}
           <button onClick={() => setShowCreateClient(true)}
             className="flex items-center gap-1 px-3 py-1.5 text-xs bg-teal-500/10 text-teal-400 rounded-md hover:bg-teal-500/20 border border-teal-500/30" data-testid="add-client-btn">
             <Plus className="w-3 h-3" /> Client
           </button>
-          <button onClick={load} className="p-1.5 bg-zinc-800 text-zinc-300 rounded-md hover:bg-zinc-700 border border-zinc-700" data-testid="refresh-btn">
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          </button>
+          {viewTab === 'week' && (
+            <button onClick={load} className="p-1.5 bg-zinc-800 text-zinc-300 rounded-md hover:bg-zinc-700 border border-zinc-700" data-testid="refresh-btn">
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+          )}
         </div>
       </div>
 
       {showCreateClient && <CreateClientModal authFetch={authFetch} onClose={() => setShowCreateClient(false)} onCreated={() => load()} />}
 
-      {loading ? (
+      {viewTab === 'month' ? (
+        <MonthView authFetch={authFetch} />
+      ) : loading ? (
         <div className="flex items-center gap-2 py-16 justify-center text-zinc-500 text-xs">
           <RefreshCw className="w-4 h-4 animate-spin" /> Chargement...
         </div>
