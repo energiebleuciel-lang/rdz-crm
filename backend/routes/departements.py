@@ -171,11 +171,14 @@ async def departements_overview(
     async def _agg_produced(start, end):
         pipe = [
             {"$match": {**lead_q, "created_at": {"$gte": start, "$lt": end}}},
-            {"$group": {"_id": {"d": "$departement", "p": "$produit"}, "c": {"$sum": 1}}},
+            {"$group": {"_id": {"d": "$departement", "p": {"$ifNull": ["$produit", "unknown"]}}, "c": {"$sum": 1}}},
         ]
         out = {}
         for r in await db.leads.aggregate(pipe).to_list(5000):
-            out[f"{r['_id']['d']}:{r['_id']['p']}"] = r["c"]
+            d = r["_id"].get("d", "??")
+            p = r["_id"].get("p", "unknown")
+            if d and p and d != "??" and p != "unknown":
+                out[f"{d}:{p}"] = r["c"]
         return out
 
     produced_cur, produced_prev = await _agg_produced(cur_start, cur_end), await _agg_produced(prev_start, prev_end)
