@@ -3,10 +3,11 @@
 ## Original Problem Statement
 Build a central CRM named "RDZ" with strict entity separation (ZR7/MDL). The project includes:
 - Lead collection, order management, and automated delivery
-- Admin UI with full visibility and control over all backend systems
+- Admin UI with full visibility and control
 - Industrial piloting by department and product
-- Pricing & billing engine for client pricing, weekly billing, and financial tracking
+- Pricing & billing engine with weekly billing and financial tracking
 - Interfacturation interne MDL <-> ZR7
+- Vue récapitulative mensuelle
 
 ## Architecture
 - **Backend:** FastAPI + MongoDB (multi-tenant ZR7/MDL)
@@ -15,62 +16,43 @@ Build a central CRM named "RDZ" with strict entity separation (ZR7/MDL). The pro
 
 ## Implemented Features
 
-### Phase 1-2: Backend Foundation
-- Lead collection, order management, automated delivery
-- Delivery state machine, multi-tenant routing engine
+### Core: Lead collection, order management, automated delivery, delivery state machine, multi-tenant routing engine
 
-### Phase 3: Admin UI
-- Dashboard cockpit, entity pages, event log, client 360 view
+### Admin UI: Dashboard cockpit, entity pages, event log, client 360 view (CRM, performance, pricing, offers tabs)
 
-### Departements Piloting
-- /admin/departements page with filters, data grid, drawer
+### Departements Piloting: /admin/departements with filters, data grid, drawer
 
 ### Pricing & Billing Engine
 - Client product pricing, discounts, TVA, billing modes (WEEKLY_INVOICE/PREPAID)
-- Prepayment with auto-blocking, immutable billing_ledger
-- billing_records for external accounting tool
+- Prepayment with auto-blocking, immutable billing_ledger, billing_records
 
 ### Week Navigation Standardization (Feb 2026)
-- WeekNavStandard on ALL admin pages (Dashboard, Commandes, Deliveries, Leads, Activity, Departements, Facturation)
-- Format: "Semaine du DD/MM/YYYY au DD/MM/YYYY", week_key internal only
+- WeekNavStandard on ALL admin pages, format "Semaine du DD/MM/YYYY au DD/MM/YYYY"
 
 ### Leads vs LB Display (Feb 2026)
-- KPI cards: Units total, Leads total, LB total, Units billable (with LB breakdown)
-- Weekly invoice table: separate Units, Leads, LB columns
-- Prepaid section: separate Leads/LB columns
-- UnitsDisplay component: "total (LB: X)" format
-- Backend summary includes total_leads, total_lb, billable_leads, billable_lb
+- 8 KPI cards (Units, Leads, LB, Billable, Non-billable, CA HT, CA TTC, Leads prod.)
+- Separate Leads/LB columns in weekly invoice + prepaid tables
 
 ### Client Creation (Feb 2026)
-- "+ Ajouter" button on /admin/clients with create modal (Entity, Name, Email, Phone, Delivery emails)
-- "+ Client" button on /admin/facturation with create modal (Entity, Billing mode, Name, Email, Delivery emails, TVA toggle)
-- Auto-creates client pricing with default TVA rate
+- Create modal in /admin/clients and /admin/facturation
 
 ### Interfacturation MDL <-> ZR7 (Feb 2026)
-- `entity_transfer_pricing` collection: from_entity, to_entity, product_code, unit_price_ht, active
-- Seeded with 6 items (PV/PAC/ITE x MDL->ZR7, ZR7->MDL) at unit_price_ht=0
-- `source_entity` (lead.entity) and `billing_entity` (client.entity) added to ledger entries and billing_records
-- Build-ledger aggregates cross-entity transfers into `interfacturation_records`
-- New section "Interfacturation interne" on /admin/facturation
-- Columns: Direction (entity badges), Produit, Units, Leads, LB, Prix int. HT, Total HT, N facture, Statut
-- Inline edit for invoice number and status (invoiced/paid)
-- TVA interne = 0% (intra-groupe)
-- CRUD endpoints: GET/PUT /api/billing/transfer-pricing, GET/PUT /api/billing/interfacturation
+- entity_transfer_pricing (6 seed items), source_entity/billing_entity on ledger
+- Interfacturation records, section in facturation page
+
+### Vue Récapitulative Mensuelle (Feb 2026)
+- Onglets Semaine | Mois dans /admin/facturation
+- GET /api/billing/month-summary?month=YYYY-MM endpoint
+- Agrège billing_records de toutes les semaines chevauchant le mois calendaire
+- KPIs mensuels (8 cards dont TVA), tableau récap par client+produit avec colonne Sem.
+- Section interfacturation interne mensuelle agrégée
+- MonthNavStandard component avec noms de mois en français
 
 ## Key DB Collections
-- `clients`, `commandes`, `leads`, `deliveries`
-- `products`, `client_pricing`, `client_product_pricing`
-- `prepayment_balances`, `billing_credits`
-- `billing_ledger`, `billing_records`
-- `entity_transfer_pricing` (NEW)
-- `interfacturation_records` (NEW)
-- `event_log`
+clients, commandes, leads, deliveries, products, client_pricing, client_product_pricing,
+prepayment_balances, billing_credits, billing_ledger, billing_records,
+entity_transfer_pricing, interfacturation_records, event_log
 
 ## Backlog
-
-### P1 - Next
-- Simple Permissions: admin/ops/viewer role-based access control
-- Configure transfer pricing values via admin UI
-
-### P2 - Future
-- No additional features specified
+### P1: Simple Permissions (admin/ops/viewer), Configure transfer pricing via admin UI
+### P2: No additional features specified
