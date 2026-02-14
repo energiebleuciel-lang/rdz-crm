@@ -88,14 +88,16 @@ class TestPhase25AutoSendIntegration:
     
     def test_02_create_client_with_auto_send_false(self):
         """Test: Create client with auto_send_enabled=false"""
-        client_name = f"TEST_AutoSendFalse_{uuid.uuid4().hex[:8]}"
+        unique_id = uuid.uuid4().hex[:8]
+        client_name = f"TEST_AutoSendFalse_{unique_id}"
+        unique_email = f"test_autosend_false_{unique_id}@testdomain.com"
         
         resp = self.session.post(
             f"{BASE_URL}/api/clients",
             json={
                 "entity": "ZR7",
                 "name": client_name,
-                "email": "energiebleuciel@gmail.com",
+                "email": unique_email,
                 "delivery_emails": ["energiebleuciel@gmail.com"],
                 "auto_send_enabled": False
             }
