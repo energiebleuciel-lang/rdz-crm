@@ -280,6 +280,98 @@ async def send_delivery(
         raise HTTPException(status_code=500, detail=f"Erreur d'envoi: {str(e)}")
 
 
+# ---- Reject leads (rejet client) ----
+
+@router.post("/{delivery_id}/reject-leads")
+async def reject_delivery_leads(
+    delivery_id: str,
+    data: RejectDeliveryRequest = RejectDeliveryRequest(),
+    user: dict = Depends(require_admin)
+):
+    """
+    Rejet client: le lead redevient un lead entrant neuf.
+    
+    Comportement:
+    - delivery.outcome = "rejected" (delivery.status inchangé, CSV intact)
+    - lead.status = "new" (re-routable comme un lead frais)
+    - Références delivery supprimées du lead
+    - Idempotent: rejeter 2x = pas d'erreur
+    
+    Billing: billable = status=sent AND outcome=accepted
+    """
+    delivery = await db.deliveries.find_one({"id": delivery_id}, {"_id": 0})
+    
+    if not delivery:
+        raise HTTPException(status_code=404, detail="Delivery non trouvée")
+    
+    # Seul un delivery "sent" peut être rejeté (on a bien livré, le client refuse)
+    if delivery.get("status") != "sent":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Rejet impossible: delivery status={delivery.get('status')} (doit être sent)"
+        )
+    
+    # Idempotency: déjà rejeté → retour OK
+    if delivery.get("outcome") == "rejected":
+        return {
+            "success": True,
+            "delivery_id": delivery_id,
+            "outcome": "rejected",
+            "already_rejected": True,
+            "message": "Delivery déjà rejetée"
+        }
+    
+    now = now_iso()
+    lead_id = delivery.get("lead_id")
+    
+    # 1. Marquer la delivery comme rejected (status reste "sent", CSV intact)
+    await db.deliveries.update_one(
+        {"id": delivery_id},
+        {"$set": {
+            "outcome": "rejected",
+            "rejected_at": now,
+            "rejected_by": user.get("email"),
+            "rejection_reason": data.reason or "",
+            "updated_at": now
+        }}
+    )
+    
+    # 2. Reset le lead: status=new, supprimer références delivery
+    await db.leads.update_one(
+        {"id": lead_id},
+        {
+            "$set": {
+                "status": "new",
+                "updated_at": now
+            },
+            "$unset": {
+                "delivered_at": "",
+                "delivered_to_client_id": "",
+                "delivered_to_client_name": "",
+                "delivery_commande_id": "",
+                "delivery_id": "",
+                "routed_at": "",
+                "delivery_client_id": "",
+                "delivery_client_name": ""
+            }
+        }
+    )
+    
+    logger.info(
+        f"[REJECT] delivery={delivery_id} lead={lead_id} "
+        f"by={user.get('email')} reason={data.reason or 'N/A'}"
+    )
+    
+    return {
+        "success": True,
+        "delivery_id": delivery_id,
+        "lead_id": lead_id,
+        "outcome": "rejected",
+        "already_rejected": False,
+        "message": f"Lead {lead_id} rejeté et remis en circulation"
+    }
+
+
 # ---- Download CSV ----
 
 @router.get("/{delivery_id}/download")
