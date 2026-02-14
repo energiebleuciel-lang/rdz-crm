@@ -94,6 +94,38 @@ async def lifespan(app: FastAPI):
         await db.delivery_batches.create_index("entity", background=True)
         await db.delivery_batches.create_index("sent_at", background=True)
 
+        # Index deliveries (CRITICAL for all queries)
+        await db.deliveries.create_index("entity", background=True)
+        await db.deliveries.create_index("status", background=True)
+        await db.deliveries.create_index("client_id", background=True)
+        await db.deliveries.create_index("lead_id", background=True)
+        await db.deliveries.create_index("commande_id", background=True)
+        await db.deliveries.create_index("created_at", background=True)
+        await db.deliveries.create_index("outcome", background=True)
+        await db.deliveries.create_index(
+            [("entity", 1), ("status", 1), ("created_at", -1)],
+            background=True, name="idx_delivery_entity_status_date"
+        )
+        await db.deliveries.create_index(
+            [("client_id", 1), ("status", 1), ("outcome", 1)],
+            background=True, name="idx_delivery_client_billing"
+        )
+
+        # Index invoices
+        await db.invoices.create_index("entity", background=True)
+        await db.invoices.create_index("status", background=True)
+        await db.invoices.create_index("client_id", background=True)
+        await db.invoices.create_index("type", background=True)
+        await db.invoices.create_index(
+            [("entity", 1), "status", "type"],
+            background=True, name="idx_invoice_scope"
+        )
+
+        # Index event_log
+        await db.event_log.create_index("created_at", background=True)
+        await db.event_log.create_index("action", background=True)
+        await db.event_log.create_index("entity", background=True)
+
         # Index delivery reports
         await db.delivery_reports.create_index("run_at", background=True)
 
