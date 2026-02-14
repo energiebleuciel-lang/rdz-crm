@@ -50,6 +50,8 @@ async def list_commandes(
     if not validate_entity(entity):
         raise HTTPException(status_code=400, detail="Entity invalide. Doit être ZR7 ou MDL")
     
+    validate_entity_access(user, entity)
+    
     query = {"entity": entity}
     if client_id:
         query["client_id"] = client_id
