@@ -95,7 +95,7 @@ async def list_clients(
 @router.get("/{client_id}")
 async def get_client(
     client_id: str,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_permission("clients.view"))
 ):
     """Récupère un client par ID avec enrichissement complet"""
     client = await db.clients.find_one({"id": client_id}, {"_id": 0})
@@ -140,7 +140,7 @@ async def get_client(
 @router.post("")
 async def create_client(
     data: ClientCreate,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_permission("clients.create"))
 ):
     """
     Crée un nouveau client
@@ -187,7 +187,7 @@ async def create_client(
 async def update_client(
     client_id: str,
     data: ClientUpdate,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_permission("clients.edit"))
 ):
     """Met à jour un client"""
     client = await db.clients.find_one({"id": client_id})
@@ -226,7 +226,7 @@ async def update_client(
 @router.delete("/{client_id}")
 async def delete_client(
     client_id: str,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_permission("clients.delete"))
 ):
     """
     Supprime un client
@@ -256,7 +256,7 @@ async def get_client_leads(
     client_id: str,
     limit: int = Query(50, le=200),
     status: Optional[str] = None,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_permission("clients.view"))
 ):
     """
     Liste les leads livrés à un client
@@ -280,7 +280,7 @@ async def get_client_leads(
 @router.get("/{client_id}/stats")
 async def get_client_stats(
     client_id: str,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_permission("clients.view"))
 ):
     """Statistiques détaillées d'un client"""
     client = await db.clients.find_one({"id": client_id}, {"_id": 0})
@@ -325,7 +325,7 @@ async def get_client_summary(
     group_by: str = Query("day", description="day|week|month"),
     from_date: Optional[str] = Query(None, alias="from"),
     to_date: Optional[str] = Query(None, alias="to"),
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_permission("clients.view"))
 ):
     """
     Aggregation endpoint for client performance.
@@ -473,7 +473,7 @@ async def get_client_summary(
 async def update_client_crm(
     client_id: str,
     data: dict,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_permission("clients.view"))
 ):
     """Update CRM-specific fields on a client (ratings, payment, tags, notes)."""
     client = await db.clients.find_one({"id": client_id})
@@ -516,7 +516,7 @@ async def update_client_crm(
 async def add_client_note(
     client_id: str,
     data: dict,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_permission("clients.view"))
 ):
     """Add a timestamped internal note to a client."""
     client = await db.clients.find_one({"id": client_id})
@@ -556,7 +556,7 @@ async def add_client_note(
 async def get_client_activity(
     client_id: str,
     limit: int = Query(50, le=200),
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_permission("clients.view"))
 ):
     """Get activity timeline for a client (rejects, resends, CRM updates, notes, etc.)."""
     # Combine delivery events + explicit activity log
@@ -612,7 +612,7 @@ async def get_client_coverage(
     client_id: str,
     product: str = "ALL",
     week: Optional[str] = None,
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_permission("clients.view")),
 ):
     """Client coverage: départements couverts par ce client, avec stats"""
     from datetime import datetime, timezone, timedelta
