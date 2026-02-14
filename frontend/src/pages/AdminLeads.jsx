@@ -82,7 +82,8 @@ export default function AdminLeads() {
     <div data-testid="admin-leads">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-lg font-semibold text-white">Leads</h1>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <WeekNavStandard week={week} onChange={handleWeekNav} />
           <div className="relative">
             <Search className="w-3 h-3 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500" />
             <input value={searchText} onChange={e => setSearchText(e.target.value)}
