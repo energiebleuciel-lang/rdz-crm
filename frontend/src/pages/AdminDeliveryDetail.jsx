@@ -305,6 +305,32 @@ export default function AdminDeliveryDetail() {
           </div>
         </div>
       )}
+
+      {/* Remove Modal */}
+      {removeModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" data-testid="remove-modal">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-sm font-semibold text-white mb-4">Retirer le lead</h2>
+            <p className="text-xs text-zinc-400 mb-3">Le lead redeviendra status=new (re-routable). Delivery et CSV restent intacts.</p>
+            <div className="space-y-3">
+              <div>
+                <label className="text-[10px] text-zinc-500 block mb-1">Raison</label>
+                <select value={removeReason} onChange={e => setRemoveReason(e.target.value)} className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-300" data-testid="remove-reason-select">
+                  {['refus_client', 'doublon', 'hors_zone', 'mauvaise_commande', 'test', 'autre'].map(r => <option key={r} value={r}>{r.replace('_', ' ')}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] text-zinc-500 block mb-1">Détail</label>
+                <textarea value={removeDetail} onChange={e => setRemoveDetail(e.target.value)} className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2 text-xs text-zinc-300 resize-none" rows={2} data-testid="remove-detail-input" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => { setRemoveModal(false); setRemoveDetail(''); }} className="px-3 py-1.5 text-xs text-zinc-400" data-testid="remove-cancel-btn">Annuler</button>
+              <button onClick={handleRemove} disabled={actionLoading} className="px-3 py-1.5 text-xs bg-red-500/20 text-red-400 rounded-md hover:bg-red-500/30 border border-red-500/30 disabled:opacity-50" data-testid="remove-confirm-btn">Retirer</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
