@@ -376,6 +376,7 @@ async def submit_lead(data: LeadData, request: Request):
     lead = {
         "id": lead_id,
         "phone": phone,
+        "phone_quality": phone_quality if is_valid else "invalid",
         "nom": nom,
         "prenom": (data.prenom or "").strip(),
         "email": (data.email or "").strip(),
