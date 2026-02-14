@@ -9,6 +9,7 @@ import AdminDeliveryDetail from './pages/AdminDeliveryDetail';
 import AdminClients from './pages/AdminClients';
 import AdminClientDetail from './pages/AdminClientDetail';
 import AdminCommandes from './pages/AdminCommandes';
+import AdminCommandeDetail from './pages/AdminCommandeDetail';
 import AdminSettings from './pages/AdminSettings';
 import AdminLeads from './pages/AdminLeads';
 import AdminLeadDetail from './pages/AdminLeadDetail';
@@ -50,6 +51,7 @@ function AppRoutes() {
       <Route path="/admin/clients" element={<PrivateRoute><AdminClients /></PrivateRoute>} />
       <Route path="/admin/clients/:id" element={<PrivateRoute><AdminClientDetail /></PrivateRoute>} />
       <Route path="/admin/commandes" element={<PrivateRoute><AdminCommandes /></PrivateRoute>} />
+      <Route path="/admin/commandes/:id" element={<PrivateRoute><AdminCommandeDetail /></PrivateRoute>} />
       <Route path="/admin/leads" element={<PrivateRoute><AdminLeads /></PrivateRoute>} />
       <Route path="/admin/leads/:id" element={<PrivateRoute><AdminLeadDetail /></PrivateRoute>} />
       <Route path="/admin/activity" element={<PrivateRoute><AdminActivity /></PrivateRoute>} />
