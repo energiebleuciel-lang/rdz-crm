@@ -62,6 +62,8 @@ async def list_invoices(
         query["status"] = status
     if client_id:
         query["client_id"] = client_id
+    # Default: external invoices only (unless type param specified)
+    query.setdefault("type", {"$ne": "intercompany"})
 
     invoices = await db.invoices.find(
         query, {"_id": 0}
