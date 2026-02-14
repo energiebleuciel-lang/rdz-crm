@@ -9,6 +9,8 @@ import {
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
 } from 'recharts';
+import { getCurrentWeekKey, shiftWeekKey } from '../lib/weekUtils';
+import { WeekNavStandard } from '../components/WeekNav';
 
 const STATUS_CFG = {
   no_order: { label: 'Sans commande', cls: 'bg-zinc-700/60 text-zinc-300 border-zinc-600' },
