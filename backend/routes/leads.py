@@ -90,7 +90,7 @@ async def get_dashboard_stats(
             "client_id": cid, "outcome": "rejected", "created_at": {"$gte": seven_days_ago}
         })
         tc["billable_7d"] = await db.deliveries.count_documents({
-            "client_id": cid, "status": "sent", "outcome": {"$ne": "rejected"}, "created_at": {"$gte": seven_days_ago}
+            "client_id": cid, "status": "sent", "outcome": {"$nin": ["rejected", "removed"]}, "created_at": {"$gte": seven_days_ago}
         })
         tc["failed_7d"] = await db.deliveries.count_documents({
             "client_id": cid, "status": "failed", "created_at": {"$gte": seven_days_ago}
