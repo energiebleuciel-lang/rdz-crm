@@ -697,3 +697,83 @@ async def update_billing_record(
     await log_event("billing_record_updated", "billing", record_id, user=user.get("email"),
                      details=update)
     return {"success": True}
+
+
+# ═══════════════════════════════════════════════════
+# ENTITY TRANSFER PRICING (Interfacturation)
+# ═══════════════════════════════════════════════════
+
+class TransferPricingUpsert(BaseModel):
+    from_entity: str
+    to_entity: str
+    product_code: str
+    unit_price_ht: float = 0
+    active: bool = True
+
+
+@router.get("/billing/transfer-pricing")
+async def list_transfer_pricing(user: dict = Depends(get_current_user)):
+    items = await db.entity_transfer_pricing.find({}, {"_id": 0}).to_list(100)
+    if not items:
+        seed = []
+        for pc in ["PV", "PAC", "ITE"]:
+            for fe, te in [("MDL", "ZR7"), ("ZR7", "MDL")]:
+                seed.append({
+                    "id": str(uuid.uuid4()), "from_entity": fe, "to_entity": te,
+                    "product_code": pc, "unit_price_ht": 0, "active": True,
+                    "created_at": now_iso(), "updated_at": now_iso(),
+                })
+        await db.entity_transfer_pricing.insert_many(seed)
+        for s in seed:
+            s.pop("_id", None)
+        items = seed
+    return {"items": items}
+
+
+@router.put("/billing/transfer-pricing")
+async def upsert_transfer_pricing(data: TransferPricingUpsert, user: dict = Depends(get_current_user)):
+    doc = {
+        "from_entity": data.from_entity.upper(), "to_entity": data.to_entity.upper(),
+        "product_code": data.product_code.upper(),
+        "unit_price_ht": data.unit_price_ht, "active": data.active,
+        "updated_at": now_iso(),
+    }
+    await db.entity_transfer_pricing.update_one(
+        {"from_entity": doc["from_entity"], "to_entity": doc["to_entity"], "product_code": doc["product_code"]},
+        {"$set": doc, "$setOnInsert": {"id": str(uuid.uuid4()), "created_at": now_iso()}},
+        upsert=True,
+    )
+    await log_event("transfer_pricing_updated", "billing", f"{doc['from_entity']}->{doc['to_entity']}", user=user.get("email"),
+                     details=doc)
+    return {"success": True}
+
+
+# ═══════════════════════════════════════════════════
+# INTERFACTURATION RECORDS
+# ═══════════════════════════════════════════════════
+
+@router.get("/billing/interfacturation")
+async def list_interfacturation(week_key: Optional[str] = None, user: dict = Depends(get_current_user)):
+    q = {}
+    if week_key:
+        q["week_key"] = week_key
+    recs = await db.interfacturation_records.find(q, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return {"records": recs, "count": len(recs)}
+
+
+class InterfacturationUpdate(BaseModel):
+    external_invoice_number: Optional[str] = None
+    status: Optional[str] = None
+    paid_at: Optional[str] = None
+
+
+@router.put("/billing/interfacturation/{record_id}")
+async def update_interfacturation(record_id: str, data: InterfacturationUpdate, user: dict = Depends(get_current_user)):
+    rec = await db.interfacturation_records.find_one({"id": record_id}, {"_id": 0})
+    if not rec:
+        raise HTTPException(404, "Interfacturation record not found")
+    update = {k: v for k, v in data.dict().items() if v is not None}
+    update["updated_at"] = now_iso()
+    await db.interfacturation_records.update_one({"id": record_id}, {"$set": update})
+    await log_event("interfacturation_updated", "billing", record_id, user=user.get("email"), details=update)
+    return {"success": True}
