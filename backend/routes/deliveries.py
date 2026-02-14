@@ -8,7 +8,7 @@ Gestion des livraisons:
 - Stats
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, List
@@ -38,6 +38,7 @@ class DeliveryFilter(BaseModel):
 
 @router.get("")
 async def list_deliveries(
+    request: Request,
     entity: Optional[str] = None,
     status: Optional[str] = None,
     client_id: Optional[str] = None,
@@ -46,15 +47,16 @@ async def list_deliveries(
     skip: int = 0,
     user: dict = Depends(require_permission("deliveries.view"))
 ):
-    """Liste les deliveries avec filtres"""
+    """Liste les deliveries avec filtres — scoped by X-Entity-Scope"""
+    from services.permissions import get_entity_scope_from_request, build_entity_filter
+
     query = {}
-    
     if entity:
         validate_entity_access(user, entity)
         query["entity"] = entity.upper()
-    elif user.get("role") != "super_admin":
-        # Force entity filter for non-super_admin
-        query["entity"] = user.get("entity", "ZR7")
+    else:
+        scope = get_entity_scope_from_request(user, request)
+        query.update(build_entity_filter(scope))
     if status:
         query["status"] = status
     if client_id:
