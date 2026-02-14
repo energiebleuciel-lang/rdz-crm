@@ -255,10 +255,12 @@ Guard:
   - Inline edit sur chaque ligne pour suivi externe (N facture, statut, échéance, paiement)
   - Offers tab: sélecteur de commande (order_id) obligatoire
   - Tests: 31/31 backend + 100% frontend (iteration 31)
+- **QA Phase C (Feb 2026)** : Validation calculs + snapshot + rebuild
+  - 10/10 PASS : LB=même prix, credits non reportables (surplus perdu), remise persistante, rejected/removed exclus, TVA client, pricing_missing, snapshot immutable, rebuild bloqué/autorisé, suivi externe préservé
+  - Testé via DB directe + API curl
 
 ## NEXT
 
-- [ ] QA Phase C: tests calcul (LB même prix, freebies déduits, remise correcte, pricing_missing, snapshot immutabilité)
 - [ ] Standardiser format semaine sur Dashboard cockpit + Commandes
 - [ ] Permissions simples (admin / ops / viewer)
 
