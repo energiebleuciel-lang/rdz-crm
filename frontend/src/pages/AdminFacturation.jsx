@@ -4,7 +4,8 @@ import { API } from '../hooks/useApi';
 import { Link } from 'react-router-dom';
 import {
   RefreshCw, Receipt, AlertTriangle, CreditCard,
-  FileText, DollarSign, TrendingUp, Package, Check, X, Edit3
+  FileText, DollarSign, TrendingUp, Package, Check, X, Edit3,
+  Plus, ArrowRightLeft, Users
 } from 'lucide-react';
 import { getCurrentWeekKey, shiftWeekKey } from '../lib/weekUtils';
 import { WeekNavStandard } from '../components/WeekNav';
@@ -39,7 +40,11 @@ function KpiCard({ label, value, sub, icon: Icon, color = 'text-white' }) {
   );
 }
 
-/* Inline edit row for external tracking */
+function UnitsDisplay({ total, lb }) {
+  if (!lb) return <span>{total}</span>;
+  return <span>{total} <span className="text-zinc-500 text-[10px]">(LB: {lb})</span></span>;
+}
+
 function EditRow({ record, authFetch, onDone }) {
   const [form, setForm] = useState({
     external_invoice_number: record.external_invoice_number || '',
@@ -49,7 +54,6 @@ function EditRow({ record, authFetch, onDone }) {
     paid_at: record.paid_at || '',
   });
   const [saving, setSaving] = useState(false);
-
   const save = async () => {
     setSaving(true);
     const body = {};
@@ -61,14 +65,12 @@ function EditRow({ record, authFetch, onDone }) {
     if (form.status === 'invoiced' && !record.issued_at) body.issued_at = new Date().toISOString();
     try {
       await authFetch(`${API}/api/billing/records/${record.id}`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       });
       onDone();
     } catch (e) { console.error(e); }
     setSaving(false);
   };
-
   return (
     <tr className="bg-zinc-800/60 border-b border-zinc-700">
       <td colSpan={14} className="px-3 py-2">
@@ -112,6 +114,149 @@ function EditRow({ record, authFetch, onDone }) {
   );
 }
 
+function CreateClientModal({ authFetch, onClose, onCreated }) {
+  const [form, setForm] = useState({ entity: 'ZR7', name: '', email: '', delivery_emails: '', billing_mode: 'WEEKLY_INVOICE', tva_enabled: true, tva_rate: 20 });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const submit = async () => {
+    if (!form.name || !form.email) { setError('Nom et email requis'); return; }
+    setSaving(true);
+    setError('');
+    try {
+      const body = {
+        entity: form.entity, name: form.name, email: form.email,
+        delivery_emails: form.delivery_emails.split(',').map(s => s.trim()).filter(Boolean),
+        auto_send_enabled: true, default_prix_lead: 0, remise_percent: 0,
+      };
+      const r = await authFetch(`${API}/api/clients`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!r.ok) { const d = await r.json(); setError(d.detail || 'Erreur'); setSaving(false); return; }
+      const created = await r.json();
+      const clientId = created.client?.id;
+      if (clientId) {
+        await authFetch(`${API}/api/clients/${clientId}/pricing`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ discount_pct_global: 0, tva_rate: form.tva_enabled ? form.tva_rate : 0 }),
+        });
+      }
+      onCreated(created.client);
+      onClose();
+    } catch (e) { setError(e.message); }
+    setSaving(false);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" data-testid="create-client-modal">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 w-full max-w-md">
+        <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2"><Users className="w-4 h-4 text-teal-400" /> Nouveau Client</h2>
+        {error && <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded px-3 py-1.5 mb-3">{error}</div>}
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] text-zinc-500 block mb-1">Entity</label>
+              <select value={form.entity} onChange={e => setForm(f => ({ ...f, entity: e.target.value }))}
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-300" data-testid="new-client-entity">
+                <option value="ZR7">ZR7</option><option value="MDL">MDL</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] text-zinc-500 block mb-1">Billing mode</label>
+              <select value={form.billing_mode} onChange={e => setForm(f => ({ ...f, billing_mode: e.target.value }))}
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-300" data-testid="new-client-billing-mode">
+                <option value="WEEKLY_INVOICE">Facturation hebdo</option><option value="PREPAID">Prépaiement</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="text-[10px] text-zinc-500 block mb-1">Nom</label>
+            <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-300" data-testid="new-client-name" />
+          </div>
+          <div>
+            <label className="text-[10px] text-zinc-500 block mb-1">Email principal</label>
+            <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-300" data-testid="new-client-email" />
+          </div>
+          <div>
+            <label className="text-[10px] text-zinc-500 block mb-1">Emails livraison (virgule)</label>
+            <input value={form.delivery_emails} onChange={e => setForm(f => ({ ...f, delivery_emails: e.target.value }))}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-300" placeholder="a@b.com, c@d.com" data-testid="new-client-delivery-emails" />
+          </div>
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-2 text-xs text-zinc-300">
+              <input type="checkbox" checked={form.tva_enabled} onChange={e => setForm(f => ({ ...f, tva_enabled: e.target.checked }))}
+                className="rounded bg-zinc-800 border-zinc-700" data-testid="new-client-tva-toggle" /> TVA
+            </label>
+            {form.tva_enabled && (
+              <div className="flex items-center gap-1">
+                <input type="number" value={form.tva_rate} onChange={e => setForm(f => ({ ...f, tva_rate: Number(e.target.value) }))}
+                  className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-300 w-16" data-testid="new-client-tva-rate" />
+                <span className="text-[10px] text-zinc-500">%</span>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 mt-4">
+          <button onClick={onClose} className="px-3 py-1.5 text-xs text-zinc-400">Annuler</button>
+          <button onClick={submit} disabled={saving || !form.name || !form.email}
+            className="px-3 py-1.5 text-xs bg-teal-500/20 text-teal-400 rounded-md hover:bg-teal-500/30 border border-teal-500/30 disabled:opacity-50" data-testid="create-client-submit">
+            Créer
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InterEditRow({ record, authFetch, onDone }) {
+  const [form, setForm] = useState({
+    external_invoice_number: record.external_invoice_number || '',
+    status: record.status || 'not_invoiced',
+    paid_at: record.paid_at || '',
+  });
+  const [saving, setSaving] = useState(false);
+  const save = async () => {
+    setSaving(true);
+    const body = {};
+    if (form.external_invoice_number) body.external_invoice_number = form.external_invoice_number;
+    if (form.status) body.status = form.status;
+    if (form.paid_at) body.paid_at = form.paid_at;
+    if (form.status === 'invoiced' && !record.issued_at) body.issued_at = new Date().toISOString();
+    await authFetch(`${API}/api/billing/interfacturation/${record.id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    onDone();
+    setSaving(false);
+  };
+  return (
+    <tr className="bg-zinc-800/60 border-b border-zinc-700">
+      <td colSpan={10} className="px-3 py-2">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div>
+            <label className="text-[9px] text-zinc-500 block">N facture interne</label>
+            <input value={form.external_invoice_number} onChange={e => setForm(f => ({ ...f, external_invoice_number: e.target.value }))}
+              className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-300 w-28" data-testid="inter-edit-number" />
+          </div>
+          <div>
+            <label className="text-[9px] text-zinc-500 block">Statut</label>
+            <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
+              className="bg-zinc-900 text-zinc-300 text-xs rounded px-2 py-1 border border-zinc-700" data-testid="inter-edit-status">
+              {Object.entries(REC_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-[9px] text-zinc-500 block">Payé le</label>
+            <input type="date" value={form.paid_at?.slice(0, 10) || ''} onChange={e => setForm(f => ({ ...f, paid_at: e.target.value }))}
+              className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-300" />
+          </div>
+          <button onClick={save} disabled={saving} className="p-1.5 text-emerald-400 hover:bg-emerald-500/10 rounded border border-emerald-500/30"><Check className="w-3.5 h-3.5" /></button>
+          <button onClick={onDone} className="p-1.5 text-zinc-400 hover:bg-zinc-700 rounded border border-zinc-700"><X className="w-3.5 h-3.5" /></button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
 export default function AdminFacturation() {
   const { authFetch } = useAuth();
   const [week, setWeek] = useState(getCurrentWeekKey());
@@ -119,6 +264,8 @@ export default function AdminFacturation() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState('');
   const [editingId, setEditingId] = useState(null);
+  const [editingInterId, setEditingInterId] = useState(null);
+  const [showCreateClient, setShowCreateClient] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -130,7 +277,6 @@ export default function AdminFacturation() {
   }, [week, authFetch]);
 
   useEffect(() => { load(); }, [load]);
-
   const handleWeekNav = (dir) => setWeek(w => shiftWeekKey(w, dir));
 
   const buildLedger = async () => {
@@ -157,11 +303,17 @@ export default function AdminFacturation() {
         </div>
         <div className="flex items-center gap-2">
           <WeekNavStandard week={week} onChange={handleWeekNav} />
+          <button onClick={() => setShowCreateClient(true)}
+            className="flex items-center gap-1 px-3 py-1.5 text-xs bg-teal-500/10 text-teal-400 rounded-md hover:bg-teal-500/20 border border-teal-500/30" data-testid="add-client-btn">
+            <Plus className="w-3 h-3" /> Client
+          </button>
           <button onClick={load} className="p-1.5 bg-zinc-800 text-zinc-300 rounded-md hover:bg-zinc-700 border border-zinc-700" data-testid="refresh-btn">
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
+
+      {showCreateClient && <CreateClientModal authFetch={authFetch} onClose={() => setShowCreateClient(false)} onCreated={() => load()} />}
 
       {loading ? (
         <div className="flex items-center gap-2 py-16 justify-center text-zinc-500 text-xs">
@@ -170,16 +322,18 @@ export default function AdminFacturation() {
       ) : data ? (
         <>
           {/* KPIs */}
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-5">
-            <KpiCard label="Leads produits" value={s.leads_produced ?? 0} icon={Package} />
-            <KpiCard label="Units livrées" value={s.units_delivered ?? 0} icon={TrendingUp} />
-            <KpiCard label="Units billable" value={s.units_billable ?? 0} icon={DollarSign} color="text-emerald-400" />
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-5">
+            <KpiCard label="Units total" value={<UnitsDisplay total={s.units_delivered ?? 0} lb={s.total_lb} />} icon={Package} />
+            <KpiCard label="Leads total" value={s.total_leads ?? 0} icon={TrendingUp} />
+            <KpiCard label="LB total" value={s.total_lb ?? 0} icon={TrendingUp} color="text-violet-400" />
+            <KpiCard label="Units billable" value={<UnitsDisplay total={s.units_billable ?? 0} lb={s.billable_lb} />} icon={DollarSign} color="text-emerald-400" />
             <KpiCard label="Non-billable" value={s.units_non_billable ?? 0} icon={AlertTriangle} color="text-amber-400" />
             <KpiCard label="CA HT net" value={`${(t.net_ht || 0).toFixed(2)} EUR`} icon={CreditCard} color="text-teal-400" />
             <KpiCard label="CA TTC" value={`${(t.ttc || 0).toFixed(2)} EUR`} icon={Receipt} color="text-white" />
+            <KpiCard label="Leads prod." value={s.leads_produced ?? 0} icon={FileText} />
           </div>
 
-          {/* Build Ledger action */}
+          {/* Build Ledger */}
           <div className="flex gap-2 mb-5">
             <button onClick={buildLedger} disabled={!!actionLoading}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-teal-500/15 text-teal-400 rounded-md hover:bg-teal-500/25 border border-teal-500/30 disabled:opacity-50" data-testid="build-ledger-btn">
@@ -199,7 +353,7 @@ export default function AdminFacturation() {
                 <tr className="border-b border-zinc-800 text-zinc-500 text-[10px]">
                   <th className="text-left px-3 py-2 font-medium">Client</th>
                   <th className="px-2 py-2 font-medium">Produit</th>
-                  <th className="text-right px-2 py-2 font-medium">Billable</th>
+                  <th className="text-right px-2 py-2 font-medium">Units</th>
                   <th className="text-right px-2 py-2 font-medium">Leads</th>
                   <th className="text-right px-2 py-2 font-medium">LB</th>
                   <th className="text-right px-2 py-2 font-medium">Offerts</th>
@@ -222,27 +376,18 @@ export default function AdminFacturation() {
                     <tr key={i} className={`border-b border-zinc-800/50 hover:bg-zinc-800/30 ${r.pricing_missing ? 'bg-red-500/5' : ''}`}
                       data-testid={`billing-row-${r.client_id}-${r.product_code}`}>
                       <td className="px-3 py-2">
-                        <Link to={`/admin/clients/${r.client_id}`} className="text-teal-400 hover:underline font-medium text-xs">
-                          {r.client_name || r.client_id?.slice(0, 8)}
-                        </Link>
-                        {r.external_invoice_number && (
-                          <div className="text-[9px] text-zinc-500 mt-0.5">{r.external_invoice_number}</div>
-                        )}
-                        {r.pricing_missing && (
-                          <div className="flex items-center gap-1 mt-0.5">
-                            <AlertTriangle className="w-2.5 h-2.5 text-red-400" />
-                            <span className="text-[9px] text-red-400">Pricing manquant</span>
-                          </div>
-                        )}
+                        <Link to={`/admin/clients/${r.client_id}`} className="text-teal-400 hover:underline font-medium text-xs">{r.client_name || r.client_id?.slice(0, 8)}</Link>
+                        {r.external_invoice_number && <div className="text-[9px] text-zinc-500 mt-0.5">{r.external_invoice_number}</div>}
+                        {r.pricing_missing && <div className="flex items-center gap-1 mt-0.5"><AlertTriangle className="w-2.5 h-2.5 text-red-400" /><span className="text-[9px] text-red-400">Pricing manquant</span></div>}
                       </td>
                       <td className="px-2 py-2 text-center"><span className="bg-zinc-800 text-zinc-300 px-1.5 py-0.5 rounded text-[10px]">{r.product_code}</span></td>
-                      <td className="px-2 py-2 text-right text-zinc-300 font-medium">{r.units_billable}</td>
+                      <td className="px-2 py-2 text-right text-zinc-300 font-medium"><UnitsDisplay total={r.units_billable} lb={r.units_lb} /></td>
                       <td className="px-2 py-2 text-right text-zinc-400">{r.units_leads ?? '-'}</td>
-                      <td className="px-2 py-2 text-right text-zinc-400">{r.units_lb ?? '-'}</td>
+                      <td className="px-2 py-2 text-right text-violet-400">{r.units_lb ?? 0}</td>
                       <td className="px-2 py-2 text-right text-violet-400">{r.units_free || 0}</td>
                       <td className="px-2 py-2 text-right text-white font-medium">{r.units_invoiced}</td>
-                      <td className="px-2 py-2 text-right text-zinc-300">{(r.unit_price_ht_snapshot ?? r.unit_price_eur ?? 0)} EUR</td>
-                      <td className="px-2 py-2 text-right text-zinc-400">{(r.discount_pct_snapshot ?? r.discount_pct ?? 0)}%</td>
+                      <td className="px-2 py-2 text-right text-zinc-300">{r.unit_price_ht_snapshot ?? r.unit_price_eur ?? 0} EUR</td>
+                      <td className="px-2 py-2 text-right text-zinc-400">{r.discount_pct_snapshot ?? r.discount_pct ?? 0}%</td>
                       <td className="px-2 py-2 text-right text-teal-400 font-medium">{(r.net_total_ht ?? 0).toFixed(2)}</td>
                       <td className="px-2 py-2 text-right text-zinc-400">{(r.vat_amount ?? 0).toFixed(2)}</td>
                       <td className="px-2 py-2 text-right text-white font-medium">{(r.total_ttc_expected ?? 0).toFixed(2)}</td>
@@ -270,13 +415,15 @@ export default function AdminFacturation() {
             <CreditCard className="w-4 h-4 text-violet-400" /> Prépaiement
             <span className="text-[10px] text-zinc-500 font-normal">({(data.prepaid || []).length} lignes)</span>
           </h2>
-          <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-x-auto">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-x-auto mb-6">
             <table className="w-full text-xs" data-testid="prepaid-table">
               <thead>
                 <tr className="border-b border-zinc-800 text-zinc-500 text-[10px]">
                   <th className="text-left px-3 py-2 font-medium">Client</th>
                   <th className="px-2 py-2 font-medium">Produit</th>
-                  <th className="text-right px-2 py-2 font-medium">Billable sem.</th>
+                  <th className="text-right px-2 py-2 font-medium">Units sem.</th>
+                  <th className="text-right px-2 py-2 font-medium">Leads</th>
+                  <th className="text-right px-2 py-2 font-medium">LB</th>
                   <th className="text-right px-2 py-2 font-medium">Achetées total</th>
                   <th className="text-right px-2 py-2 font-medium">Livrées total</th>
                   <th className="text-right px-2 py-2 font-medium">Restantes</th>
@@ -290,7 +437,9 @@ export default function AdminFacturation() {
                       <Link to={`/admin/clients/${r.client_id}`} className="text-teal-400 hover:underline font-medium">{r.client_name || r.client_id?.slice(0, 8)}</Link>
                     </td>
                     <td className="px-2 py-2 text-center"><span className="bg-zinc-800 text-zinc-300 px-1.5 py-0.5 rounded text-[10px]">{r.product_code}</span></td>
-                    <td className="px-2 py-2 text-right text-zinc-300">{r.units_billable ?? 0}</td>
+                    <td className="px-2 py-2 text-right text-zinc-300"><UnitsDisplay total={r.units_billable ?? 0} lb={r.units_lb} /></td>
+                    <td className="px-2 py-2 text-right text-zinc-400">{r.units_leads ?? 0}</td>
+                    <td className="px-2 py-2 text-right text-violet-400">{r.units_lb ?? 0}</td>
                     <td className="px-2 py-2 text-right text-zinc-400">{r.prepaid_purchased ?? 0}</td>
                     <td className="px-2 py-2 text-right text-zinc-400">{r.prepaid_delivered ?? 0}</td>
                     <td className={`px-2 py-2 text-right font-medium ${(r.prepaid_remaining ?? 0) <= 0 ? 'text-red-400' : (r.prepaid_remaining ?? 0) <= 10 ? 'text-amber-400' : 'text-emerald-400'}`}>
@@ -302,7 +451,65 @@ export default function AdminFacturation() {
                   </tr>
                 ))}
                 {(data.prepaid || []).length === 0 && (
-                  <tr><td colSpan={7} className="px-3 py-8 text-center text-zinc-500">Aucun client prépayé</td></tr>
+                  <tr><td colSpan={9} className="px-3 py-8 text-center text-zinc-500">Aucun client prépayé</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* INTERFACTURATION SECTION */}
+          <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+            <ArrowRightLeft className="w-4 h-4 text-amber-400" /> Interfacturation interne
+            <span className="text-[10px] text-zinc-500 font-normal">({(data.interfacturation || []).length} lignes)</span>
+          </h2>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-x-auto">
+            <table className="w-full text-xs" data-testid="interfacturation-table">
+              <thead>
+                <tr className="border-b border-zinc-800 text-zinc-500 text-[10px]">
+                  <th className="text-left px-3 py-2 font-medium">Direction</th>
+                  <th className="px-2 py-2 font-medium">Produit</th>
+                  <th className="text-right px-2 py-2 font-medium">Units</th>
+                  <th className="text-right px-2 py-2 font-medium">Leads</th>
+                  <th className="text-right px-2 py-2 font-medium">LB</th>
+                  <th className="text-right px-2 py-2 font-medium">Prix int. HT</th>
+                  <th className="text-right px-2 py-2 font-medium">Total HT</th>
+                  <th className="text-left px-2 py-2 font-medium">N facture</th>
+                  <th className="px-2 py-2 font-medium text-center">Statut</th>
+                  <th className="px-2 py-2 font-medium"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {(data.interfacturation || []).map((r, i) => {
+                  const isEditing = editingInterId === r.id;
+                  return isEditing ? (
+                    <InterEditRow key={r.id} record={r} authFetch={authFetch} onDone={() => { setEditingInterId(null); load(); }} />
+                  ) : (
+                    <tr key={i} className="border-b border-zinc-800/50 hover:bg-zinc-800/30" data-testid={`inter-row-${r.from_entity}-${r.to_entity}-${r.product_code}`}>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${r.from_entity === 'ZR7' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-blue-500/10 text-blue-400'}`}>{r.from_entity}</span>
+                          <ArrowRightLeft className="w-3 h-3 text-zinc-600" />
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${r.to_entity === 'ZR7' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-blue-500/10 text-blue-400'}`}>{r.to_entity}</span>
+                        </div>
+                      </td>
+                      <td className="px-2 py-2 text-center"><span className="bg-zinc-800 text-zinc-300 px-1.5 py-0.5 rounded text-[10px]">{r.product_code}</span></td>
+                      <td className="px-2 py-2 text-right text-zinc-300 font-medium"><UnitsDisplay total={r.units_total} lb={r.units_lb} /></td>
+                      <td className="px-2 py-2 text-right text-zinc-400">{r.units_leads ?? 0}</td>
+                      <td className="px-2 py-2 text-right text-violet-400">{r.units_lb ?? 0}</td>
+                      <td className="px-2 py-2 text-right text-zinc-300">{r.unit_price_ht_internal ?? 0} EUR</td>
+                      <td className="px-2 py-2 text-right text-amber-400 font-medium">{(r.total_ht ?? 0).toFixed(2)} EUR</td>
+                      <td className="px-2 py-2 text-zinc-400 text-[10px]">{r.external_invoice_number || '-'}</td>
+                      <td className="px-2 py-2 text-center"><StatusPill status={r.status || 'not_invoiced'} map={REC_STATUS} /></td>
+                      <td className="px-2 py-2">
+                        <button onClick={() => setEditingInterId(r.id)} className="p-1 text-zinc-400 hover:text-amber-400 hover:bg-amber-500/10 rounded" data-testid={`inter-edit-${r.id}`}>
+                          <Edit3 className="w-3 h-3" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {(data.interfacturation || []).length === 0 && (
+                  <tr><td colSpan={10} className="px-3 py-8 text-center text-zinc-500">Aucun transfert interne cette semaine</td></tr>
                 )}
               </tbody>
             </table>
