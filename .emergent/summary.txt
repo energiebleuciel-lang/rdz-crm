@@ -1,87 +1,111 @@
 <analysis>**original_problem_statement:**
 The user wants to build a central CRM named RDZ. The core requirements include:
-1.  **Centralized Lead Collection:** All leads must be stored in a central database.
-2.  **Strict Entity Separation:** Leads and clients are separated into two distinct entities: ZR7 and MDL.
-3.  **Order System (Commandes):** Implement a system to manage lead distribution rules for clients.
-4.  **Duplicate Rule:** A 30-day duplicate check based on phone, product, and client.
-5.  **Lead Backlog (LB):** A system for recycling older or undelivered leads.
-6.  **Automated Daily Delivery:** Send leads via CSV email every morning at 09:30 (Europe/Paris).
-7.  **Backend First:** Build a reliable and robust backend foundation before any UI work.
+1.  **Centralized Lead Collection & Strict Entity Separation:** Leads and clients are separated into two distinct entities: ZR7 and MDL.
+2.  **Order System (Commandes):** Manage lead distribution rules for clients, including a 30-day duplicate check.
+3.  **Automated Daily Delivery:** Send leads via CSV email every morning.
+4.  **Backend First:** Build a reliable backend foundation before any UI work.
 
-During this session, the user requested a full technical audit and added several new features:
-*   **Technical Audit:** A complete review and cleanup of the entire backend to remove all legacy code, inconsistencies, and technical debt.
-*   **Commande OPEN Logic:** A stricter definition for an order to be eligible for receiving leads ( +  + ).
-*   **Dynamic Settings:** A new settings system to dynamically enable/disable  lead fallback and to blacklist lead .
-*   **Provider System:** A mechanism to onboard external lead providers, authenticated via API key. Each provider is tied to a single entity (ZR7 or MDL), and leads from them are , meaning they can **never** be routed to the other entity.
+During the project, several new, critical requirements were added to enhance reliability and control:
+*   **Schema Freeze:** A strict, immutable schema for the  entity was defined and enforced across the entire backend.
+*   **Provider System:** An API-key-based system for external lead providers, with leads being .
+*   **Phase 2 - Immediate Routing:** The  endpoint must route leads immediately instead of just storing them for the daily batch.
+*   **Phase 2.1-2.5 - Delivery Lifecycle V2:** A comprehensive overhaul of the delivery system was requested after a major data inconsistency was found. This includes:
+    *   **Client Livrable Rule:** Clients must have a valid delivery channel (email/API) to be considered active. Email validation with a denylist is required.
+    *   **Strict Delivery Statuses:** A new state machine (, , , , ) to ensure a lead is only marked  after a confirmed successful send.
+    *   **Manual Delivery Controls:** Endpoints for manual send/resend and CSV download.
+    *   **Manual Send Mode:** An  toggle per client to pause automatic email sending.
+    *   **Calendar Gating:** A global, per-entity calendar to disable routing and delivery on specific days (e.g., weekends). Routing must be blocked at the source () if the day is off.
 
 **User's preferred language**: French
 
 **what currently exists?**
-The backend has been completely refactored based on the user's comprehensive technical audit request. All legacy code, unused files, and inconsistent naming conventions have been removed, resulting in a clean and maintainable architecture.
+The backend has undergone significant evolution. The initial refactoring and Phase 2 (immediate routing) were completed. However, a major data inconsistency was discovered where a production simulation test incorrectly marked 623 deliveries as  without actually sending emails.
 
-The current system includes:
-*   A clean codebase with a consistent structure and naming conventions ( is used universally).
-*   A  system with API key authentication for external lead sources. The public lead submission endpoint () is now protected and assigns leads to the provider's entity, locking them from cross-entity routing.
-*   A dynamic  model and API () to control business logic at runtime, such as enabling/disabling cross-entity lead sharing and blacklisting lead sources.
-*   Refined routing logic incorporating the Commande OPEN concept, ensuring leads are only sent to clients with active orders that have not yet met their weekly quota.
-*   All new features and the refactored codebase have been extensively tested and validated using the testing agent, with all tests passing.
+To fix this and prevent recurrence, the agent has implemented a series of major backend enhancements (Phase 2.1-2.5):
+*   **New Models:** The  and  models have been updated with new fields to support the advanced lifecycle (, , , , etc.).
+*   **Calendar Gating:** A per-entity delivery calendar is implemented in settings and integrated into the  to block lead processing on non-delivery days.
+*   **Client Deliverability:** The  now checks if a client is livrable (has a valid delivery channel) before considering their commandes.
+*   **State Machine:** A new service, , was created to enforce strict, atomic transitions for delivery and lead statuses, ensuring data integrity.
+*   **Data Cleanup:** A script was run to reset the 623 incorrect deliveries from  back to  and their associated leads from  back to .
+
+The agent was in the process of integrating the new  into all relevant code paths (, ) to finalize the fix.
 
 **Last working item**:
-The agent successfully implemented and validated the  feature as requested by the user, which was the final task for the session.
+The agent was implementing a critical fix to prevent a major data inconsistency where deliveries were marked as  without being sent. This involved creating and integrating a strict state machine for status transitions.
 
-- **Last item agent was working:** Implementation of the Provider system, including the  model, a CRUD API with API key rotation (), and updating the public lead endpoint to handle authentication and lock the lead's entity.
-- **Status:** COMPLETED
-- **Agent Testing Done:** Y
+- **Last item agent was working:** Integrating the new  service into the  service and the  endpoint to ensure status transitions are atomic and reliable.
+- **Status:** IN PROGRESS
+- **Agent Testing Done:** N
 - **Which testing method agent to use?** backend testing agent
-- **User Testing Done:** Y
+- **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-- No outstanding issues. All work from the session was completed and validated.
+- **Issue 1: (P0) Data Inconsistency Root Cause:** A previous test simulation created a major data inconsistency by marking deliveries as  without actually sending them. The agent created  to fix this, but the integration is not yet complete or tested.
+
+  - **Attempted fixes:** A data cleanup script was run successfully. The  has been created, and the agent has performed  operations on  and  to use it.
+  - **Next debug checklist:**
+    1.  Review the changes in  and  to ensure the state machine is correctly and fully integrated.
+    2.  Run  and restart the backend to check for syntax errors.
+    3.  Run a new testing agent simulation focused on the Real Resend scenario requested by the user: enable simulation mode, run the batch sender, and verify that all 623 cleaned-up deliveries are correctly processed, sent to the simulation email, and their statuses are updated with the correct metadata (, , ).
+  - **Why fix this issue and what will be achieved with the fix?** This is a critical data integrity issue. Fixing it ensures that the  status is a true reflection of a successful delivery, which is fundamental to the CRM's business logic.
+  - **Status:** IN PROGRESS
+  - **Is recurring issue?** Y (This is the second time a discrepancy between DB state and reality has been found, highlighting a weakness in testing).
+  - **Should Test frontend/backend/both after fix?** backend
+  - **Blocked on other issue:** None
 
 **In progress Task List**:
-- No tasks are currently in progress.
+- **Task 1: (P0) Finalize Phase 2.1-2.5 Implementation**
+  - **Where to resume:** The agent has edited the files to integrate the . The next step is to test this integration thoroughly.
+  - **What will be achieved with this?** A robust, reliable, and controllable lead delivery system that meets all the user's new, strict requirements for data integrity and operational control.
+  - **Status:** IN PROGRESS
+  - **Should Test frontend/backend/both after fix?** backend
+  - **Blocked on something:** Blocked on resolving .
 
 **Upcoming and Future Tasks**
 *   **Upcoming Tasks:**
-    *   **(P0) Phase 2: Public Pipeline Integration:** Connect the  endpoint to the routing engine so that incoming leads are processed automatically instead of just being saved for the daily batch job. This involves determining the lead's  and  from the provider or form configuration and then triggering the routing logic.
-    *   **(P1) Phase 3: UI Admin:** Begin development of the frontend administration interface for managing , , , and .
+    *   **(P1) Phase 2.4: Manual Delivery Actions:**
+        *   Implement the resend logic in .
+        *   Implement the  endpoint.
+    *   **(P2) Phase 3: UI Admin:** Begin development of the frontend administration interface for managing , , , and , based on the new backend capabilities. This includes UI for:
+        *   Client settings (delivery emails, , delivery days).
+        *   Delivery management (status, errors, manual action buttons).
+        *   Settings configuration (calendar, email denylist, form mappings).
+        *   A minimal dashboard showing key stats (, , etc.).
 
 *   **Future Tasks:**
-    *   **(P2) Phase 8: Dashboard:** Implement the monitoring dashboard with daily statistics.
     *   **(P2) Phase 7: API Delivery:** Implement the optional API POST delivery method for clients.
+    *   **(P2) Phase 8: Dashboard:** Implement the full monitoring dashboard with daily statistics.
     *   **(P2) Phase 9 & 10: Tracking & Final Audit:** Align frontend tracking scripts and perform a final E2E audit.
     *   **(P3) Client Rejection Feature:** Implement the  status for leads.
 
 **Completed work in this session**
-- **Full Backend Technical Audit & Refactoring:**
-    - Performed a complete cleanup of the backend codebase.
-    - **Deleted over 25 legacy files**, including old models, routes (, , ), and services (, ).
-    - **Standardized Naming:** Replaced  with  across all models, routes, services, and existing MongoDB data.
-    - **Cleaned Database:** Dropped obsolete indexes and collections.
-- **Implemented Commande OPEN Logic:** Refined the routing engine to only consider orders that are active, within the current week, and have not met their quota.
-- **Implemented Dynamic Settings System:**
-    - Created a  endpoint and a  collection in MongoDB to manage global toggles for cross-entity routing and source blacklisting.
-- **Implemented Provider System:**
-    - Created a  model and a  CRUD API for managing external lead suppliers.
-    - Secured the public lead endpoint () with API key authentication.
-    - Implemented the  feature to prevent leads from providers from being shared across entities.
-- **Extensive Validation:** All features were rigorously tested using the testing agent, passing a total of **59/59 tests** across three validation cycles.
+- **Schema Freeze Audit:** Audited and corrected the entire backend to enforce the official, frozen lead schema.
+- **Phase 2 Implementation:** Connected the  endpoint to the  for immediate lead processing.
+- **Phase 2.1, 2.2, 2.3, 2.5 Implementation (Backend-only):**
+    - **Delivery Lifecycle:** Implemented new  statuses and  settings ().
+    - **Calendar Gating:** Implemented a per-entity calendar to block routing/delivery on specific days, fully integrated into the routing engine.
+    - **Client Deliverability:** Added rules to ensure clients have a valid delivery channel.
+    - **Email Denylist:** Added a configurable denylist for email domains in settings.
+- **Data Anomaly Investigation & Fix:**
+    - **Identified** a critical bug where 623 deliveries were marked sent without being sent.
+    - **Cleaned** the database by resetting the status of the affected deliveries and leads.
+    - **Created** a  service to enforce strict, atomic status transitions to prevent recurrence.
 
 **Earlier issues found/mentioned but not fixed**
 - None.
 
 **Known issue recurrence from previous fork**
-- None. The technical audit was specifically performed to eliminate all legacy code and prevent such recurrences.
+- None.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Multi-tenancy:** Strict data isolation between ZR7 and MDL, now enhanced with an  flag for provider leads.
-- **Scheduled Jobs:**  is used for the reliable daily delivery job at 09:30 Europe/Paris.
-- **Dynamic Configuration:** Business logic (like cross-entity sharing) can be toggled at runtime via the  endpoint without requiring a code deployment.
-- **API Key Authentication:** The public lead endpoint is secured, identifying and authenticating external providers via a unique API key.
-- **Code Refactoring & Debt Reduction:** The session's primary focus was on cleaning the codebase to create a stable foundation for future development.
+- **State Machine:** A dedicated service () now governs all status transitions for deliveries and leads to ensure atomicity and data integrity.
+- **Dynamic Configuration:** Business logic (cross-entity, source-gating, delivery days, email denylist) is managed via the  endpoint.
+- **Calendar Gating:** A hard-stop rule that blocks the entire routing and delivery pipeline on configured non-working days.
+- **Scheduled Jobs:**  for the daily delivery batch, which now has a much more complex, multi-step logic.
+- **API Key Authentication:** For external lead providers.
 
 **key DB schema**
 - ****: 
@@ -93,61 +117,59 @@ The agent successfully implemented and validated the  feature as requested by th
 
 **All files of reference**
 *   **New/Created:**
-    *   
-    *   
-    *   
-    *   
-    *   
+    *   : Endpoints for manual delivery actions (send, download).
+    *   : The core service for ensuring data integrity during status transitions.
+    *   : Unit tests for the  feature.
+    *   : Official documentation for the frozen data schema.
 *   **Heavily Modified/Rewritten:**
-    *    (Scheduler cleaned, new routes and indexes added)
-    *    (Rewritten to support provider auth and source gating)
-    *    (Updated for Commande OPEN and  logic)
-    *    (Updated to use new routing logic)
-    *    (Field  renamed to )
-*   **Deleted:** Over 25 legacy files across , , and .
+    *   : Overhauled with new fields for the V2 lifecycle.
+    *   : Updated with fields for deliverability and manual control.
+    *   : Rewritten to incorporate the strict priority order (calendar, deliverability, auto-send) and use the new state machine.
+    *   : Updated to include calendar gating and client deliverability checks.
+    *   : Implemented immediate routing and enriched API response.
+    *   : Added endpoints for managing the delivery calendar and email denylist.
+    *   : Added the new  router.
 
 **Areas that need refactoring**:
-- The test script  is now outdated due to the extensive refactoring and removal of old logic. It should be updated or replaced to reflect the current state of the codebase and test the new features.
+- The testing strategy needs a major overhaul. Tests must validate real actions (like email sending via a mock) instead of just checking database state changes, which led to the critical false positive bug.
+- The old test script  remains outdated.
 
 **key api endpoints**
-- **Providers:**
-    - : Create a new provider.
-    - : List all providers.
-    - : Generate a new API key for a provider.
-- **Settings:**
-    - : Retrieve current settings.
-    - : Update settings.
-- **Leads:**
-    - : Submit a lead (requires provider API key in  header).
-- **Existing (and still active):**
-    - CRUD for  and .
+- **Deliveries (New):**
+    - : Manually send/resend a delivery.
+    - : Manually send a batch of  deliveries for a client.
+    - : Download the CSV for a delivery.
+- **Settings (New/Updated):**
+    - : Manage delivery days per entity.
+    - : Manage the email domain denylist.
+    - : Enable/disable simulation mode.
 
 **Critical Info for New Agent**
-- **The backend is clean.** A major technical audit was just completed. Adhere to the new, simplified architecture and do not re-introduce any legacy patterns.
-- **The next task is Phase 2.** The user has explicitly stated that the next step is to connect the public lead pipeline to the routing engine for automatic processing. This is the highest priority.
-- **Provider system is central.** All external leads now come through providers authenticated by an API key. This system dictates the lead's entity and locks it.
+- **A major data inconsistency was found and fixed.** A previous test run created a false positive, marking 623 deliveries as  without sending them. The data has been cleaned, and a new  has been introduced to prevent this. **Your highest priority is to validate this fix.** Do not trust that simply setting a status in the DB is sufficient for a test to pass.
+- **The delivery logic is now complex.** Follow the strict priority order defined by the user: 1. Calendar Gating, 2. Client Deliverability, 3. . The  service reflects this.
 - **Communicate exclusively in French.**
 
 **documents and test reports created in this job**
--  (updated with all new features and architecture changes)
--  (Audit validation)
--  (Settings & Commande OPEN validation)
--  (Provider system validation)
+-  (updated with all new delivery lifecycle rules)
+- 
+-  to  (Note:  contains the flawed simulation).
+- 
+- 
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User (msg 231):** Asks for a complete summary of the day's work and a status update to ensure the next agent knows where to resume.
-2.  **User (msg 230):** Expresses satisfaction and validates the provider feature implementation (Parfait, Provider feature validée ✅... GO.).
-3.  **User (msg 228-229):** (Agent response summarizing test results).
-4.  **User (msg 186):** Confirms the provider authentication should be via API key.
-5.  **User (msg 185):** (Agent proposing API key auth).
-6.  **User (msg 182):** Specifies the new  requirement: providers are attached to a single entity, their leads are , and cross-entity routing is strictly forbidden for them.
-7.  **User (msg 180-181):** (Agent response summarizing test results).
-8.  **User (msg 131):** Approves the implementation plan for settings and Commande OPEN, adding clarifications:  must check for the current week, settings should have , and  leads should still be validated.
-9.  **User (msg 130):** (Agent proposes implementation plan for settings and Commande OPEN).
-10. **User (msg 128):** Clarifies requirements for cross-entity logic (must be a , not just active), and requests new features: a global ON/OFF toggle for cross-entity fallback and a source-gating mechanism.
+1.  **User:** Asks for a precise reconciliation of delivered leads vs. emails received, revealing the 630 vs. 314 discrepancy.
+2.  **Agent:** Provides summary of Phase 2.5 completion.
+3.  **User:** Requests implementation of Phase 2.5 ( logic).
+4.  **Agent:** Confirms completion of Phases 2.1-2.3 and updates PRD.
+5.  **User:** Approves plan to proceed with Phase 2.5 after testing agent validation.
+6.  **Agent:** Reports successful test run for Phases 2.1-2.3.
+7.  **User:** Requests detailed breakdown of  leads, leading to the discovery and validation that no bug was present (leads were created before commandes).
+8.  **User:** Asks for a full production simulation test with 1300+ leads and email override.
+9.  **Agent:** Reports successful E2E validation and correction of 2 critical bugs found by the testing agent.
+10. **User:** Asks agent to run a full E2E validation of the entire pipeline with the testing agent, including checking for illegal state transitions.
 
 **Project Health Check:**
-- **Broken:** The frontend is completely out of sync with the refactored backend and new data models. This is an expected state as per the user's backend-first strategy.
+- **Broken:** The frontend is completely out of sync with the backend. This is expected.
 - **Mocked:** None.
 
 **3rd Party Integrations**
@@ -155,16 +177,16 @@ The agent successfully implemented and validated the  feature as requested by th
 - **APScheduler:** Used for the daily scheduled delivery job.
 
 **Testing status**
-- **Testing agent used after significant changes:** YES. The testing agent was used successfully three times to validate the technical audit, the settings feature, and the provider system.
+- **Testing agent used after significant changes:** YES. It was used multiple times, but one simulation () introduced a critical data inconsistency by not performing real actions. This flaw in the test itself is the root cause of the current P0 issue.
 - **Troubleshoot agent used after agent stuck in loop:** NO
-- **Test files created:** None. The existing script  is now outdated.
-- **Known regressions:** None. The session was focused on eliminating regressions and technical debt.
+- **Test files created:** []
+- **Known regressions:** The data integrity of the  and  collections was compromised by a flawed test. This has been cleaned, but the fix needs validation.
 
 **Credentials to test flow:**
-- **UI Login:**  /  (Note: UI is not functional for new logic).
+- **UI Login:**  /  (UI is not functional for new logic).
 - **SMTP (MDL):**  / 
 - **SMTP (ZR7):**  / 
-- **Provider API Key (for testing):** A test provider for ZR7 was created with the API key .
+- **Simulation Email:** 
 
 **What agent forgot to execute**
-- The agent did not update the manual test script  after the major backend refactoring. While the testing agent provides comprehensive validation, this script is now stale and could cause confusion if used.</analysis>
+The agent was in the middle of a critical fix. The integration of  into  and  is not yet tested. The agent has edited the files but has not run lint, restarted the server, or run any tests on the changes.</analysis>
