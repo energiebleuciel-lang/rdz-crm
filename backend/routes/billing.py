@@ -460,7 +460,11 @@ async def build_ledger(week_key: str, user: dict = Depends(get_current_user)):
     credits = await db.billing_credits.find({"week_key": week_key}, {"_id": 0}).to_list(500)
     credit_map = defaultdict(int)
     for c in credits:
-        credit_map[f"{c['client_id']}:{c['product_code']}:{c['order_id']}"] += c["quantity_units_free"]
+        oid = c.get("order_id", "")
+        pc = c.get("product_code", "")
+        cid = c.get("client_id", "")
+        if oid and pc:
+            credit_map[f"{cid}:{pc}:{oid}"] += c["quantity_units_free"]
 
     # 1. Build ledger entries
     entries = []
