@@ -155,7 +155,7 @@ export default function AdminClients() {
                       </>
                     ) : (
                       <>
-                        <td className="px-3 py-2 text-zinc-300 font-medium">{c.name}</td>
+                        <td className="px-3 py-2 text-zinc-300 font-medium cursor-pointer hover:text-teal-400" onClick={() => navigate(`/admin/clients/${c.id}`)}>{c.name}</td>
                         <td className="px-3 py-2"><span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${c.entity === 'ZR7' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-blue-500/10 text-blue-400'}`}>{c.entity}</span></td>
                         <td className="px-3 py-2 text-zinc-400 font-mono text-[10px]">{c.phone || '-'}</td>
                         <td className="px-3 py-2">
