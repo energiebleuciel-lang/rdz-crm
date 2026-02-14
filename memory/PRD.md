@@ -8,6 +8,7 @@ Build a central CRM named "RDZ" with strict entity separation (ZR7/MDL). The pro
 - Pricing & billing engine with weekly billing and financial tracking
 - Interfacturation interne MDL <-> ZR7
 - Vue récapitulative mensuelle
+- Dynamic LB Target per commande
 
 ## Architecture
 - **Backend:** FastAPI + MongoDB (multi-tenant ZR7/MDL)
@@ -48,10 +49,27 @@ Build a central CRM named "RDZ" with strict entity separation (ZR7/MDL). The pro
 - Section interfacturation interne mensuelle agrégée
 - MonthNavStandard component avec noms de mois en français
 
+### LB Target Dynamique (Feb 14, 2026)
+- **New field `lb_target_pct`** (float 0-1) replaces `lb_percent_max` on commandes
+- Dynamic Fresh/LB mix per commande: `lb_needed = ceil(target * (delivered + 1)) - lb_delivered`
+- Counts only `delivery.status=sent AND outcome=accepted` (rejects/removed excluded)
+- `lb_shortfall` event logged when LB needed but unavailable
+- `is_lb` field added to delivery records for efficient querying
+- Frontend: "LB Target" column in commandes table, create/edit modals, detail page
+- All existing commandes migrated from lb_percent_max to lb_target_pct
+- Backend: `get_accepted_stats_for_lb_target()`, `compute_lb_needed()` in routing_engine
+- Backend: `process_commande_delivery()` rewritten with dynamic targeting in daily_delivery
+- 8/8 unit tests pass, 11/11 API tests pass, 100% frontend tests pass
+
 ## Key DB Collections
 clients, commandes, leads, deliveries, products, client_pricing, client_product_pricing,
 prepayment_balances, billing_credits, billing_ledger, billing_records,
 entity_transfer_pricing, interfacturation_records, event_log
+
+## Key DB Schema Changes
+- **commandes**: Added `lb_target_pct: float` (0-1), `lb_percent_max` deprecated
+- **deliveries**: Added `is_lb: bool` on new records
+- **event_log**: New action `lb_shortfall` with details (week_key, target_pct, current_pct, lb_needed, available_lb)
 
 ## Backlog
 ### P1: Simple Permissions (admin/ops/viewer), Configure transfer pricing via admin UI
