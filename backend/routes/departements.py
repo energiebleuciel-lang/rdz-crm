@@ -257,7 +257,7 @@ async def dept_detail(
     dept: str,
     product: str = Query("ALL"),
     week: Optional[str] = None,
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_permission("departements.view")),
 ):
     week_key = week or _current_week_key()
     prod_match = {} if not product or product.upper() == "ALL" else {"produit": product.upper()}
