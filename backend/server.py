@@ -135,6 +135,13 @@ async def lifespan(app: FastAPI):
         )
         await db.billing_records.create_index("status", background=True)
 
+        await db.entity_transfer_pricing.create_index(
+            [("from_entity", 1), ("to_entity", 1), ("product_code", 1)], unique=True, background=True
+        )
+        await db.interfacturation_records.create_index(
+            [("week_key", 1), ("from_entity", 1), ("to_entity", 1)], background=True
+        )
+
         logger.info("Index MongoDB OK")
     except Exception as e:
         logger.warning(f"Index MongoDB: {str(e)}")
