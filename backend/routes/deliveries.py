@@ -254,6 +254,18 @@ async def send_delivery(
         
         logger.info(f"[DELIVERY_SENT] id={delivery_id} to={to_emails} by={user.get('email')}")
         
+        from services.event_logger import log_event
+        action_name = "resend_delivery" if current_status == "sent" else "send_delivery"
+        await log_event(
+            action=action_name,
+            entity_type="delivery",
+            entity_id=delivery_id,
+            entity=delivery.get("entity", ""),
+            user=user.get("email"),
+            details={"sent_to": to_emails, "force": current_status == "sent"},
+            related={"lead_id": delivery.get("lead_id"), "client_id": delivery.get("client_id"), "client_name": delivery.get("client_name")}
+        )
+        
         return {
             "success": True,
             "delivery_id": delivery_id,
