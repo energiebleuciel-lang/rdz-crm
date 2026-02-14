@@ -86,6 +86,7 @@ export default function AdminMonitoring() {
   const scores = data.source_scores || [];
   const offenders = data.duplicate_offenders_by_entity || {};
   const cann = data.cannibalization || {};
+  const overlap = data.overlap_stats || {};
 
   const TABS = [
     { id: 'overview', label: 'Vue générale' },
