@@ -279,10 +279,10 @@ class TestBillingCredits:
 
     def test_delete_credit_not_applied(self, api_client, test_client_id):
         """DELETE /api/clients/{id}/credits/{id} deletes credit if not applied"""
-        # Create a new credit
+        # Create a new credit with a valid week number
         create_resp = api_client.post(f"{BASE_URL}/api/clients/{test_client_id}/credits", json={
             "product_code": "PV",
-            "week_key": "2026-W99",
+            "week_key": "2026-W52",
             "quantity_units_free": 1,
             "reason": "bug",
             "note": "To be deleted"
