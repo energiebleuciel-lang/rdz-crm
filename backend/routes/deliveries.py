@@ -61,9 +61,12 @@ async def list_deliveries(
     
     total = await db.deliveries.count_documents(query)
     
-    # Ajouter has_csv
+    # Ajouter has_csv + outcome + billable
     for d in deliveries:
         d["has_csv"] = bool(d.get("csv_filename"))
+        outcome = d.get("outcome", "accepted")
+        d["outcome"] = outcome
+        d["billable"] = d.get("status") == "sent" and outcome == "accepted"
     
     return {
         "deliveries": deliveries,
