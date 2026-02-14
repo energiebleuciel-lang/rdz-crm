@@ -94,18 +94,42 @@ async def get_client(
     client_id: str,
     user: dict = Depends(get_current_user)
 ):
-    """Récupère un client par ID"""
+    """Récupère un client par ID avec enrichissement complet"""
     client = await db.clients.find_one({"id": client_id}, {"_id": 0})
     
     if not client:
         raise HTTPException(status_code=404, detail="Client non trouvé")
     
-    # Stats
+    from models.client import check_client_deliverable
+    from services.settings import get_email_denylist_settings
+    from services.routing_engine import get_week_start
+    
+    denylist_settings = await get_email_denylist_settings()
+    denylist = denylist_settings.get("domains", [])
+    
+    check = check_client_deliverable(
+        email=client.get("email", ""),
+        delivery_emails=client.get("delivery_emails", []),
+        api_endpoint=client.get("api_endpoint", ""),
+        denylist=denylist
+    )
+    client["has_valid_channel"] = check["deliverable"]
+    client["deliverable_reason"] = check.get("reason")
+    
+    if "auto_send_enabled" not in client:
+        client["auto_send_enabled"] = True
+    
     delivered_count = await db.leads.count_documents({
-        "delivered_to_client_id": client_id,
-        "status": "livre"
+        "delivered_to_client_id": client_id, "status": "livre"
     })
     client["total_leads_received"] = delivered_count
+    
+    week_start = get_week_start()
+    week_count = await db.leads.count_documents({
+        "delivered_to_client_id": client_id, "status": "livre",
+        "delivered_at": {"$gte": week_start}
+    })
+    client["total_leads_this_week"] = week_count
     
     return {"client": client}
 
