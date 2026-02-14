@@ -47,6 +47,7 @@ export default function AdminLeads() {
       const params = new URLSearchParams();
       params.set('limit', limit);
       params.set('skip', page * limit);
+      params.set('week', week);
       Object.entries(filters).forEach(([k, v]) => { if (v) params.set(k, v); });
       if (searchText) params.set('search', searchText);
 
