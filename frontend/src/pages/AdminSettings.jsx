@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { API } from '../hooks/useApi';
-import { Save, RefreshCw } from 'lucide-react';
+import { Save, AlertTriangle, CalendarCheck, CalendarX } from 'lucide-react';
 
 export default function AdminSettings() {
   const { authFetch } = useAuth();
   const [denylist, setDenylist] = useState({ domains: [], simulation_mode: false, simulation_email: '' });
   const [calendar, setCalendar] = useState({ ZR7: { enabled_days: [0,1,2,3,4], disabled_dates: [] }, MDL: { enabled_days: [0,1,2,3,4], disabled_dates: [] } });
+  const [calCheck, setCalCheck] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(null);
   const [msg, setMsg] = useState('');
