@@ -65,8 +65,8 @@ async def get_dashboard_stats(
     lead_stats_raw = await db.leads.aggregate(lead_pipeline).to_list(20)
     lead_stats = {r["_id"]: r["count"] for r in lead_stats_raw if r["_id"]}
 
-    # Delivery stats (scoped to selected week)
-    week_match = {"created_at": {"$gte": week_start, "$lte": week_end}}
+    # Delivery stats (scoped)
+    week_match = {**entity_filter, "created_at": {"$gte": week_start, "$lte": week_end}}
     del_pipeline = [{"$match": week_match}, {"$group": {"_id": "$status", "count": {"$sum": 1}}}]
     del_stats_raw = await db.deliveries.aggregate(del_pipeline).to_list(10)
     del_stats = {r["_id"]: r["count"] for r in del_stats_raw if r["_id"]}
