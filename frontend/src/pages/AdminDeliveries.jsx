@@ -15,7 +15,7 @@ const STATUS_BADGE = {
 };
 
 export default function AdminDeliveries() {
-  const { authFetch } = useAuth();
+  const { authFetch, entityScope, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [deliveries, setDeliveries] = useState([]);
