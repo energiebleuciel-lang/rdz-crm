@@ -279,7 +279,7 @@ export default function AdminDepartements() {
   // Filters
   const [product, setProduct] = useState('ALL');
   const [period, setPeriod] = useState('week');
-  const [week, setWeek] = useState(getCurrentWeek());
+  const [week, setWeek] = useState(getCurrentWeekKey());
   const [searchDept, setSearchDept] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
@@ -319,7 +319,7 @@ export default function AdminDepartements() {
   useEffect(() => { load(); }, [load]);
   useEffect(() => { loadClients(); }, [loadClients]);
 
-  const handleWeekNav = (dir) => setWeek(w => shiftWeek(w, dir));
+  const handleWeekNav = (dir) => setWeek(w => shiftWeekKey(w, dir));
 
   // Filter + sort data
   const filtered = data.filter(r => {
