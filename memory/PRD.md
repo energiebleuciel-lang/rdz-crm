@@ -67,7 +67,14 @@ pending_csv → ready_to_send → sending → sent
 - Configurable par entity via settings.delivery_calendar
 - **HARD STOP**: Si jour OFF → aucune commande OPEN → routing retourne `no_open_orders` avec `reason: delivery_day_disabled`
 
-## ARCHITECTURE (v4.4)
+## AUTO_SEND_ENABLED
+
+- Champ `auto_send_enabled` sur Client (defaut: true)
+- Si `true`: batch genere CSV + envoie → `delivery.status=sent` + `lead.status=livre`
+- Si `false`: batch genere CSV + stocke → `delivery.status=ready_to_send` + `lead.status=routed`
+- Envoi manuel via `POST /api/deliveries/{id}/send` ou `POST /api/deliveries/batch/send-ready`
+
+## ARCHITECTURE (v4.5)
 
 ```
 /app/backend/
