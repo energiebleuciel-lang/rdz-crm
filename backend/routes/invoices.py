@@ -266,3 +266,19 @@ async def mark_paid(
         {"$set": {"status": "paid", "paid_at": paid_at, "updated_at": paid_at}}
     )
     return {"success": True, "status": "paid", "paid_at": paid_at}
+
+
+@router.get("/debug/scope-check", tags=["Debug"])
+async def debug_scope(request: Request, user: dict = Depends(get_current_user)):
+    """Temporary debug: show scope resolution."""
+    from services.permissions import get_entity_scope_from_request
+    raw_header = request.headers.get("x-entity-scope", "NOT_SET")
+    scope = get_entity_scope_from_request(user, request)
+    return {
+        "user_email": user.get("email"),
+        "user_entity": user.get("entity"),
+        "user_role": user.get("role"),
+        "is_super_admin": user.get("role") == "super_admin",
+        "header_x_entity_scope": raw_header,
+        "final_scope_applied": scope,
+    }
