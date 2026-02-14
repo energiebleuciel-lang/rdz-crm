@@ -27,6 +27,7 @@ export default function AdminLeads() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [searchText, setSearchText] = useState('');
+  const [week, setWeek] = useState(getCurrentWeekKey());
   const [filters, setFilters] = useState({
     entity: searchParams.get('entity') || '',
     produit: searchParams.get('produit') || '',
