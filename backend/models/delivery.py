@@ -135,6 +135,11 @@ class SendDeliveryRequest(BaseModel):
     force: bool = False  # Forcer même si déjà sent
 
 
+class RejectDeliveryRequest(BaseModel):
+    """Request pour rejeter une delivery (rejet client)"""
+    reason: str = ""  # Motif du rejet
+
+
 class DeliveryResponse(BaseModel):
     """Response API pour une delivery"""
     id: str
