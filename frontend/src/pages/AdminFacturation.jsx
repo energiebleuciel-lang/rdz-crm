@@ -7,8 +7,8 @@ import {
   FileText, DollarSign, TrendingUp, Package, Check, X, Edit3,
   Plus, ArrowRightLeft, Users
 } from 'lucide-react';
-import { getCurrentWeekKey, shiftWeekKey } from '../lib/weekUtils';
-import { WeekNavStandard } from '../components/WeekNav';
+import { getCurrentWeekKey, shiftWeekKey, getCurrentMonthKey, shiftMonthKey } from '../lib/weekUtils';
+import { WeekNavStandard, MonthNavStandard } from '../components/WeekNav';
 
 const REC_STATUS = {
   not_invoiced: { label: 'Non facturé', cls: 'bg-zinc-700/60 text-zinc-300 border-zinc-600' },
