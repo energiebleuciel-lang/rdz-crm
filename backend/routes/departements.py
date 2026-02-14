@@ -56,7 +56,7 @@ async def departements_overview(
     week: Optional[str] = None,
     departements: Optional[str] = None,
     client_id: Optional[str] = None,
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_permission("departements.view")),
 ):
     week_key = week or _current_week_key()
     prev_key = _prev_week_key(week_key)
