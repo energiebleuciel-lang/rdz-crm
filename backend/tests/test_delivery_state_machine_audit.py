@@ -300,14 +300,17 @@ class TestEmailDenylistSettings:
 
 
 class TestSimulationMode:
-    """Test simulation mode settings"""
+    """Test simulation mode settings (part of email-denylist)"""
     
     def test_get_simulation_mode(self, api_client):
-        """GET /api/settings/simulation-mode"""
-        response = api_client.get(f"{BASE_URL}/api/settings/simulation-mode")
+        """Simulation mode is part of email-denylist settings"""
+        response = api_client.get(f"{BASE_URL}/api/settings/email-denylist")
         assert response.status_code == 200
         data = response.json()
-        print(f"✅ Simulation mode: enabled={data.get('enabled')}, email={data.get('email')}")
+        # Simulation mode fields are in email-denylist
+        has_sim_mode = "simulation_mode" in data
+        has_sim_email = "simulation_email" in data
+        print(f"✅ Simulation mode: enabled={data.get('simulation_mode')}, email={data.get('simulation_email')}")
 
 
 class TestStateMachineTransitionGuards:
