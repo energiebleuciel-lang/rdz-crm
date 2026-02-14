@@ -143,7 +143,11 @@ async def send_delivery(
     - Si status=pending_csv ou ready_to_send: génère CSV et envoie
     - Si status=failed: retente l'envoi
     - Si status=sent et force=True: renvoie
+    
+    🔒 Utilise delivery_state_machine pour les transitions
     """
+    from services.delivery_state_machine import mark_delivery_sent, mark_delivery_failed, mark_delivery_sending
+    
     delivery = await db.deliveries.find_one({"id": delivery_id}, {"_id": 0})
     
     if not delivery:
@@ -186,11 +190,12 @@ async def send_delivery(
     if not to_emails:
         raise HTTPException(status_code=400, detail="Aucun email de destination")
     
-    # Marquer comme sending
-    await db.deliveries.update_one(
-        {"id": delivery_id},
-        {"$set": {"status": "sending", "updated_at": now_iso()}}
-    )
+    # Marquer comme sending (si pas déjà sent avec force)
+    if current_status != "sent":
+        try:
+            await mark_delivery_sending(delivery_id)
+        except Exception:
+            pass  # Continue anyway for retry
     
     try:
         # Générer CSV si pas déjà fait
@@ -203,7 +208,7 @@ async def send_delivery(
         
         csv_filename = delivery.get("csv_filename") or f"lead_{entity}_{produit}_{lead.get('id')[:8]}.csv"
         
-        # Envoyer
+        # 1. Envoyer l'email RÉELLEMENT
         await send_csv_email(
             entity=entity,
             to_emails=to_emails,
@@ -214,32 +219,21 @@ async def send_delivery(
             produit=produit
         )
         
-        # Marquer comme sent
-        now = now_iso()
+        # 2. 🔒 SEULEMENT après envoi réussi: marquer via state machine
+        await mark_delivery_sent(
+            delivery_id=delivery_id,
+            sent_to=to_emails,
+            send_attempts=delivery.get("send_attempts", 0) + 1,
+            sent_by=user.get("email")
+        )
+        
+        # 3. Stocker le CSV pour téléchargement
         await db.deliveries.update_one(
             {"id": delivery_id},
             {"$set": {
-                "status": "sent",
-                "sent_to": to_emails,
-                "last_sent_at": now,
-                "send_attempts": delivery.get("send_attempts", 0) + 1,
-                "sent_by": user.get("email"),
                 "csv_content": csv_content,
                 "csv_filename": csv_filename,
-                "csv_generated_at": now,
-                "last_error": None,
-                "updated_at": now
-            }}
-        )
-        
-        # Marquer le lead comme livre
-        await db.leads.update_one(
-            {"id": lead.get("id")},
-            {"$set": {
-                "status": "livre",
-                "delivered_at": now,
-                "delivered_to_client_id": client.get("id"),
-                "delivered_to_client_name": client.get("name")
+                "csv_generated_at": now_iso()
             }}
         )
         
@@ -254,16 +248,24 @@ async def send_delivery(
         }
         
     except Exception as e:
-        # Marquer comme failed
-        await db.deliveries.update_one(
-            {"id": delivery_id},
-            {"$set": {
-                "status": "failed",
-                "last_error": str(e),
-                "send_attempts": delivery.get("send_attempts", 0) + 1,
-                "updated_at": now_iso()
-            }}
-        )
+        # 🔒 Marquer comme failed via state machine
+        try:
+            await mark_delivery_failed(
+                delivery_id=delivery_id,
+                error=str(e),
+                increment_attempts=True
+            )
+        except Exception:
+            # Fallback direct si state machine échoue
+            await db.deliveries.update_one(
+                {"id": delivery_id},
+                {"$set": {
+                    "status": "failed",
+                    "last_error": str(e),
+                    "updated_at": now_iso()
+                },
+                "$inc": {"send_attempts": 1}}
+            )
         
         logger.error(f"[DELIVERY_FAILED] id={delivery_id} error={str(e)}")
         
