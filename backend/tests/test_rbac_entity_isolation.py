@@ -160,12 +160,12 @@ class TestEntityIsolation:
         assert data.get('entity') == 'MDL'
         print(f"PASS: super_admin can access MDL. Count: {len(data['commandes'])}")
     
-    def test_ops_zr7_cannot_access_mdl_leads(self, ops_zr7_session):
-        """ops_zr7 user MUST get 403 when accessing entity=MDL on leads endpoint"""
-        res = ops_zr7_session.get(f"{BASE_URL}/api/leads", params={"entity": "MDL"})
+    def test_ops_zr7_cannot_access_mdl_deliveries(self, ops_zr7_session):
+        """ops_zr7 user MUST get 403 when accessing entity=MDL on deliveries endpoint"""
+        res = ops_zr7_session.get(f"{BASE_URL}/api/deliveries", params={"entity": "MDL"})
         
-        assert res.status_code == 403, f"Expected 403 for cross-entity leads access, got {res.status_code}: {res.text}"
-        print(f"PASS: ops_zr7 correctly gets 403 on MDL leads endpoint")
+        assert res.status_code == 403, f"Expected 403 for cross-entity deliveries access, got {res.status_code}: {res.text}"
+        print(f"PASS: ops_zr7 correctly gets 403 on MDL deliveries endpoint")
     
     def test_ops_zr7_cannot_access_mdl_clients(self, ops_zr7_session):
         """ops_zr7 user MUST get 403 when accessing entity=MDL on clients endpoint"""
