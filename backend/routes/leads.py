@@ -113,7 +113,8 @@ async def get_dashboard_stats(
     # Clients à problème
     denylist_settings = await get_email_denylist_settings()
     denylist = denylist_settings.get("domains", [])
-    all_clients = await db.clients.find({"active": True}, {"_id": 0, "id": 1, "name": 1, "entity": 1, "email": 1, "delivery_emails": 1, "api_endpoint": 1}).to_list(500)
+    client_query = {"active": True, **entity_filter}
+    all_clients = await db.clients.find(client_query, {"_id": 0, "id": 1, "name": 1, "entity": 1, "email": 1, "delivery_emails": 1, "api_endpoint": 1}).to_list(500)
     problem_clients = []
     for c in all_clients:
         check = check_client_deliverable(c.get("email",""), c.get("delivery_emails",[]), c.get("api_endpoint",""), denylist)
