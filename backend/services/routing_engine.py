@@ -92,6 +92,67 @@ def resolve_week_range(week_key=None):
     return get_week_start(), get_week_end()
 
 
+async def get_accepted_stats_for_lb_target(commande_id: str, week_start: str, week_end: str) -> Dict[str, int]:
+    """
+    Compte les deliveries acceptées pour le calcul du LB target.
+    Comptage basé uniquement sur: delivery.status == "sent" AND outcome == "accepted"
+    Ne compte jamais rejected / removed.
+    """
+    pipeline = [
+        {
+            "$match": {
+                "commande_id": commande_id,
+                "status": "sent",
+                "outcome": {"$nin": ["rejected", "removed"]},
+                "last_sent_at": {"$gte": week_start, "$lte": week_end}
+            }
+        },
+        {
+            "$lookup": {
+                "from": "leads",
+                "localField": "lead_id",
+                "foreignField": "id",
+                "pipeline": [{"$project": {"_id": 0, "is_lb": 1}}],
+                "as": "lead_info"
+            }
+        },
+        {
+            "$group": {
+                "_id": None,
+                "units_accepted": {"$sum": 1},
+                "lb_accepted": {
+                    "$sum": {
+                        "$cond": [
+                            {"$or": [
+                                {"$eq": ["$is_lb", True]},
+                                {"$eq": [{"$arrayElemAt": ["$lead_info.is_lb", 0]}, True]}
+                            ]},
+                            1, 0
+                        ]
+                    }
+                }
+            }
+        }
+    ]
+
+    result = await db.deliveries.aggregate(pipeline).to_list(1)
+    if result:
+        total = result[0].get("units_accepted", 0)
+        lb = result[0].get("lb_accepted", 0)
+        return {"units_accepted": total, "lb_accepted": lb, "fresh_accepted": total - lb}
+    return {"units_accepted": 0, "lb_accepted": 0, "fresh_accepted": 0}
+
+
+def compute_lb_needed(lb_target_pct: float, delivered_units: int, lb_delivered: int) -> int:
+    """
+    Calcule le nombre de LB nécessaires pour atteindre le target.
+    lb_needed = ceil(target * (delivered_units + 1)) - lb_delivered
+    """
+    if lb_target_pct <= 0:
+        return 0
+    return ceil(lb_target_pct * (delivered_units + 1)) - lb_delivered
+
+
 async def get_commande_stats(commande_id: str, week_start: str) -> Dict[str, int]:
     """
     Stats de la commande pour la semaine en cours.
