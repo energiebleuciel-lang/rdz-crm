@@ -377,3 +377,90 @@ async def get_intercompany_invoice_detail(
     ).to_list(len(transfer_ids))
 
     return {"invoice": inv, "transfers": transfers}
+
+
+# ════════════════════════════════════════════════════════════════════════
+# SYSTEM HEALTH + RETRY
+# ════════════════════════════════════════════════════════════════════════
+
+@router.get("/health")
+async def intercompany_health(
+    user: dict = Depends(require_permission("intercompany.view"))
+):
+    """System health: failed transfers, last cron, failed invoices."""
+    # Failed transfers
+    error_count = await db.intercompany_transfers.count_documents({"transfer_status": "error"})
+    pending_count = await db.intercompany_transfers.count_documents({"transfer_status": "pending"})
+    invoiced_count = await db.intercompany_transfers.count_documents({"transfer_status": "invoiced"})
+    total_count = await db.intercompany_transfers.count_documents({})
+
+    # Recent errors (last 10)
+    recent_errors = await db.intercompany_transfers.find(
+        {"transfer_status": "error"}, {"_id": 0, "id": 1, "delivery_id": 1, "error_code": 1, "error_message": 1, "created_at": 1}
+    ).sort("created_at", -1).limit(10).to_list(10)
+
+    # Last cron runs
+    last_crons = await db.cron_logs.find(
+        {"job": "intercompany_invoices"}, {"_id": 0}
+    ).sort("run_at", -1).limit(5).to_list(5)
+
+    # Failed intercompany invoices (draft with old issue date)
+    failed_invoice_gen = await db.invoices.count_documents({
+        "type": "intercompany", "status": "draft",
+    })
+
+    return {
+        "transfers": {
+            "total": total_count,
+            "pending": pending_count,
+            "invoiced": invoiced_count,
+            "error": error_count,
+        },
+        "recent_errors": recent_errors,
+        "cron": {
+            "last_runs": last_crons,
+        },
+        "invoices": {
+            "draft_count": failed_invoice_gen,
+        },
+        "status": "healthy" if error_count == 0 else "degraded",
+    }
+
+
+@router.post("/retry-errors")
+async def retry_failed_transfers(
+    user: dict = Depends(require_permission("intercompany.manage"))
+):
+    """Retry all transfers with status=error."""
+    from services.intercompany import maybe_create_intercompany_transfer
+
+    errors = await db.intercompany_transfers.find(
+        {"transfer_status": "error"}, {"_id": 0}
+    ).to_list(500)
+
+    if not errors:
+        return {"retried": 0, "message": "Aucun transfert en erreur"}
+
+    retried = 0
+    fixed = 0
+    still_error = 0
+
+    for t in errors:
+        # Delete the error record so maybe_create can re-insert
+        await db.intercompany_transfers.delete_one({"id": t["id"]})
+
+        result = await maybe_create_intercompany_transfer(
+            delivery_id=t.get("delivery_id", ""),
+            lead_id=t.get("lead_id", ""),
+            commande_id=t.get("commande_id", ""),
+            product=t.get("product", ""),
+            target_entity=t.get("to_entity", ""),
+        )
+        retried += 1
+        if result.get("created"):
+            fixed += 1
+        elif "error" in result.get("reason", ""):
+            still_error += 1
+
+    return {"retried": retried, "fixed": fixed, "still_error": still_error}
+
