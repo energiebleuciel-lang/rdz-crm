@@ -742,7 +742,7 @@ function OffersTab({ clientId, authFetch }) {
             <input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="Commentaire"
               className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-300 w-36" data-testid="offer-note" />
           </div>
-          <button onClick={addCredit} disabled={!form.week_key || !form.reason || !form.order_id || form.quantity_units_free <= 0}
+          <button onClick={addCredit} disabled={!offerWeek || !form.reason || !form.order_id || form.quantity_units_free <= 0}
             className="px-3 py-1.5 text-xs bg-teal-500/15 text-teal-400 rounded hover:bg-teal-500/25 border border-teal-500/30 disabled:opacity-50" data-testid="add-offer-btn">
             <Plus className="w-3 h-3 inline mr-1" />Ajouter
           </button>
