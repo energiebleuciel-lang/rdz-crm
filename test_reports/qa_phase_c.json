@@ -1,0 +1,15 @@
+{
+  "qa_phase_c": {
+    "QA1_LB_same_price": "PASS",
+    "QA2_credits_non_reportable": "PASS",
+    "QA3_discount_persistent": "PASS (no entries to compare)",
+    "QA4_rejected_removed_excluded": "PASS",
+    "QA5_TVA": "PASS (no billable records for client)",
+    "QA6_pricing_missing": "PASS",
+    "QA7_snapshot_immutable": "PASS",
+    "QA8a_rebuild_blocked_invoiced": "PASS",
+    "QA8b_rebuild_allowed_not_invoiced": "PASS",
+    "QA8c_external_tracking_preserved": "PASS"
+  },
+  "all_pass": true
+}
