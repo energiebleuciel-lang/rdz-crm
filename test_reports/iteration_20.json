@@ -1,0 +1,104 @@
+{
+  "summary": "Phase 2.5 auto_send_enabled Integration Testing Complete - All 24 tests PASSED. Core functionality verified: auto_send=true sends immediately, auto_send=false creates ready_to_send deliveries with lead staying routed.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "POST /api/clients",
+        "issue": "FIXED: auto_send_enabled field was not being saved during client creation. Added to routes/clients.py create_client function.",
+        "priority": "FIXED"
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_phase25_auto_send_integration.py",
+    "/app/backend/tests/test_phase25_e2e_workflow.py",
+    "/app/test_reports/pytest/pytest_phase25_complete.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "✅ auto_send_enabled=true: Batch processes → delivery=sent + lead=livre - VERIFIED",
+    "✅ auto_send_enabled=false: Batch processes → delivery=ready_to_send + lead stays routed (NOT livre) - VERIFIED",
+    "✅ Calendar disabled: Batch skips processing → deliveries remain pending_csv - VERIFIED",
+    "✅ Client not deliverable: Batch marks deliveries as failed - VERIFIED in code",
+    "✅ POST /api/deliveries/{id}/send for ready_to_send → sent + lead=livre - VERIFIED",
+    "✅ POST /api/deliveries/batch/send-ready: Sends all ready_to_send grouped by client - VERIFIED",
+    "✅ Idempotency: Re-send without force=true returns 400 error - VERIFIED",
+    "✅ Simulation mode: All emails go to simulation_email when enabled - VERIFIED (simulation_mode=true, email=energiebleuciel@gmail.com)",
+    "✅ Batch respects priority order: Calendar > Client deliverable > auto_send_enabled - VERIFIED in process_pending_csv_deliveries()"
+  ],
+  "updated_files": [
+    "/app/backend/routes/clients.py - Added auto_send_enabled field to create_client",
+    "/app/backend/tests/test_phase25_auto_send_integration.py - New comprehensive test file",
+    "/app/backend/tests/test_phase25_e2e_workflow.py - New E2E workflow test file"
+  ],
+  "success_rate": {
+    "backend": "100% (24/24 tests passed)",
+    "frontend": "N/A - backend only testing"
+  },
+  "test_credentials": {
+    "email": "energiebleuciel@gmail.com",
+    "password": "92Ruemarxdormoy",
+    "provider_api_key": "prov_0vVMbevPVC1yBXXb3cPKySmiB_iP4nW1cjTjIOQ54is"
+  },
+  "seed_data_creation": "Test data created and cleaned up during tests. No persistent test data.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Phase 2.5 auto_send_enabled feature fully tested and working. Key points: 1) process_pending_csv_deliveries() in daily_delivery.py handles the auto_send logic during daily cron (09:30 Paris). 2) batch/generate-csv and batch/send-ready endpoints are for manual operations and don't check auto_send_enabled. 3) Simulation mode is ENABLED with override email energiebleuciel@gmail.com. 4) Calendar is Mon-Fri (0-4) for both ZR7 and MDL. 5) Today is Saturday so calendar gating blocks automatic processing.",
+  "verified_features": {
+    "auto_send_enabled_true": {
+      "behavior": "delivery=sent, lead=livre",
+      "status": "WORKING"
+    },
+    "auto_send_enabled_false": {
+      "behavior": "delivery=ready_to_send, lead=routed (NOT livre)",
+      "status": "WORKING"
+    },
+    "calendar_gating": {
+      "behavior": "Blocks processing on disabled days",
+      "status": "WORKING",
+      "today": "Saturday (disabled)"
+    },
+    "client_deliverability": {
+      "behavior": "Marks deliveries as failed for non-deliverable clients",
+      "status": "WORKING"
+    },
+    "manual_send": {
+      "endpoint": "POST /api/deliveries/{id}/send",
+      "behavior": "Sends ready_to_send delivery and marks lead as livre",
+      "status": "WORKING"
+    },
+    "batch_send_ready": {
+      "endpoint": "POST /api/deliveries/batch/send-ready",
+      "behavior": "Sends all ready_to_send deliveries grouped by client",
+      "status": "WORKING"
+    },
+    "idempotency": {
+      "behavior": "Re-send without force=true returns 400",
+      "status": "WORKING"
+    },
+    "simulation_mode": {
+      "status": "ENABLED",
+      "simulation_email": "energiebleuciel@gmail.com"
+    }
+  },
+  "delivery_stats": {
+    "pending_csv": 0,
+    "ready_to_send": 1,
+    "sending": 0,
+    "sent": 630,
+    "failed": 0,
+    "total": 631
+  },
+  "bug_fix_applied": {
+    "file": "/app/backend/routes/clients.py",
+    "issue": "auto_send_enabled field was not being saved during client creation",
+    "fix": "Added 'auto_send_enabled': data.auto_send_enabled to the client dict in create_client function",
+    "line": "~125"
+  }
+}
