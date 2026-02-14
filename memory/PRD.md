@@ -8,70 +8,51 @@ Build a comprehensive CRM application named "RDZ" to manage leads, orders, and d
 - **Frontend**: React with Tailwind CSS on port 3000
 - **Database**: MongoDB (via Motor async driver)
 - **Scheduler**: APScheduler (async, Europe/Paris timezone)
+- **Version**: 1.0.0 | Tag: `rdz-core-distribution-validated`
 
 ## What's Been Implemented
 
-### Phase 1: Core CRM
-- Lead ingestion (public API + provider auth)
-- Routing engine (priority, quota, departement, duplicate 30-day rule)
-- Delivery state machine (strict transitions, CSV email)
-- Client CRUD with deliverability checks
-- Commande CRUD with quota management
+### Core Distribution Layer (VALIDATED — 35/35 E2E tests PASS)
+- Lead ingestion (public API + provider auth + tracking)
+- Routing engine (priority, quota, departement, duplicate 30-day rule, cross-entity fallback)
+- Delivery state machine (strict transitions, CSV email via OVH SMTP)
+- Deduplication (30-day per-client, double-submit protection)
+- Granular RBAC (40+ permission keys, 4 role presets)
+- Entity isolation (ZR7/MDL strict scoping, super_admin scope switcher)
+- Billing engine (weekly, prepaid, credits, ledger)
+- Intercompany transfers (fail-open, health check, retry)
+- Production cron (APScheduler, Europe/Paris, DB locks)
+- System health monitoring (`/api/system/health`, `/api/system/version`)
 
-### Phase 2: Advanced Features
-- Dynamic LB Target (lb_target_pct per commande)
-- Cross-entity fallback routing (ZR7 ↔ MDL)
-- Calendar gating (delivery days per entity)
-- Source gating (blacklist)
-- Prepayment balance system
+### Production Audit (2026-02-14)
+- 12 issues found and fixed (entity scope, permissions, fail-open dashboard, indexes)
+- Full E2E validation: 35 scenarios across 8 categories
+- Release policy established
 
-### Phase 3: RBAC & Entity Scoping
-- Granular permission system (40+ permission keys)
-- Role presets: super_admin, admin, ops, viewer
-- Entity isolation (ZR7/MDL strict scoping)
-- Super_admin scope switcher (ZR7/MDL/BOTH)
-- Write blocking in BOTH scope
-
-### Phase 4: Billing & Invoicing
-- External client invoices (draft → sent → paid → overdue)
-- Overdue dashboard with per-client aggregation
-- Billing ledger + records (weekly snapshot)
-- Client pricing engine (per-product, discounts, VAT)
-
-### Phase 5: Intercompany
-- Delivery-based transfer tracking
-- Intercompany pricing management
-- Weekly invoice generation (cron)
-- Fail-open architecture (never blocks deliveries)
-- Health check + retry endpoints
-
-### Phase 6: Production Audit (2026-02-14)
-- **12 issues found and fixed:**
-  - 4 entity scope fixes (leads, deliveries endpoints)
-  - 6 permission guard fixes (settings, providers, billing, departements)
-  - 1 fail-open dashboard (per-widget isolation)
-  - 1 new system health endpoint
-  - DB indexes added (deliveries: 9, invoices: 5, event_log: 3)
-- **15/15 audit tests passed**
-- Comprehensive audit report at `/app/AUDIT_REPORT_PRODUCTION.md`
+## Freeze Artifacts
+- `/app/CORE_E2E_VALIDATION_REPORT.md` — Full E2E proof
+- `/app/RELEASE_POLICY.md` — Deployment rules
+- `/app/AUDIT_REPORT_PRODUCTION.md` — Audit details
+- `/app/indexes_v1.json` — DB index dump (70 indexes)
+- `/app/backend/tests/test_core_e2e_validation.py` — 35-test suite
 
 ## Prioritized Backlog
 
-### P1 - Next
-- Invoice PDF generation (client + intercompany)
-- Comprehensive audit trail UI
+### P0 - Next Phase
+- **Accounts / LP / Form registry + UI builder** (user's next priority)
 
-### P2 - Future
-- Full CRUD interface for intercompany pricing
-- UI/UX improvements
-- Export capabilities (CSV/PDF for reports)
+### P1
+- Phone +33 normalization
+- Invoice PDF generation
+- SMTP timeout hardening
+
+### P2
+- Rate limiting on public endpoints
+- Audit trail UI
+- Monitoring externe
 
 ## Test Accounts
 All use password: `RdzTest2026!`
 - superadmin@test.local (super_admin, ZR7)
-- admin_zr7@test.local (admin, ZR7)
-- ops_zr7@test.local (ops, ZR7)
-- viewer_zr7@test.local (viewer, ZR7)
-- admin_mdl@test.local (admin, MDL)
-- ops_mdl@test.local (ops, MDL)
-- viewer_mdl@test.local (viewer, MDL)
+- admin_zr7@test.local / ops_zr7@test.local / viewer_zr7@test.local
+- admin_mdl@test.local / ops_mdl@test.local / viewer_mdl@test.local
