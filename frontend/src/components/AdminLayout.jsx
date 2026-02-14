@@ -5,7 +5,7 @@ import {
   Truck, ChevronLeft, ChevronRight, FileText, Clock, MapPin, Receipt,
   Shield, UserCog, FileCheck
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const NAV_ITEMS = [
   { path: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard', permission: 'dashboard.view' },
