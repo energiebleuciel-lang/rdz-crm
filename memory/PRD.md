@@ -163,6 +163,15 @@ Guard:
   - Settings: email denylist + simulation mode toggle + delivery calendar par entity
   - Navigation: sidebar collapsible + logout
   - Tests: 10/10 passes (iteration 22)
+- **Phase 3.1 (Feb 2025)** : UI Enrichment
+  - Cockpit dashboard: calendar banners, 11 stat cards, top clients 7d, clients non livrables, quotas faibles, stock bloque par entity/produit
+  - Endpoint GET /api/leads/dashboard-stats (un seul appel = toutes les donnees)
+  - Clients: phone, canaux (icones), auto_send, jours livraison, deliverable+raison, delivery count, lien deliveries
+  - Deliveries: phone client, auto_send OFF indicator, last_error, filtre client_id via URL
+  - Delivery detail: panneau client (tel/email/auto_send/jours), lien deliveries client
+  - Settings: banners status (simulation + calendrier ZR7/MDL)
+  - Backend: clients enrichis (has_valid_channel, deliverable_reason, auto_send_enabled)
+  - Tests: 5/5 passes (iteration 23)
 
 ## NEXT
 
