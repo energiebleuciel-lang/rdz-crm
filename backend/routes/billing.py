@@ -349,7 +349,7 @@ async def billing_week_dashboard(week_key: Optional[str] = None, user: dict = De
         gp_map = {g["client_id"]: g for g in all_gp}
 
         weekly_rows, prepaid_rows = [], []
-        totals = {"units_billable": 0, "units_free": 0, "net_ht": 0, "ttc": 0}
+        totals = {"units_billable": 0, "units_free": 0, "net_ht": 0, "ttc": 0, "units_leads": 0, "units_lb": 0}
 
         for key, s in sorted(grp.items()):
             parts = key.split(":", 1)
