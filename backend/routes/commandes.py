@@ -224,6 +224,21 @@ async def update_commande(
     )
     updated["client_name"] = client.get("name", "") if client else "Inconnu"
     
+    # Log if active status changed
+    old_active = cmd.get("active")
+    new_active = updated.get("active")
+    if old_active != new_active and new_active is not None:
+        from services.event_logger import log_event
+        await log_event(
+            action="order_activate" if new_active else "order_deactivate",
+            entity_type="commande",
+            entity_id=commande_id,
+            entity=updated.get("entity", ""),
+            user=user.get("email"),
+            details={"old_active": old_active, "new_active": new_active},
+            related={"client_id": updated.get("client_id"), "client_name": updated.get("client_name"), "produit": updated.get("produit")}
+        )
+    
     return {"success": True, "commande": updated}
 
 
