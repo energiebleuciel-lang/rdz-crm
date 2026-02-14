@@ -194,10 +194,27 @@ async def update_client(
     update_data = {k: v for k, v in data.dict().items() if v is not None}
     update_data["updated_at"] = now_iso()
     
+    # Track auto_send change
+    old_auto_send = client.get("auto_send_enabled")
+    new_auto_send = update_data.get("auto_send_enabled")
+    
     await db.clients.update_one(
         {"id": client_id},
         {"$set": update_data}
     )
+    
+    # Log if auto_send changed
+    if new_auto_send is not None and old_auto_send != new_auto_send:
+        from services.event_logger import log_event
+        await log_event(
+            action="client_auto_send_change",
+            entity_type="client",
+            entity_id=client_id,
+            entity=client.get("entity", ""),
+            user=user.get("email"),
+            details={"old_value": old_auto_send, "new_value": new_auto_send},
+            related={"client_name": client.get("name")}
+        )
     
     updated = await db.clients.find_one({"id": client_id}, {"_id": 0})
     return {"success": True, "client": updated}
