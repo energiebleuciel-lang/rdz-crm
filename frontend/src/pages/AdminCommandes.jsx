@@ -53,6 +53,20 @@ export default function AdminCommandes() {
         if (r.ok) { const d = await r.json(); allCl = allCl.concat(d.clients || []); }
       }
       setClients(allCl);
+
+      // Load LB Monitor data (super_admin with monitoring.lb.view only)
+      if (hasPermission('monitoring.lb.view')) {
+        try {
+          const monResults = await Promise.all(
+            entities.map(e => authFetch(`${API}/api/commandes/lb-monitor?entity=${e}&week=${week}`))
+          );
+          let allMon = [];
+          for (const r of monResults) {
+            if (r.ok) { const d = await r.json(); allMon = allMon.concat(d.commandes || []); }
+          }
+          setLbMonitor(allMon);
+        } catch (e) { console.error('LB monitor error:', e); }
+      }
     } catch (e) { console.error(e); }
     setLoading(false);
   }, [entityFilter, week, authFetch, getEntitiesToLoad]);
