@@ -178,6 +178,21 @@ export default function AdminDeliveryDetail() {
             </div>
           )}
 
+          {isRemoved && (
+            <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-4" data-testid="removal-info">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle className="w-4 h-4 text-red-400" />
+                <h2 className="text-xs font-medium text-red-400 uppercase tracking-wider">Removed</h2>
+              </div>
+              <dl className="space-y-1.5 text-xs">
+                <div className="flex justify-between"><dt className="text-zinc-500">Reason</dt><dd className="text-red-300">{d.removal_reason || '-'}</dd></div>
+                <div className="flex justify-between"><dt className="text-zinc-500">Detail</dt><dd className="text-zinc-400">{d.removal_detail || '-'}</dd></div>
+                <div className="flex justify-between"><dt className="text-zinc-500">By</dt><dd className="text-zinc-400">{d.removed_by || '-'}</dd></div>
+                <div className="flex justify-between"><dt className="text-zinc-500">At</dt><dd className="text-zinc-400">{d.removed_at?.slice(0, 19).replace('T', ' ') || '-'}</dd></div>
+              </dl>
+            </div>
+          )}
+
           <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
             <h2 className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-3">Actions</h2>
             <div className="flex flex-wrap gap-2">
