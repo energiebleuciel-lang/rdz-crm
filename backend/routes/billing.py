@@ -588,12 +588,65 @@ async def build_ledger(week_key: str, user: dict = Depends(get_current_user)):
         record.pop("_id", None)
         records_created += 1
 
+    # 3. Build interfacturation records (transfers between entities)
+    await db.interfacturation_records.delete_many({"week_key": week_key, "status": {"$nin": ["invoiced", "paid"]}})
+    # Preserve existing tracked records
+    existing_inter = {}
+    async for ir in db.interfacturation_records.find({"week_key": week_key}, {"_id": 0}):
+        existing_inter[f"{ir['from_entity']}:{ir['to_entity']}:{ir['product_code']}"] = ir
+
+    transfer_pricing = {}
+    async for tp in db.entity_transfer_pricing.find({"active": True}, {"_id": 0}):
+        transfer_pricing[f"{tp['from_entity']}:{tp['to_entity']}:{tp['product_code']}"] = tp
+
+    inter_agg = defaultdict(lambda: {"units": 0, "leads": 0, "lb": 0})
+    for e in entries:
+        if not e["is_billable"]:
+            continue
+        se = e.get("source_entity", "")
+        be = e.get("billing_entity", "")
+        if se and be and se != be:
+            ik = f"{se}:{be}:{e['product_code']}"
+            inter_agg[ik]["units"] += 1
+            inter_agg[ik]["lb" if e["unit_type"] == "lb" else "leads"] += 1
+
+    inter_created = 0
+    for ik, s in inter_agg.items():
+        parts = ik.split(":")
+        fe, te, pc = parts[0], parts[1], parts[2]
+        tp = transfer_pricing.get(ik, {})
+        uprice = tp.get("unit_price_ht", 0)
+        total_ht = round(s["units"] * uprice, 2)
+
+        existing = existing_inter.get(ik)
+        if existing and existing.get("status") in ("invoiced", "paid"):
+            continue
+
+        rec = {
+            "id": str(uuid.uuid4()), "week_key": week_key,
+            "from_entity": fe, "to_entity": te, "product_code": pc,
+            "units_total": s["units"], "units_leads": s["leads"], "units_lb": s["lb"],
+            "unit_price_ht_internal": uprice, "total_ht": total_ht,
+            "vat_rate_internal": 0, "vat_amount": 0, "total_ttc": total_ht,
+            "external_invoice_number": existing.get("external_invoice_number") if existing else None,
+            "status": existing.get("status", "not_invoiced") if existing else "not_invoiced",
+            "issued_at": existing.get("issued_at") if existing else None,
+            "paid_at": existing.get("paid_at") if existing else None,
+            "created_at": now_iso(), "updated_at": now_iso(),
+        }
+        await db.interfacturation_records.update_one(
+            {"week_key": week_key, "from_entity": fe, "to_entity": te, "product_code": pc},
+            {"$set": rec}, upsert=True
+        )
+        inter_created += 1
+
     await log_event("ledger_built", "billing", week_key, user=user.get("email"),
                      details={"ledger_entries": len(entries), "billing_records": records_created,
-                              "deleted_previous": del_ledger.deleted_count})
+                              "inter_records": inter_created, "deleted_previous": del_ledger.deleted_count})
 
     return {"success": True, "week_key": week_key,
-            "ledger_entries": len(entries), "billing_records_created": records_created}
+            "ledger_entries": len(entries), "billing_records_created": records_created,
+            "inter_records_created": inter_created}
 
 
 # ═══════════════════════════════════════════════════
