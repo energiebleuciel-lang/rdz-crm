@@ -381,20 +381,19 @@ class TestCDeduplication:
 class TestDRouting:
     def test_d1_lead_routed_to_active_commande(self):
         """Lead with matching commande: correctly routed."""
+        import random
         with httpx.Client(timeout=15) as c:
             token = login(c, USERS["super_admin"])
             h = auth_headers(token, "ZR7")
-            # Get active commandes for ZR7
             r = c.get(f"{API_URL}/api/commandes?entity=ZR7", headers=h)
             assert r.status_code == 200
             cmds = r.json().get("commandes", [])
-            # Submit a lead that should match
             if cmds:
                 cmd = cmds[0]
                 dept = cmd.get("departements", ["75"])[0]
                 if dept == "*":
                     dept = "75"
-                phone = f"06{uuid.uuid4().hex[:8]}"
+                phone = f"06{random.randint(10000000, 99999999)}"
                 r2 = c.post(f"{API_URL}/api/public/leads", json={
                     "session_id": str(uuid.uuid4()),
                     "form_code": "TEST",
@@ -406,13 +405,13 @@ class TestDRouting:
                 })
                 assert r2.status_code == 200
                 data = r2.json()
-                # Status should be routed or no_open_orders (depends on quota)
                 assert data["status"] in ["routed", "no_open_orders", "duplicate"]
 
     def test_d2_lead_no_commande_stored(self):
         """No matching commande: lead stored with no_open_orders."""
+        import random
         with httpx.Client(timeout=15) as c:
-            phone = f"06{uuid.uuid4().hex[:8]}"
+            phone = f"06{random.randint(10000000, 99999999)}"
             r = c.post(f"{API_URL}/api/public/leads", json={
                 "session_id": str(uuid.uuid4()),
                 "form_code": "TEST",
@@ -429,8 +428,9 @@ class TestDRouting:
 
     def test_d3_routing_reason_clear(self):
         """Routing failure: reason is explicit."""
+        import random
         with httpx.Client(timeout=15) as c:
-            phone = f"06{uuid.uuid4().hex[:8]}"
+            phone = f"06{random.randint(10000000, 99999999)}"
             r = c.post(f"{API_URL}/api/public/leads", json={
                 "session_id": str(uuid.uuid4()),
                 "form_code": "TEST",
@@ -442,7 +442,6 @@ class TestDRouting:
             })
             assert r.status_code == 200
             data = r.json()
-            # Should have a routing_reason or clear status
             assert data["status"] in ["routed", "no_open_orders", "duplicate"]
 
 
