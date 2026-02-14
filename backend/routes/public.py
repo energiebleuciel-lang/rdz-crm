@@ -308,6 +308,28 @@ async def submit_lead(data: LeadData, request: Request):
     is_valid = phone_status == "valid"
     phone = phone_result if is_valid else data.phone
 
+    # ════════════════════════════════════════════════════════════
+    # SUSPICIOUS PHONE POLICY (applies to ALL entities)
+    # - Providers: REJECT immediately (HTTP 400-like, no lead created)
+    # - Inter-CRM: REJECT immediately
+    # - Internal LP: ACCEPT (LB replacement at routing time)
+    # ════════════════════════════════════════════════════════════
+    is_provider_source = bool(provider)
+    is_intercrm = bool(data.api_key and not provider)  # API key present but not a valid provider
+
+    if is_valid and phone_quality == "suspicious" and (is_provider_source or is_intercrm):
+        source_label = f"provider:{provider.get('slug')}" if provider else "intercrm"
+        logger.warning(
+            f"[SUSPICIOUS_REJECTED] phone=***{phone[-4:]} source={source_label} "
+            f"reason=suspicious_provider_rejected"
+        )
+        return {
+            "success": False,
+            "error": "suspicious_provider_rejected",
+            "message": "Numéro suspect rejeté — qualité insuffisante",
+            "phone_quality": "suspicious",
+        }
+
     # Champs obligatoires
     nom = (data.nom or "").strip()
     dept = (data.departement or "").strip()[:2] if data.departement else ""
