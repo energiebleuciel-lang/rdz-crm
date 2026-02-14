@@ -6,6 +6,8 @@ import {
   Truck, CheckCircle, XCircle, Clock, Package, ArrowUpRight, AlertTriangle,
   CalendarCheck, CalendarX, Users, ShoppingCart, Archive
 } from 'lucide-react';
+import { getCurrentWeekKey, shiftWeekKey } from '../lib/weekUtils';
+import { WeekNavStandard } from '../components/WeekNav';
 
 function Stat({ label, value, icon: Icon, color = 'text-zinc-400' }) {
   return (
@@ -24,16 +26,20 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [week, setWeek] = useState(getCurrentWeekKey());
 
   useEffect(() => {
+    setLoading(true);
     (async () => {
       try {
-        const res = await authFetch(`${API}/api/leads/dashboard-stats`);
+        const res = await authFetch(`${API}/api/leads/dashboard-stats?week=${week}`);
         if (res.ok) setData(await res.json());
       } catch (e) { console.error(e); }
       setLoading(false);
     })();
-  }, []);
+  }, [week]);
+
+  const handleWeekNav = (dir) => setWeek(w => shiftWeekKey(w, dir));
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-6 h-6 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" /></div>;
   if (!data) return <p className="text-zinc-500 text-center py-8">Erreur chargement</p>;
@@ -44,7 +50,10 @@ export default function AdminDashboard() {
 
   return (
     <div data-testid="admin-dashboard" className="space-y-5">
-      <h1 className="text-lg font-semibold text-white">Cockpit</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-lg font-semibold text-white">Cockpit</h1>
+        <WeekNavStandard week={week} onChange={handleWeekNav} />
+      </div>
 
       {/* Calendar status banner */}
       <div className="flex gap-3">
@@ -83,7 +92,7 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Top Clients 7d */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4" data-testid="top-clients-section">
-          <h2 className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-3 flex items-center gap-2"><Users className="w-3.5 h-3.5" /> Top Clients (7j)</h2>
+          <h2 className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-3 flex items-center gap-2"><Users className="w-3.5 h-3.5" /> Top Clients (sem.)</h2>
           {(data.top_clients_7d || []).length === 0 ? <p className="text-[10px] text-zinc-600">Aucun</p> : (
             <div className="space-y-2">
               {data.top_clients_7d.map((tc, i) => (
