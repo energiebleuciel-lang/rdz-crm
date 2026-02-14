@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional
 from config import db
 from routes.auth import get_current_user
+from services.permissions import require_permission
 
 router = APIRouter(prefix="/event-log", tags=["EventLog"])
 
@@ -21,7 +22,7 @@ async def list_events(
     search: Optional[str] = None,
     limit: int = 100,
     skip: int = 0,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_permission("activity.view"))
 ):
     """Liste les events avec filtres"""
     query = {}
@@ -64,7 +65,7 @@ async def list_events(
 
 @router.get("/actions")
 async def list_action_types(
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_permission("activity.view"))
 ):
     """Liste les types d'actions distincts dans le log"""
     actions = await db.event_log.distinct("action")
@@ -74,7 +75,7 @@ async def list_action_types(
 @router.get("/{event_id}")
 async def get_event(
     event_id: str,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_permission("activity.view"))
 ):
     """Détail d'un event"""
     event = await db.event_log.find_one({"id": event_id}, {"_id": 0})

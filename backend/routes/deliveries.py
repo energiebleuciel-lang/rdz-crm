@@ -17,6 +17,7 @@ import io
 
 from config import db, now_iso
 from routes.auth import get_current_user, require_admin
+from services.permissions import require_permission, validate_entity_access
 from models.delivery import DeliveryStatus, SendDeliveryRequest, RejectDeliveryRequest, VALID_STATUS_TRANSITIONS
 from services.csv_delivery import send_csv_email, generate_csv_content
 from services.settings import get_simulation_email_override, get_email_denylist_settings
@@ -43,7 +44,7 @@ async def list_deliveries(
     week: Optional[str] = None,
     limit: int = 100,
     skip: int = 0,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_permission("deliveries.view"))
 ):
     """Liste les deliveries avec filtres"""
     query = {}
@@ -83,7 +84,7 @@ async def list_deliveries(
 @router.get("/stats")
 async def get_delivery_stats(
     entity: Optional[str] = None,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_permission("deliveries.view"))
 ):
     """Stats des deliveries par statut + outcome"""
     match_query = {}
@@ -130,7 +131,7 @@ async def get_delivery_stats(
 @router.get("/{delivery_id}")
 async def get_delivery(
     delivery_id: str,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_permission("deliveries.view"))
 ):
     """Récupère une delivery par ID"""
     delivery = await db.deliveries.find_one(
@@ -517,7 +518,7 @@ async def remove_lead_from_delivery(
 @router.get("/{delivery_id}/download")
 async def download_delivery_csv(
     delivery_id: str,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_permission("deliveries.view"))
 ):
     """Télécharge le CSV d'une delivery"""
     delivery = await db.deliveries.find_one({"id": delivery_id}, {"_id": 0})

@@ -21,6 +21,7 @@ from datetime import datetime, timezone, timedelta
 from collections import defaultdict
 from config import db, now_iso
 from routes.auth import get_current_user
+from services.permissions import require_permission, validate_entity_access
 from services.event_logger import log_event
 
 router = APIRouter(tags=["Billing"])
@@ -52,7 +53,7 @@ def _current_week_key():
 # ═══════════════════════════════════════════════════
 
 @router.get("/products")
-async def list_products(user: dict = Depends(get_current_user)):
+async def list_products(user: dict = Depends(require_permission("billing.view"))):
     products = await db.products.find({}, {"_id": 0}).to_list(100)
     if not products:
         for code, name in [("PV", "Panneaux Solaires"), ("PAC", "Pompe à Chaleur"), ("ITE", "Isolation Thermique")]:
@@ -70,7 +71,7 @@ class ProductCreate(BaseModel):
 
 
 @router.post("/products")
-async def create_product(data: ProductCreate, user: dict = Depends(get_current_user)):
+async def create_product(data: ProductCreate, user: dict = Depends(require_permission("billing.view"))):
     code = data.code.upper()
     if await db.products.find_one({"code": code}):
         raise HTTPException(400, "Product code already exists")
@@ -100,7 +101,7 @@ class ProductPricingUpsert(BaseModel):
 
 
 @router.get("/clients/{client_id}/pricing")
-async def get_client_pricing(client_id: str, user: dict = Depends(get_current_user)):
+async def get_client_pricing(client_id: str, user: dict = Depends(require_permission("billing.view"))):
     gp = await db.client_pricing.find_one({"client_id": client_id}, {"_id": 0})
     if not gp:
         gp = {"client_id": client_id, "discount_pct_global": 0, "tva_rate": 20.0}
@@ -113,7 +114,7 @@ async def get_client_pricing(client_id: str, user: dict = Depends(get_current_us
 @router.put("/clients/{client_id}/pricing")
 async def update_global_pricing(
     client_id: str, data: GlobalPricingUpdate,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_permission("billing.view"))
 ):
     await db.client_pricing.update_one(
         {"client_id": client_id},
@@ -129,7 +130,7 @@ async def update_global_pricing(
 @router.post("/clients/{client_id}/pricing/product")
 async def upsert_product_pricing(
     client_id: str, data: ProductPricingUpsert,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_permission("billing.view"))
 ):
     if data.billing_mode not in BILLING_MODES:
         raise HTTPException(400, f"billing_mode must be one of {BILLING_MODES}")
@@ -162,7 +163,7 @@ async def upsert_product_pricing(
 
 
 @router.delete("/clients/{client_id}/pricing/product/{product_code}")
-async def delete_product_pricing(client_id: str, product_code: str, user: dict = Depends(get_current_user)):
+async def delete_product_pricing(client_id: str, product_code: str, user: dict = Depends(require_permission("billing.view"))):
     r = await db.client_product_pricing.delete_one({"client_id": client_id, "product_code": product_code.upper()})
     if r.deleted_count == 0:
         raise HTTPException(404, "Product pricing not found")
@@ -185,7 +186,7 @@ class CreditCreate(BaseModel):
 
 
 @router.get("/clients/{client_id}/credits")
-async def list_credits(client_id: str, week_key: Optional[str] = None, user: dict = Depends(get_current_user)):
+async def list_credits(client_id: str, week_key: Optional[str] = None, user: dict = Depends(require_permission("billing.view"))):
     q = {"client_id": client_id}
     if week_key:
         q["week_key"] = week_key
@@ -194,7 +195,7 @@ async def list_credits(client_id: str, week_key: Optional[str] = None, user: dic
 
 
 @router.post("/clients/{client_id}/credits")
-async def add_credit(client_id: str, data: CreditCreate, user: dict = Depends(get_current_user)):
+async def add_credit(client_id: str, data: CreditCreate, user: dict = Depends(require_permission("billing.view"))):
     if data.reason not in CREDIT_REASONS:
         raise HTTPException(400, f"reason must be one of {CREDIT_REASONS}")
     if not data.order_id:
@@ -218,7 +219,7 @@ async def add_credit(client_id: str, data: CreditCreate, user: dict = Depends(ge
 
 
 @router.delete("/clients/{client_id}/credits/{credit_id}")
-async def delete_credit(client_id: str, credit_id: str, user: dict = Depends(get_current_user)):
+async def delete_credit(client_id: str, credit_id: str, user: dict = Depends(require_permission("billing.view"))):
     c = await db.billing_credits.find_one({"id": credit_id, "client_id": client_id})
     if not c:
         raise HTTPException(404, "Credit not found")
@@ -239,13 +240,13 @@ class PrepaymentAddUnits(BaseModel):
 
 
 @router.get("/clients/{client_id}/prepayment")
-async def get_prepayment(client_id: str, user: dict = Depends(get_current_user)):
+async def get_prepayment(client_id: str, user: dict = Depends(require_permission("billing.view"))):
     balances = await db.prepayment_balances.find({"client_id": client_id}, {"_id": 0}).to_list(50)
     return {"client_id": client_id, "balances": balances}
 
 
 @router.post("/clients/{client_id}/prepayment/add-units")
-async def add_prepayment_units(client_id: str, data: PrepaymentAddUnits, user: dict = Depends(get_current_user)):
+async def add_prepayment_units(client_id: str, data: PrepaymentAddUnits, user: dict = Depends(require_permission("billing.view"))):
     pc = data.product_code.upper()
     await db.prepayment_balances.update_one(
         {"client_id": client_id, "product_code": pc},
@@ -266,7 +267,7 @@ async def add_prepayment_units(client_id: str, data: PrepaymentAddUnits, user: d
 # ═══════════════════════════════════════════════════
 
 @router.get("/billing/week")
-async def billing_week_dashboard(week_key: Optional[str] = None, user: dict = Depends(get_current_user)):
+async def billing_week_dashboard(week_key: Optional[str] = None, user: dict = Depends(require_permission("billing.view"))):
     wk = week_key or _current_week_key()
     ws, we = _parse_week(wk)
 
@@ -428,7 +429,7 @@ async def billing_week_dashboard(week_key: Optional[str] = None, user: dict = De
 # ═══════════════════════════════════════════════════
 
 @router.get("/billing/month-summary")
-async def billing_month_summary(month: Optional[str] = None, user: dict = Depends(get_current_user)):
+async def billing_month_summary(month: Optional[str] = None, user: dict = Depends(require_permission("billing.view"))):
     """
     Agrège toutes les données de facturation d'un mois calendaire.
     month format: YYYY-MM (ex: 2026-02). Default: current month.
@@ -620,7 +621,7 @@ async def billing_month_summary(month: Optional[str] = None, user: dict = Depend
 # ═══════════════════════════════════════════════════
 
 @router.post("/billing/week/{week_key}/build-ledger")
-async def build_ledger(week_key: str, user: dict = Depends(get_current_user)):
+async def build_ledger(week_key: str, user: dict = Depends(require_permission("billing.view"))):
     ws, we = _parse_week(week_key)
 
     # Block if any billing_record is invoiced/paid
@@ -852,7 +853,7 @@ async def build_ledger(week_key: str, user: dict = Depends(get_current_user)):
 @router.get("/billing/records")
 async def list_billing_records(
     week_key: Optional[str] = None, client_id: Optional[str] = None,
-    status: Optional[str] = None, user: dict = Depends(get_current_user),
+    status: Optional[str] = None, user: dict = Depends(require_permission("billing.view")),
 ):
     q = {}
     if week_key:
@@ -877,7 +878,7 @@ class BillingRecordUpdate(BaseModel):
 @router.put("/billing/records/{record_id}")
 async def update_billing_record(
     record_id: str, data: BillingRecordUpdate,
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_permission("billing.view")),
 ):
     rec = await db.billing_records.find_one({"id": record_id}, {"_id": 0})
     if not rec:
@@ -908,7 +909,7 @@ class TransferPricingUpsert(BaseModel):
 
 
 @router.get("/billing/transfer-pricing")
-async def list_transfer_pricing(user: dict = Depends(get_current_user)):
+async def list_transfer_pricing(user: dict = Depends(require_permission("billing.view"))):
     items = await db.entity_transfer_pricing.find({}, {"_id": 0}).to_list(100)
     if not items:
         seed = []
@@ -927,7 +928,7 @@ async def list_transfer_pricing(user: dict = Depends(get_current_user)):
 
 
 @router.put("/billing/transfer-pricing")
-async def upsert_transfer_pricing(data: TransferPricingUpsert, user: dict = Depends(get_current_user)):
+async def upsert_transfer_pricing(data: TransferPricingUpsert, user: dict = Depends(require_permission("billing.view"))):
     doc = {
         "from_entity": data.from_entity.upper(), "to_entity": data.to_entity.upper(),
         "product_code": data.product_code.upper(),
@@ -949,7 +950,7 @@ async def upsert_transfer_pricing(data: TransferPricingUpsert, user: dict = Depe
 # ═══════════════════════════════════════════════════
 
 @router.get("/billing/interfacturation")
-async def list_interfacturation(week_key: Optional[str] = None, user: dict = Depends(get_current_user)):
+async def list_interfacturation(week_key: Optional[str] = None, user: dict = Depends(require_permission("billing.view"))):
     q = {}
     if week_key:
         q["week_key"] = week_key
@@ -964,7 +965,7 @@ class InterfacturationUpdate(BaseModel):
 
 
 @router.put("/billing/interfacturation/{record_id}")
-async def update_interfacturation(record_id: str, data: InterfacturationUpdate, user: dict = Depends(get_current_user)):
+async def update_interfacturation(record_id: str, data: InterfacturationUpdate, user: dict = Depends(require_permission("billing.view"))):
     rec = await db.interfacturation_records.find_one({"id": record_id}, {"_id": 0})
     if not rec:
         raise HTTPException(404, "Interfacturation record not found")
