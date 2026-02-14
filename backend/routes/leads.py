@@ -41,8 +41,8 @@ async def get_lead_stats(
 
 @router.get("/dashboard-stats")
 async def get_dashboard_stats(
+    request: Request,
     week: Optional[str] = None,
-    request = None,
     user: dict = Depends(require_permission("leads.view"))
 ):
     """
