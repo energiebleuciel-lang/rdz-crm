@@ -67,6 +67,10 @@ class ClientCreate(BaseModel):
     default_prix_lead: float = 0.0
     remise_percent: float = 0.0
     
+    # Facturation
+    vat_rate: float = 20.0  # TVA % (0 ou 20)
+    payment_terms_days: int = 30  # Délai de paiement en jours
+    
     notes: Optional[str] = ""
     
     @field_validator('email')
@@ -89,6 +93,8 @@ class ClientUpdate(BaseModel):
     auto_send_enabled: Optional[bool] = None
     default_prix_lead: Optional[float] = None
     remise_percent: Optional[float] = None
+    vat_rate: Optional[float] = None
+    payment_terms_days: Optional[int] = None
     notes: Optional[str] = None
     active: Optional[bool] = None
     
@@ -118,6 +124,8 @@ class ClientResponse(BaseModel):
     # Commercial
     default_prix_lead: float = 0.0
     remise_percent: float = 0.0
+    vat_rate: float = 20.0
+    payment_terms_days: int = 30
     notes: str = ""
     active: bool = True
     
