@@ -114,7 +114,7 @@ async def get_client_pricing(client_id: str, user: dict = Depends(require_permis
 @router.put("/clients/{client_id}/pricing")
 async def update_global_pricing(
     client_id: str, data: GlobalPricingUpdate,
-    user: dict = Depends(require_permission("billing.view"))
+    user: dict = Depends(require_permission("billing.manage"))
 ):
     await db.client_pricing.update_one(
         {"client_id": client_id},
@@ -130,7 +130,7 @@ async def update_global_pricing(
 @router.post("/clients/{client_id}/pricing/product")
 async def upsert_product_pricing(
     client_id: str, data: ProductPricingUpsert,
-    user: dict = Depends(require_permission("billing.view"))
+    user: dict = Depends(require_permission("billing.manage"))
 ):
     if data.billing_mode not in BILLING_MODES:
         raise HTTPException(400, f"billing_mode must be one of {BILLING_MODES}")
@@ -163,7 +163,7 @@ async def upsert_product_pricing(
 
 
 @router.delete("/clients/{client_id}/pricing/product/{product_code}")
-async def delete_product_pricing(client_id: str, product_code: str, user: dict = Depends(require_permission("billing.view"))):
+async def delete_product_pricing(client_id: str, product_code: str, user: dict = Depends(require_permission("billing.manage"))):
     r = await db.client_product_pricing.delete_one({"client_id": client_id, "product_code": product_code.upper()})
     if r.deleted_count == 0:
         raise HTTPException(404, "Product pricing not found")
