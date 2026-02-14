@@ -125,4 +125,15 @@ async def rotate_api_key(provider_id: str, user: dict = Depends(require_admin)):
         {"id": provider_id},
         {"$set": {"api_key": new_key, "updated_at": now_iso()}}
     )
+    
+    from services.event_logger import log_event
+    await log_event(
+        action="rotate_provider_key",
+        entity_type="provider",
+        entity_id=provider_id,
+        entity=p.get("entity", ""),
+        user=user.get("email"),
+        details={"provider_name": p.get("name"), "provider_slug": p.get("slug")},
+    )
+    
     return {"success": True, "api_key": new_key}
