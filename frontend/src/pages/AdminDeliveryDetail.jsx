@@ -89,6 +89,18 @@ export default function AdminDeliveryDetail() {
     setActionLoading(false);
   };
 
+  const handleRemove = async () => {
+    setActionLoading(true);
+    try {
+      const res = await authFetch(`${API}/api/deliveries/${id}/remove-lead`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: removeReason, reason_detail: removeDetail })
+      });
+      if (res.ok) { setRemoveModal(false); setRemoveDetail(''); load(); }
+    } catch (e) { console.error(e); }
+    setActionLoading(false);
+  };
+
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-6 h-6 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" /></div>;
   if (!delivery) return <div className="text-zinc-500 text-center py-8">Delivery non trouvee</div>;
 
