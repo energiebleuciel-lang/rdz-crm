@@ -755,7 +755,7 @@ function OffersTab({ clientId, authFetch }) {
         <div className="space-y-2">
           {credits.map(c => (
             <div key={c.id} className="flex items-center gap-3 bg-zinc-800/50 rounded-lg px-3 py-2 border border-zinc-700/50">
-              <span className="text-xs text-zinc-300 font-mono w-20">{c.week_key}</span>
+              <span className="text-xs text-zinc-300 w-32">{weekKeyToShort(c.week_key)}</span>
               <span className="text-xs text-zinc-400">{c.product_code}</span>
               <span className="text-[10px] text-zinc-500">{c.order_id?.slice(0, 8)}</span>
               <span className="text-xs font-medium text-violet-400">{c.quantity_units_free} units</span>
