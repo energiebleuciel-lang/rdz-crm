@@ -15,9 +15,20 @@ export default function AdminClients() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params = entityFilter ? `?entity=${entityFilter}` : '';
-      const res = await authFetch(`${API}/api/clients${params}`);
-      if (res.ok) { const d = await res.json(); setClients(d.clients || []); }
+      if (entityFilter) {
+        const res = await authFetch(`${API}/api/clients?entity=${entityFilter}`);
+        if (res.ok) { const d = await res.json(); setClients(d.clients || []); }
+      } else {
+        // Load both entities
+        const [zr7, mdl] = await Promise.all([
+          authFetch(`${API}/api/clients?entity=ZR7`),
+          authFetch(`${API}/api/clients?entity=MDL`)
+        ]);
+        let all = [];
+        if (zr7.ok) { const d = await zr7.json(); all = all.concat(d.clients || []); }
+        if (mdl.ok) { const d = await mdl.json(); all = all.concat(d.clients || []); }
+        setClients(all);
+      }
     } catch (e) { console.error(e); }
     setLoading(false);
   }, [entityFilter, authFetch]);
