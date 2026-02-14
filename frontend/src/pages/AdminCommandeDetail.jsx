@@ -153,7 +153,7 @@ export default function AdminCommandeDetail() {
                 ['Produit', c.produit],
                 ['Priorité', c.priorite],
                 ['Quota/semaine', c.quota_semaine],
-                ['LB max %', `${c.lb_percent_max || 0}%`],
+                ['LB target', `${Math.round((c.lb_target_pct || 0) * 100)}%`],
                 ['Auto-renew', c.auto_renew ? 'Oui' : 'Non'],
                 ['Prix/lead', `${c.prix_lead || 0} EUR`],
                 ['Remise', `${c.remise_percent || 0}%`],
