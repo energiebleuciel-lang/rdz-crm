@@ -40,6 +40,7 @@ async def list_deliveries(
     entity: Optional[str] = None,
     status: Optional[str] = None,
     client_id: Optional[str] = None,
+    week: Optional[str] = None,
     limit: int = 100,
     skip: int = 0,
     user: dict = Depends(get_current_user)
@@ -53,6 +54,10 @@ async def list_deliveries(
         query["status"] = status
     if client_id:
         query["client_id"] = client_id
+    if week:
+        from services.routing_engine import week_key_to_range
+        ws, we = week_key_to_range(week)
+        query["created_at"] = {"$gte": ws, "$lte": we}
     
     deliveries = await db.deliveries.find(
         query,
