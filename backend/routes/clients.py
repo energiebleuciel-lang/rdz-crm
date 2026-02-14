@@ -20,6 +20,7 @@ from models import (
     ClientResponse,
     validate_entity
 )
+from services.permissions import require_permission, validate_entity_access
 
 router = APIRouter(prefix="/clients", tags=["Clients"])
 
@@ -28,7 +29,7 @@ router = APIRouter(prefix="/clients", tags=["Clients"])
 async def list_clients(
     entity: str = Query(..., description="Entité obligatoire: ZR7 ou MDL"),
     active_only: bool = Query(True, description="Filtrer les clients actifs uniquement"),
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_permission("clients.view"))
 ):
     """
     Liste tous les clients d'une entité
