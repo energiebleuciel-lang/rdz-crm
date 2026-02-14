@@ -161,6 +161,18 @@ class TestAutoSendE2EWorkflow:
         unique_id = uuid.uuid4().hex[:8]
         phone = f"06{str(uuid.uuid4().int)[:8]}"
         
+        # First create a session
+        session_resp = requests.post(
+            f"{BASE_URL}/api/public/track/session",
+            headers={"Content-Type": "application/json"},
+            json={
+                "lp_code": "test_lp",
+                "form_code": "test_form"
+            }
+        )
+        session_id = session_resp.json().get("session_id", str(uuid.uuid4()))
+        
+        # Submit lead with session_id and form_code
         resp = requests.post(
             f"{BASE_URL}/api/public/leads",
             headers={
@@ -168,14 +180,15 @@ class TestAutoSendE2EWorkflow:
                 "X-Provider-Key": PROVIDER_API_KEY
             },
             json={
+                "session_id": session_id,
+                "form_code": "test_form",
                 "entity": entity,
                 "produit": produit,
                 "nom": f"Test Lead {unique_id}",
                 "prenom": "E2E",
                 "phone": phone,
                 "email": f"lead_{unique_id}@test.com",
-                "departement": "75",
-                "source": "test_e2e"
+                "departement": "75"
             }
         )
         return resp
