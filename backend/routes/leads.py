@@ -140,7 +140,7 @@ async def get_dashboard_stats(
 
     return {
         "lead_stats": lead_stats,
-        "delivery_stats": {**del_stats, "rejected": rejected_total, "billable": billable_total},
+        "delivery_stats": {**del_stats, "rejected": rejected_total, "removed": removed_total, "billable": billable_total},
         "calendar": {
             "ZR7": {"is_delivery_day": zr7_enabled, "reason": zr7_reason},
             "MDL": {"is_delivery_day": mdl_enabled, "reason": mdl_reason}
