@@ -1,0 +1,104 @@
+{
+  "summary": "Complete backend testing of Billing & Pricing Engine (Phase A). All 40 tests passed. Features tested: Products CRUD, Client pricing (global+per-product), Billing credits, Prepayment balances, Billing week dashboard, Ledger building, Invoice generation & workflow (draft→frozen→sent→paid). Fixed bug: _parse_week function now properly validates week numbers.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_billing_pricing_engine.py",
+    "/app/test_reports/pytest/pytest_billing_pricing_engine.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "FIXED: _parse_week() now handles invalid week numbers (e.g., W99) with proper HTTPException instead of server crash"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_billing_pricing_engine.py",
+    "/app/backend/routes/billing.py"
+  ],
+  "success_rate": {
+    "backend": "100% (40/40 tests passed)",
+    "frontend": "N/A - backend only testing"
+  },
+  "test_credentials": {
+    "email": "energiebleuciel@gmail.com",
+    "password": "92Ruemarxdormoy"
+  },
+  "seed_data_creation": "None - used existing production data. One client has PAC pricing with PREPAID mode (200 units purchased). 6 invoices exist (3 draft, 3 paid). Ledger built for 2026-W07 has 633 entries.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Billing engine Phase A fully tested. Products seeded (PV/PAC/ITE). Week format: YYYY-W##. Credit reasons: fin_de_semaine, geste_commercial, retard, qualite, bug, autre. Billing modes: WEEKLY_INVOICE, PREPAID. Invoice statuses: draft→frozen→sent→paid. First client (Installateur Test Paris) has PAC PREPAID with 200 units. Dashboard separates weekly_invoice and prepaid rows correctly.",
+  "features_tested": {
+    "products": {
+      "GET /api/products": "PASS - Returns seeded PV, PAC, ITE",
+      "POST /api/products": "PASS - Creates new product, rejects duplicates"
+    },
+    "client_pricing": {
+      "GET /api/clients/{id}/pricing": "PASS - Returns global + product pricing",
+      "PUT /api/clients/{id}/pricing": "PASS - Updates global discount",
+      "POST /api/clients/{id}/pricing/product": "PASS - Upserts product pricing with billing_mode validation. PREPAID mode auto-creates prepayment_balance entry",
+      "DELETE /api/clients/{id}/pricing/product/{code}": "PASS - Removes pricing"
+    },
+    "billing_credits": {
+      "POST /api/clients/{id}/credits": "PASS - Adds free units with reason validation",
+      "GET /api/clients/{id}/credits": "PASS - Lists credits with optional week filter",
+      "DELETE /api/clients/{id}/credits/{id}": "PASS - Deletes credit (blocked if applied)"
+    },
+    "prepayment_balances": {
+      "GET /api/clients/{id}/prepayment": "PASS - Returns balances",
+      "POST /api/clients/{id}/prepayment/add-units": "PASS - Adds prepaid units"
+    },
+    "billing_week_dashboard": {
+      "GET /api/billing/week": "PASS - Returns dashboard with weekly_invoice and prepaid rows separated correctly"
+    },
+    "ledger": {
+      "POST /api/billing/week/{wk}/build-ledger": "PASS - Creates ledger entries, blocked if frozen invoice exists"
+    },
+    "invoices": {
+      "POST /api/billing/week/{wk}/generate-invoices": "PASS - Creates draft invoices from ledger",
+      "GET /api/invoices": "PASS - Lists invoices with filters",
+      "POST /api/invoices/{id}/freeze": "PASS - Transitions draft→frozen, guards non-draft",
+      "POST /api/invoices/{id}/mark-sent": "PASS - Transitions frozen→sent, guards non-frozen",
+      "POST /api/invoices/{id}/mark-paid": "PASS - Transitions sent/frozen→paid, guards draft"
+    },
+    "event_logging": {
+      "pricing_update": "PASS - Events logged for pricing changes",
+      "credit_added": "PASS - Events logged for credit additions"
+    },
+    "authentication": {
+      "All billing endpoints": "PASS - Return 401/403 without token"
+    }
+  },
+  "data_verification": {
+    "billing_week_2026-W07": {
+      "leads_produced": 3190,
+      "units_delivered": 633,
+      "units_billable": 157,
+      "weekly_invoice_rows": 16,
+      "prepaid_rows": 1
+    },
+    "invoices": {
+      "total": 6,
+      "draft": 3,
+      "paid": 3
+    },
+    "prepayment_balance_example": {
+      "client": "Installateur Test Paris",
+      "product": "PAC",
+      "units_purchased": 200,
+      "units_remaining": 200
+    }
+  },
+  "bug_fixes_applied": [
+    {
+      "file": "/app/backend/routes/billing.py",
+      "issue": "_parse_week() crashed on invalid week numbers (e.g., 2026-W99)",
+      "fix": "Added try/except with HTTPException 400 for proper error handling"
+    }
+  ]
+}
