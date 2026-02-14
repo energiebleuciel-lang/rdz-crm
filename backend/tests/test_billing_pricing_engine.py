@@ -450,11 +450,12 @@ class TestInvoiceGeneration:
 
     def test_generate_invoices(self, api_client):
         """POST /api/billing/week/{wk}/generate-invoices creates draft invoices"""
-        # Use a week with ledger entries
+        # Use a valid future week with ledger entries
+        test_week = "2026-W51"
         # First build ledger
-        api_client.post(f"{BASE_URL}/api/billing/week/2026-W98/build-ledger")
+        api_client.post(f"{BASE_URL}/api/billing/week/{test_week}/build-ledger")
         
-        response = api_client.post(f"{BASE_URL}/api/billing/week/2026-W98/generate-invoices")
+        response = api_client.post(f"{BASE_URL}/api/billing/week/{test_week}/generate-invoices")
         # May succeed with 0 invoices if no billable entries
         if response.status_code == 400 and "No ledger entries" in response.text:
             print("⚠ No ledger entries for test week, skipping")
