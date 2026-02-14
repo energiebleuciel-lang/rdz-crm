@@ -500,7 +500,8 @@ async def _try_cross_entity(
             client_name=client_name,
             commande_id=cmd.get("id"),
             is_lb=is_lb,
-            reason=f"cross_entity_{from_entity}_to_{to_entity}"
+            reason=f"cross_entity_{from_entity}_to_{to_entity}",
+            routing_mode="fallback_no_orders"
         )
 
     logger.info(
