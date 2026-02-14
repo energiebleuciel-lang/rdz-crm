@@ -1,40 +1,38 @@
 # RDZ CRM — Product Requirements Document
 
 ## Original Problem Statement
-Build a comprehensive CRM "RDZ" managing leads, orders, and deliveries between ZR7 and MDL entities.
+CRM "RDZ" managing leads, orders, deliveries between ZR7 and MDL entities.
 
-## Core Architecture
-- **Backend**: FastAPI on port 8001 | **Frontend**: React on port 3000 | **DB**: MongoDB | **Cron**: APScheduler (Europe/Paris)
-- **Version**: 1.0.0 | Tag: `rdz-core-distribution-validated`
+## Architecture
+Backend: FastAPI:8001 | Frontend: React:3000 | DB: MongoDB | Cron: APScheduler (Europe/Paris)
+Version: 1.0.0 | Tag: `rdz-core-distribution-validated`
 
-## What's Been Implemented
+## Implemented — 95 E2E tests PASS
 
-### Core Distribution Layer (VALIDATED — 81 E2E tests PASS)
-- Lead ingestion with phone normalization pipeline
-- Routing engine with LB replacement for suspicious leads
-- Delivery state machine, deduplication (30-day per-client)
-- Granular RBAC (40+ permissions), entity isolation (ZR7/MDL)
+### Core Distribution Layer
+- Lead ingestion, routing engine, delivery state machine, deduplication 30j
+- RBAC (40+ permissions), entity isolation (ZR7/MDL), super_admin scope switcher
 - Billing engine, intercompany transfers (fail-open), cron jobs
 
-### Phone Normalization (2026-02-14)
-- `normalize_phone_fr()`: +33/0033/33 prefix, 9-digit mobile, blocked patterns
-- `phone_quality` field: valid/suspicious/invalid
-- Migration: 3243 leads processed
+### Phone Normalization
+- `normalize_phone_fr()`: +33/0033/33, blocked patterns, `phone_quality` field
 
-### Suspicious Phone Policy (2026-02-14)
-- **Providers/Inter-CRM**: suspicious → rejected immediately, no lead created
-- **Internal LP**: suspicious → accepted, LB replacement attempted before delivery
-- `try_lb_replacement()`: atomic reservation (findOneAndUpdate), dedup-checked
-- Fields: `was_replaced`, `replacement_source`, `replacement_lead_id`, `lead_source_type`
-- 10 dedicated tests + 71 regression = 81/81 PASS
+### Suspicious Phone Policy
+- Providers/Inter-CRM: reject suspicious | Internal LP: LB replacement
+- `try_lb_replacement()`: atomic reservation, dedup-checked
 
-## Files Modified (Suspicious Policy)
-- `backend/routes/public.py`: rejection gate + LB replacement hook
-- `backend/services/lb_replacement.py`: NEW — atomic LB selection
-- `backend/tests/test_suspicious_policy.py`: NEW — 10 E2E tests
-
-## Modules NOT touched
-routing_engine, duplicate_detector, delivery_state_machine, RBAC, entity scoping
+### Monitoring Intelligence Layer (2026-02-14)
+- **Backend**: `GET /api/monitoring/intelligence?range=24h|7d|30d|90d&product=PV`
+  - Phone quality by source (with trend vs previous period)
+  - Duplicate rate by source + cross-source conflict matrix + delay buckets
+  - Rejection stats by source/reason
+  - LB replacement efficiency
+  - Core KPIs: deliverability rate, clean rate, economic yield
+- **Frontend**: Full dashboard with 7 KPI cards, 4 widgets, source ranking table
+- **Entity scoping**: strict via X-Entity-Scope, tested
+- **Fail-open**: per-widget isolation
+- **Performance**: <5s for 30d, <10s for 90d
+- **Indexes added**: phone_quality, lead_source_type, source
 
 ## Prioritized Backlog
 - **(P0)** Accounts / LP / Form registry + UI builder
