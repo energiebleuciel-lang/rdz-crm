@@ -525,7 +525,7 @@ async def build_ledger(week_key: str, user: dict = Depends(get_current_user)):
             e.pop("_id", None)
 
     # 2. Aggregate into billing_records (per client + product + order + week)
-    agg = defaultdict(lambda: {"leads": 0, "lb": 0, "billable": 0, "uprice": 0, "disc": 0, "bmode": "WEEKLY_INVOICE", "tva": 20.0})
+    agg = defaultdict(lambda: {"leads": 0, "lb": 0, "billable": 0, "uprice": 0, "disc": 0, "bmode": "WEEKLY_INVOICE", "tva": 20.0, "source_entity": "", "billing_entity": ""})
     for e in entries:
         if not e["is_billable"]:
             continue
@@ -536,6 +536,8 @@ async def build_ledger(week_key: str, user: dict = Depends(get_current_user)):
         agg[rk]["disc"] = e["discount_pct_snapshot"]
         agg[rk]["bmode"] = e["billing_mode_snapshot"]
         agg[rk]["tva"] = e.get("vat_rate_snapshot", 20.0)
+        agg[rk]["source_entity"] = e.get("source_entity", "")
+        agg[rk]["billing_entity"] = e.get("billing_entity", "")
 
     # Also include non-billable-only groups (for visibility)
     for e in entries:
