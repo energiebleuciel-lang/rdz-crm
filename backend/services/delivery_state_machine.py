@@ -18,6 +18,7 @@
 import logging
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
+from collections import defaultdict
 from config import db, now_iso
 
 logger = logging.getLogger("delivery_state_machine")
