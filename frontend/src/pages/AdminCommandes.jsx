@@ -17,7 +17,7 @@ export default function AdminCommandes() {
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
   const [showCreate, setShowCreate] = useState(false);
-  const [createData, setCreateData] = useState({ entity: 'ZR7', client_id: '', produit: 'PV', departements: '*', quota_semaine: 50, lb_percent_max: 30, priorite: 1 });
+  const [createData, setCreateData] = useState({ entity: 'ZR7', client_id: '', produit: 'PV', departements: '*', quota_semaine: 50, lb_target_pct: 20, priorite: 1 });
   const [saving, setSaving] = useState(false);
 
   const handleWeekNav = (dir) => setWeek(w => shiftWeekKey(w, dir));
@@ -71,7 +71,7 @@ export default function AdminCommandes() {
     setEditId(cmd.id);
     setEditData({
       quota_semaine: cmd.quota_semaine || 0,
-      lb_percent_max: cmd.lb_percent_max || 0,
+      lb_target_pct: Math.round((cmd.lb_target_pct || 0) * 100),
       priorite: cmd.priorite || 1,
       active: cmd.active ?? true,
       departements: (cmd.departements || []).join(', '),
@@ -83,7 +83,7 @@ export default function AdminCommandes() {
     try {
       const body = {
         quota_semaine: Number(editData.quota_semaine),
-        lb_percent_max: Number(editData.lb_percent_max),
+        lb_target_pct: Number(editData.lb_target_pct) / 100,
         priorite: Number(editData.priorite),
         active: editData.active,
         departements: editData.departements.split(',').map(s => s.trim()).filter(Boolean),
@@ -104,10 +104,11 @@ export default function AdminCommandes() {
       const body = {
         ...createData,
         quota_semaine: Number(createData.quota_semaine),
-        lb_percent_max: Number(createData.lb_percent_max),
+        lb_target_pct: Number(createData.lb_target_pct) / 100,
         priorite: Number(createData.priorite),
         departements: createData.departements.split(',').map(s => s.trim()).filter(Boolean),
       };
+      delete body.lb_percent_max;
       await authFetch(`${API}/api/commandes`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
