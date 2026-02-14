@@ -459,3 +459,304 @@ function ActivityTab({ activities }) {
     </div>
   );
 }
+
+const PRODUCTS = ['PV', 'PAC', 'ITE'];
+const BILLING_MODES = ['WEEKLY_INVOICE', 'PREPAID'];
+const CREDIT_REASONS = ['fin_de_semaine', 'geste_commercial', 'retard', 'qualite', 'bug', 'autre'];
+
+function PricingTab({ clientId, authFetch }) {
+  const [data, setData] = useState(null);
+  const [prepay, setPrepay] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [globalDisc, setGlobalDisc] = useState(0);
+  const [tvaRate, setTvaRate] = useState(20);
+  const [addProd, setAddProd] = useState({ product_code: '', unit_price_eur: 0, discount_pct: 0, billing_mode: 'WEEKLY_INVOICE' });
+  const [prepayUnits, setPrepayUnits] = useState({ product_code: '', units_to_add: 0, note: '' });
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [pRes, bRes] = await Promise.all([
+        authFetch(`${API}/api/clients/${clientId}/pricing`),
+        authFetch(`${API}/api/clients/${clientId}/prepayment`),
+      ]);
+      if (pRes.ok) {
+        const d = await pRes.json();
+        setData(d);
+        setGlobalDisc(d.global?.discount_pct_global || 0);
+        setTvaRate(d.global?.tva_rate ?? 20);
+      }
+      if (bRes.ok) { const d = await bRes.json(); setPrepay(d.balances || []); }
+    } catch (e) { console.error(e); }
+    setLoading(false);
+  }, [clientId, authFetch]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const saveGlobal = async () => {
+    setSaving(true);
+    await authFetch(`${API}/api/clients/${clientId}/pricing`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ discount_pct_global: globalDisc, tva_rate: tvaRate }),
+    });
+    setSaving(false); load();
+  };
+
+  const saveProduct = async () => {
+    if (!addProd.product_code) return;
+    setSaving(true);
+    await authFetch(`${API}/api/clients/${clientId}/pricing/product`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(addProd),
+    });
+    setAddProd({ product_code: '', unit_price_eur: 0, discount_pct: 0, billing_mode: 'WEEKLY_INVOICE' });
+    setSaving(false); load();
+  };
+
+  const deleteProduct = async (pc) => {
+    if (!window.confirm(`Supprimer le pricing ${pc} ?`)) return;
+    await authFetch(`${API}/api/clients/${clientId}/pricing/product/${pc}`, { method: 'DELETE' });
+    load();
+  };
+
+  const addPrepayUnits = async () => {
+    if (!prepayUnits.product_code || prepayUnits.units_to_add <= 0) return;
+    await authFetch(`${API}/api/clients/${clientId}/prepayment/add-units`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(prepayUnits),
+    });
+    setPrepayUnits({ product_code: '', units_to_add: 0, note: '' });
+    load();
+  };
+
+  if (loading) return <div className="text-zinc-600 text-xs py-4">Chargement...</div>;
+
+  return (
+    <div className="space-y-4" data-testid="tab-content-pricing">
+      {/* Global pricing */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
+        <h3 className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-3">Pricing global</h3>
+        <div className="flex gap-4 items-end">
+          <div>
+            <label className="text-[10px] text-zinc-500 block mb-1">Remise globale (%)</label>
+            <input type="number" value={globalDisc} onChange={e => setGlobalDisc(Number(e.target.value))} min={0} max={100} step={0.5}
+              className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-300 w-24" data-testid="global-discount" />
+          </div>
+          <div>
+            <label className="text-[10px] text-zinc-500 block mb-1">TVA (%)</label>
+            <input type="number" value={tvaRate} onChange={e => setTvaRate(Number(e.target.value))} min={0} max={30} step={0.1}
+              className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-300 w-24" data-testid="tva-rate" />
+          </div>
+          <button onClick={saveGlobal} disabled={saving}
+            className="px-3 py-1.5 text-xs bg-teal-500/15 text-teal-400 rounded hover:bg-teal-500/25 border border-teal-500/30" data-testid="save-global-btn">
+            <Save className="w-3 h-3 inline mr-1" />Sauvegarder
+          </button>
+        </div>
+      </div>
+
+      {/* Per-product pricing table */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
+        <h3 className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-3">Pricing par produit</h3>
+        <div className="space-y-2 mb-4">
+          {(data?.products || []).map(p => (
+            <div key={p.product_code} className="flex items-center gap-3 bg-zinc-800/50 rounded-lg px-3 py-2 border border-zinc-700/50">
+              <span className="text-xs font-medium text-white w-12">{p.product_code}</span>
+              <span className="text-xs text-zinc-300">{p.unit_price_eur} EUR</span>
+              <span className="text-xs text-zinc-500">-{p.discount_pct}%</span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded border ${p.billing_mode === 'PREPAID' ? 'bg-violet-500/10 text-violet-400 border-violet-500/30' : 'bg-zinc-700/60 text-zinc-300 border-zinc-600'}`}>
+                {p.billing_mode}
+              </span>
+              <div className="flex-1" />
+              <button onClick={() => deleteProduct(p.product_code)} className="p-1 text-zinc-500 hover:text-red-400" data-testid={`delete-pricing-${p.product_code}`}>
+                <Trash2 className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+          {(data?.products || []).length === 0 && <p className="text-[10px] text-zinc-600">Aucun pricing produit configuré</p>}
+        </div>
+
+        {/* Add product form */}
+        <div className="flex gap-2 items-end flex-wrap border-t border-zinc-800 pt-3">
+          <div>
+            <label className="text-[10px] text-zinc-500 block mb-1">Produit</label>
+            <select value={addProd.product_code} onChange={e => setAddProd(p => ({ ...p, product_code: e.target.value }))}
+              className="bg-zinc-800 text-zinc-300 text-xs rounded px-2 py-1.5 border border-zinc-700" data-testid="add-product-select">
+              <option value="">-</option>
+              {PRODUCTS.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] text-zinc-500 block mb-1">Prix HT (EUR)</label>
+            <input type="number" value={addProd.unit_price_eur} onChange={e => setAddProd(p => ({ ...p, unit_price_eur: Number(e.target.value) }))}
+              className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-300 w-20" data-testid="add-price" />
+          </div>
+          <div>
+            <label className="text-[10px] text-zinc-500 block mb-1">Remise %</label>
+            <input type="number" value={addProd.discount_pct} onChange={e => setAddProd(p => ({ ...p, discount_pct: Number(e.target.value) }))}
+              className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-300 w-16" data-testid="add-discount" />
+          </div>
+          <div>
+            <label className="text-[10px] text-zinc-500 block mb-1">Mode</label>
+            <select value={addProd.billing_mode} onChange={e => setAddProd(p => ({ ...p, billing_mode: e.target.value }))}
+              className="bg-zinc-800 text-zinc-300 text-xs rounded px-2 py-1.5 border border-zinc-700" data-testid="add-billing-mode">
+              {BILLING_MODES.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+          <button onClick={saveProduct} disabled={!addProd.product_code || saving}
+            className="px-3 py-1.5 text-xs bg-teal-500/15 text-teal-400 rounded hover:bg-teal-500/25 border border-teal-500/30 disabled:opacity-50" data-testid="add-product-btn">
+            <Plus className="w-3 h-3 inline mr-1" />Ajouter
+          </button>
+        </div>
+      </div>
+
+      {/* Prepayment balances */}
+      {prepay.length > 0 && (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
+          <h3 className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-3">Balances prépaiement</h3>
+          <div className="space-y-2 mb-3">
+            {prepay.map(b => (
+              <div key={b.product_code} className="flex items-center gap-4 text-xs bg-zinc-800/50 rounded-lg px-3 py-2 border border-zinc-700/50">
+                <span className="font-medium text-white w-12">{b.product_code}</span>
+                <span className="text-zinc-500">Achetées: <span className="text-zinc-300">{b.units_purchased_total}</span></span>
+                <span className="text-zinc-500">Livrées: <span className="text-zinc-300">{b.units_delivered_total}</span></span>
+                <span className={`font-medium ${b.units_remaining <= 0 ? 'text-red-400' : b.units_remaining <= 10 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                  Restantes: {b.units_remaining}
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2 items-end border-t border-zinc-800 pt-3">
+            <div>
+              <label className="text-[10px] text-zinc-500 block mb-1">Produit</label>
+              <select value={prepayUnits.product_code} onChange={e => setPrepayUnits(p => ({ ...p, product_code: e.target.value }))}
+                className="bg-zinc-800 text-zinc-300 text-xs rounded px-2 py-1.5 border border-zinc-700" data-testid="prepay-product">
+                <option value="">-</option>
+                {prepay.map(b => <option key={b.product_code} value={b.product_code}>{b.product_code}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] text-zinc-500 block mb-1">Unités à ajouter</label>
+              <input type="number" value={prepayUnits.units_to_add} onChange={e => setPrepayUnits(p => ({ ...p, units_to_add: Number(e.target.value) }))}
+                className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-300 w-20" data-testid="prepay-units" />
+            </div>
+            <button onClick={addPrepayUnits} disabled={!prepayUnits.product_code || prepayUnits.units_to_add <= 0}
+              className="px-3 py-1.5 text-xs bg-violet-500/15 text-violet-400 rounded hover:bg-violet-500/25 border border-violet-500/30 disabled:opacity-50" data-testid="add-prepay-btn">
+              <Plus className="w-3 h-3 inline mr-1" />Ajouter
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OffersTab({ clientId, authFetch }) {
+  const [credits, setCredits] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState({ product_code: '', week_key: '', quantity_units_free: 0, reason: '', note: '' });
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await authFetch(`${API}/api/clients/${clientId}/credits`);
+      if (r.ok) { const d = await r.json(); setCredits(d.credits || []); }
+    } catch (e) { console.error(e); }
+    setLoading(false);
+  }, [clientId, authFetch]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const addCredit = async () => {
+    if (!form.week_key || !form.reason || form.quantity_units_free <= 0) return;
+    const r = await authFetch(`${API}/api/clients/${clientId}/credits`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form),
+    });
+    if (r.ok) {
+      setForm({ product_code: '', week_key: '', quantity_units_free: 0, reason: '', note: '' });
+      load();
+    } else { const d = await r.json(); alert(d.detail || 'Erreur'); }
+  };
+
+  const deleteCredit = async (creditId) => {
+    if (!window.confirm('Supprimer cette offre ?')) return;
+    const r = await authFetch(`${API}/api/clients/${clientId}/credits/${creditId}`, { method: 'DELETE' });
+    if (r.ok) load();
+    else { const d = await r.json(); alert(d.detail || 'Erreur'); }
+  };
+
+  if (loading) return <div className="text-zinc-600 text-xs py-4">Chargement...</div>;
+
+  return (
+    <div className="space-y-4" data-testid="tab-content-offers">
+      {/* Add offer */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
+        <h3 className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-3">Ajouter une offre</h3>
+        <div className="flex gap-2 items-end flex-wrap">
+          <div>
+            <label className="text-[10px] text-zinc-500 block mb-1">Semaine (YYYY-W##)</label>
+            <input value={form.week_key} onChange={e => setForm(f => ({ ...f, week_key: e.target.value }))} placeholder="2026-W07"
+              className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-300 w-28" data-testid="offer-week" />
+          </div>
+          <div>
+            <label className="text-[10px] text-zinc-500 block mb-1">Produit (opt.)</label>
+            <select value={form.product_code} onChange={e => setForm(f => ({ ...f, product_code: e.target.value }))}
+              className="bg-zinc-800 text-zinc-300 text-xs rounded px-2 py-1.5 border border-zinc-700" data-testid="offer-product">
+              <option value="">Global</option>
+              {PRODUCTS.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] text-zinc-500 block mb-1">Units offertes</label>
+            <input type="number" value={form.quantity_units_free} onChange={e => setForm(f => ({ ...f, quantity_units_free: Number(e.target.value) }))}
+              className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-300 w-20" data-testid="offer-qty" />
+          </div>
+          <div>
+            <label className="text-[10px] text-zinc-500 block mb-1">Raison</label>
+            <select value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))}
+              className="bg-zinc-800 text-zinc-300 text-xs rounded px-2 py-1.5 border border-zinc-700" data-testid="offer-reason">
+              <option value="">-</option>
+              {CREDIT_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] text-zinc-500 block mb-1">Note</label>
+            <input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="Commentaire"
+              className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-300 w-36" data-testid="offer-note" />
+          </div>
+          <button onClick={addCredit} disabled={!form.week_key || !form.reason || form.quantity_units_free <= 0}
+            className="px-3 py-1.5 text-xs bg-teal-500/15 text-teal-400 rounded hover:bg-teal-500/25 border border-teal-500/30 disabled:opacity-50" data-testid="add-offer-btn">
+            <Plus className="w-3 h-3 inline mr-1" />Ajouter
+          </button>
+        </div>
+      </div>
+
+      {/* History */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
+        <h3 className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-3">Historique offres ({credits.length})</h3>
+        <div className="space-y-2">
+          {credits.map(c => (
+            <div key={c.id} className="flex items-center gap-3 bg-zinc-800/50 rounded-lg px-3 py-2 border border-zinc-700/50">
+              <span className="text-xs text-zinc-300 font-mono w-20">{c.week_key}</span>
+              <span className="text-xs text-zinc-400">{c.product_code || 'Global'}</span>
+              <span className="text-xs font-medium text-violet-400">{c.quantity_units_free} units</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-700 text-zinc-300">{c.reason}</span>
+              {c.note && <span className="text-[10px] text-zinc-500 truncate max-w-[150px]">{c.note}</span>}
+              <div className="flex-1" />
+              <span className="text-[10px] text-zinc-600">{c.created_by} - {c.created_at?.slice(0, 10)}</span>
+              {!c.applied_invoice_id && (
+                <button onClick={() => deleteCredit(c.id)} className="p-1 text-zinc-500 hover:text-red-400" data-testid={`delete-credit-${c.id}`}>
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              )}
+              {c.applied_invoice_id && <span className="text-[9px] text-zinc-600">Appliqué</span>}
+            </div>
+          ))}
+          {credits.length === 0 && <p className="text-[10px] text-zinc-600">Aucune offre</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
