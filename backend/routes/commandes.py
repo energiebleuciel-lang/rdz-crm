@@ -27,7 +27,7 @@ from models import (
     VALID_PRODUCTS,
     validate_entity
 )
-from services.routing_engine import get_week_start, get_commande_stats
+from services.routing_engine import get_week_start, get_commande_stats, resolve_week_range
 
 router = APIRouter(prefix="/commandes", tags=["Commandes"])
 
