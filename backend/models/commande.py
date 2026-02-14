@@ -51,7 +51,8 @@ class CommandeCreate(BaseModel):
     # Quotas et prix
     quota_semaine: int = 0  # Nombre de leads/semaine souhaités (0 = illimité)
     prix_lead: float = 0.0  # Prix unitaire par lead
-    lb_percent_max: int = 0  # % maximum de LB autorisé (0-100)
+    lb_percent_max: int = 0  # DEPRECATED - remplacé par lb_target_pct
+    lb_target_pct: float = 0  # Objectif LB (0.0 à 1.0, ex: 0.20 = 20%)
     
     # Priorité
     priorite: int = Field(default=5, ge=1, le=10)  # 1=haute, 10=basse
@@ -74,11 +75,11 @@ class CommandeCreate(BaseModel):
                 raise ValueError(f"Département invalide: {dept}")
         return v
     
-    @validator('lb_percent_max')
-    def validate_lb_percent(cls, v):
-        """% LB entre 0 et 100"""
-        if v < 0 or v > 100:
-            raise ValueError("lb_percent_max doit être entre 0 et 100")
+    @validator('lb_target_pct')
+    def validate_lb_target_pct(cls, v):
+        """lb_target_pct entre 0 et 1"""
+        if v < 0 or v > 1:
+            raise ValueError("lb_target_pct doit être entre 0 et 1")
         return v
 
 
@@ -88,6 +89,7 @@ class CommandeUpdate(BaseModel):
     quota_semaine: Optional[int] = None
     prix_lead: Optional[float] = None
     lb_percent_max: Optional[int] = None
+    lb_target_pct: Optional[float] = None
     priorite: Optional[int] = None
     auto_renew: Optional[bool] = None
     remise_percent: Optional[float] = None
@@ -110,6 +112,12 @@ class CommandeUpdate(BaseModel):
         if v is not None and (v < 1 or v > 10):
             raise ValueError("Priorité doit être entre 1 et 10")
         return v
+    
+    @validator('lb_target_pct')
+    def validate_lb_target_pct(cls, v):
+        if v is not None and (v < 0 or v > 1):
+            raise ValueError("lb_target_pct doit être entre 0 et 1")
+        return v
 
 
 class CommandeResponse(BaseModel):
@@ -123,6 +131,7 @@ class CommandeResponse(BaseModel):
     quota_semaine: int = 0
     prix_lead: float = 0.0
     lb_percent_max: int = 0
+    lb_target_pct: float = 0
     priorite: int = 5
     auto_renew: bool = True
     remise_percent: float = 0.0
