@@ -547,6 +547,8 @@ async def build_ledger(week_key: str, user: dict = Depends(get_current_user)):
             agg[rk]["disc"] = e["discount_pct_snapshot"]
             agg[rk]["bmode"] = e["billing_mode_snapshot"]
             agg[rk]["tva"] = e.get("vat_rate_snapshot", 20.0)
+            agg[rk]["source_entity"] = e.get("source_entity", "")
+            agg[rk]["billing_entity"] = e.get("billing_entity", "")
 
     records_created = 0
     for rk, s in agg.items():
