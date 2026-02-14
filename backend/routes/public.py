@@ -492,6 +492,40 @@ async def submit_lead(data: LeadData, request: Request):
             target_entity = target_cmd.get("entity", entity) if target_cmd else entity
 
             # ════════════════════════════════════════════════════════
+            # CLIENT OVERLAP GUARD (fail-open, kill switch, bounded)
+            # Avoid delivering to shared clients if alternative exists
+            # ════════════════════════════════════════════════════════
+            overlap_result = {"is_shared": False, "overlap_active_30d": False,
+                              "client_group_key": "", "fallback": False}
+            try:
+                from services.overlap_guard import check_overlap_and_find_alternative, is_guard_enabled
+                if await is_guard_enabled():
+                    overlap_result = await check_overlap_and_find_alternative(
+                        selected_client_id=routing_result.client_id,
+                        selected_commande_id=routing_result.commande_id,
+                        entity=target_entity,
+                        produit=produit,
+                        departement=dept,
+                        phone=phone,
+                    )
+                    if overlap_result.get("alternative_found"):
+                        # Switch to alternative
+                        routing_result = type(routing_result)(
+                            success=True,
+                            client_id=overlap_result["alternative_client_id"],
+                            client_name=overlap_result["alternative_client_name"],
+                            commande_id=overlap_result["alternative_commande_id"],
+                            is_lb=routing_result.is_lb,
+                            reason="overlap_alternative",
+                            routing_mode=routing_result.routing_mode,
+                        )
+                        logger.info(
+                            f"[OVERLAP] Switched to alternative: {overlap_result['alternative_client_name']}"
+                        )
+            except Exception as e:
+                logger.error(f"[OVERLAP] Guard failed (fail-open): {e}")
+
+            # ════════════════════════════════════════════════════════
             # SUSPICIOUS LB REPLACEMENT HOOK
             # If suspicious + internal_lp → try to deliver an LB instead
             # ════════════════════════════════════════════════════════
