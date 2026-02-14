@@ -208,17 +208,29 @@ Guard:
     - Compteurs cohérence: sent=160, rejected=2, removed=1, billable=157 (160-2-1=157)
     - Actions sensibles: reject/remove/toggle tous fonctionnels + event logged
     - Idempotence: reject 2x=already_rejected, remove 2x=already_removed
+- **Départements V1 (Feb 2026)** : Pilotage industriel
+  - Page /admin/departements: table (dept, produit) avec filtres (product/period/week/dept/status)
+  - GET /api/departements/overview: vue globale avec produced, billable, non_billable, quota, remaining, status, clients_covering
+  - GET /api/departements/{dept}/detail: drawer avec KPIs, timeseries 8 semaines (recharts BarChart), clients couvrants
+  - GET /api/clients/{id}/coverage: couverture client par département avec agrégats
+  - Statuts calculés: no_order / on_remaining / saturated / inactive_blocked
+  - Comparatif semaine N vs N-1 sur produced (Δ%)
+  - Tab "Client Coverage": sélecteur client, KPI agrégés, table dept par dept
+  - Navigation: Départements ajouté à la sidebar (MapPin icon)
+  - Wildcard departements (*) supporté dans la couverture commandes
+  - Tests: 25/25 backend + 100% frontend (iteration 28)
 
 ## NEXT
 
-- [ ] Dashboard stats avances (leads today/routed today/livres today, filtres, graphiques)
-- [ ] Breakdown par produit sur le dashboard
+- [ ] Permissions simples (admin / ops / viewer)
+- [ ] Pricing Engine (moteur de tarification)
 
 ## BACKLOG
 
-- Dashboard stats avances (filtres, graphiques)
+- Dashboard stats avancés (filtres, graphiques)
+- Breakdown par produit sur le dashboard
 - Livraison API POST pour clients
-- Facturation inter-entites
+- Facturation inter-entités
 - Audit final E2E + tracking scripts
 
 ## CREDENTIALS
