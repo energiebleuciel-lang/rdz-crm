@@ -95,7 +95,7 @@ async def list_commandes(
 
 
 @router.get("/departements")
-async def list_departements(user: dict = Depends(get_current_user)):
+async def list_departements(user: dict = Depends(require_permission("commandes.view"))):
     """Retourne la liste des départements métropole valides"""
     return {
         "departements": DEPARTEMENTS_METRO,
@@ -105,7 +105,7 @@ async def list_departements(user: dict = Depends(get_current_user)):
 
 
 @router.get("/products")
-async def list_products(user: dict = Depends(get_current_user)):
+async def list_products(user: dict = Depends(require_permission("commandes.view"))):
     """Retourne la liste des produits"""
     return {
         "products": VALID_PRODUCTS,
@@ -116,7 +116,7 @@ async def list_products(user: dict = Depends(get_current_user)):
 @router.get("/{commande_id}")
 async def get_commande(
     commande_id: str,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_permission("commandes.view"))
 ):
     """Récupère une commande par ID"""
     cmd = await db.commandes.find_one({"id": commande_id}, {"_id": 0})
@@ -142,7 +142,7 @@ async def get_commande(
 @router.post("")
 async def create_commande(
     data: CommandeCreate,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_permission("commandes.create"))
 ):
     """
     Crée une nouvelle commande
@@ -205,7 +205,7 @@ async def create_commande(
 async def update_commande(
     commande_id: str,
     data: CommandeUpdate,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_permission("commandes.edit_quota"))
 ):
     """Met à jour une commande"""
     cmd = await db.commandes.find_one({"id": commande_id})
@@ -250,7 +250,7 @@ async def update_commande(
 @router.delete("/{commande_id}")
 async def delete_commande(
     commande_id: str,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_permission("commandes.delete"))
 ):
     """Supprime une commande"""
     result = await db.commandes.delete_one({"id": commande_id})
@@ -263,7 +263,7 @@ async def delete_commande(
 @router.post("/{commande_id}/toggle")
 async def toggle_commande(
     commande_id: str,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_permission("commandes.activate_pause"))
 ):
     """Active/désactive une commande"""
     cmd = await db.commandes.find_one({"id": commande_id})
@@ -294,7 +294,7 @@ async def toggle_commande(
 @router.get("/{commande_id}/stats")
 async def get_commande_stats_endpoint(
     commande_id: str,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_permission("commandes.view"))
 ):
     """
     Statistiques détaillées d'une commande
@@ -344,7 +344,7 @@ async def get_commande_deliveries(
     status: Optional[str] = None,
     limit: int = 50,
     skip: int = 0,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_permission("deliveries.view"))
 ):
     """Deliveries liées à une commande"""
     query = {"commande_id": commande_id}
