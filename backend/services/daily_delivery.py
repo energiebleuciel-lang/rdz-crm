@@ -873,15 +873,11 @@ async def process_pending_csv_deliveries() -> Dict:
                     f"[PENDING_CSV] Client {client_name} non livrable: {deliverable_check['reason']}"
                 )
                 results["skipped_not_deliverable"] += len(deliveries)
-                # Marquer comme failed avec raison
+                # 🔒 Marquer comme failed via state machine
                 delivery_ids = [d.get("id") for d in deliveries]
-                await db.deliveries.update_many(
-                    {"id": {"$in": delivery_ids}},
-                    {"$set": {
-                        "status": "failed",
-                        "last_error": f"client_not_deliverable: {deliverable_check['reason']}",
-                        "updated_at": now_iso()
-                    }}
+                await batch_mark_deliveries_failed(
+                    delivery_ids=delivery_ids,
+                    error=f"client_not_deliverable: {deliverable_check['reason']}"
                 )
                 results["errors"].append({"client": client_name, "error": deliverable_check["reason"]})
                 continue
