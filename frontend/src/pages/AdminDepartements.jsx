@@ -9,7 +9,7 @@ import {
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
 } from 'recharts';
-import { getCurrentWeekKey, shiftWeekKey } from '../lib/weekUtils';
+import { getCurrentWeekKey, shiftWeekKey, weekKeyToShort } from '../lib/weekUtils';
 import { WeekNavStandard } from '../components/WeekNav';
 
 const STATUS_CFG = {
