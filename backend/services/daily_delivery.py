@@ -723,14 +723,21 @@ async def process_pending_csv_deliveries() -> Dict:
     
     COMPORTEMENT:
     - Jour OFF → deliveries restent pending_csv
-    - Jour OK + auto_send=true → sent + leads=livre
+    - Jour OK + auto_send=true → sent + leads=livre (via state machine)
     - Jour OK + auto_send=false → ready_to_send (CSV généré, pas envoyé)
+    
+    🔒 UTILISE delivery_state_machine pour les transitions de statut
     
     Returns:
         Dict avec stats de traitement
     """
     from services.csv_delivery import send_csv_email, generate_csv_content
     from services.settings import is_delivery_day_enabled, get_email_denylist_settings, get_simulation_email_override
+    from services.delivery_state_machine import (
+        batch_mark_deliveries_sent,
+        batch_mark_deliveries_ready_to_send,
+        batch_mark_deliveries_failed
+    )
     from models.client import check_client_deliverable
     
     results = {
