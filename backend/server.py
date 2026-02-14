@@ -182,9 +182,9 @@ async def lifespan(app: FastAPI):
         # Intercompany invoice generation - Monday 08:00 Europe/Paris
         async def run_intercompany_invoices():
             """Cron: generate intercompany invoices for previous week."""
-            from datetime import datetime, timezone as tz, timedelta
+            from datetime import datetime, timedelta
             from config import db, now_iso
-            now = datetime.now(tz.utc)
+            now = datetime.now(PARIS_TZ)
             prev = now - timedelta(days=7)
             iso = prev.isocalendar()
             wk = f"{iso[0]}-W{iso[1]:02d}"
