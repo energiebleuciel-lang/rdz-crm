@@ -1,0 +1,111 @@
+{
+  "summary": "Simplified Billing Records - Full testing complete. Backend: All 31 tests pass for billing_records, build-ledger, external tracking, credits validation. Frontend: Facturation page shows has_records badge (Ledger construit/Aperçu), Build Ledger button works, inline edit for external tracking, status pills (Non facturé/Facturé/Payé). Client 360 Offers tab has Commande (order) dropdown. Fixed KeyError in build-ledger for old credits without order_id.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_simplified_billing_records.py",
+    "/app/test_reports/pytest/pytest_simplified_billing.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/routes/billing.py",
+    "/app/backend/tests/test_simplified_billing_records.py"
+  ],
+  "success_rate": {
+    "backend": "100% (31/31 tests passed)",
+    "frontend": "100% - All UI features working"
+  },
+  "test_credentials": {
+    "email": "energiebleuciel@gmail.com",
+    "password": "92Ruemarxdormoy"
+  },
+  "seed_data_creation": "Credit with order_id added for 2026-W11",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Simplified billing model fully tested. billing_records replaces invoices collection. has_records flag determines Ledger construit vs Aperçu badge. Credits require order_id+product_code. build-ledger blocked if any record is invoiced/paid. Week 2026-W07 has 17 billing_records with VAT fields.",
+  "features_tested": {
+    "backend": {
+      "GET /api/billing/week": {
+        "has_records_flag": "PASS",
+        "summary_fields": "PASS",
+        "totals_net_ht_ttc": "PASS",
+        "preview_mode": "PASS"
+      },
+      "POST /api/billing/week/{wk}/build-ledger": {
+        "creates_ledger_entries": "PASS",
+        "creates_billing_records": "PASS",
+        "blocked_if_invoiced": "PASS",
+        "blocked_if_paid": "PASS"
+      },
+      "GET /api/billing/records": {
+        "list_all": "PASS",
+        "filter_by_week": "PASS",
+        "filter_by_status": "PASS",
+        "filter_by_client": "PASS",
+        "vat_fields_present": "PASS"
+      },
+      "PUT /api/billing/records/{id}": {
+        "update_external_invoice_number": "PASS",
+        "update_status": "PASS",
+        "update_due_date": "PASS",
+        "update_paid_at": "PASS",
+        "reject_invalid_status": "PASS",
+        "404_for_nonexistent": "PASS"
+      },
+      "POST /api/clients/{id}/credits": {
+        "requires_order_id": "PASS",
+        "requires_product_code": "PASS",
+        "with_order_id_succeeds": "PASS",
+        "rejects_invalid_reason": "PASS"
+      },
+      "record_statuses": {
+        "not_invoiced": "PASS",
+        "invoiced": "PASS",
+        "paid": "PASS",
+        "overdue": "PASS"
+      },
+      "authentication_required": "PASS for all endpoints"
+    },
+    "frontend": {
+      "facturation_page": {
+        "page_loads": "PASS",
+        "ledger_construit_badge": "PASS (when has_records=true)",
+        "apercu_badge": "PASS (when has_records=false)",
+        "build_ledger_button": "PASS - 'Construire Ledger' or 'Reconstruire Ledger'",
+        "refresh_button": "PASS",
+        "weekly_invoice_table": "PASS with all columns",
+        "edit_button_per_row": "PASS - 16 edit buttons found",
+        "inline_edit_form": "PASS - ext-number, ext-ttc, status, due-date, paid-at, save btn",
+        "status_pills": "PASS - Non facturé, Facturé, Payé visible",
+        "prepaid_section": "PASS",
+        "week_navigation": "PASS"
+      },
+      "client_360_offers_tab": {
+        "tab_available": "PASS - 6 tabs including Offres",
+        "commande_dropdown": "PASS - [data-testid='offer-order']",
+        "week_input": "PASS",
+        "quantity_input": "PASS",
+        "reason_dropdown": "PASS",
+        "note_input": "PASS",
+        "add_button": "PASS",
+        "history_section": "PASS - showing 7 credits"
+      }
+    }
+  },
+  "bug_fixes_applied": {
+    "KeyError_order_id": {
+      "file": "/app/backend/routes/billing.py",
+      "issue": "build-ledger crashed with KeyError: 'order_id' when old credits didn't have order_id",
+      "fix": "Changed credit_map logic to allow credits without order_id for backwards compatibility",
+      "line": "466-467"
+    }
+  }
+}
