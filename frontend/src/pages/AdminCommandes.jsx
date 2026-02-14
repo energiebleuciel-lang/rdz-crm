@@ -19,6 +19,8 @@ export default function AdminCommandes() {
   const [showCreate, setShowCreate] = useState(false);
   const [createData, setCreateData] = useState({ entity: 'ZR7', client_id: '', produit: 'PV', departements: '*', quota_semaine: 50, lb_target_pct: 20, priorite: 1 });
   const [saving, setSaving] = useState(false);
+  const [lbMonitor, setLbMonitor] = useState([]);
+  const [showLbMonitor, setShowLbMonitor] = useState(false);
 
   const handleWeekNav = (dir) => setWeek(w => shiftWeekKey(w, dir));
 
