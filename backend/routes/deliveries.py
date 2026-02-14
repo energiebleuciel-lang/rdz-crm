@@ -17,7 +17,7 @@ import io
 
 from config import db, now_iso
 from routes.auth import get_current_user, require_admin
-from models.delivery import DeliveryStatus, SendDeliveryRequest, VALID_STATUS_TRANSITIONS
+from models.delivery import DeliveryStatus, SendDeliveryRequest, RejectDeliveryRequest, VALID_STATUS_TRANSITIONS
 from services.csv_delivery import send_csv_email, generate_csv_content
 from services.settings import get_simulation_email_override, get_email_denylist_settings
 
