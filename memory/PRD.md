@@ -122,6 +122,16 @@ Guards batch:
   - Fallback direct DB supprime (zero bypass)
   - Dead code supprime (csv_delivery.deliver_to_client)
   - Tests: 45/45 passes (iteration 21)
+- **Phase 2.7 (Feb 2025)** : Client Rejection Feature
+  - Endpoint POST /api/deliveries/{id}/reject-leads
+  - outcome: accepted (default) | rejected sur delivery
+  - Rejet: lead.status=new, references delivery supprimees, re-routable
+  - delivery.status et CSV inchanges (historique preserve)
+  - billable = status=sent AND outcome=accepted
+  - Idempotent: 2e rejet = pas d'erreur
+  - Guard: seul status=sent peut etre rejete
+  - Stats enrichis: rejected, billable
+  - Teste manuellement: rejet, idempotency, billing, guard non-sent
 
 ## NEXT (Phase 3 - UI Admin)
 
@@ -136,7 +146,6 @@ Guards batch:
 
 - Dashboard stats avances (filtres, graphiques)
 - Livraison API POST pour clients
-- Feature rejet_client (client rejette un lead livre)
 - Facturation inter-entites
 - Audit final E2E + tracking scripts
 
@@ -169,6 +178,7 @@ Guards batch:
 | GET | /api/deliveries/{id} | Oui | Detail delivery |
 | GET | /api/deliveries/{id}/download | Oui | Telecharger CSV |
 | POST | /api/deliveries/{id}/send | Admin | Envoyer/Renvoyer |
+| POST | /api/deliveries/{id}/reject-leads | Admin | Rejet client |
 | POST | /api/deliveries/batch/generate-csv | Admin | Generer CSV en batch |
 | POST | /api/deliveries/batch/send-ready | Admin | Envoyer ready_to_send |
 | POST | /api/public/leads | Non/Key | Soumettre lead + routing |
