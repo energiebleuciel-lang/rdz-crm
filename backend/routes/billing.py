@@ -567,9 +567,11 @@ async def build_ledger(week_key: str, user: dict = Depends(get_current_user)):
 
         record = {
             "id": str(uuid.uuid4()), "week_key": week_key,
-            "client_id": cid, "client_name": cnames.get(cid, ""),
+            "client_id": cid, "client_name": client_map.get(cid, {}).get("name", ""),
             "product_code": pc, "order_id": oid,
             "billing_mode": s["bmode"],
+            "source_entity": s.get("source_entity", ""),
+            "billing_entity": s.get("billing_entity", ""),
             "units_billable": s["billable"], "units_leads": s["leads"], "units_lb": s["lb"],
             "units_free": ufree, "units_invoiced": uinv,
             "unit_price_ht_snapshot": s["uprice"], "discount_pct_snapshot": s["disc"],
