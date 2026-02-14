@@ -68,9 +68,9 @@ async def get_dashboard_stats(
     zr7_enabled, zr7_reason = await is_delivery_day_enabled("ZR7")
     mdl_enabled, mdl_reason = await is_delivery_day_enabled("MDL")
 
-    # Top clients 7d (by delivery count)
+    # Top clients semaine (by delivery count)
     top_clients_pipeline = [
-        {"$match": {"status": "sent", "created_at": {"$gte": seven_days_ago}}},
+        {"$match": {"status": "sent", "created_at": {"$gte": week_start, "$lte": week_end}}},
         {"$group": {
             "_id": "$client_id",
             "client_name": {"$first": "$client_name"},
