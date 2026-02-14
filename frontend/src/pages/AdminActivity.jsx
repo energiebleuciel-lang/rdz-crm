@@ -50,6 +50,7 @@ export default function AdminActivity() {
   const [actions, setActions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
+  const [week, setWeek] = useState(getCurrentWeekKey());
   const [filters, setFilters] = useState({ action: '', entity_type: '', entity: '' });
   const [showFilters, setShowFilters] = useState(false);
   const limit = 50;
