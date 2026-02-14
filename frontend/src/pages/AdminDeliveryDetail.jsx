@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { API } from '../hooks/useApi';
-import { ArrowLeft, Download, Send, RefreshCw, XCircle, CheckCircle, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Download, Send, RefreshCw, XCircle, AlertTriangle, Phone, Mail, CalendarDays } from 'lucide-react';
 
 const STATUS_BADGE = {
   pending_csv: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
@@ -11,6 +11,7 @@ const STATUS_BADGE = {
   sent: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
   failed: 'bg-red-500/10 text-red-400 border-red-500/30',
 };
+const DAY_SHORT = ['L', 'M', 'Me', 'J', 'V', 'S', 'D'];
 
 export default function AdminDeliveryDetail() {
   const { id } = useParams();
@@ -18,6 +19,8 @@ export default function AdminDeliveryDetail() {
   const navigate = useNavigate();
   const [delivery, setDelivery] = useState(null);
   const [lead, setLead] = useState(null);
+  const [client, setClient] = useState(null);
+  const [calendar, setCalendar] = useState({});
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [rejectModal, setRejectModal] = useState(false);
@@ -33,10 +36,14 @@ export default function AdminDeliveryDetail() {
       if (res.ok) {
         const d = await res.json();
         setDelivery(d);
-        if (d.lead_id) {
-          const lRes = await authFetch(`${API}/api/leads/${d.lead_id}`).catch(() => null);
-          if (lRes?.ok) setLead(await lRes.json());
-        }
+        const [lRes, cRes, calRes] = await Promise.all([
+          d.lead_id ? authFetch(`${API}/api/leads/${d.lead_id}`).catch(() => null) : null,
+          d.client_id ? authFetch(`${API}/api/clients/${d.client_id}`).catch(() => null) : null,
+          authFetch(`${API}/api/settings/delivery-calendar`).catch(() => null)
+        ]);
+        if (lRes?.ok) setLead(await lRes.json());
+        if (cRes?.ok) { const cd = await cRes.json(); setClient(cd.client || cd); }
+        if (calRes?.ok) setCalendar(await calRes.json());
       }
     } catch (e) { console.error(e); }
     setLoading(false);
@@ -83,10 +90,11 @@ export default function AdminDeliveryDetail() {
 
   const d = delivery;
   const isRejected = d.outcome === 'rejected';
+  const entityDays = calendar[d.entity]?.enabled_days || [];
 
   return (
     <div data-testid="delivery-detail">
-      <button onClick={() => navigate('/admin/deliveries')} className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 mb-4" data-testid="back-btn">
+      <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 mb-4" data-testid="back-btn">
         <ArrowLeft className="w-3.5 h-3.5" /> Retour
       </button>
 
@@ -97,32 +105,62 @@ export default function AdminDeliveryDetail() {
         {d.billable && <span className="text-[10px] px-2 py-0.5 rounded-full border bg-emerald-500/10 text-emerald-400 border-emerald-500/30">billable</span>}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        {/* Info delivery */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+        {/* Delivery info */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
-          <h2 className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-3">Delivery Info</h2>
+          <h2 className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-3">Delivery</h2>
           <dl className="space-y-2 text-xs">
             {[
               ['ID', d.id],
               ['Entity', d.entity],
-              ['Client', d.client_name],
               ['Produit', d.produit],
               ['Created', d.created_at?.slice(0, 19).replace('T', ' ')],
               ['Sent To', d.sent_to?.join(', ') || '-'],
-              ['Last Sent At', d.last_sent_at?.slice(0, 19).replace('T', ' ') || '-'],
-              ['Send Attempts', d.send_attempts || 0],
+              ['Last Sent', d.last_sent_at?.slice(0, 19).replace('T', ' ') || '-'],
+              ['Attempts', d.send_attempts || 0],
               ['Sent By', d.sent_by || '-'],
-              ['Last Error', d.last_error || '-'],
+              ['Error', d.last_error || '-'],
             ].map(([k, v]) => (
-              <div key={k} className="flex justify-between">
-                <dt className="text-zinc-500">{k}</dt>
-                <dd className="text-zinc-300 text-right max-w-[200px] truncate">{String(v)}</dd>
+              <div key={k} className="flex justify-between gap-2">
+                <dt className="text-zinc-500 shrink-0">{k}</dt>
+                <dd className={`text-right truncate max-w-[180px] ${k === 'Error' && v !== '-' ? 'text-red-400' : 'text-zinc-300'}`}>{String(v)}</dd>
               </div>
             ))}
           </dl>
         </div>
 
-        {/* Rejection / Actions */}
+        {/* Client info */}
+        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
+          <h2 className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-3">Client</h2>
+          {client ? (
+            <div className="space-y-3">
+              <p className="text-sm text-white font-medium">{client.name}</p>
+              <div className="flex items-center gap-2 text-xs text-zinc-400">
+                <Phone className="w-3 h-3" /><span className="font-mono">{client.phone || '-'}</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-zinc-400">
+                <Mail className="w-3 h-3" /><span>{client.email}</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-zinc-500">Auto-send:</span>
+                {(client.auto_send_enabled ?? true) ? <span className="text-emerald-400">ON</span> : <span className="text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded text-[10px]">OFF</span>}
+              </div>
+              <div className="flex items-center gap-2">
+                <CalendarDays className="w-3 h-3 text-zinc-500" />
+                <div className="flex gap-0.5">
+                  {DAY_SHORT.map((name, i) => (
+                    <span key={i} className={`w-4 h-4 text-[8px] flex items-center justify-center rounded ${entityDays.includes(i) ? 'bg-teal-500/20 text-teal-400' : 'bg-zinc-800 text-zinc-700'}`}>{name}</span>
+                  ))}
+                </div>
+              </div>
+              <button onClick={() => navigate(`/admin/deliveries?client_id=${client.id}`)} className="text-[10px] text-teal-400 hover:text-teal-300 mt-1">
+                Voir toutes les deliveries de ce client
+              </button>
+            </div>
+          ) : <p className="text-xs text-zinc-600">Client: {d.client_name}</p>}
+        </div>
+
+        {/* Actions + Rejection */}
         <div className="space-y-4">
           {isRejected && (
             <div className="bg-orange-500/5 border border-orange-500/20 rounded-lg p-4" data-testid="rejection-info">
@@ -143,7 +181,7 @@ export default function AdminDeliveryDetail() {
             <div className="flex flex-wrap gap-2">
               {d.has_csv && (
                 <button onClick={handleDownload} className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-zinc-800 text-cyan-400 rounded-md hover:bg-zinc-700 border border-zinc-700" data-testid="download-csv-btn">
-                  <Download className="w-3 h-3" /> Download CSV
+                  <Download className="w-3 h-3" /> CSV
                 </button>
               )}
               {d.status === 'ready_to_send' && (
@@ -169,7 +207,7 @@ export default function AdminDeliveryDetail() {
       {/* Lead info */}
       {lead && (
         <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4" data-testid="lead-info">
-          <h2 className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-3">Lead associe</h2>
+          <h2 className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-3">Lead</h2>
           <dl className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
             {[
               ['Phone', lead.phone],
@@ -183,7 +221,7 @@ export default function AdminDeliveryDetail() {
             ].map(([k, v]) => (
               <div key={k}>
                 <dt className="text-zinc-500 text-[10px]">{k}</dt>
-                <dd className="text-zinc-300">{v || '-'}</dd>
+                <dd className={`${k === 'Status' ? (v === 'livre' ? 'text-emerald-400' : v === 'new' ? 'text-cyan-400' : 'text-zinc-300') : 'text-zinc-300'}`}>{v || '-'}</dd>
               </div>
             ))}
           </dl>
@@ -197,18 +235,13 @@ export default function AdminDeliveryDetail() {
             <h2 className="text-sm font-semibold text-white mb-4">Confirmer le rejet</h2>
             <p className="text-xs text-zinc-400 mb-3">Le lead sera remis en circulation (status=new). La delivery reste intacte.</p>
             <label className="text-[10px] text-zinc-500 block mb-1">Motif du rejet *</label>
-            <textarea
-              value={rejectReason} onChange={e => setRejectReason(e.target.value)}
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2 text-xs text-zinc-300 mb-2 resize-none"
-              rows={3} placeholder="Ex: Lead non qualifie, mauvais produit..."
-              data-testid="reject-reason-input"
-            />
+            <textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2 text-xs text-zinc-300 mb-2 resize-none" rows={3}
+              placeholder="Ex: Lead non qualifie, mauvais produit..." data-testid="reject-reason-input" />
             {rejectError && <p className="text-[10px] text-red-400 mb-2">{rejectError}</p>}
             <div className="flex justify-end gap-2">
-              <button onClick={() => { setRejectModal(false); setRejectReason(''); setRejectError(''); }} className="px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200" data-testid="reject-cancel-btn">Annuler</button>
-              <button onClick={handleReject} disabled={actionLoading} className="px-3 py-1.5 text-xs bg-red-500/20 text-red-400 rounded-md hover:bg-red-500/30 border border-red-500/30 disabled:opacity-50" data-testid="reject-confirm-btn">
-                Confirmer le rejet
-              </button>
+              <button onClick={() => { setRejectModal(false); setRejectReason(''); setRejectError(''); }} className="px-3 py-1.5 text-xs text-zinc-400" data-testid="reject-cancel-btn">Annuler</button>
+              <button onClick={handleReject} disabled={actionLoading} className="px-3 py-1.5 text-xs bg-red-500/20 text-red-400 rounded-md hover:bg-red-500/30 border border-red-500/30 disabled:opacity-50" data-testid="reject-confirm-btn">Confirmer</button>
             </div>
           </div>
         </div>
