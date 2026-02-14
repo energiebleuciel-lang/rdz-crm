@@ -189,6 +189,13 @@ Guard:
   - Stats enrichis: removed count, billable exclut rejected+removed
   - Deliveries list/detail: badge removed, panel removal info
   - Tests: 10/10 frontend + 16/16 backend (iteration 25)
+- **UI3 Etape 3 (Feb 2025)** : Event Log centralisé
+  - services/event_logger.py: helper log_event() réutilisable
+  - GET /api/event-log (filtres action/entity_type/entity/entity_id/user/search), GET /api/event-log/actions, GET /api/event-log/{id}
+  - Actions instrumentées: reject_lead, lead_removed_from_delivery, send_delivery, resend_delivery, delivery_failed, order_activate, order_deactivate, client_auto_send_change, rotate_provider_key
+  - Page /admin/activity: timeline globale + filtres + liens vers entités
+  - ActivityBlock: composant réutilisable intégré dans Lead detail et Delivery detail
+  - Tests: 10/10 frontend + 14/14 backend (iteration 26)
 
 ## NEXT
 
