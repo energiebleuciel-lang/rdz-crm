@@ -2,7 +2,7 @@
 RDZ CRM - Routes Leads (admin read-only)
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from typing import Optional
 from datetime import datetime, timezone, timedelta
 from config import db, now_iso
