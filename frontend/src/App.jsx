@@ -7,6 +7,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import AdminDeliveries from './pages/AdminDeliveries';
 import AdminDeliveryDetail from './pages/AdminDeliveryDetail';
 import AdminClients from './pages/AdminClients';
+import AdminClientDetail from './pages/AdminClientDetail';
 import AdminCommandes from './pages/AdminCommandes';
 import AdminSettings from './pages/AdminSettings';
 
