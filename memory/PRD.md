@@ -285,6 +285,19 @@ Guard:
 | POST | /api/deliveries/batch/send-ready | Admin | Envoyer ready_to_send |
 | GET | /api/departements/overview | Oui | Vue globale depts |
 | GET | /api/departements/{dept}/detail | Oui | Detail dept (drawer) |
+| GET/POST | /api/products | Oui | Catalogue produits |
+| GET/PUT | /api/clients/{id}/pricing | Oui | Pricing global client |
+| POST/DEL | /api/clients/{id}/pricing/product | Oui | Pricing par produit |
+| GET/POST/DEL | /api/clients/{id}/credits | Oui | Gratuités/offres |
+| GET | /api/clients/{id}/prepayment | Oui | Balances prépaiement |
+| POST | /api/clients/{id}/prepayment/add-units | Oui | Ajouter unités prépayées |
+| GET | /api/billing/week | Oui | Dashboard facturation |
+| POST | /api/billing/week/{wk}/build-ledger | Oui | Construire ledger |
+| POST | /api/billing/week/{wk}/generate-invoices | Oui | Générer factures |
+| GET | /api/invoices | Oui | Liste factures |
+| POST | /api/invoices/{id}/freeze | Oui | Geler facture |
+| POST | /api/invoices/{id}/mark-sent | Oui | Marquer envoyée |
+| POST | /api/invoices/{id}/mark-paid | Oui | Marquer payée |
 | POST | /api/public/leads | Non/Key | Soumettre lead + routing |
 | POST | /api/public/track/* | Non | Tracking events |
 
