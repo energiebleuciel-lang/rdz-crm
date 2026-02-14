@@ -6,6 +6,7 @@ import { Plus, Edit2, X, Check, Eye } from 'lucide-react';
 
 export default function AdminCommandes() {
   const { authFetch } = useAuth();
+  const navigate = useNavigate();
   const [commandes, setCommandes] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
