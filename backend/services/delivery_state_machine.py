@@ -392,7 +392,28 @@ async def batch_mark_deliveries_sent(
         f"[STATE_MACHINE_BATCH] {result_deliveries.modified_count} deliveries -> sent | "
         f"{result_leads.modified_count} leads -> livre | sent_to={sent_to}"
     )
-    
+
+    # Update prepayment balances for PREPAID clients in this batch
+    if delivery_ids:
+        batch_dels = await db.deliveries.find(
+            {"id": {"$in": delivery_ids}},
+            {"_id": 0, "client_id": 1, "produit": 1}
+        ).to_list(len(delivery_ids))
+        prepay_counts = defaultdict(int)
+        for bd in batch_dels:
+            prepay_counts[f"{bd.get('client_id')}:{bd.get('produit', '')}"] += 1
+        for pk, count in prepay_counts.items():
+            cid, pc = pk.split(":", 1)
+            pp = await db.client_product_pricing.find_one(
+                {"client_id": cid, "product_code": pc, "billing_mode": "PREPAID"}, {"_id": 0}
+            )
+            if pp:
+                await db.prepayment_balances.update_one(
+                    {"client_id": cid, "product_code": pc},
+                    {"$inc": {"units_delivered_total": count, "units_remaining": -count},
+                     "$set": {"updated_at": now_iso()}}
+                )
+
     return {
         "deliveries_updated": result_deliveries.modified_count,
         "leads_updated": result_leads.modified_count,
