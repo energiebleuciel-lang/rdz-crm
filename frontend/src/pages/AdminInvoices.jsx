@@ -11,7 +11,7 @@ const STATUS_STYLES = {
 };
 
 export default function AdminInvoices() {
-  const { authFetch, hasPermission, isWriteBlocked } = useAuth();
+  const { authFetch, hasPermission, isWriteBlocked, entityScope } = useAuth();
   const [invoices, setInvoices] = useState([]);
   const [overdue, setOverdue] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -34,19 +34,16 @@ export default function AdminInvoices() {
       if (odRes.ok) { const d = await odRes.json(); setOverdue(d); }
     } catch (e) { console.error(e); }
     setLoading(false);
-  }, [authFetch, statusFilter]);
+  }, [authFetch, statusFilter, entityScope]);
 
   useEffect(() => { load(); }, [load]);
 
   const loadClients = async () => {
     try {
-      const [z, m] = await Promise.all([
-        authFetch(`${API}/api/clients?entity=ZR7`),
-        authFetch(`${API}/api/clients?entity=MDL`),
-      ]);
+      const ents = entityScope === 'BOTH' ? ['ZR7', 'MDL'] : [entityScope || 'ZR7'];
+      const results = await Promise.all(ents.map(e => authFetch(`${API}/api/clients?entity=${e}`)));
       let all = [];
-      if (z.ok) { const d = await z.json(); all = all.concat(d.clients || []); }
-      if (m.ok) { const d = await m.json(); all = all.concat(d.clients || []); }
+      for (const r of results) { if (r.ok) { const d = await r.json(); all = all.concat(d.clients || []); } }
       setClients(all);
     } catch (e) { console.error(e); }
   };
