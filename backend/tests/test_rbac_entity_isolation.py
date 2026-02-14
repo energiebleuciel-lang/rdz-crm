@@ -178,14 +178,14 @@ class TestEntityIsolation:
 class TestPermissionEnforcement:
     """Test that permission enforcement works for specific endpoints"""
     
-    def test_ops_gets_403_on_billing_endpoints(self, ops_zr7_session):
-        """ops user (no billing.view) MUST get 403 on billing endpoints"""
-        res = ops_zr7_session.get(f"{BASE_URL}/api/billing/summary", params={"entity": "ZR7"})
+    def test_ops_gets_403_on_billing_products(self, ops_zr7_session):
+        """ops user (no billing.view) MUST get 403 on billing/products endpoints"""
+        res = ops_zr7_session.get(f"{BASE_URL}/api/products")
         
-        assert res.status_code == 403, f"Expected 403 for ops on billing, got {res.status_code}: {res.text}"
+        assert res.status_code == 403, f"Expected 403 for ops on billing/products, got {res.status_code}: {res.text}"
         error = res.json().get('detail', '')
         assert 'billing.view' in error or 'Permission' in error, f"Error should mention billing permission: {error}"
-        print(f"PASS: ops user gets 403 on billing endpoint. Error: {error}")
+        print(f"PASS: ops user gets 403 on billing/products. Error: {error}")
     
     def test_ops_gets_403_on_users_manage_list(self, ops_zr7_session):
         """ops user (no users.manage) MUST get 403 on /api/auth/users"""
