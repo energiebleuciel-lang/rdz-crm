@@ -3,6 +3,8 @@ import { useAuth } from '../hooks/useAuth';
 import { API } from '../hooks/useApi';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Edit2, X, Check, Eye } from 'lucide-react';
+import { getCurrentWeekKey, shiftWeekKey } from '../lib/weekUtils';
+import { WeekNavStandard } from '../components/WeekNav';
 
 export default function AdminCommandes() {
   const { authFetch } = useAuth();
@@ -11,11 +13,14 @@ export default function AdminCommandes() {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [entityFilter, setEntityFilter] = useState('');
+  const [week, setWeek] = useState(getCurrentWeekKey());
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
   const [showCreate, setShowCreate] = useState(false);
   const [createData, setCreateData] = useState({ entity: 'ZR7', client_id: '', produit: 'PV', departements: '*', quota_semaine: 50, lb_percent_max: 30, priorite: 1 });
   const [saving, setSaving] = useState(false);
+
+  const handleWeekNav = (dir) => setWeek(w => shiftWeekKey(w, dir));
 
   const load = useCallback(async () => {
     setLoading(true);
