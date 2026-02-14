@@ -179,6 +179,7 @@ async def create_commande(
         "quota_semaine": data.quota_semaine,
         "prix_lead": data.prix_lead,
         "lb_percent_max": data.lb_percent_max,
+        "lb_target_pct": data.lb_target_pct,
         "priorite": data.priorite,
         "auto_renew": data.auto_renew,
         "remise_percent": data.remise_percent,
