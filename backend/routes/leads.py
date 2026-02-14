@@ -20,7 +20,10 @@ async def get_lead_stats(
     """Stats leads par status"""
     match_query = {}
     if entity:
+        validate_entity_access(user, entity)
         match_query["entity"] = entity.upper()
+    elif user.get("role") != "super_admin":
+        match_query["entity"] = user.get("entity", "ZR7")
 
     pipeline = [
         {"$match": match_query},
