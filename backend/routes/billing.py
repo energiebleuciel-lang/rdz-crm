@@ -400,6 +400,9 @@ async def billing_week_dashboard(week_key: Optional[str] = None, user: dict = De
         totals["net_ht"] = round(totals["net_ht"], 2)
         totals["ttc"] = round(totals["ttc"], 2)
 
+    # Interfacturation data for the week
+    inter_records = await db.interfacturation_records.find({"week_key": wk}, {"_id": 0}).to_list(100)
+
     return {
         "week_key": wk,
         "has_records": has_records,
@@ -416,6 +419,7 @@ async def billing_week_dashboard(week_key: Optional[str] = None, user: dict = De
         "totals": totals,
         "weekly_invoice": weekly_rows,
         "prepaid": prepaid_rows,
+        "interfacturation": inter_records,
     }
 
 
