@@ -3,7 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import {
   LayoutDashboard, Package, Users, ShoppingCart, Settings, LogOut,
   Truck, ChevronLeft, ChevronRight, FileText, Clock, MapPin, Receipt,
-  Shield, UserCog
+  Shield, UserCog, FileCheck
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { path: '/admin/commandes', icon: ShoppingCart, label: 'Commandes', permission: 'commandes.view' },
   { path: '/admin/departements', icon: MapPin, label: 'Départements', permission: 'departements.view' },
   { path: '/admin/facturation', icon: Receipt, label: 'Facturation', permission: 'billing.view' },
+  { path: '/admin/invoices', icon: FileCheck, label: 'Factures', permission: 'billing.view' },
   { path: '/admin/activity', icon: Clock, label: 'Activity', permission: 'activity.view' },
   { path: '/admin/users', icon: UserCog, label: 'Utilisateurs', permission: 'users.manage' },
   { path: '/admin/settings', icon: Settings, label: 'Settings', permission: 'settings.access' },
