@@ -37,6 +37,7 @@ async def get_lead_stats(
 
 @router.get("/dashboard-stats")
 async def get_dashboard_stats(
+    week: Optional[str] = None,
     user: dict = Depends(get_current_user)
 ):
     """
@@ -45,12 +46,9 @@ async def get_dashboard_stats(
     """
     from services.settings import is_delivery_day_enabled, get_email_denylist_settings
     from models.client import check_client_deliverable
-    from services.routing_engine import get_week_start
+    from services.routing_engine import resolve_week_range
 
-    now = datetime.now(timezone.utc)
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()  # noqa: F841
-    seven_days_ago = (now - timedelta(days=7)).isoformat()
-    week_start = get_week_start()
+    week_start, week_end = resolve_week_range(week)
 
     # Lead stats by status
     lead_pipeline = [{"$group": {"_id": "$status", "count": {"$sum": 1}}}]
