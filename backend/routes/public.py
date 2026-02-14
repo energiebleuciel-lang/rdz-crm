@@ -380,6 +380,7 @@ async def submit_lead(data: LeadData, request: Request):
         "email": (data.email or "").strip(),
         "departement": dept,
         "entity": entity,
+        "lead_owner_entity": entity,  # Immutable: entity at ingestion time
         "produit": produit,
         "status": initial_status,
         "is_lb": False,
