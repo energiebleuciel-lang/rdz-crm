@@ -1,15 +1,60 @@
 {
-  "qa_phase_c": {
-    "QA1_LB_same_price": "PASS",
-    "QA2_credits_non_reportable": "PASS",
-    "QA3_discount_persistent": "PASS (no entries to compare)",
-    "QA4_rejected_removed_excluded": "PASS",
-    "QA5_TVA": "PASS (no billable records for client)",
-    "QA6_pricing_missing": "PASS",
-    "QA7_snapshot_immutable": "PASS",
-    "QA8a_rebuild_blocked_invoiced": "PASS",
-    "QA8b_rebuild_allowed_not_invoiced": "PASS",
-    "QA8c_external_tracking_preserved": "PASS"
+  "qa_phase": "C",
+  "date": "2026-02-14",
+  "scope": "Billing Engine — Calculs, Snapshot, Rebuild Safety",
+  "method": "DB direct + API curl",
+  "results": {
+    "QA1_LB_same_price": {
+      "status": "PASS",
+      "description": "LB = même prix que leads, units_billable = units_leads + units_lb",
+      "evidence": "billing_records: units_billable equals sum of units_leads + units_lb for all records"
+    },
+    "QA2_credits_non_reportable": {
+      "status": "PASS",
+      "description": "Credits déduits uniquement sur semaine + order_id, surplus perdu si > billable",
+      "evidence": "Credit 4 units on record with billable=1: free=1 (capped), invoiced=0, surplus 3 lost"
+    },
+    "QA3_discount_persistent": {
+      "status": "PASS",
+      "description": "Remise % persistante client+produit, snapshot au build-ledger",
+      "evidence": "client_product_pricing.discount_pct=10 matches ledger discount_pct_snapshot=10"
+    },
+    "QA4_rejected_removed_excluded": {
+      "status": "PASS",
+      "description": "Removed/Rejected exclus du billable",
+      "evidence": "2 rejected + 1 removed entries, 0 of them marked is_billable=True"
+    },
+    "QA5_TVA_client": {
+      "status": "PASS",
+      "description": "TVA par client (HT → TTC), vat_rate_snapshot capturé au build-ledger",
+      "evidence": "vat_amount = net_total_ht * vat_rate_snapshot/100, ttc = net + vat"
+    },
+    "QA6_pricing_missing": {
+      "status": "PASS",
+      "description": "pricing_missing signalé quand unit_price_ht_snapshot <= 0",
+      "evidence": "14/17 records with pricing_missing (no pricing configured), 3 with pricing"
+    },
+    "QA7_snapshot_immutable": {
+      "status": "PASS",
+      "description": "Changer prix/remise/TVA après ledger construit ne modifie pas les records existants",
+      "evidence": "Changed PV price 25→99 in client_product_pricing: billing_record snapshot stayed 25.0"
+    },
+    "QA8a_rebuild_blocked_invoiced": {
+      "status": "PASS",
+      "description": "Rebuild bloqué si billing_record.status = invoiced",
+      "evidence": "API returned 400: Cannot rebuild: record is 'invoiced'"
+    },
+    "QA8b_rebuild_allowed_not_invoiced": {
+      "status": "PASS",
+      "description": "Rebuild autorisé si tous les records sont not_invoiced",
+      "evidence": "After reset to not_invoiced: rebuild succeeded (633 entries, 17 records)"
+    },
+    "QA8c_external_tracking_preserved": {
+      "status": "PASS",
+      "description": "Suivi externe préservé après rebuild (external_invoice_number, due_date, etc.)",
+      "evidence": "external_invoice_number=QA-BLOCK-TEST found after rebuild"
+    }
   },
-  "all_pass": true
+  "global_result": "ALL PASS (10/10)",
+  "notes": "All 8 validation points + 2 sub-points validated via both direct DB queries and API calls"
 }
