@@ -39,7 +39,7 @@ async def get_lead_stats(
 @router.get("/dashboard-stats")
 async def get_dashboard_stats(
     week: Optional[str] = None,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_permission("leads.view"))
 ):
     """
     Stats agrégées pour le cockpit dashboard.
@@ -164,7 +164,7 @@ async def list_leads(
     week: Optional[str] = None,
     limit: int = 50,
     skip: int = 0,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_permission("leads.view"))
 ):
     """Liste les leads avec filtres avancés"""
     from fastapi import Query
@@ -208,7 +208,7 @@ async def list_leads(
 @router.get("/{lead_id}")
 async def get_lead(
     lead_id: str,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_permission("leads.view"))
 ):
     """Get a single lead by ID with delivery history"""
     lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
