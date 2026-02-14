@@ -183,14 +183,26 @@ async def lifespan(app: FastAPI):
         async def run_intercompany_invoices():
             """Cron: generate intercompany invoices for previous week."""
             from datetime import datetime, timezone as tz, timedelta
+            from config import db, now_iso
             now = datetime.now(tz.utc)
             prev = now - timedelta(days=7)
             iso = prev.isocalendar()
             wk = f"{iso[0]}-W{iso[1]:02d}"
             logger.info(f"[CRON_INTERCO] Generating invoices for {wk}")
-            from routes.intercompany import generate_weekly_invoices_internal
-            result = await generate_weekly_invoices_internal(wk)
-            logger.info(f"[CRON_INTERCO] Result: {result}")
+            try:
+                from routes.intercompany import generate_weekly_invoices_internal
+                result = await generate_weekly_invoices_internal(wk)
+                logger.info(f"[CRON_INTERCO] Result: {result}")
+                await db.cron_logs.insert_one({
+                    "job": "intercompany_invoices", "week_key": wk,
+                    "status": "success", "result": result, "run_at": now_iso()
+                })
+            except Exception as e:
+                logger.error(f"[CRON_INTERCO] FAILED: {e}")
+                await db.cron_logs.insert_one({
+                    "job": "intercompany_invoices", "week_key": wk,
+                    "status": "error", "error": str(e), "run_at": now_iso()
+                })
 
         scheduler.add_job(
             run_intercompany_invoices,
