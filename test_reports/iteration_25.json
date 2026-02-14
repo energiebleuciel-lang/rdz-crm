@@ -1,0 +1,99 @@
+{
+  "summary": "UI3 Materialization Etape 1 (Leads page) + Etape 2 (Remove lead from delivery) - ALL 10 FEATURES VERIFIED. Backend: 16/17 tests passed (1 skipped - no pending_csv deliveries). Frontend: All UI elements working correctly.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_leads_remove_feature.py",
+    "/app/test_reports/pytest/pytest_leads_remove.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "✅ GET /api/leads/list with filters (entity, produit, status, departement, search) - VERIFIED",
+    "✅ GET /api/leads/{id} returns lead with delivery history attached (deliveries array with outcome/billable) - VERIFIED",
+    "✅ POST /api/deliveries/{id}/remove-lead sets outcome=removed, removed_at/by/reason, resets lead to new - VERIFIED",
+    "✅ Remove endpoint writes to event_log collection - VERIFIED",
+    "✅ Remove endpoint is idempotent (already_removed=True on repeat) - VERIFIED",
+    "✅ Guard: cannot remove if status != sent (returns 400) - VERIFIED",
+    "✅ Guard: cannot remove if already rejected (returns 400) - VERIFIED",
+    "✅ GET /api/deliveries/stats includes 'removed' count - VERIFIED (removed: 1)",
+    "✅ Billable excludes both rejected AND removed (billable=158 with 1 rejected + 1 removed) - VERIFIED",
+    "✅ Leads page: sidebar nav, stat pills, table with all columns, pagination - VERIFIED",
+    "✅ Leads filters: entity/status/produit/departement dropdowns + search input + clear button - VERIFIED",
+    "✅ Stat pills clickable to filter by status - VERIFIED",
+    "✅ Lead detail page: payload section + routing section + delivery history table - VERIFIED",
+    "✅ Delivery history columns: Date/Client/Produit/Status/Outcome/SentTo/Billable/Actions - VERIFIED",
+    "✅ Remove button shows for sent+accepted deliveries, hidden otherwise - VERIFIED",
+    "✅ Remove modal: reason select (6 options) + detail textarea + cancel/confirm buttons - VERIFIED",
+    "✅ Deliveries list shows 'removed' badge in outcome column - VERIFIED",
+    "✅ Delivery detail shows Removed info panel (reason/detail/by/at) when removed - VERIFIED",
+    "✅ Reject button hidden on delivery detail when outcome=removed - VERIFIED"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_leads_remove_feature.py"
+  ],
+  "success_rate": {
+    "backend": "100% (16 passed, 1 skipped)",
+    "frontend": "100% (10/10 features verified)"
+  },
+  "test_credentials": {
+    "email": "energiebleuciel@gmail.com",
+    "password": "92Ruemarxdormoy"
+  },
+  "seed_data_creation": "No new seed data created - used existing leads and deliveries. One delivery was removed during backend test (delivery for lead 525c2409 / VerifAutoSend at client SIM_ZR7_Client_Alpha)",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Leads list page and lead detail page fully functional at /admin/leads and /admin/leads/:id. Remove-lead feature working: POST /api/deliveries/{id}/remove-lead sets outcome=removed, resets lead to new, writes event_log. Stats include removed count. One delivery was removed during testing (VerifAutoSend lead). Current stats: sent=160, rejected=1, removed=1, billable=158.",
+  "verified_features": {
+    "leads_list_page": {
+      "navigation": "VERIFIED - sidebar nav item 'Leads' works",
+      "stat_pills": "VERIFIED - shows new/routed/livre/no_open_orders/etc counts, clickable to filter",
+      "table_columns": "VERIFIED - Date/Entity/Phone/Nom/Dept/Produit/Status/Client/Source/Actions",
+      "filters": "VERIFIED - entity/status/produit dropdowns + departement input + search",
+      "pagination": "VERIFIED - prev/next buttons + page indicator",
+      "status": "VERIFIED"
+    },
+    "lead_detail_page": {
+      "payload_section": "VERIFIED - phone/nom/email/dept/entity/produit/source/form/provider/created",
+      "routing_section": "VERIFIED - status/client/commande/delivery_id/routed_at/delivered_at/entity_locked/LB",
+      "delivery_history": "VERIFIED - table with Date/Client/Produit/Status/Outcome/SentTo/Billable/Actions",
+      "view_client_link": "VERIFIED - shows 'Voir fiche client' button when client assigned",
+      "back_button": "VERIFIED - navigates back to leads list",
+      "status": "VERIFIED"
+    },
+    "remove_lead_feature": {
+      "remove_button": "VERIFIED - shows only for sent+accepted deliveries in delivery history",
+      "remove_modal": "VERIFIED - reason select (6 options) + detail textarea + cancel/confirm",
+      "remove_reasons": ["refus_client", "doublon", "hors_zone", "mauvaise_commande", "test", "autre"],
+      "backend_endpoint": "VERIFIED - POST /api/deliveries/{id}/remove-lead",
+      "outcome_update": "VERIFIED - delivery.outcome=removed, removed_at/by/reason set",
+      "lead_reset": "VERIFIED - lead.status=new, delivery references cleared",
+      "event_log": "VERIFIED - writes to event_log collection",
+      "idempotent": "VERIFIED - calling twice returns already_removed=True",
+      "guards": "VERIFIED - cannot remove if status!=sent or outcome=rejected",
+      "status": "VERIFIED"
+    },
+    "deliveries_integration": {
+      "removed_stat_pill": "VERIFIED - shows 'removed: 1' in deliveries page stats",
+      "outcome_badge": "VERIFIED - deliveries list shows 'removed' badge in outcome column",
+      "billable_calculation": "VERIFIED - billable=158 excludes both rejected (1) and removed (1)",
+      "removed_panel": "VERIFIED - delivery detail shows Removed info panel with reason/detail/by/at",
+      "reject_button_hidden": "VERIFIED - reject button hidden when outcome=removed",
+      "status": "VERIFIED"
+    }
+  },
+  "app_state": {
+    "leads_total": 2653,
+    "deliveries_sent": 160,
+    "deliveries_rejected": 1,
+    "deliveries_removed": 1,
+    "deliveries_billable": 158,
+    "test_removed_delivery": "Delivery for lead 525c2409 (VerifAutoSend) at SIM_ZR7_Client_Alpha"
+  }
+}
