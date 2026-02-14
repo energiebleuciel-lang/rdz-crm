@@ -40,42 +40,6 @@ function MiniBar({ value, max }) {
   );
 }
 
-function WeekNav({ week, onChange }) {
-  return (
-    <div className="flex items-center gap-1 bg-zinc-800 border border-zinc-700 rounded-md px-1">
-      <button onClick={() => onChange(-1)} className="p-1 text-zinc-400 hover:text-white"><ChevronLeft className="w-3.5 h-3.5" /></button>
-      <span className="text-xs text-zinc-300 px-1 min-w-[68px] text-center">{week}</span>
-      <button onClick={() => onChange(1)} className="p-1 text-zinc-400 hover:text-white"><ChevronRight className="w-3.5 h-3.5" /></button>
-    </div>
-  );
-}
-
-function shiftWeek(wk, dir) {
-  const [y, w] = wk.split('-W').map(Number);
-  const d = new Date(Date.UTC(y, 0, 4));
-  d.setUTCDate(d.getUTCDate() - d.getUTCDay() + 1 + (w - 1) * 7 + dir * 7);
-  const iso = new Date(d).toISOString();
-  const dt = new Date(iso);
-  const jan4 = new Date(Date.UTC(dt.getUTCFullYear(), 0, 4));
-  const diff = dt - jan4;
-  const weekNum = Math.ceil((diff / 86400000 + jan4.getUTCDay()) / 7);
-  // Simpler: use date-based ISO week calc
-  const thu = new Date(dt);
-  thu.setUTCDate(thu.getUTCDate() + 3 - ((thu.getUTCDay() + 6) % 7));
-  const yr = thu.getUTCFullYear();
-  const wn = 1 + Math.round(((thu - new Date(Date.UTC(yr, 0, 4))) / 86400000 - 3 + ((new Date(Date.UTC(yr, 0, 4)).getUTCDay() + 6) % 7)) / 7);
-  return `${yr}-W${String(wn).padStart(2, '0')}`;
-}
-
-function getCurrentWeek() {
-  const d = new Date();
-  const thu = new Date(d);
-  thu.setUTCDate(thu.getUTCDate() + 3 - ((thu.getUTCDay() + 6) % 7));
-  const yr = thu.getUTCFullYear();
-  const wn = 1 + Math.round(((thu - new Date(Date.UTC(yr, 0, 4))) / 86400000 - 3 + ((new Date(Date.UTC(yr, 0, 4)).getUTCDay() + 6) % 7)) / 7);
-  return `${yr}-W${String(wn).padStart(2, '0')}`;
-}
-
 /* ===== DRAWER COMPONENT ===== */
 function DeptDrawer({ dept, product, week, onClose, authFetch }) {
   const [data, setData] = useState(null);
