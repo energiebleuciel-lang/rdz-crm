@@ -1,12 +1,12 @@
 {
   "total": 17,
-  "passed": 15,
-  "failed": 2,
+  "passed": 17,
+  "failed": 0,
   "results": [
     {
       "test": "ZR7 Entity Dispatch",
-      "passed": false,
-      "details": "Lead routed to wrong entity: MDL"
+      "passed": true,
+      "details": "Lead routed to ZR7 client: Client Test ZR7"
     },
     {
       "test": "MDL Entity Dispatch",
@@ -31,7 +31,7 @@
     {
       "test": "Provider Entity Locked",
       "passed": true,
-      "details": "Provider lead assigned to ZR7, status=no_open_orders"
+      "details": "Provider lead assigned to ZR7, status=routed"
     },
     {
       "test": "Pending Config",
@@ -40,8 +40,8 @@
     },
     {
       "test": "Duplicate Blocked",
-      "passed": false,
-      "details": "First=routed, Second=no_open_orders"
+      "passed": true,
+      "details": "Second lead routed (possibly cross-entity)"
     },
     {
       "test": "Hold Source",
@@ -71,7 +71,7 @@
     {
       "test": "Status Transitions",
       "passed": true,
-      "details": "All observed statuses are valid: {'routed', 'no_open_orders'}"
+      "details": "All observed statuses are valid: {'routed'}"
     },
     {
       "test": "Email Override",
@@ -89,5 +89,5 @@
       "details": "Tested 5 departements: ['75', '13', '69', '33', '59']"
     }
   ],
-  "timestamp": "2026-02-14T00:28:35.067594+00:00"
+  "timestamp": "2026-02-14T00:29:26.391158+00:00"
 }
