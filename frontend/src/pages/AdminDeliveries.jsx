@@ -44,26 +44,28 @@ export default function AdminDeliveries() {
       params.set('skip', page * limit);
       params.set('week', week);
       if (filters.status) params.set('status', filters.status);
-      if (filters.entity) params.set('entity', filters.entity);
+      // Apply entity from filter or scope
+      const effectiveEntity = filters.entity || (entityScope === 'BOTH' ? '' : entityScope);
+      if (effectiveEntity) params.set('entity', effectiveEntity);
       if (filters.client_id) params.set('client_id', filters.client_id);
 
       const [dRes, sRes] = await Promise.all([
         authFetch(`${API}/api/deliveries?${params}`),
-        authFetch(`${API}/api/deliveries/stats${filters.entity ? '?entity=' + filters.entity : ''}`)
+        authFetch(`${API}/api/deliveries/stats${effectiveEntity ? '?entity=' + effectiveEntity : ''}`)
       ]);
 
       if (dRes.ok) { const d = await dRes.json(); setDeliveries(d.deliveries || []); setTotal(d.total || 0); }
       if (sRes.ok) setStats(await sRes.json());
 
-      // Load client phone map
-      const [zr7, mdl] = await Promise.all([
-        authFetch(`${API}/api/clients?entity=ZR7`).then(r => r.ok ? r.json() : {clients:[]}),
-        authFetch(`${API}/api/clients?entity=MDL`).then(r => r.ok ? r.json() : {clients:[]})
-      ]);
+      // Load client map — scope-aware
+      const clientEntities = entityScope === 'BOTH' ? ['ZR7', 'MDL'] : [entityScope || 'ZR7'];
+      const clResults = await Promise.all(
+        clientEntities.map(e => authFetch(`${API}/api/clients?entity=${e}`).then(r => r.ok ? r.json() : {clients:[]}))
+      );
       const map = {};
-      [...(zr7.clients||[]), ...(mdl.clients||[])].forEach(c => {
+      clResults.forEach(d => (d.clients || []).forEach(c => {
         map[c.id] = { phone: c.phone, auto_send: c.auto_send_enabled ?? true };
-      });
+      }));
       setClientMap(map);
     } catch (e) { console.error(e); }
     setLoading(false);
