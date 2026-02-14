@@ -211,7 +211,7 @@ export default function AdminDeliveryDetail() {
                   <RefreshCw className="w-3 h-3" /> Resend
                 </button>
               )}
-              {d.status === 'sent' && !isRejected && (
+              {d.status === 'sent' && !isRejected && !isRemoved && (
                 <button onClick={() => setRejectModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-500/10 text-red-400 rounded-md hover:bg-red-500/20 border border-red-500/30" data-testid="reject-btn">
                   <XCircle className="w-3 h-3" /> Reject
                 </button>
