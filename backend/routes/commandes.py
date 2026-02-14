@@ -38,6 +38,7 @@ async def list_commandes(
     client_id: Optional[str] = Query(None, description="Filtrer par client"),
     produit: Optional[str] = Query(None, description="Filtrer par produit"),
     active_only: bool = Query(True, description="Uniquement les commandes actives"),
+    week: Optional[str] = Query(None, description="Semaine YYYY-W## (défaut: courante)"),
     user: dict = Depends(get_current_user)
 ):
     """
