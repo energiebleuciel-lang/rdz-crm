@@ -284,6 +284,10 @@ async def billing_week_dashboard(week_key: Optional[str] = None, user: dict = De
     total_delivered = len(deliveries)
     total_billable = sum(1 for d in deliveries if d.get("status") == "sent" and (d.get("outcome") or "accepted") == "accepted")
     total_nonbill = sum(1 for d in deliveries if (d.get("outcome") or "accepted") in ("rejected", "removed"))
+    total_leads = sum(1 for d in deliveries if not d.get("is_lb", False))
+    total_lb = sum(1 for d in deliveries if d.get("is_lb", False))
+    billable_leads = sum(1 for d in deliveries if d.get("status") == "sent" and (d.get("outcome") or "accepted") == "accepted" and not d.get("is_lb", False))
+    billable_lb = sum(1 for d in deliveries if d.get("status") == "sent" and (d.get("outcome") or "accepted") == "accepted" and d.get("is_lb", False))
     leads_produced = await db.leads.count_documents({"created_at": {"$gte": ws, "$lt": we}})
 
     # Prepaid data
