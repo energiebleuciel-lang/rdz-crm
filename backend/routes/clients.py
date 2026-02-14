@@ -39,6 +39,8 @@ async def list_clients(
     if not validate_entity(entity):
         raise HTTPException(status_code=400, detail="Entity invalide. Doit être ZR7 ou MDL")
     
+    validate_entity_access(user, entity)
+    
     query = {"entity": entity}
     if active_only:
         query["active"] = True
