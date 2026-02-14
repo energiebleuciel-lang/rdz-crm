@@ -208,7 +208,7 @@ export default function AdminCommandes() {
                 <th className="text-left px-3 py-2.5 font-medium">Quota</th>
                 <th className="text-left px-3 py-2.5 font-medium">Delivered</th>
                 <th className="text-left px-3 py-2.5 font-medium">Restant</th>
-                <th className="text-left px-3 py-2.5 font-medium">LB%</th>
+                <th className="text-left px-3 py-2.5 font-medium">LB Target</th>
                 <th className="text-left px-3 py-2.5 font-medium">Active</th>
                 <th className="text-right px-3 py-2.5 font-medium">Actions</th>
               </tr>
@@ -233,7 +233,7 @@ export default function AdminCommandes() {
                         <td className="px-3 py-2"><input type="number" value={editData.quota_semaine} onChange={e => setEditData(d => ({...d, quota_semaine: e.target.value}))} className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-zinc-300 w-16 text-xs" /></td>
                         <td className="px-3 py-2 text-zinc-400">{delivered}</td>
                         <td className="px-3 py-2 text-zinc-400">-</td>
-                        <td className="px-3 py-2"><input type="number" value={editData.lb_percent_max} onChange={e => setEditData(d => ({...d, lb_percent_max: e.target.value}))} className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-zinc-300 w-14 text-xs" /></td>
+                        <td className="px-3 py-2"><input type="number" min="0" max="100" value={editData.lb_target_pct} onChange={e => setEditData(d => ({...d, lb_target_pct: e.target.value}))} className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-zinc-300 w-14 text-xs" /></td>
                         <td className="px-3 py-2">
                           <button onClick={() => setEditData(d => ({...d, active: !d.active}))} className={`w-8 h-4 rounded-full relative transition-colors ${editData.active ? 'bg-emerald-500' : 'bg-zinc-700'}`}>
                             <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${editData.active ? 'left-4' : 'left-0.5'}`} />
@@ -260,7 +260,7 @@ export default function AdminCommandes() {
                           </div>
                         </td>
                         <td className="px-3 py-2 text-zinc-400">{remaining}</td>
-                        <td className="px-3 py-2 text-zinc-500">{cmd.lb_percent_max || 0}%</td>
+                        <td className="px-3 py-2 text-zinc-500">{Math.round((cmd.lb_target_pct || 0) * 100)}%</td>
                         <td className="px-3 py-2">{(cmd.active ?? true) ? <span className="text-[10px] text-emerald-400">Active</span> : <span className="text-[10px] text-red-400">Closed</span>}</td>
                         <td className="px-3 py-2 text-right">
                           <div className="flex items-center justify-end gap-1">
