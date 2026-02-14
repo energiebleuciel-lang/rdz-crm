@@ -321,7 +321,11 @@ async def batch_generate_csv(
     """
     Génère les CSV pour toutes les deliveries pending_csv
     Sans les envoyer (mode manuel)
+    
+    🔒 Utilise delivery_state_machine pour les transitions
     """
+    from services.delivery_state_machine import mark_delivery_ready_to_send, DeliveryInvariantError
+    
     query = {"status": "pending_csv"}
     if entity:
         query["entity"] = entity.upper()
@@ -340,25 +344,23 @@ async def batch_generate_csv(
             if not lead:
                 continue
             
-            entity = delivery.get("entity")
+            d_entity = delivery.get("entity")
             produit = delivery.get("produit")
             
-            csv_content = generate_csv_content([lead], produit, entity)
-            csv_filename = f"lead_{entity}_{produit}_{lead.get('id')[:8]}.csv"
+            csv_content = generate_csv_content([lead], produit, d_entity)
+            csv_filename = f"lead_{d_entity}_{produit}_{lead.get('id')[:8]}.csv"
             
-            now = now_iso()
-            await db.deliveries.update_one(
-                {"id": delivery.get("id")},
-                {"$set": {
-                    "status": "ready_to_send",
-                    "csv_content": csv_content,
-                    "csv_filename": csv_filename,
-                    "csv_generated_at": now,
-                    "updated_at": now
-                }}
+            # 🔒 Via state machine uniquement
+            await mark_delivery_ready_to_send(
+                delivery_id=delivery.get("id"),
+                csv_content=csv_content,
+                csv_filename=csv_filename
             )
             processed += 1
             
+        except DeliveryInvariantError as e:
+            logger.warning(f"[BATCH_CSV] Transition refusée: {str(e)}")
+            errors.append({"delivery_id": delivery.get("id"), "error": str(e)})
         except Exception as e:
             errors.append({"delivery_id": delivery.get("id"), "error": str(e)})
     
@@ -381,11 +383,15 @@ async def batch_send_ready(
     
     - Respecte le calendar gating
     - Utilise le CSV déjà généré
-    - Marque les leads comme livre après envoi
+    - 🔒 Utilise delivery_state_machine pour les transitions
     """
     from services.settings import is_delivery_day_enabled, get_simulation_email_override
-    from models.client import check_client_deliverable
     from services.csv_delivery import send_csv_email
+    from services.delivery_state_machine import (
+        batch_mark_deliveries_sent,
+        batch_mark_deliveries_failed,
+        DeliveryInvariantError
+    )
     from collections import defaultdict
     
     query = {"status": "ready_to_send"}
@@ -405,16 +411,14 @@ async def batch_send_ready(
         "errors": []
     }
     
-    # Simulation email
     simulation_email = await get_simulation_email_override()
     
-    # Grouper par client + entity
     grouped = defaultdict(list)
     for delivery in ready:
-        key = (delivery.get("client_id"), delivery.get("entity"))
+        key = (delivery.get("client_id"), delivery.get("commande_id"), delivery.get("entity"))
         grouped[key].append(delivery)
     
-    for (grp_client_id, grp_entity), deliveries in grouped.items():
+    for (grp_client_id, grp_commande_id, grp_entity), deliveries in grouped.items():
         # Calendar gating
         day_enabled, day_reason = await is_delivery_day_enabled(grp_entity)
         if not day_enabled:
@@ -422,7 +426,6 @@ async def batch_send_ready(
             results["skipped_calendar"] += len(deliveries)
             continue
         
-        # Client info
         client = await db.clients.find_one({"id": grp_client_id}, {"_id": 0})
         if not client:
             results["errors"].append({"client_id": grp_client_id, "error": "client_not_found"})
@@ -430,7 +433,6 @@ async def batch_send_ready(
         
         client_name = client.get("name", "")
         
-        # Emails
         if override_email:
             to_emails = [override_email]
         elif simulation_email:
@@ -444,7 +446,6 @@ async def batch_send_ready(
             results["errors"].append({"client": client_name, "error": "no_email"})
             continue
         
-        # Récupérer les leads
         lead_ids = [d.get("lead_id") for d in deliveries]
         leads = await db.leads.find(
             {"id": {"$in": lead_ids}},
@@ -454,16 +455,14 @@ async def batch_send_ready(
         if not leads:
             continue
         
-        # Utiliser le CSV déjà généré ou régénérer si nécessaire
-        # Pour batch, on concatène les CSV individuels ou on régénère
         produit = deliveries[0].get("produit", "")
         csv_content = generate_csv_content(leads, produit, grp_entity)
-        
-        now = now_iso()
-        csv_filename = f"leads_{grp_entity}_{produit}_{now[:10].replace('-', '')}_{len(leads)}.csv"
+        csv_filename = f"leads_{grp_entity}_{produit}_{now_iso()[:10].replace('-', '')}_{len(leads)}.csv"
         lb_count = sum(1 for lead in leads if lead.get("is_lb"))
+        delivery_ids = [d.get("id") for d in deliveries]
         
         try:
+            # 1. Envoyer l'email RÉELLEMENT
             await send_csv_email(
                 entity=grp_entity,
                 to_emails=to_emails,
@@ -474,28 +473,24 @@ async def batch_send_ready(
                 produit=produit
             )
             
-            # Marquer deliveries comme sent
-            delivery_ids = [d.get("id") for d in deliveries]
+            # 2. 🔒 SEULEMENT après envoi réussi: state machine
+            await batch_mark_deliveries_sent(
+                delivery_ids=delivery_ids,
+                lead_ids=lead_ids,
+                sent_to=to_emails,
+                client_id=grp_client_id,
+                client_name=client_name,
+                commande_id=grp_commande_id or ""
+            )
+            
+            # 3. Stocker CSV pour téléchargement
             await db.deliveries.update_many(
                 {"id": {"$in": delivery_ids}},
                 {"$set": {
-                    "status": "sent",
-                    "sent_to": to_emails,
-                    "last_sent_at": now,
-                    "send_attempts": 1,
-                    "sent_by": user.get("email"),
-                    "updated_at": now
-                }}
-            )
-            
-            # Marquer leads comme livre
-            await db.leads.update_many(
-                {"id": {"$in": lead_ids}},
-                {"$set": {
-                    "status": "livre",
-                    "delivered_at": now,
-                    "delivered_to_client_id": grp_client_id,
-                    "delivered_to_client_name": client_name
+                    "csv_content": csv_content,
+                    "csv_filename": csv_filename,
+                    "csv_generated_at": now_iso(),
+                    "sent_by": user.get("email")
                 }}
             )
             
@@ -503,16 +498,15 @@ async def batch_send_ready(
             logger.info(f"[BATCH_SEND] {client_name}: {len(leads)} leads sent to {to_emails}")
             
         except Exception as e:
-            # Marquer comme failed
-            delivery_ids = [d.get("id") for d in deliveries]
-            await db.deliveries.update_many(
-                {"id": {"$in": delivery_ids}},
-                {"$set": {
-                    "status": "failed",
-                    "last_error": str(e),
-                    "updated_at": now
-                }}
-            )
+            # 🔒 Marquer comme failed via state machine
+            try:
+                await batch_mark_deliveries_failed(
+                    delivery_ids=delivery_ids,
+                    error=str(e)
+                )
+            except DeliveryInvariantError:
+                logger.error(f"[BATCH_SEND] State machine failed for batch: {str(e)}")
+            
             results["errors"].append({"client": client_name, "error": str(e)})
     
     return {
