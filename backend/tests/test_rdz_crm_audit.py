@@ -18,7 +18,7 @@ import time
 import uuid
 
 # API base URL from environment
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://rdz-qa-report.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://rdz-crm-hub.preview.emergentagent.com')
 if BASE_URL.endswith('/'):
     BASE_URL = BASE_URL.rstrip('/')
 

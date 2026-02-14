@@ -15,7 +15,7 @@ import requests
 import os
 import time
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://rdz-qa-report.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://rdz-crm-hub.preview.emergentagent.com').rstrip('/')
 TEST_EMAIL = "energiebleuciel@gmail.com"
 TEST_PASSWORD = "92Ruemarxdormoy"
 
