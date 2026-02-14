@@ -7,10 +7,10 @@ Build a central CRM named "RDZ" with strict entity separation (ZR7/MDL). The pro
 - Industrial piloting by department and product
 - Pricing & billing engine with weekly billing and financial tracking
 - Interfacturation interne MDL <-> ZR7
-- Vue récapitulative mensuelle
 - Dynamic LB Target per commande
 - RBAC + Entity Isolation (granular permissions + role presets)
 - LB Monitoring widget (super_admin only)
+- Billing v1: Invoices + Overdue Dashboard
 
 ## Architecture
 - **Backend:** FastAPI + MongoDB (multi-tenant ZR7/MDL)
@@ -24,58 +24,40 @@ Build a central CRM named "RDZ" with strict entity separation (ZR7/MDL). The pro
 
 ### Admin UI: Dashboard cockpit, entity pages, event log, client 360 view
 
-### Departements Piloting: /admin/departements with filters, data grid, drawer
-
-### Pricing & Billing Engine
-- Client product pricing, discounts, TVA, billing modes (WEEKLY_INVOICE/PREPAID)
-
-### Week Navigation Standardization (Feb 2026)
-
-### Interfacturation MDL <-> ZR7 (Feb 2026)
-
-### Vue Récapitulative Mensuelle (Feb 2026)
+### Pricing & Billing Engine: Client product pricing, discounts, TVA, billing modes
 
 ### LB Target Dynamique (Feb 14, 2026)
-- `lb_target_pct` (float 0-1) replaces `lb_percent_max`
-- Dynamic Fresh/LB mix: `lb_needed = ceil(target * (delivered + 1)) - lb_delivered`
-- `lb_shortfall` event logging, `is_lb` on deliveries
+- `lb_target_pct` (float 0-1), dynamic Fresh/LB mix formula, `lb_shortfall` event logging
 
 ### RBAC + Entity Isolation (Feb 14, 2026)
-- **25 granular permission keys** as source of truth, roles as presets
-- **Roles:** super_admin, admin, ops, viewer
-- **Entity isolation:** strict server-side enforcement on ALL endpoints
-- **Entity Scope Switcher** (super_admin only) in sidebar
-- **User Management Page** at /admin/users with permission checkbox grid
-- **Test accounts:** 7 accounts seeded via `scripts/seed_test_users.py`
+- 25 granular permission keys, 4 roles (super_admin/admin/ops/viewer)
+- Strict server-side entity enforcement on ALL endpoints
+- Entity Scope Switcher (super_admin), User Management page
+- BOTH scope write safety: writes disabled, "Lecture seule (BOTH)" badge
 
 ### LB Monitoring Widget (Feb 14, 2026)
-- Backend: `GET /api/commandes/lb-monitor?entity=ZR7` — returns lb_target vs actual per commande
-- Frontend: Collapsible card grid on commandes page showing target/actual/status
-- Gated by `monitoring.lb.view` permission (super_admin only)
-- Shows: client name, produit, actual %, target %, LB/units count, progress bar, status (on_target/over/under)
+- Backend uses X-Entity-Scope header (no query param)
+- Collapsible card grid, gated by monitoring.lb.view
 
-## Permission Keys (25)
-dashboard.view, leads.view, leads.edit_status, leads.add_note, leads.delete,
-clients.view, clients.create, clients.edit, clients.delete,
-commandes.view, commandes.create, commandes.edit_quota, commandes.edit_lb_target, commandes.activate_pause, commandes.delete,
-deliveries.view, deliveries.resend,
-billing.view, billing.manage,
-departements.view, activity.view,
-settings.access, providers.access, users.manage, monitoring.lb.view
+### Billing v1: Invoices + Overdue Dashboard (Feb 14, 2026)
+- **Client model:** Added `vat_rate` (0 or 20%), `payment_terms_days` (default 30)
+- **Invoice model:** `amount_ht`, `vat_rate`, `amount_ttc` (computed), `invoice_number`, `status` (draft/sent/paid/overdue), `issued_at`, `due_at`, `paid_at`
+- **Invoice CRUD:** Create, send (draft→sent), mark-paid (sent/overdue→paid)
+- **Overdue auto-detection:** sent invoices past due_at auto-marked overdue
+- **Overdue Dashboard:** Per-client totals, grand total TTC, days overdue indicator
+- **Frontend:** /admin/invoices with list view (status filters, overdue banner) + overdue tab (KPI cards + detail table)
+- **Entity-scoped:** Uses X-Entity-Scope header, respects RBAC
 
 ## Test Accounts (dev/staging)
 | Email | Role | Entity | Password |
 |---|---|---|---|
 | superadmin@test.local | super_admin | ZR7 | RdzTest2026! |
-| admin_zr7@test.local | admin | ZR7 | RdzTest2026! |
-| ops_zr7@test.local | ops | ZR7 | RdzTest2026! |
-| viewer_zr7@test.local | viewer | ZR7 | RdzTest2026! |
-| admin_mdl@test.local | admin | MDL | RdzTest2026! |
-| ops_mdl@test.local | ops | MDL | RdzTest2026! |
-| viewer_mdl@test.local | viewer | MDL | RdzTest2026! |
+| admin_zr7/mdl@test.local | admin | ZR7/MDL | RdzTest2026! |
+| ops_zr7/mdl@test.local | ops | ZR7/MDL | RdzTest2026! |
+| viewer_zr7/mdl@test.local | viewer | ZR7/MDL | RdzTest2026! |
 
 Reset: `cd /app/backend && python scripts/seed_test_users.py`
 
 ## Backlog
 ### P1: Configure transfer pricing via admin UI
-### P2: Permissions audit trail, Export des données de facturation
+### P2: Invoice PDF generation, Email invoice sending, Permissions audit trail
