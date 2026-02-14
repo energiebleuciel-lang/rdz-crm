@@ -657,7 +657,8 @@ function OffersTab({ clientId, authFetch }) {
   const [credits, setCredits] = useState([]);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ order_id: '', product_code: '', week_key: '', quantity_units_free: 0, reason: '', note: '' });
+  const [offerWeek, setOfferWeek] = useState(getCurrentWeekKey());
+  const [form, setForm] = useState({ order_id: '', product_code: '', quantity_units_free: 0, reason: '', note: '' });
 
   const load = useCallback(async () => {
     setLoading(true);
