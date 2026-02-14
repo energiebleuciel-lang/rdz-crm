@@ -550,6 +550,7 @@ async def deliver_leads_to_client(
             "commande_id": commande_id,
             "entity": entity,
             "produit": produit,
+            "is_lb": lead.get("is_lb", False),
             "status": "pending_csv",
             "csv_content": csv_content,
             "csv_filename": csv_filename,
