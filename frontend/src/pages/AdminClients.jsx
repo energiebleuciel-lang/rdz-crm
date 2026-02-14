@@ -62,7 +62,7 @@ export default function AdminClients() {
       setClientStats(stats);
     } catch (e) { console.error(e); }
     setLoading(false);
-  }, [entityFilter, authFetch]);
+  }, [entityFilter, entityScope, authFetch]);
 
   useEffect(() => { load(); }, [load]);
 
