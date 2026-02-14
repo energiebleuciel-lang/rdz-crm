@@ -232,6 +232,11 @@ export default function AdminDeliveryDetail() {
                   <XCircle className="w-3 h-3" /> Reject
                 </button>
               )}
+              {d.status === 'sent' && !isRejected && !isRemoved && (
+                <button onClick={() => setRemoveModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-zinc-800 text-red-300 rounded-md hover:bg-zinc-700 border border-zinc-700" data-testid="remove-btn">
+                  <XCircle className="w-3 h-3" /> Retirer lead
+                </button>
+              )}
             </div>
           </div>
         </div>
