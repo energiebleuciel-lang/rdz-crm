@@ -17,6 +17,23 @@ export default function AdminClients() {
   const [saving, setSaving] = useState(false);
   const [clientStats, setClientStats] = useState({});
   const [calendar, setCalendar] = useState({});
+  const [showCreate, setShowCreate] = useState(false);
+  const [createForm, setCreateForm] = useState({ entity: 'ZR7', name: '', email: '', phone: '', delivery_emails: '' });
+  const [createSaving, setCreateSaving] = useState(false);
+  const [createError, setCreateError] = useState('');
+
+  const handleCreate = async () => {
+    if (!createForm.name || !createForm.email) { setCreateError('Nom et email requis'); return; }
+    setCreateSaving(true); setCreateError('');
+    try {
+      const body = { entity: createForm.entity, name: createForm.name, email: createForm.email, phone: createForm.phone,
+        delivery_emails: createForm.delivery_emails.split(',').map(s => s.trim()).filter(Boolean),
+        auto_send_enabled: true, default_prix_lead: 0, remise_percent: 0 };
+      const r = await authFetch(`${API}/api/clients`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!r.ok) { const d = await r.json(); setCreateError(d.detail || 'Erreur'); } else { setShowCreate(false); setCreateForm({ entity: 'ZR7', name: '', email: '', phone: '', delivery_emails: '' }); load(); }
+    } catch (e) { setCreateError(e.message); }
+    setCreateSaving(false);
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
