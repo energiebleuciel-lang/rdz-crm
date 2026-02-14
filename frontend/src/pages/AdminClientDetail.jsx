@@ -243,6 +243,14 @@ function SummaryTab({ client, navigate }) {
 function PerformanceTab({ summary, groupBy, setGroupBy, loadSummary }) {
   if (!summary) return <div className="text-zinc-600 text-xs py-4">Chargement...</div>;
   const t = summary.totals || {};
+  const fmtPeriod = (p) => {
+    if (!p) return '-';
+    if (groupBy === 'month') return p;
+    // p is YYYY-MM-DD, format to DD/MM/YYYY
+    const parts = p.split('-');
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    return p;
+  };
   return (
     <div data-testid="tab-content-performance">
       {/* Period selector */}
