@@ -383,6 +383,8 @@ async def batch_mark_deliveries_sent(
         },
         {"$set": {
             "status": "sent",
+            "outcome": "accepted",
+            "accepted_at": now,
             "sent_to": sent_to,
             "last_sent_at": now,
             "send_attempts": 1,
