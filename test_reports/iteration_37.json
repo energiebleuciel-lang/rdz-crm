@@ -1,0 +1,102 @@
+{
+  "summary": "Completed testing for Billing v1 (Invoice CRUD), LB Monitor Entity Scope, and BOTH scope write safety. Backend: 19/19 tests passed. Frontend: All UI elements working correctly.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_invoices_billing_v1.py",
+    "/app/test_reports/pytest/pytest_invoices_billing_v1.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_invoices_billing_v1.py"
+  ],
+  "success_rate": {
+    "backend": "100% (19 passed)",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "super_admin": "superadmin@test.local / RdzTest2026!",
+    "ops_zr7": "ops_zr7@test.local / RdzTest2026!"
+  },
+  "seed_data_creation": "Used existing client 'Installateur Test Paris' for invoice testing. Test invoices created with TEST_ prefix in description.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Billing v1 invoice system fully functional. Invoice CRUD with TTC calculation working. Status transitions (draft→sent→paid/overdue→paid) verified. LB Monitor uses X-Entity-Scope header correctly. BOTH scope write blocking working on commandes page. All permissions enforced correctly.",
+  "features_tested": {
+    "backend_invoice_crud": {
+      "POST /api/invoices": "PASSED - Creates invoice with correct TTC = HT * (1 + vat_rate/100). Client vat_rate used for calculation.",
+      "POST /api/invoices/{id}/send": "PASSED - Transitions draft→sent. Returns 400 if not draft.",
+      "POST /api/invoices/{id}/mark-paid": "PASSED - Transitions sent/overdue→paid. Returns 400 if draft.",
+      "GET /api/invoices": "PASSED - Respects X-Entity-Scope header (ZR7/MDL/BOTH)",
+      "GET /api/invoices/overdue-dashboard": "PASSED - Returns clients with overdue totals, per-client aggregation working"
+    },
+    "backend_permissions": {
+      "billing.view": "PASSED - Required for GET /api/invoices, GET /api/invoices/overdue-dashboard",
+      "billing.manage": "PASSED - Required for POST/PUT/DELETE invoice operations",
+      "monitoring.lb.view": "PASSED - Required for GET /api/commandes/lb-monitor"
+    },
+    "backend_lb_monitor": {
+      "GET /api/commandes/lb-monitor": "PASSED - Uses X-Entity-Scope header. Returns scope in response. Filters commandes by entity."
+    },
+    "frontend_invoice_page": {
+      "Invoice list table": "PASSED - Shows HT, TVA, TTC columns correctly",
+      "Status badges": "PASSED - draft (gray), sent (blue), paid (green), overdue (red)",
+      "Overdue tab": "PASSED - Shows 3 KPI cards: Clients en retard, Total impayé TTC, Factures impayées",
+      "Overdue banner": "PASSED - Shows on list tab: '1 client avec factures impayées — Total: 6 000,00 EUR TTC'",
+      "Create invoice modal": "PASSED - Client dropdown with TVA%, Amount HT input, TTC preview calculation",
+      "Entity scope filtering": "PASSED - Respects scope switcher (ZR7/MDL/BOTH)"
+    },
+    "frontend_both_scope_write_safety": {
+      "Commandes page write-blocked-badge": "PASSED - Shows 'Lecture seule (BOTH)' when super_admin in BOTH scope",
+      "Commandes page create button hidden": "PASSED - Create button hidden when isWriteBlocked",
+      "Invoice page create button": "PASSED - Visible in ZR7/MDL scope, hidden in BOTH scope"
+    }
+  },
+  "api_responses_verified": {
+    "invoice_create_response": {
+      "success": true,
+      "invoice": {
+        "id": "uuid",
+        "invoice_number": "ZR7-202602-XXXX",
+        "amount_ht": 1000.0,
+        "vat_rate": 20.0,
+        "amount_ttc": 1200.0,
+        "status": "draft",
+        "client_id": "...",
+        "client_name": "...",
+        "entity": "ZR7",
+        "issued_at": "ISO date",
+        "due_at": "ISO date (based on client payment_terms_days)"
+      }
+    },
+    "overdue_dashboard_response": {
+      "clients": [
+        {
+          "client_id": "...",
+          "client_name": "Installateur Test Paris",
+          "entity": "ZR7",
+          "invoice_count": 2,
+          "total_ht": 5000.0,
+          "total_ttc": 6000.0,
+          "days_overdue": 25
+        }
+      ],
+      "total_overdue_ttc": 6000.0,
+      "client_count": 1
+    },
+    "lb_monitor_response": {
+      "week_key": "2026-W07",
+      "scope": "ZR7",
+      "commandes": ["array of commandes with lb_target_pct"],
+      "count": "number"
+    }
+  }
+}
