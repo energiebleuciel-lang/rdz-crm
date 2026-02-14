@@ -73,8 +73,34 @@ export default function AdminSettings() {
 
   return (
     <div data-testid="admin-settings">
-      <h1 className="text-lg font-semibold text-white mb-6">Settings</h1>
+      <h1 className="text-lg font-semibold text-white mb-4">Settings</h1>
       {msg && <div className="mb-4 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-md text-xs text-emerald-400" data-testid="save-msg">{msg}</div>}
+
+      {/* Status banners */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+        {/* Simulation mode */}
+        <div className={`flex items-center gap-3 px-4 py-2.5 rounded-lg border ${denylist.simulation_mode ? 'bg-amber-500/5 border-amber-500/20' : 'bg-zinc-900 border-zinc-800'}`} data-testid="simulation-status-banner">
+          <AlertTriangle className={`w-4 h-4 ${denylist.simulation_mode ? 'text-amber-400' : 'text-zinc-600'}`} />
+          <div>
+            <p className={`text-xs font-medium ${denylist.simulation_mode ? 'text-amber-400' : 'text-zinc-500'}`}>Simulation {denylist.simulation_mode ? 'ON' : 'OFF'}</p>
+            {denylist.simulation_mode && <p className="text-[10px] text-zinc-500">{denylist.simulation_email}</p>}
+          </div>
+        </div>
+        {/* Calendar status */}
+        {['ZR7', 'MDL'].map(entity => {
+          const check = calCheck[entity] || {};
+          const on = check.is_delivery_day;
+          return (
+            <div key={entity} className={`flex items-center gap-3 px-4 py-2.5 rounded-lg border ${on ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-red-500/5 border-red-500/20'}`} data-testid={`calendar-status-${entity.toLowerCase()}`}>
+              {on ? <CalendarCheck className="w-4 h-4 text-emerald-400" /> : <CalendarX className="w-4 h-4 text-red-400" />}
+              <div>
+                <span className={`text-xs font-bold ${entity === 'ZR7' ? 'text-emerald-400' : 'text-blue-400'}`}>{entity}</span>
+                <span className={`text-xs ml-2 ${on ? 'text-emerald-300' : 'text-red-300'}`}>{on ? 'Livraisons actives' : check.reason || 'OFF'}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
       <div className="space-y-6">
         {/* Email Denylist + Simulation */}
