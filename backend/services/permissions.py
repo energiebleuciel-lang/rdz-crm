@@ -71,6 +71,7 @@ ROLE_PRESETS: Dict[str, Dict[str, bool]] = {
         "commandes.edit_lb_target": True, "commandes.activate_pause": True, "commandes.delete": True,
         "deliveries.view": True, "deliveries.resend": True,
         "billing.view": True, "billing.manage": True,
+        "intercompany.view": True, "intercompany.manage": True,
         "departements.view": True,
         "activity.view": True,
         "settings.access": True, "providers.access": True,
