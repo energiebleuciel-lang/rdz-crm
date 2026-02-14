@@ -178,8 +178,8 @@ export default function AdminCommandes() {
                   <input type="number" value={createData.quota_semaine} onChange={e => setCreateData(d => ({...d, quota_semaine: e.target.value}))} className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-300" data-testid="create-quota" />
                 </div>
                 <div>
-                  <label className="text-[10px] text-zinc-500 block mb-1">LB Max %</label>
-                  <input type="number" value={createData.lb_percent_max} onChange={e => setCreateData(d => ({...d, lb_percent_max: e.target.value}))} className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-300" data-testid="create-lb-max" />
+                  <label className="text-[10px] text-zinc-500 block mb-1">LB Target %</label>
+                  <input type="number" min="0" max="100" value={createData.lb_target_pct} onChange={e => setCreateData(d => ({...d, lb_target_pct: e.target.value}))} className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-300" data-testid="create-lb-target" />
                 </div>
                 <div>
                   <label className="text-[10px] text-zinc-500 block mb-1">Priorite</label>
