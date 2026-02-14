@@ -390,7 +390,7 @@ export default function AdminDepartements() {
         </div>
         <div>
           <label className="text-[10px] text-zinc-500 block mb-1">Semaine</label>
-          <WeekNav week={week} onChange={handleWeekNav} />
+          <WeekNavStandard week={week} onChange={handleWeekNav} />
         </div>
         <div>
           <label className="text-[10px] text-zinc-500 block mb-1">Département</label>
