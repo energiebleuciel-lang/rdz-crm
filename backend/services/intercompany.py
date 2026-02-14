@@ -63,6 +63,11 @@ async def maybe_create_intercompany_transfer(
 
     # 6. Create transfer record
     transfer_id = str(uuid.uuid4())
+
+    # Get routing_mode from delivery for audit
+    delivery = await db.deliveries.find_one({"id": delivery_id}, {"_id": 0, "routing_mode": 1})
+    routing_mode = delivery.get("routing_mode", "unknown") if delivery else "unknown"
+
     transfer = {
         "id": transfer_id,
         "lead_id": lead_id,
