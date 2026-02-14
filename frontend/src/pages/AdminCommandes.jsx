@@ -7,7 +7,7 @@ import { getCurrentWeekKey, shiftWeekKey } from '../lib/weekUtils';
 import { WeekNavStandard } from '../components/WeekNav';
 
 export default function AdminCommandes() {
-  const { authFetch, entityScope, isSuperAdmin, hasPermission } = useAuth();
+  const { authFetch, entityScope, isSuperAdmin, hasPermission, isWriteBlocked } = useAuth();
   const navigate = useNavigate();
   const [commandes, setCommandes] = useState([]);
   const [clients, setClients] = useState([]);
@@ -139,10 +139,13 @@ export default function AdminCommandes() {
               {e || 'Toutes'}
             </button>
           ))}
-          {hasPermission('commandes.create') && (
+          {hasPermission('commandes.create') && !isWriteBlocked && (
             <button onClick={() => setShowCreate(true)} className="flex items-center gap-1 px-3 py-1 text-xs bg-teal-500/10 text-teal-400 rounded-md hover:bg-teal-500/20 border border-teal-500/30" data-testid="create-commande-btn">
               <Plus className="w-3 h-3" /> Nouvelle
             </button>
+          )}
+          {isWriteBlocked && (
+            <span className="text-[10px] text-amber-500/70 border border-amber-500/20 rounded px-2 py-1" data-testid="write-blocked-badge">Lecture seule (BOTH)</span>
           )}
         </div>
       </div>
