@@ -122,7 +122,8 @@ export default function AdminCommandes() {
     <div data-testid="admin-commandes">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-lg font-semibold text-white">Commandes</h1>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <WeekNavStandard week={week} onChange={handleWeekNav} />
           {['', 'ZR7', 'MDL'].map(e => (
             <button key={e} onClick={() => setEntityFilter(e)}
               className={`px-2.5 py-1 text-[10px] rounded-full border transition-colors ${entityFilter === e ? 'bg-teal-500/20 text-teal-400 border-teal-500/40' : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:border-zinc-700'}`}>
