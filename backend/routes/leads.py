@@ -171,7 +171,10 @@ async def list_leads(
     
     query = {}
     if entity:
+        validate_entity_access(user, entity)
         query["entity"] = entity.upper()
+    elif user.get("role") != "super_admin":
+        query["entity"] = user.get("entity", "ZR7")
     if produit:
         query["produit"] = produit.upper()
     if status:

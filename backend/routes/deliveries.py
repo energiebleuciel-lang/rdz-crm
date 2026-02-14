@@ -50,7 +50,11 @@ async def list_deliveries(
     query = {}
     
     if entity:
+        validate_entity_access(user, entity)
         query["entity"] = entity.upper()
+    elif user.get("role") != "super_admin":
+        # Force entity filter for non-super_admin
+        query["entity"] = user.get("entity", "ZR7")
     if status:
         query["status"] = status
     if client_id:
