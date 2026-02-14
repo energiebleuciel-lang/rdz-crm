@@ -48,12 +48,15 @@ export default function AdminLeads() {
       params.set('limit', limit);
       params.set('skip', page * limit);
       params.set('week', week);
-      Object.entries(filters).forEach(([k, v]) => { if (v) params.set(k, v); });
+      // Apply entity from filter or scope
+      const effectiveEntity = filters.entity || (entityScope === 'BOTH' ? '' : entityScope);
+      if (effectiveEntity) params.set('entity', effectiveEntity);
+      Object.entries(filters).forEach(([k, v]) => { if (v && k !== 'entity') params.set(k, v); });
       if (searchText) params.set('search', searchText);
 
       const [lRes, sRes] = await Promise.all([
         authFetch(`${API}/api/leads/list?${params}`),
-        authFetch(`${API}/api/leads/stats${filters.entity ? '?entity=' + filters.entity : ''}`)
+        authFetch(`${API}/api/leads/stats${effectiveEntity ? '?entity=' + effectiveEntity : ''}`)
       ]);
       if (lRes.ok) { const d = await lRes.json(); setLeads(d.leads || []); setTotal(d.total || 0); }
       if (sRes.ok) setStats(await sRes.json());
