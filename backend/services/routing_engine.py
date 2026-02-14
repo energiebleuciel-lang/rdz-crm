@@ -14,6 +14,7 @@ Cross-entity fallback uniquement si settings l'autorisent ET commande OPEN compa
 
 import logging
 from datetime import datetime, timezone, timedelta
+from math import ceil
 from typing import Optional, List, Dict, Any, Tuple
 from config import db
 from services.duplicate_detector import check_duplicate_30_days
