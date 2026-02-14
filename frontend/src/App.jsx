@@ -58,6 +58,7 @@ function AppRoutes() {
       <Route path="/admin/leads/:id" element={<PrivateRoute><AdminLeadDetail /></PrivateRoute>} />
       <Route path="/admin/activity" element={<PrivateRoute><AdminActivity /></PrivateRoute>} />
       <Route path="/admin/departements" element={<PrivateRoute><AdminDepartements /></PrivateRoute>} />
+      <Route path="/admin/facturation" element={<PrivateRoute><AdminFacturation /></PrivateRoute>} />
       <Route path="/admin/settings" element={<PrivateRoute><AdminSettings /></PrivateRoute>} />
       <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
       <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />

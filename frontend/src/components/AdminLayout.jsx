@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import {
   LayoutDashboard, Package, Users, ShoppingCart, Settings, LogOut,
-  Truck, ChevronLeft, ChevronRight, FileText, Clock, MapPin
+  Truck, ChevronLeft, ChevronRight, FileText, Clock, MapPin, Receipt
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -13,6 +13,7 @@ const NAV = [
   { path: '/admin/clients', icon: Users, label: 'Clients' },
   { path: '/admin/commandes', icon: ShoppingCart, label: 'Commandes' },
   { path: '/admin/departements', icon: MapPin, label: 'Départements' },
+  { path: '/admin/facturation', icon: Receipt, label: 'Facturation' },
   { path: '/admin/activity', icon: Clock, label: 'Activity' },
   { path: '/admin/settings', icon: Settings, label: 'Settings' },
 ];
