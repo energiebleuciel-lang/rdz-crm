@@ -868,20 +868,15 @@ async def process_pending_csv_deliveries() -> Dict:
             if not auto_send_enabled:
                 # ════════════════════════════════════════════════════════
                 # MODE MANUEL: ready_to_send (CSV généré, pas envoyé)
+                # 🔒 Via state machine
                 # ════════════════════════════════════════════════════════
-                await db.deliveries.update_many(
-                    {"id": {"$in": delivery_ids}},
-                    {"$set": {
-                        "status": "ready_to_send",
-                        "csv_content": csv_content,
-                        "csv_filename": csv_filename,
-                        "csv_generated_at": now,
-                        "updated_at": now
-                    }}
+                await batch_mark_deliveries_ready_to_send(
+                    delivery_ids=delivery_ids,
+                    csv_content=csv_content,
+                    csv_filename=csv_filename
                 )
                 
-                # Lead reste en "routed" (PAS livre)
-                # Ne pas modifier le statut du lead
+                # Lead reste en "routed" (PAS livre) - géré par state machine
                 
                 results["ready_to_send"] += len(leads)
                 logger.info(
@@ -891,8 +886,10 @@ async def process_pending_csv_deliveries() -> Dict:
             else:
                 # ════════════════════════════════════════════════════════
                 # MODE AUTO: Envoyer et marquer livre
+                # 🔒 Via state machine APRÈS envoi réussi
                 # ════════════════════════════════════════════════════════
                 try:
+                    # 1. Envoyer l'email RÉELLEMENT
                     await send_csv_email(
                         entity=entity,
                         to_emails=emails,
@@ -903,30 +900,24 @@ async def process_pending_csv_deliveries() -> Dict:
                         produit=produit
                     )
                     
-                    # Marquer deliveries comme sent
+                    # 2. SEULEMENT après envoi réussi: marquer via state machine
+                    # 🔒 batch_mark_deliveries_sent vérifie les invariants
+                    await batch_mark_deliveries_sent(
+                        delivery_ids=delivery_ids,
+                        lead_ids=lead_ids,
+                        sent_to=emails,
+                        client_id=client_id,
+                        client_name=client_name,
+                        commande_id=commande_id
+                    )
+                    
+                    # Stocker le CSV dans les deliveries (pour téléchargement)
                     await db.deliveries.update_many(
                         {"id": {"$in": delivery_ids}},
                         {"$set": {
-                            "status": "sent",
-                            "sent_to": emails,
-                            "last_sent_at": now,
-                            "send_attempts": 1,
                             "csv_content": csv_content,
                             "csv_filename": csv_filename,
-                            "csv_generated_at": now,
-                            "updated_at": now
-                        }}
-                    )
-                    
-                    # Marquer leads comme livre
-                    await db.leads.update_many(
-                        {"id": {"$in": lead_ids}},
-                        {"$set": {
-                            "status": "livre",
-                            "delivered_at": now,
-                            "delivered_to_client_id": client_id,
-                            "delivered_to_client_name": client_name,
-                            "delivery_commande_id": commande_id
+                            "csv_generated_at": now_iso()
                         }}
                     )
                     
@@ -939,19 +930,22 @@ async def process_pending_csv_deliveries() -> Dict:
                 except Exception as e:
                     logger.error(f"[PENDING_CSV] Erreur envoi CSV {client_name}: {str(e)}")
                     
-                    # Marquer comme failed
+                    # 🔒 Marquer comme failed via state machine
+                    await batch_mark_deliveries_failed(
+                        delivery_ids=delivery_ids,
+                        error=str(e)
+                    )
+                    
+                    # Stocker le CSV même en cas d'échec (pour retry manuel)
                     await db.deliveries.update_many(
                         {"id": {"$in": delivery_ids}},
                         {"$set": {
-                            "status": "failed",
-                            "last_error": str(e),
-                            "send_attempts": 1,
                             "csv_content": csv_content,
                             "csv_filename": csv_filename,
-                            "csv_generated_at": now,
-                            "updated_at": now
+                            "csv_generated_at": now_iso()
                         }}
                     )
+                    
                     results["errors"].append({"client": client_name, "error": str(e)})
                 
         except Exception as e:
