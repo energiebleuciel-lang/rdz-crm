@@ -2,6 +2,13 @@
 RDZ CRM - Moteur de Routing
 
 COMMANDE OPEN = active=true AND semaine courante AND delivered_this_week < quota_semaine
+                AND client.delivery_enabled=true AND delivery_day_enabled=true
+
+ORDRE DE PRIORITÉ DES RÈGLES:
+1. Calendar gating (day OFF) → bloque routing
+2. Client non livrable → aucune commande OPEN possible
+3. Quota / Doublon → règles standard
+
 Cross-entity fallback uniquement si settings l'autorisent ET commande OPEN compatible existe.
 """
 
@@ -10,6 +17,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any, Tuple
 from config import db
 from services.duplicate_detector import check_duplicate_30_days
+from services.settings import is_delivery_day_enabled
 
 logger = logging.getLogger("routing_engine")
 
