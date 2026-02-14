@@ -13,7 +13,7 @@ import json
 from datetime import datetime, timezone
 from collections import defaultdict
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://lead-delivery-hub.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://rdz-qa-report.preview.emergentagent.com').rstrip('/')
 
 # Test credentials
 ADMIN_EMAIL = "energiebleuciel@gmail.com"
