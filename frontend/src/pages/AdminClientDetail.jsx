@@ -653,14 +653,22 @@ function PricingTab({ clientId, authFetch }) {
 
 function OffersTab({ clientId, authFetch }) {
   const [credits, setCredits] = useState([]);
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ product_code: '', week_key: '', quantity_units_free: 0, reason: '', note: '' });
+  const [form, setForm] = useState({ order_id: '', product_code: '', week_key: '', quantity_units_free: 0, reason: '', note: '' });
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await authFetch(`${API}/api/clients/${clientId}/credits`);
-      if (r.ok) { const d = await r.json(); setCredits(d.credits || []); }
+      const [cRes, o1, o2] = await Promise.all([
+        authFetch(`${API}/api/clients/${clientId}/credits`),
+        authFetch(`${API}/api/commandes?entity=ZR7&active_only=false&client_id=${clientId}`),
+        authFetch(`${API}/api/commandes?entity=MDL&active_only=false&client_id=${clientId}`),
+      ]);
+      if (cRes.ok) { const d = await cRes.json(); setCredits(d.credits || []); }
+      const cmds1 = o1.ok ? (await o1.json()).commandes || [] : [];
+      const cmds2 = o2.ok ? (await o2.json()).commandes || [] : [];
+      setOrders([...cmds1, ...cmds2]);
     } catch (e) { console.error(e); }
     setLoading(false);
   }, [clientId, authFetch]);
@@ -668,13 +676,13 @@ function OffersTab({ clientId, authFetch }) {
   useEffect(() => { load(); }, [load]);
 
   const addCredit = async () => {
-    if (!form.week_key || !form.reason || form.quantity_units_free <= 0) return;
+    if (!form.week_key || !form.reason || !form.order_id || !form.product_code || form.quantity_units_free <= 0) return;
     const r = await authFetch(`${API}/api/clients/${clientId}/credits`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),
     });
     if (r.ok) {
-      setForm({ product_code: '', week_key: '', quantity_units_free: 0, reason: '', note: '' });
+      setForm({ order_id: '', product_code: '', week_key: '', quantity_units_free: 0, reason: '', note: '' });
       load();
     } else { const d = await r.json(); alert(d.detail || 'Erreur'); }
   };
@@ -695,17 +703,24 @@ function OffersTab({ clientId, authFetch }) {
         <h3 className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-3">Ajouter une offre</h3>
         <div className="flex gap-2 items-end flex-wrap">
           <div>
-            <label className="text-[10px] text-zinc-500 block mb-1">Semaine (YYYY-W##)</label>
-            <input value={form.week_key} onChange={e => setForm(f => ({ ...f, week_key: e.target.value }))} placeholder="2026-W07"
-              className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-300 w-28" data-testid="offer-week" />
+            <label className="text-[10px] text-zinc-500 block mb-1">Commande</label>
+            <select value={form.order_id} onChange={e => {
+              const cmd = orders.find(o => o.id === e.target.value);
+              setForm(f => ({ ...f, order_id: e.target.value, product_code: cmd?.produit || f.product_code }));
+            }}
+              className="bg-zinc-800 text-zinc-300 text-xs rounded px-2 py-1.5 border border-zinc-700 min-w-[180px]" data-testid="offer-order">
+              <option value="">Sélectionner</option>
+              {orders.map(o => <option key={o.id} value={o.id}>{o.produit} - {o.client_name || o.id.slice(0, 8)} (q:{o.quota_semaine})</option>)}
+            </select>
           </div>
           <div>
-            <label className="text-[10px] text-zinc-500 block mb-1">Produit (opt.)</label>
-            <select value={form.product_code} onChange={e => setForm(f => ({ ...f, product_code: e.target.value }))}
-              className="bg-zinc-800 text-zinc-300 text-xs rounded px-2 py-1.5 border border-zinc-700" data-testid="offer-product">
-              <option value="">Global</option>
-              {PRODUCTS.map(p => <option key={p} value={p}>{p}</option>)}
-            </select>
+            <label className="text-[10px] text-zinc-500 block mb-1">Produit</label>
+            <input value={form.product_code} readOnly className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-500 w-16" />
+          </div>
+          <div>
+            <label className="text-[10px] text-zinc-500 block mb-1">Semaine</label>
+            <input value={form.week_key} onChange={e => setForm(f => ({ ...f, week_key: e.target.value }))} placeholder="2026-W07"
+              className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-300 w-28" data-testid="offer-week" />
           </div>
           <div>
             <label className="text-[10px] text-zinc-500 block mb-1">Units offertes</label>
@@ -725,7 +740,7 @@ function OffersTab({ clientId, authFetch }) {
             <input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="Commentaire"
               className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-300 w-36" data-testid="offer-note" />
           </div>
-          <button onClick={addCredit} disabled={!form.week_key || !form.reason || form.quantity_units_free <= 0}
+          <button onClick={addCredit} disabled={!form.week_key || !form.reason || !form.order_id || form.quantity_units_free <= 0}
             className="px-3 py-1.5 text-xs bg-teal-500/15 text-teal-400 rounded hover:bg-teal-500/25 border border-teal-500/30 disabled:opacity-50" data-testid="add-offer-btn">
             <Plus className="w-3 h-3 inline mr-1" />Ajouter
           </button>
@@ -739,18 +754,16 @@ function OffersTab({ clientId, authFetch }) {
           {credits.map(c => (
             <div key={c.id} className="flex items-center gap-3 bg-zinc-800/50 rounded-lg px-3 py-2 border border-zinc-700/50">
               <span className="text-xs text-zinc-300 font-mono w-20">{c.week_key}</span>
-              <span className="text-xs text-zinc-400">{c.product_code || 'Global'}</span>
+              <span className="text-xs text-zinc-400">{c.product_code}</span>
+              <span className="text-[10px] text-zinc-500">{c.order_id?.slice(0, 8)}</span>
               <span className="text-xs font-medium text-violet-400">{c.quantity_units_free} units</span>
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-700 text-zinc-300">{c.reason}</span>
               {c.note && <span className="text-[10px] text-zinc-500 truncate max-w-[150px]">{c.note}</span>}
               <div className="flex-1" />
               <span className="text-[10px] text-zinc-600">{c.created_by} - {c.created_at?.slice(0, 10)}</span>
-              {!c.applied_invoice_id && (
-                <button onClick={() => deleteCredit(c.id)} className="p-1 text-zinc-500 hover:text-red-400" data-testid={`delete-credit-${c.id}`}>
-                  <Trash2 className="w-3 h-3" />
-                </button>
-              )}
-              {c.applied_invoice_id && <span className="text-[9px] text-zinc-600">Appliqué</span>}
+              <button onClick={() => deleteCredit(c.id)} className="p-1 text-zinc-500 hover:text-red-400" data-testid={`delete-credit-${c.id}`}>
+                <Trash2 className="w-3 h-3" />
+              </button>
             </div>
           ))}
           {credits.length === 0 && <p className="text-[10px] text-zinc-600">Aucune offre</p>}
