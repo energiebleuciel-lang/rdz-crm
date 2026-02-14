@@ -414,8 +414,8 @@ class TestBillingLedger:
 
     def test_build_ledger_new_week(self, api_client):
         """POST /api/billing/week/{wk}/build-ledger creates ledger entries"""
-        # Use a test week unlikely to have frozen invoices
-        test_week = "2026-W99"
+        # Use a valid future week unlikely to have frozen invoices (week 50 of 2026)
+        test_week = "2026-W50"
         
         response = api_client.post(f"{BASE_URL}/api/billing/week/{test_week}/build-ledger")
         # Should succeed (may create 0 entries if no deliveries)
