@@ -258,7 +258,7 @@ async def mark_paid(
     if not inv:
         raise HTTPException(404, "Facture non trouvée")
     if inv.get("status") not in ("sent", "overdue"):
-        raise HTTPException(400, f"Seule une facture sent/overdue peut être marquée payée")
+        raise HTTPException(400, "Seule une facture sent/overdue peut être marquée payée")
 
     paid_at = now_iso()
     await db.invoices.update_one(
