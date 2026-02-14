@@ -62,7 +62,7 @@ export default function AdminLeads() {
       if (sRes.ok) setStats(await sRes.json());
     } catch (e) { console.error(e); }
     setLoading(false);
-  }, [page, week, filters, searchText, authFetch]);
+  }, [page, week, filters, searchText, entityScope, authFetch]);
 
   useEffect(() => { load(); }, [load]);
 
