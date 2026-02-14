@@ -34,7 +34,6 @@ async def system_health(
         "timestamp": now_iso(),
         "modules": {},
     }
-
     # --- CRON ---
     try:
         last_daily = await db.delivery_reports.find_one(
