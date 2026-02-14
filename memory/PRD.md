@@ -153,15 +153,21 @@ Guard:
   - Guard: seul status=sent peut etre rejete
   - Stats enrichis: rejected, billable
   - Teste manuellement: rejet, idempotency, billing, guard non-sent
+- **Phase 3 (Feb 2025)** : UI Admin
+  - Login RDZ (auth JWT, redirect /admin/dashboard)
+  - Dashboard: stats deliveries (pending/ready/sent/failed/billable/rejected) + breakdown ZR7/MDL
+  - Deliveries: table + filtres (status/entity) + stat pills + pagination + actions (view/download/send/resend)
+  - Delivery Detail: info delivery + lead + rejection info + actions + reject modal (raison obligatoire)
+  - Clients: table ZR7+MDL + edit inline (email/api_endpoint/auto_send/active) + filtre entity
+  - Commandes: table + create modal + edit inline + progress bars quota + filtre entity
+  - Settings: email denylist + simulation mode toggle + delivery calendar par entity
+  - Navigation: sidebar collapsible + logout
+  - Tests: 10/10 passes (iteration 22)
 
-## NEXT (Phase 3 - UI Admin)
+## NEXT
 
-- [ ] UI Clients (email, api_endpoint, auto_send_enabled, jours livraison)
-- [ ] UI Commandes (OPEN/CLOSED, quotas, stats semaine)
-- [ ] UI Deliveries (status, send_attempts, last_error, boutons telecharger/envoyer)
-- [ ] UI forms_config (form_code -> entity/produit)
-- [ ] UI Settings (cross-entity, source gating, email denylist, calendar)
-- [ ] Dashboard minimal (stats par status/entity/produit)
+- [ ] Dashboard stats avances (leads today/routed today/livres today, filtres, graphiques)
+- [ ] Breakdown par produit sur le dashboard
 
 ## BACKLOG
 
