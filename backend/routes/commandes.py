@@ -331,3 +331,29 @@ async def get_commande_stats_endpoint(
         "total_delivered": total_delivered,
         "last_4_weeks": weeks_stats
     }
+
+
+@router.get("/{commande_id}/deliveries")
+async def get_commande_deliveries(
+    commande_id: str,
+    status: Optional[str] = None,
+    limit: int = 50,
+    skip: int = 0,
+    user: dict = Depends(get_current_user)
+):
+    """Deliveries liées à une commande"""
+    query = {"commande_id": commande_id}
+    if status:
+        query["status"] = status
+
+    deliveries = await db.deliveries.find(
+        query, {"_id": 0, "csv_content": 0}
+    ).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+
+    total = await db.deliveries.count_documents(query)
+
+    for d in deliveries:
+        d["outcome"] = d.get("outcome", "accepted")
+        d["billable"] = d.get("status") == "sent" and d.get("outcome", "accepted") == "accepted"
+
+    return {"deliveries": deliveries, "count": len(deliveries), "total": total}
