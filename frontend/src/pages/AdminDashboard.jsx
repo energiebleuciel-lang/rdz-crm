@@ -22,7 +22,7 @@ function Stat({ label, value, icon: Icon, color = 'text-zinc-400' }) {
 }
 
 export default function AdminDashboard() {
-  const { authFetch } = useAuth();
+  const { authFetch, entityScope } = useAuth();
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -37,7 +37,7 @@ export default function AdminDashboard() {
       } catch (e) { console.error(e); }
       setLoading(false);
     })();
-  }, [week]);
+  }, [week, entityScope]);
 
   const handleWeekNav = (dir) => setWeek(w => shiftWeekKey(w, dir));
 
