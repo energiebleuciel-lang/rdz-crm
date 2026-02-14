@@ -130,10 +130,10 @@ async def lifespan(app: FastAPI):
         await db.billing_ledger.create_index(
             [("week_key", 1), ("client_id", 1), ("product_code", 1)], background=True
         )
-        await db.invoices.create_index(
-            [("week_key", 1), ("client_id", 1), ("product_code", 1)], background=True
+        await db.billing_records.create_index(
+            [("week_key", 1), ("client_id", 1), ("product_code", 1), ("order_id", 1)], background=True
         )
-        await db.invoices.create_index("invoice_number", unique=True, sparse=True, background=True)
+        await db.billing_records.create_index("status", background=True)
 
         logger.info("Index MongoDB OK")
     except Exception as e:
