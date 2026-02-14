@@ -291,6 +291,17 @@ async def send_delivery(
         
         logger.error(f"[DELIVERY_FAILED] id={delivery_id} error={str(e)}")
         
+        from services.event_logger import log_event as _log_fail
+        await _log_fail(
+            action="delivery_failed",
+            entity_type="delivery",
+            entity_id=delivery_id,
+            entity=delivery.get("entity", ""),
+            user=user.get("email"),
+            details={"error": str(e)[:200]},
+            related={"lead_id": delivery.get("lead_id"), "client_id": delivery.get("client_id")}
+        )
+        
         raise HTTPException(status_code=500, detail=f"Erreur d'envoi: {str(e)}")
 
 
