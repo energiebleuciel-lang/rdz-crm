@@ -1,0 +1,106 @@
+{
+  "summary": "Etape 3 - Event Log Centralisé - ALL 10 FEATURES VERIFIED. Backend: 14/14 tests passed. Frontend: Activity page with timeline, filters, pagination, and links working. ActivityBlock embedded in Lead and Delivery detail pages showing events correctly.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_event_log_feature.py",
+    "/app/test_reports/pytest/pytest_event_log.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "✅ GET /api/event-log returns events with filters (action, entity_type, entity, entity_id, user_filter, search) - VERIFIED",
+    "✅ GET /api/event-log/actions returns distinct action types - VERIFIED",
+    "✅ GET /api/event-log/{id} returns single event details - VERIFIED",
+    "✅ reject_lead action logs to event_log collection - VERIFIED",
+    "✅ lead_removed_from_delivery action logs to event_log - VERIFIED",
+    "✅ order_activate/order_deactivate logged on commande toggle - VERIFIED",
+    "✅ client_auto_send_change logged on client update - VERIFIED",
+    "✅ rotate_provider_key logged on provider key rotation - VERIFIED",
+    "✅ Activity page: sidebar nav item 'Activity' works - VERIFIED",
+    "✅ Activity page: event timeline with color-coded action types - VERIFIED",
+    "✅ Activity page: filters panel (action/entity_type/entity) + Reset button - VERIFIED",
+    "✅ Activity page: pagination with Prev/Next and page indicator - VERIFIED",
+    "✅ Activity page: links to entities (Delivery, Client, Lead) - VERIFIED",
+    "✅ ActivityBlock in Delivery detail shows events for that delivery - VERIFIED",
+    "✅ ActivityBlock in Lead detail shows events for related delivery - VERIFIED"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_event_log_feature.py"
+  ],
+  "success_rate": {
+    "backend": "100% (14/14 passed)",
+    "frontend": "100% (all UI elements verified)"
+  },
+  "test_credentials": {
+    "email": "energiebleuciel@gmail.com",
+    "password": "92Ruemarxdormoy"
+  },
+  "seed_data_creation": "Events created during testing: 3x client_auto_send_change, 1x order_activate, 1x order_deactivate, 1x rotate_provider_key. Pre-existing: 1x reject_lead, 1x lead_removed_from_delivery",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Event log centralized audit trail fully functional. Total events in system: 8+. Activity page at /admin/activity shows timeline with all events. ActivityBlock component embedded in Delivery detail (/admin/deliveries/:id) and Lead detail (/admin/leads/:id) pages. Actions instrumented: reject_lead, lead_removed_from_delivery, order_activate, order_deactivate, client_auto_send_change, rotate_provider_key. Note: send_delivery, resend_delivery, delivery_failed events are instrumented in code but require actual email delivery to trigger.",
+  "verified_features": {
+    "activity_page": {
+      "sidebar_nav": "VERIFIED - 'Activity' nav item in sidebar, clicking navigates to /admin/activity",
+      "timeline_display": "VERIFIED - vertical timeline with colored dots per action type",
+      "event_info": "VERIFIED - shows action, entity_type badge, entity (ZR7/MDL), timestamp, user email",
+      "event_details": "VERIFIED - shows reason, old/new values, sent_to, client_name, produit",
+      "entity_links": "VERIFIED - clickable links to Delivery, Client, Lead detail pages",
+      "filters_panel": "VERIFIED - toggle with 'Filtres' button, shows Action/Type/Entity dropdowns",
+      "filter_action": "VERIFIED - dropdown populated from /api/event-log/actions endpoint",
+      "filter_entity_type": "VERIFIED - dropdown with delivery/lead/client/commande/provider",
+      "filter_entity": "VERIFIED - dropdown with ZR7/MDL options",
+      "clear_filters": "VERIFIED - Reset button clears all filters",
+      "pagination": "VERIFIED - Prev/Next buttons, page indicator (e.g., '1/1'), respects limit/skip",
+      "status": "VERIFIED"
+    },
+    "event_log_api": {
+      "list_endpoint": "VERIFIED - GET /api/event-log returns {events, count, total}",
+      "filter_by_action": "VERIFIED - ?action=reject_lead returns only matching events",
+      "filter_by_entity_type": "VERIFIED - ?entity_type=delivery filters correctly",
+      "filter_by_entity": "VERIFIED - ?entity=ZR7 filters correctly",
+      "filter_by_entity_id": "VERIFIED - ?entity_id=xxx searches entity_id and related fields",
+      "pagination": "VERIFIED - ?limit=N&skip=M for pagination",
+      "actions_endpoint": "VERIFIED - GET /api/event-log/actions returns {actions: [...]}",
+      "single_event": "VERIFIED - GET /api/event-log/{id} returns event or 404",
+      "status": "VERIFIED"
+    },
+    "event_logging_instrumentation": {
+      "reject_lead": "VERIFIED - logged when POST /api/deliveries/{id}/reject-leads called",
+      "lead_removed_from_delivery": "VERIFIED - logged when POST /api/deliveries/{id}/remove-lead called",
+      "order_activate": "VERIFIED - logged when commande toggled to active=true",
+      "order_deactivate": "VERIFIED - logged when commande toggled to active=false",
+      "client_auto_send_change": "VERIFIED - logged when client auto_send_enabled changes",
+      "rotate_provider_key": "VERIFIED - logged when POST /api/providers/{id}/rotate-key called",
+      "send_delivery": "INSTRUMENTED - in code, requires email delivery to trigger",
+      "resend_delivery": "INSTRUMENTED - in code, requires force resend to trigger",
+      "delivery_failed": "INSTRUMENTED - in code, triggers on email send failure",
+      "status": "VERIFIED"
+    },
+    "activity_block_component": {
+      "delivery_detail": "VERIFIED - shows events filtered by entity_type=delivery and entity_id",
+      "lead_detail": "VERIFIED - shows events for related delivery_id",
+      "event_display": "VERIFIED - shows action label, timestamp, user, reason if present",
+      "no_activity": "VERIFIED - shows 'Aucune activité' when no events exist",
+      "status": "VERIFIED"
+    }
+  },
+  "app_state": {
+    "total_events": 8,
+    "events_breakdown": {
+      "client_auto_send_change": 3,
+      "lead_removed_from_delivery": 1,
+      "order_activate": 1,
+      "order_deactivate": 1,
+      "reject_lead": 1,
+      "rotate_provider_key": 1
+    }
+  }
+}
