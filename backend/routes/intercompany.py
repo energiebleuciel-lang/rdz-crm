@@ -251,3 +251,56 @@ async def generate_weekly_invoices(
         "invoices_created": len(invoices_created),
         "invoices": invoices_created,
     }
+
+
+# ════════════════════════════════════════════════════════════════════════
+# INTERCOMPANY INVOICES
+# ════════════════════════════════════════════════════════════════════════
+
+@router.get("/invoices")
+async def list_intercompany_invoices(
+    request: Request,
+    week_key: Optional[str] = None,
+    direction: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 100,
+    user: dict = Depends(require_permission("intercompany.view"))
+):
+    """List intercompany invoices with filters."""
+    scope = get_entity_scope_from_request(user, request)
+    query = {"type": "intercompany"}
+
+    if scope != "BOTH":
+        query["$or"] = [{"from_entity": scope}, {"to_entity": scope}]
+    if week_key:
+        query["week_key"] = week_key
+    if direction:
+        parts = direction.split("->")
+        if len(parts) == 2:
+            query["from_entity"] = parts[0].strip()
+            query["to_entity"] = parts[1].strip()
+    if status:
+        query["status"] = status
+
+    invoices = await db.invoices.find(query, {"_id": 0}).sort("issued_at", -1).limit(limit).to_list(limit)
+    total = await db.invoices.count_documents(query)
+    return {"invoices": invoices, "count": len(invoices), "total": total}
+
+
+@router.get("/invoices/{invoice_id}")
+async def get_intercompany_invoice_detail(
+    invoice_id: str,
+    user: dict = Depends(require_permission("intercompany.view"))
+):
+    """Get intercompany invoice with transfer details."""
+    inv = await db.invoices.find_one({"id": invoice_id, "type": "intercompany"}, {"_id": 0})
+    if not inv:
+        raise HTTPException(404, "Facture intercompany non trouvée")
+
+    # Fetch transfer details
+    transfer_ids = inv.get("transfer_ids", [])
+    transfers = await db.intercompany_transfers.find(
+        {"id": {"$in": transfer_ids}}, {"_id": 0}
+    ).to_list(len(transfer_ids))
+
+    return {"invoice": inv, "transfers": transfers}
