@@ -233,12 +233,22 @@ Guard:
   - GET /api/billing/week : dashboard vendredi (weekly_invoice + prepaid rows séparés)
   - Event logging complet: pricing_update, credit_added/deleted, ledger_built, invoice_frozen/sent/paid
   - Tests: 40/40 backend (iteration 29)
+- **Billing Engine Phase B — Frontend (Feb 2026)** :
+  - Page /admin/facturation: dashboard vendredi avec KPI cards, Build Ledger + Générer Factures, 2 sections (WEEKLY_INVOICE + PREPAID)
+  - Tableau facturation: Client, Produit, Units (Leads+LB), Offerts, Facturés, Prix HT, Remise, HT brut, HT net, TVA, TTC, Statut, Actions
+  - Workflow invoice: freeze→sent→paid avec boutons d'action inline
+  - Alertes pricing_missing pour clients sans pricing configuré
+  - Section prépaiement: balance achetées/livrées/restantes avec statut OK/LOW/BLOCKED
+  - Client 360 onglet "Pricing": remise globale + TVA + pricing par produit (WEEKLY_INVOICE/PREPAID) + balances prépaiement + ajouter unités
+  - Client 360 onglet "Offres": historique crédits + formulaire ajout (semaine/produit/units/raison/note) + suppression
+  - Standardisation affichage semaine: "Semaine du DD/MM/YYYY au DD/MM/YYYY" sur Facturation + Départements
+  - Composant partagé WeekNavStandard + lib/weekUtils.js
+  - TVA ajoutée au backend billing (tva_rate sur client_pricing, tva_amount/ttc dans dashboard)
+  - Tests: 100% frontend + backend TVA (iteration 30)
 
 ## NEXT
 
-- [ ] Phase B UI: Page /admin/facturation (dashboard vendredi)
-- [ ] Phase B UI: Client 360 onglets Pricing + Offres
-- [ ] Standardisation affichage semaine (DD/MM/YYYY au DD/MM/YYYY)
+- [ ] QA Phase C: tests calcul (LB même prix, freebies déduits, remise correcte, snapshot immutabilité)
 - [ ] Permissions simples (admin / ops / viewer)
 
 ## BACKLOG
