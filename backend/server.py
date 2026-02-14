@@ -142,6 +142,22 @@ async def lifespan(app: FastAPI):
             [("week_key", 1), ("from_entity", 1), ("to_entity", 1)], background=True
         )
 
+        # Intercompany indexes
+        await db.intercompany_transfers.create_index(
+            [("lead_id", 1), ("from_entity", 1), ("to_entity", 1)],
+            unique=True, background=True, name="idx_interco_unique"
+        )
+        await db.intercompany_transfers.create_index("week_key", background=True)
+        await db.intercompany_transfers.create_index("transfer_status", background=True)
+        await db.intercompany_pricing.create_index(
+            [("from_entity", 1), ("to_entity", 1), ("product", 1)],
+            unique=True, background=True, name="idx_interco_pricing"
+        )
+
+        # Seed intercompany pricing
+        from services.intercompany import seed_intercompany_pricing
+        await seed_intercompany_pricing()
+
         logger.info("Index MongoDB OK")
     except Exception as e:
         logger.warning(f"Index MongoDB: {str(e)}")
