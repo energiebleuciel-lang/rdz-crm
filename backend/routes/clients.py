@@ -44,8 +44,27 @@ async def list_clients(
     
     clients = await db.clients.find(query, {"_id": 0}).to_list(500)
     
-    # Enrichir avec stats
+    # Enrichir avec stats + deliverability
+    from models.client import check_client_deliverable
+    from services.settings import get_email_denylist_settings
+    denylist_settings = await get_email_denylist_settings()
+    denylist = denylist_settings.get("domains", [])
+    
     for client in clients:
+        # Deliverability check
+        check = check_client_deliverable(
+            email=client.get("email", ""),
+            delivery_emails=client.get("delivery_emails", []),
+            api_endpoint=client.get("api_endpoint", ""),
+            denylist=denylist
+        )
+        client["has_valid_channel"] = check["deliverable"]
+        client["deliverable_reason"] = check.get("reason")
+        
+        # Ensure auto_send_enabled is present
+        if "auto_send_enabled" not in client:
+            client["auto_send_enabled"] = True
+        
         # Compter les leads livrés
         delivered_count = await db.leads.count_documents({
             "delivered_to_client_id": client.get("id"),
