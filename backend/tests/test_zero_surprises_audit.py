@@ -18,7 +18,19 @@ import os
 import uuid
 from datetime import datetime, timezone
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
+def _load_base_url():
+    url = os.environ.get('REACT_APP_BACKEND_URL', '')
+    if not url:
+        env_path = os.path.join(os.path.dirname(__file__), '..', '..', 'frontend', '.env')
+        if os.path.exists(env_path):
+            with open(env_path) as f:
+                for line in f:
+                    if line.startswith('REACT_APP_BACKEND_URL='):
+                        url = line.split('=', 1)[1].strip()
+                        break
+    return url.rstrip('/')
+
+BASE_URL = _load_base_url()
 PASSWORD = "RdzTest2026!"
 
 class TestSystemEndpoints:
