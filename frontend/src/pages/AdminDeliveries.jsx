@@ -196,6 +196,8 @@ export default function AdminDeliveries() {
                     <td className="px-3 py-2">
                       {d.outcome === 'rejected'
                         ? <span className="text-[10px] px-2 py-0.5 rounded-full border bg-orange-500/10 text-orange-400 border-orange-500/30">rejected</span>
+                        : d.outcome === 'removed'
+                        ? <span className="text-[10px] px-2 py-0.5 rounded-full border bg-red-500/10 text-red-300 border-red-500/30">removed</span>
                         : d.billable ? <span className="text-[10px] text-zinc-600">billable</span> : <span className="text-[10px] text-zinc-700">-</span>}
                     </td>
                     <td className="px-3 py-2 text-zinc-500 max-w-[140px] truncate text-[10px]">{d.sent_to?.join(', ') || '-'}</td>
