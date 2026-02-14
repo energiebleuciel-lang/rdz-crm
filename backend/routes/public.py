@@ -393,12 +393,21 @@ async def submit_lead(data: LeadData, request: Request):
     else:
         initial_status = "new"
 
+    # Determine lead source type for suspicious routing logic
+    if provider:
+        lead_source_type = "provider"
+    elif lp_code:
+        lead_source_type = "internal_lp"
+    else:
+        lead_source_type = "direct"
+
     # Creer le lead
     lead_id = str(uuid.uuid4())
     lead = {
         "id": lead_id,
         "phone": phone,
         "phone_quality": phone_quality if is_valid else "invalid",
+        "lead_source_type": lead_source_type,
         "nom": nom,
         "prenom": (data.prenom or "").strip(),
         "email": (data.email or "").strip(),
