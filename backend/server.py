@@ -305,6 +305,7 @@ app.include_router(billing.router, prefix="/api")
 app.include_router(invoices.router, prefix="/api")
 app.include_router(intercompany.router, prefix="/api")
 app.include_router(system_health_router, prefix="/api")
+app.include_router(monitoring_router, prefix="/api")
 
 
 @app.get("/")
