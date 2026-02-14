@@ -213,3 +213,20 @@ def require_super_admin():
         return user
 
     return _check
+
+
+def validate_entity_access(user: dict, requested_entity: str):
+    """
+    Validate that the user can access the requested entity.
+    - super_admin: can access any entity
+    - others: must match user.entity
+    Raises 403 if unauthorized.
+    """
+    if user.get("role") == "super_admin":
+        return
+    user_entity = (user.get("entity") or "").upper()
+    if requested_entity.upper() != user_entity:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Accès interdit à l'entité {requested_entity}. Votre entité: {user_entity}"
+        )
