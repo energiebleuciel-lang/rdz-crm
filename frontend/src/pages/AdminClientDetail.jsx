@@ -679,13 +679,13 @@ function OffersTab({ clientId, authFetch }) {
   useEffect(() => { load(); }, [load]);
 
   const addCredit = async () => {
-    if (!form.week_key || !form.reason || !form.order_id || !form.product_code || form.quantity_units_free <= 0) return;
+    if (!offerWeek || !form.reason || !form.order_id || !form.product_code || form.quantity_units_free <= 0) return;
     const r = await authFetch(`${API}/api/clients/${clientId}/credits`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
+      body: JSON.stringify({ ...form, week_key: offerWeek }),
     });
     if (r.ok) {
-      setForm({ order_id: '', product_code: '', week_key: '', quantity_units_free: 0, reason: '', note: '' });
+      setForm({ order_id: '', product_code: '', quantity_units_free: 0, reason: '', note: '' });
       load();
     } else { const d = await r.json(); alert(d.detail || 'Erreur'); }
   };
