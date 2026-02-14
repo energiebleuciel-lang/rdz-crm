@@ -42,6 +42,7 @@ export default function AdminDeliveries() {
       const params = new URLSearchParams();
       params.set('limit', limit);
       params.set('skip', page * limit);
+      params.set('week', week);
       if (filters.status) params.set('status', filters.status);
       if (filters.entity) params.set('entity', filters.entity);
       if (filters.client_id) params.set('client_id', filters.client_id);
