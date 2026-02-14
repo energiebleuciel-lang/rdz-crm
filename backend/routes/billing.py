@@ -424,6 +424,198 @@ async def billing_week_dashboard(week_key: Optional[str] = None, user: dict = De
 
 
 # ═══════════════════════════════════════════════════
+# MONTH SUMMARY (agrégation calendaire)
+# ═══════════════════════════════════════════════════
+
+@router.get("/billing/month-summary")
+async def billing_month_summary(month: Optional[str] = None, user: dict = Depends(get_current_user)):
+    """
+    Agrège toutes les données de facturation d'un mois calendaire.
+    month format: YYYY-MM (ex: 2026-02). Default: current month.
+    """
+    if not month:
+        now = datetime.now(timezone.utc)
+        month = f"{now.year}-{now.month:02d}"
+
+    try:
+        parts = month.split("-")
+        year, mo = int(parts[0]), int(parts[1])
+        ms = datetime(year, mo, 1, tzinfo=timezone.utc)
+        if mo == 12:
+            me = datetime(year + 1, 1, 1, tzinfo=timezone.utc)
+        else:
+            me = datetime(year, mo + 1, 1, tzinfo=timezone.utc)
+    except Exception:
+        raise HTTPException(400, f"Invalid month format: {month}. Expected YYYY-MM")
+
+    ms_iso, me_iso = ms.isoformat(), me.isoformat()
+
+    # Client map
+    cmap = {}
+    for c in await db.clients.find({}, {"_id": 0, "id": 1, "name": 1, "entity": 1}).to_list(500):
+        cmap[c["id"]] = c
+
+    # --- Deliveries for the month ---
+    deliveries = await db.deliveries.find(
+        {"created_at": {"$gte": ms_iso, "$lt": me_iso}},
+        {"_id": 0, "id": 1, "client_id": 1, "produit": 1, "status": 1, "outcome": 1, "is_lb": 1},
+    ).to_list(100000)
+
+    total_delivered = len(deliveries)
+    total_leads = sum(1 for d in deliveries if not d.get("is_lb", False))
+    total_lb = sum(1 for d in deliveries if d.get("is_lb", False))
+    total_billable = sum(1 for d in deliveries if d.get("status") == "sent" and (d.get("outcome") or "accepted") == "accepted")
+    billable_leads = sum(1 for d in deliveries if d.get("status") == "sent" and (d.get("outcome") or "accepted") == "accepted" and not d.get("is_lb", False))
+    billable_lb = sum(1 for d in deliveries if d.get("status") == "sent" and (d.get("outcome") or "accepted") == "accepted" and d.get("is_lb", False))
+    total_nonbill = sum(1 for d in deliveries if (d.get("outcome") or "accepted") in ("rejected", "removed"))
+    leads_produced = await db.leads.count_documents({"created_at": {"$gte": ms_iso, "$lt": me_iso}})
+
+    # --- Billing records for the month (all week_keys in this month) ---
+    # Find week_keys that overlap with this month
+    all_records = await db.billing_records.find({}, {"_id": 0, "week_key": 1}).to_list(50000)
+    month_week_keys = set()
+    for r in all_records:
+        wk = r.get("week_key", "")
+        if not wk:
+            continue
+        try:
+            wparts = wk.split("-W")
+            wy, wn = int(wparts[0]), int(wparts[1])
+            w_start = datetime.fromisocalendar(wy, wn, 1).replace(tzinfo=timezone.utc)
+            w_end = w_start + timedelta(days=7)
+            if w_start < me and w_end > ms:
+                month_week_keys.add(wk)
+        except Exception:
+            pass
+
+    records = await db.billing_records.find(
+        {"week_key": {"$in": list(month_week_keys)}}, {"_id": 0}
+    ).to_list(50000)
+
+    # Aggregate by client + product
+    client_agg = defaultdict(lambda: {
+        "units_billable": 0, "units_leads": 0, "units_lb": 0,
+        "units_free": 0, "units_invoiced": 0,
+        "net_total_ht": 0, "vat_amount": 0, "total_ttc": 0,
+        "status_counts": defaultdict(int), "weeks": set(),
+    })
+
+    for r in records:
+        k = f"{r['client_id']}:{r['product_code']}"
+        a = client_agg[k]
+        a["client_id"] = r["client_id"]
+        a["client_name"] = r.get("client_name") or cmap.get(r["client_id"], {}).get("name", "")
+        a["entity"] = cmap.get(r["client_id"], {}).get("entity", "")
+        a["product_code"] = r["product_code"]
+        a["billing_mode"] = r.get("billing_mode", "WEEKLY_INVOICE")
+        a["units_billable"] += r.get("units_billable", 0)
+        a["units_leads"] += r.get("units_leads", 0)
+        a["units_lb"] += r.get("units_lb", 0)
+        a["units_free"] += r.get("units_free", 0)
+        a["units_invoiced"] += r.get("units_invoiced", 0)
+        a["net_total_ht"] += r.get("net_total_ht", 0)
+        a["vat_amount"] += r.get("vat_amount", 0)
+        a["total_ttc"] += r.get("total_ttc_expected", 0)
+        a["status_counts"][r.get("status", "not_invoiced")] += 1
+        a["weeks"].add(r.get("week_key", ""))
+
+    rows = []
+    totals = {"units_billable": 0, "units_leads": 0, "units_lb": 0, "units_free": 0,
+              "net_ht": 0, "vat": 0, "ttc": 0}
+    for k, a in sorted(client_agg.items()):
+        sc = dict(a["status_counts"])
+        # Determine overall status
+        if sc.get("overdue", 0) > 0:
+            overall = "overdue"
+        elif sc.get("not_invoiced", 0) > 0 and sc.get("paid", 0) == 0:
+            overall = "not_invoiced"
+        elif sc.get("invoiced", 0) > 0:
+            overall = "invoiced"
+        elif sc.get("paid", 0) > 0 and sc.get("not_invoiced", 0) == 0:
+            overall = "paid"
+        else:
+            overall = "not_invoiced"
+
+        row = {
+            "client_id": a["client_id"], "client_name": a["client_name"],
+            "entity": a["entity"], "product_code": a["product_code"],
+            "billing_mode": a["billing_mode"],
+            "units_billable": a["units_billable"], "units_leads": a["units_leads"],
+            "units_lb": a["units_lb"], "units_free": a["units_free"],
+            "units_invoiced": a["units_invoiced"],
+            "net_total_ht": round(a["net_total_ht"], 2),
+            "vat_amount": round(a["vat_amount"], 2),
+            "total_ttc": round(a["total_ttc"], 2),
+            "status": overall, "weeks_count": len(a["weeks"]),
+            "status_detail": sc,
+        }
+        rows.append(row)
+        if a["billing_mode"] != "PREPAID":
+            totals["units_billable"] += a["units_billable"]
+            totals["units_leads"] += a["units_leads"]
+            totals["units_lb"] += a["units_lb"]
+            totals["units_free"] += a["units_free"]
+            totals["net_ht"] += a["net_total_ht"]
+            totals["vat"] += a["vat_amount"]
+            totals["ttc"] += a["total_ttc"]
+
+    totals = {k: round(v, 2) if isinstance(v, float) else v for k, v in totals.items()}
+
+    # --- Interfacturation for the month ---
+    inter_records = await db.interfacturation_records.find(
+        {"week_key": {"$in": list(month_week_keys)}}, {"_id": 0}
+    ).to_list(500)
+
+    inter_agg = defaultdict(lambda: {
+        "units_total": 0, "units_leads": 0, "units_lb": 0,
+        "total_ht": 0, "status_counts": defaultdict(int), "weeks": set(),
+    })
+    for ir in inter_records:
+        ik = f"{ir['from_entity']}:{ir['to_entity']}:{ir['product_code']}"
+        ia = inter_agg[ik]
+        ia["from_entity"] = ir["from_entity"]
+        ia["to_entity"] = ir["to_entity"]
+        ia["product_code"] = ir["product_code"]
+        ia["unit_price_ht_internal"] = ir.get("unit_price_ht_internal", 0)
+        ia["units_total"] += ir.get("units_total", 0)
+        ia["units_leads"] += ir.get("units_leads", 0)
+        ia["units_lb"] += ir.get("units_lb", 0)
+        ia["total_ht"] += ir.get("total_ht", 0)
+        ia["status_counts"][ir.get("status", "not_invoiced")] += 1
+        ia["weeks"].add(ir.get("week_key", ""))
+
+    inter_rows = []
+    for ik, ia in sorted(inter_agg.items()):
+        sc = dict(ia["status_counts"])
+        overall = "paid" if sc.get("paid", 0) > 0 and sc.get("not_invoiced", 0) == 0 else ("invoiced" if sc.get("invoiced", 0) > 0 else "not_invoiced")
+        inter_rows.append({
+            "from_entity": ia["from_entity"], "to_entity": ia["to_entity"],
+            "product_code": ia["product_code"],
+            "unit_price_ht_internal": ia.get("unit_price_ht_internal", 0),
+            "units_total": ia["units_total"], "units_leads": ia["units_leads"], "units_lb": ia["units_lb"],
+            "total_ht": round(ia["total_ht"], 2),
+            "status": overall, "weeks_count": len(ia["weeks"]),
+        })
+
+    return {
+        "month": month,
+        "month_start": ms_iso[:10], "month_end": (me - timedelta(days=1)).strftime("%Y-%m-%d"),
+        "weeks_in_month": sorted(month_week_keys),
+        "summary": {
+            "leads_produced": leads_produced,
+            "units_delivered": total_delivered,
+            "units_billable": total_billable,
+            "units_non_billable": total_nonbill,
+            "total_leads": total_leads, "total_lb": total_lb,
+            "billable_leads": billable_leads, "billable_lb": billable_lb,
+        },
+        "totals": totals,
+        "rows": rows,
+        "interfacturation": inter_rows,
+    }
+
+
+# ═══════════════════════════════════════════════════
 # BUILD LEDGER + BILLING RECORDS
 # ═══════════════════════════════════════════════════
 
