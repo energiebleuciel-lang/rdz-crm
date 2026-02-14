@@ -491,11 +491,57 @@ async def submit_lead(data: LeadData, request: Request):
             )
             target_entity = target_cmd.get("entity", entity) if target_cmd else entity
 
-            # Creer delivery record
+            # ════════════════════════════════════════════════════════
+            # SUSPICIOUS LB REPLACEMENT HOOK
+            # If suspicious + internal_lp → try to deliver an LB instead
+            # ════════════════════════════════════════════════════════
+            actual_lead_id = lead_id
+            actual_is_lb = False
+            was_replaced = False
+            replacement_lb_id = None
+
+            if phone_quality == "suspicious" and lead_source_type == "internal_lp":
+                from services.lb_replacement import try_lb_replacement
+                lb_result = await try_lb_replacement(
+                    commande_id=routing_result.commande_id,
+                    target_entity=target_entity,
+                    produit=produit,
+                    client_id=routing_result.client_id,
+                    exclude_lead_id=lead_id,
+                )
+                if lb_result.get("found"):
+                    replacement_lb_id = lb_result["lead_id"]
+                    actual_lead_id = replacement_lb_id
+                    actual_is_lb = True
+                    was_replaced = True
+                    # Mark original suspicious lead
+                    await db.leads.update_one(
+                        {"id": lead_id},
+                        {"$set": {
+                            "was_replaced": True,
+                            "replacement_source": "LB",
+                            "replacement_lead_id": replacement_lb_id,
+                            "status": "replaced_by_lb",
+                            "updated_at": now_iso(),
+                        }}
+                    )
+                    lead["status"] = "replaced_by_lb"
+                    logger.info(
+                        f"[LB_REPLACE] suspicious={lead_id[:8]}... replaced by LB={replacement_lb_id[:8]}... "
+                        f"commande={routing_result.commande_id[:8]}..."
+                    )
+                else:
+                    # No LB available → deliver suspicious normally
+                    await db.leads.update_one(
+                        {"id": lead_id},
+                        {"$set": {"was_replaced": False}}
+                    )
+
+            # Creer delivery record (for actual_lead_id — LB or original)
             delivery_id = str(uuid.uuid4())
             delivery = {
                 "id": delivery_id,
-                "lead_id": lead_id,
+                "lead_id": actual_lead_id,
                 "client_id": routing_result.client_id,
                 "client_name": routing_result.client_name,
                 "commande_id": routing_result.commande_id,
@@ -503,10 +549,12 @@ async def submit_lead(data: LeadData, request: Request):
                 "produit": produit,
                 "delivery_method": "realtime",
                 "status": "pending_csv",
-                "is_lb": False,
+                "is_lb": actual_is_lb,
                 "routing_mode": routing_result.routing_mode,
                 "created_at": now_iso(),
             }
+            if was_replaced:
+                delivery["replaced_suspicious_id"] = lead_id
             await db.deliveries.insert_one(delivery)
 
             # MAJ lead
