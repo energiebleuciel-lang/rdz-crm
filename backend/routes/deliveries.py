@@ -365,3 +365,158 @@ async def batch_generate_csv(
         "processed": processed,
         "errors": errors
     }
+
+
+@router.post("/batch/send-ready")
+async def batch_send_ready(
+    entity: Optional[str] = None,
+    client_id: Optional[str] = None,
+    override_email: Optional[str] = None,
+    user: dict = Depends(require_admin)
+):
+    """
+    Envoie toutes les deliveries ready_to_send (groupées par client)
+    
+    - Respecte le calendar gating
+    - Utilise le CSV déjà généré
+    - Marque les leads comme livre après envoi
+    """
+    from services.settings import is_delivery_day_enabled, get_simulation_email_override
+    from models.client import check_client_deliverable
+    from services.csv_delivery import send_csv_email
+    from collections import defaultdict
+    
+    query = {"status": "ready_to_send"}
+    if entity:
+        query["entity"] = entity.upper()
+    if client_id:
+        query["client_id"] = client_id
+    
+    ready = await db.deliveries.find(query, {"_id": 0}).to_list(1000)
+    
+    if not ready:
+        return {"success": True, "sent": 0, "message": "Aucune delivery ready_to_send"}
+    
+    results = {
+        "sent": 0,
+        "skipped_calendar": 0,
+        "errors": []
+    }
+    
+    # Simulation email
+    simulation_email = await get_simulation_email_override()
+    
+    # Grouper par client + entity
+    grouped = defaultdict(list)
+    for delivery in ready:
+        key = (delivery.get("client_id"), delivery.get("entity"))
+        grouped[key].append(delivery)
+    
+    for (grp_client_id, grp_entity), deliveries in grouped.items():
+        # Calendar gating
+        day_enabled, day_reason = await is_delivery_day_enabled(grp_entity)
+        if not day_enabled:
+            logger.info(f"[BATCH_SEND] {grp_entity}: {day_reason} - skipped")
+            results["skipped_calendar"] += len(deliveries)
+            continue
+        
+        # Client info
+        client = await db.clients.find_one({"id": grp_client_id}, {"_id": 0})
+        if not client:
+            results["errors"].append({"client_id": grp_client_id, "error": "client_not_found"})
+            continue
+        
+        client_name = client.get("name", "")
+        
+        # Emails
+        if override_email:
+            to_emails = [override_email]
+        elif simulation_email:
+            to_emails = [simulation_email]
+        else:
+            to_emails = client.get("delivery_emails", [])
+            if not to_emails and client.get("email"):
+                to_emails = [client.get("email")]
+        
+        if not to_emails:
+            results["errors"].append({"client": client_name, "error": "no_email"})
+            continue
+        
+        # Récupérer les leads
+        lead_ids = [d.get("lead_id") for d in deliveries]
+        leads = await db.leads.find(
+            {"id": {"$in": lead_ids}},
+            {"_id": 0}
+        ).to_list(len(lead_ids))
+        
+        if not leads:
+            continue
+        
+        # Utiliser le CSV déjà généré ou régénérer si nécessaire
+        # Pour batch, on concatène les CSV individuels ou on régénère
+        produit = deliveries[0].get("produit", "")
+        csv_content = generate_csv_content(leads, produit, grp_entity)
+        
+        now = now_iso()
+        csv_filename = f"leads_{grp_entity}_{produit}_{now[:10].replace('-', '')}_{len(leads)}.csv"
+        lb_count = sum(1 for lead in leads if lead.get("is_lb"))
+        
+        try:
+            await send_csv_email(
+                entity=grp_entity,
+                to_emails=to_emails,
+                csv_content=csv_content,
+                csv_filename=csv_filename,
+                lead_count=len(leads),
+                lb_count=lb_count,
+                produit=produit
+            )
+            
+            # Marquer deliveries comme sent
+            delivery_ids = [d.get("id") for d in deliveries]
+            await db.deliveries.update_many(
+                {"id": {"$in": delivery_ids}},
+                {"$set": {
+                    "status": "sent",
+                    "sent_to": to_emails,
+                    "last_sent_at": now,
+                    "send_attempts": 1,
+                    "sent_by": user.get("email"),
+                    "updated_at": now
+                }}
+            )
+            
+            # Marquer leads comme livre
+            await db.leads.update_many(
+                {"id": {"$in": lead_ids}},
+                {"$set": {
+                    "status": "livre",
+                    "delivered_at": now,
+                    "delivered_to_client_id": grp_client_id,
+                    "delivered_to_client_name": client_name
+                }}
+            )
+            
+            results["sent"] += len(leads)
+            logger.info(f"[BATCH_SEND] {client_name}: {len(leads)} leads sent to {to_emails}")
+            
+        except Exception as e:
+            # Marquer comme failed
+            delivery_ids = [d.get("id") for d in deliveries]
+            await db.deliveries.update_many(
+                {"id": {"$in": delivery_ids}},
+                {"$set": {
+                    "status": "failed",
+                    "last_error": str(e),
+                    "updated_at": now
+                }}
+            )
+            results["errors"].append({"client": client_name, "error": str(e)})
+    
+    return {
+        "success": True,
+        "sent": results["sent"],
+        "skipped_calendar": results["skipped_calendar"],
+        "errors": results["errors"]
+    }
+
