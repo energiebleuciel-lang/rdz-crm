@@ -128,6 +128,9 @@ async def get_delivery(
         raise HTTPException(status_code=404, detail="Delivery non trouvée")
     
     delivery["has_csv"] = bool(delivery.get("csv_filename"))
+    outcome = delivery.get("outcome", "accepted")
+    delivery["outcome"] = outcome
+    delivery["billable"] = delivery.get("status") == "sent" and outcome == "accepted"
     
     return delivery
 
