@@ -62,7 +62,8 @@ async def get_dashboard_stats(
     del_stats_raw = await db.deliveries.aggregate(del_pipeline).to_list(10)
     del_stats = {r["_id"]: r["count"] for r in del_stats_raw if r["_id"]}
     rejected_total = await db.deliveries.count_documents({"outcome": "rejected"})
-    billable_total = await db.deliveries.count_documents({"status": "sent", "outcome": {"$ne": "rejected"}})
+    removed_total = await db.deliveries.count_documents({"outcome": "removed"})
+    billable_total = await db.deliveries.count_documents({"status": "sent", "outcome": {"$nin": ["rejected", "removed"]}})
 
     # Calendar status
     zr7_enabled, zr7_reason = await is_delivery_day_enabled("ZR7")
