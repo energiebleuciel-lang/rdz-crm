@@ -7,10 +7,14 @@ Collection: settings (chaque doc identifie par key)
 Settings disponibles:
 - cross_entity: toggle cross-entity ZR7<->MDL
 - source_gating: whitelist/blacklist de sources
+- forms_config: mapping form_code -> entity + produit
+- email_denylist: domaines email interdits
+- delivery_calendar: jours de livraison par entity
 """
 
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
+from datetime import datetime, timezone
 from config import db, now_iso
 
 logger = logging.getLogger("settings")
@@ -166,3 +170,140 @@ async def upsert_form_config(form_code: str, entity: str, produit: str, updated_
     }
     
     return await upsert_setting("forms_config", settings, updated_by)
+
+
+# ---- Email Denylist helpers ----
+
+DEFAULT_EMAIL_DENYLIST = {
+    "domains": [
+        "example.com",
+        "test.com",
+        "localhost",
+        "invalid",
+        "fake.com",
+        "temp.com",
+        "mailinator.com"
+    ],
+    "simulation_mode": False,  # Si True, override tous les emails
+    "simulation_email": "energiebleuciel@gmail.com"
+}
+
+
+async def get_email_denylist_settings() -> Dict:
+    """Retourne les settings email denylist (avec defaults)"""
+    doc = await get_setting("email_denylist")
+    if not doc:
+        return DEFAULT_EMAIL_DENYLIST
+    # Merge avec defaults
+    return {**DEFAULT_EMAIL_DENYLIST, **doc}
+
+
+async def is_email_domain_allowed(email: str) -> bool:
+    """
+    Verifie si le domaine email n'est pas dans la denylist.
+    """
+    if not email or "@" not in email:
+        return False
+    
+    settings = await get_email_denylist_settings()
+    denylist = settings.get("domains", [])
+    
+    domain = email.split("@")[-1].lower()
+    return domain not in [d.lower() for d in denylist]
+
+
+async def get_simulation_email_override() -> Optional[str]:
+    """
+    Retourne l'email override si mode simulation actif.
+    """
+    settings = await get_email_denylist_settings()
+    if settings.get("simulation_mode", False):
+        return settings.get("simulation_email", "energiebleuciel@gmail.com")
+    return None
+
+
+# ---- Delivery Calendar helpers ----
+
+# Jours: 0=lundi, 1=mardi, ..., 6=dimanche
+DEFAULT_DELIVERY_CALENDAR = {
+    "ZR7": {
+        "enabled_days": [0, 1, 2, 3, 4],  # Lun-Ven
+        "disabled_dates": [],  # Dates specifiques desactivees (format YYYY-MM-DD)
+    },
+    "MDL": {
+        "enabled_days": [0, 1, 2, 3, 4],  # Lun-Ven
+        "disabled_dates": [],
+    }
+}
+
+DAY_NAMES = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
+
+
+async def get_delivery_calendar_settings() -> Dict:
+    """Retourne les settings calendrier livraison (avec defaults)"""
+    doc = await get_setting("delivery_calendar")
+    if not doc:
+        return DEFAULT_DELIVERY_CALENDAR
+    # Merge avec defaults pour chaque entity
+    result = {}
+    for entity in ["ZR7", "MDL"]:
+        default = DEFAULT_DELIVERY_CALENDAR.get(entity, {"enabled_days": [0,1,2,3,4], "disabled_dates": []})
+        entity_cfg = doc.get(entity, {})
+        result[entity] = {**default, **entity_cfg}
+    return result
+
+
+async def is_delivery_day_enabled(entity: str, check_date: datetime = None) -> tuple:
+    """
+    Verifie si la livraison est active pour une entity a une date donnee.
+    
+    Args:
+        entity: ZR7 ou MDL
+        check_date: Date a verifier (default: maintenant)
+    
+    Returns:
+        (is_enabled: bool, reason: str or None)
+    """
+    if check_date is None:
+        check_date = datetime.now(timezone.utc)
+    
+    settings = await get_delivery_calendar_settings()
+    entity_cfg = settings.get(entity, DEFAULT_DELIVERY_CALENDAR.get(entity, {}))
+    
+    # 1. Verifier le jour de la semaine
+    day_of_week = check_date.weekday()  # 0=lundi
+    enabled_days = entity_cfg.get("enabled_days", [0, 1, 2, 3, 4])
+    
+    if day_of_week not in enabled_days:
+        day_name = DAY_NAMES[day_of_week]
+        return False, f"delivery_day_disabled:{day_name}"
+    
+    # 2. Verifier les dates specifiques desactivees
+    date_str = check_date.strftime("%Y-%m-%d")
+    disabled_dates = entity_cfg.get("disabled_dates", [])
+    
+    if date_str in disabled_dates:
+        return False, f"delivery_date_disabled:{date_str}"
+    
+    return True, None
+
+
+async def update_delivery_calendar(entity: str, enabled_days: List[int] = None, 
+                                    disabled_dates: List[str] = None, 
+                                    updated_by: str = "system") -> Dict:
+    """
+    Met a jour le calendrier de livraison pour une entity.
+    """
+    settings = await get_delivery_calendar_settings()
+    
+    if entity not in settings:
+        settings[entity] = {"enabled_days": [0,1,2,3,4], "disabled_dates": []}
+    
+    if enabled_days is not None:
+        # Valider les jours (0-6)
+        settings[entity]["enabled_days"] = [d for d in enabled_days if 0 <= d <= 6]
+    
+    if disabled_dates is not None:
+        settings[entity]["disabled_dates"] = disabled_dates
+    
+    return await upsert_setting("delivery_calendar", settings, updated_by)
