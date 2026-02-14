@@ -122,6 +122,7 @@ async def create_client(
         "delivery_emails": data.delivery_emails or [],
         "api_endpoint": data.api_endpoint or "",
         "api_key": data.api_key or "",
+        "auto_send_enabled": data.auto_send_enabled,  # Phase 2.5: contrôle envoi auto
         "default_prix_lead": data.default_prix_lead,
         "remise_percent": data.remise_percent,
         "notes": data.notes or "",
