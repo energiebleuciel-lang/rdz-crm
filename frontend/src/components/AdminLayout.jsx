@@ -32,6 +32,14 @@ export default function AdminLayout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
+  const [version, setVersion] = useState(null);
+
+  useEffect(() => {
+    fetch(`${process.env.REACT_APP_BACKEND_URL || ''}/api/system/version`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => d && setVersion(d))
+      .catch(() => {});
+  }, []);
 
   const visibleNav = NAV_ITEMS.filter(item => hasPermission(item.permission));
 
