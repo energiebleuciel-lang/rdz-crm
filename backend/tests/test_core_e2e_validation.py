@@ -330,16 +330,19 @@ class TestCDeduplication:
             assert r2.json()["status"] != "double_submit"
 
     def test_c4_phone_normalization(self):
-        """Phone formats: spaces, 9-digit etc. normalize correctly.
-        NOTE: +33 prefix is NOT auto-stripped by the validator (documented limitation).
+        """Phone formats: full normalization pipeline.
+        +33 now handled. 0612345678 blocked as test number.
         """
         from config import validate_phone_fr
         cases = [
-            ("0612345678", True, "0612345678"),
-            ("06 12 34 56 78", True, "0612345678"),
-            ("612345678", True, "0612345678"),     # 9 digits, 0 added
-            ("123", False, None),                   # Too short
-            ("+33612345678", False, None),          # +33 prefix NOT handled (documented)
+            ("0698765432", True, "0698765432"),     # Standard mobile
+            ("06 98 76 54 32", True, "0698765432"), # Spaces stripped
+            ("698765432", True, "0698765432"),       # 9 digits, 0 added
+            ("+33698765432", True, "0698765432"),    # +33 now handled
+            ("0033698765432", True, "0698765432"),   # 0033 handled
+            ("123", False, None),                     # Too short
+            ("0612345678", False, None),              # Blocked test number
+            ("0000000000", False, None),              # All same digits
         ]
         for phone, expect_valid, expect_clean in cases:
             valid, result = validate_phone_fr(phone)
