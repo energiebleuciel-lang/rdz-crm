@@ -238,9 +238,7 @@ async def get_client_stats(
     client_id: str,
     user: dict = Depends(get_current_user)
 ):
-    """
-    Statistiques détaillées d'un client
-    """
+    """Statistiques détaillées d'un client"""
     client = await db.clients.find_one({"id": client_id}, {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client non trouvé")
@@ -248,32 +246,20 @@ async def get_client_stats(
     from services.routing_engine import get_week_start
     week_start = get_week_start()
     
-    # Stats globales
     total_delivered = await db.leads.count_documents({
-        "delivered_to_client_id": client_id,
-        "status": "livre"
+        "delivered_to_client_id": client_id, "status": "livre"
     })
-    
     this_week = await db.leads.count_documents({
-        "delivered_to_client_id": client_id,
-        "status": "livre",
+        "delivered_to_client_id": client_id, "status": "livre",
         "delivered_at": {"$gte": week_start}
     })
-    
-    # Par produit
     pipeline = [
         {"$match": {"delivered_to_client_id": client_id, "status": "livre"}},
-        {"$group": {
-            "_id": "$produit",
-            "count": {"$sum": 1}
-        }}
+        {"$group": {"_id": "$produit", "count": {"$sum": 1}}}
     ]
     by_product = await db.leads.aggregate(pipeline).to_list(10)
-    
-    # Rejets
     rejected_count = await db.leads.count_documents({
-        "delivered_to_client_id": client_id,
-        "status": "rejet_client"
+        "delivered_to_client_id": client_id, "status": "rejet_client"
     })
     
     return {
@@ -287,3 +273,290 @@ async def get_client_stats(
             "rejection_rate": (rejected_count / total_delivered * 100) if total_delivered > 0 else 0
         }
     }
+
+
+@router.get("/{client_id}/summary")
+async def get_client_summary(
+    client_id: str,
+    group_by: str = Query("day", description="day|week|month"),
+    from_date: Optional[str] = Query(None, alias="from"),
+    to_date: Optional[str] = Query(None, alias="to"),
+    user: dict = Depends(get_current_user)
+):
+    """
+    Aggregation endpoint for client performance.
+    Returns delivery stats grouped by day/week/month.
+    """
+    from datetime import datetime, timezone, timedelta
+    
+    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client non trouvé")
+    
+    # Date range
+    now = datetime.now(timezone.utc)
+    if from_date:
+        date_from = from_date
+    else:
+        date_from = (now - timedelta(days=30)).isoformat()
+    date_to = to_date or now.isoformat()
+    
+    # Delivery aggregation
+    match = {
+        "client_id": client_id,
+        "created_at": {"$gte": date_from, "$lte": date_to}
+    }
+    
+    # Group key based on group_by
+    if group_by == "month":
+        group_expr = {"$substr": ["$created_at", 0, 7]}  # YYYY-MM
+    elif group_by == "week":
+        group_expr = {"$substr": ["$created_at", 0, 10]}  # YYYY-MM-DD (we'll bucket later)
+    else:
+        group_expr = {"$substr": ["$created_at", 0, 10]}  # YYYY-MM-DD
+    
+    pipeline = [
+        {"$match": match},
+        {"$group": {
+            "_id": {
+                "period": group_expr,
+                "produit": "$produit",
+                "status": "$status"
+            },
+            "count": {"$sum": 1}
+        }},
+        {"$sort": {"_id.period": 1}}
+    ]
+    
+    raw = await db.deliveries.aggregate(pipeline).to_list(500)
+    
+    # Also get outcome stats
+    outcome_pipeline = [
+        {"$match": match},
+        {"$group": {
+            "_id": {
+                "period": group_expr,
+                "outcome": {"$ifNull": ["$outcome", "accepted"]}
+            },
+            "count": {"$sum": 1}
+        }}
+    ]
+    outcome_raw = await db.deliveries.aggregate(outcome_pipeline).to_list(200)
+    
+    # Flatten into periods
+    periods = {}
+    for r in raw:
+        p = r["_id"]["period"]
+        if p not in periods:
+            periods[p] = {"period": p, "sent": 0, "failed": 0, "ready_to_send": 0, "pending_csv": 0, "by_produit": {}}
+        status = r["_id"]["status"]
+        count = r["count"]
+        produit = r["_id"].get("produit", "?")
+        if status in periods[p]:
+            periods[p][status] += count
+        if produit not in periods[p]["by_produit"]:
+            periods[p]["by_produit"][produit] = 0
+        if status == "sent":
+            periods[p]["by_produit"][produit] += count
+    
+    for r in outcome_raw:
+        p = r["_id"]["period"]
+        if p not in periods:
+            periods[p] = {"period": p, "sent": 0, "failed": 0, "ready_to_send": 0, "pending_csv": 0, "by_produit": {}}
+        outcome = r["_id"]["outcome"]
+        if outcome == "rejected":
+            periods[p]["rejected"] = periods[p].get("rejected", 0) + r["count"]
+    
+    # Compute billable + reject_rate
+    result = []
+    for p in sorted(periods.values(), key=lambda x: x["period"]):
+        sent = p.get("sent", 0)
+        rejected = p.get("rejected", 0)
+        billable = sent - rejected
+        p["billable"] = max(0, billable)
+        p["reject_rate"] = round(rejected / sent * 100, 1) if sent > 0 else 0
+        result.append(p)
+    
+    # Totals
+    total_sent = sum(p.get("sent", 0) for p in result)
+    total_rejected = sum(p.get("rejected", 0) for p in result)
+    total_failed = sum(p.get("failed", 0) for p in result)
+    total_billable = sum(p.get("billable", 0) for p in result)
+    
+    # Last delivery info
+    last_delivery = await db.deliveries.find_one(
+        {"client_id": client_id, "status": "sent"},
+        {"_id": 0, "created_at": 1, "sent_to": 1, "last_sent_at": 1}
+    , sort=[("last_sent_at", -1)])
+    
+    # Next delivery day
+    from services.settings import get_delivery_calendar_settings
+    cal = await get_delivery_calendar_settings()
+    entity_days = cal.get(client.get("entity", ""), {}).get("enabled_days", [0,1,2,3,4])
+    today_weekday = now.weekday()
+    next_day = None
+    for i in range(1, 8):
+        check = (today_weekday + i) % 7
+        if check in entity_days:
+            next_day = (now + timedelta(days=i)).strftime("%A %d/%m")
+            break
+    
+    return {
+        "client_id": client_id,
+        "client_name": client.get("name"),
+        "entity": client.get("entity"),
+        "group_by": group_by,
+        "from": date_from[:10],
+        "to": date_to[:10],
+        "periods": result,
+        "totals": {
+            "sent": total_sent,
+            "rejected": total_rejected,
+            "failed": total_failed,
+            "billable": total_billable,
+            "reject_rate": round(total_rejected / total_sent * 100, 1) if total_sent > 0 else 0
+        },
+        "last_delivery": {
+            "sent_at": last_delivery.get("last_sent_at") if last_delivery else None,
+            "sent_to": last_delivery.get("sent_to") if last_delivery else None
+        },
+        "next_delivery_day": next_day,
+        "auto_send_enabled": client.get("auto_send_enabled", True)
+    }
+
+
+@router.put("/{client_id}/crm")
+async def update_client_crm(
+    client_id: str,
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Update CRM-specific fields on a client (ratings, payment, tags, notes)."""
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client non trouvé")
+    
+    allowed_fields = {
+        "global_rating", "payment_rating", "lead_satisfaction_rating",
+        "discount_pressure_rating", "client_status", "payment_terms",
+        "payment_method", "last_payment_date", "last_payment_amount",
+        "accounting_status", "tags"
+    }
+    
+    update = {}
+    for k, v in data.items():
+        if k in allowed_fields:
+            update[k] = v
+    
+    if not update:
+        raise HTTPException(status_code=400, detail="Aucun champ valide")
+    
+    update["updated_at"] = now_iso()
+    await db.clients.update_one({"id": client_id}, {"$set": update})
+    
+    # Log activity
+    await db.client_activity.insert_one({
+        "id": str(uuid.uuid4()),
+        "client_id": client_id,
+        "action": "crm_update",
+        "details": {k: v for k, v in update.items() if k != "updated_at"},
+        "user": user.get("email"),
+        "created_at": now_iso()
+    })
+    
+    updated = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    return {"success": True, "client": updated}
+
+
+@router.post("/{client_id}/notes")
+async def add_client_note(
+    client_id: str,
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Add a timestamped internal note to a client."""
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client non trouvé")
+    
+    note_text = data.get("text", "").strip()
+    if not note_text:
+        raise HTTPException(status_code=400, detail="Note vide")
+    
+    note = {
+        "id": str(uuid.uuid4()),
+        "text": note_text,
+        "author": user.get("email"),
+        "created_at": now_iso()
+    }
+    
+    await db.clients.update_one(
+        {"id": client_id},
+        {"$push": {"internal_notes": note}, "$set": {"updated_at": now_iso()}}
+    )
+    
+    # Log activity
+    await db.client_activity.insert_one({
+        "id": str(uuid.uuid4()),
+        "client_id": client_id,
+        "action": "note_added",
+        "details": {"text": note_text[:100]},
+        "user": user.get("email"),
+        "created_at": now_iso()
+    })
+    
+    return {"success": True, "note": note}
+
+
+@router.get("/{client_id}/activity")
+async def get_client_activity(
+    client_id: str,
+    limit: int = Query(50, le=200),
+    user: dict = Depends(get_current_user)
+):
+    """Get activity timeline for a client (rejects, resends, CRM updates, notes, etc.)."""
+    # Combine delivery events + explicit activity log
+    activities = []
+    
+    # 1. Explicit activity log
+    logs = await db.client_activity.find(
+        {"client_id": client_id}, {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    activities.extend(logs)
+    
+    # 2. Delivery rejection events
+    rejected = await db.deliveries.find(
+        {"client_id": client_id, "outcome": "rejected"},
+        {"_id": 0, "id": 1, "lead_id": 1, "rejected_at": 1, "rejected_by": 1, "rejection_reason": 1, "produit": 1}
+    ).sort("rejected_at", -1).limit(20).to_list(20)
+    
+    for r in rejected:
+        activities.append({
+            "id": f"reject_{r['id']}",
+            "client_id": client_id,
+            "action": "delivery_rejected",
+            "details": {"delivery_id": r["id"], "reason": r.get("rejection_reason"), "produit": r.get("produit")},
+            "user": r.get("rejected_by"),
+            "created_at": r.get("rejected_at")
+        })
+    
+    # 3. Failed deliveries
+    failed = await db.deliveries.find(
+        {"client_id": client_id, "status": "failed"},
+        {"_id": 0, "id": 1, "last_error": 1, "updated_at": 1, "produit": 1}
+    ).sort("updated_at", -1).limit(10).to_list(10)
+    
+    for f in failed:
+        activities.append({
+            "id": f"fail_{f['id']}",
+            "client_id": client_id,
+            "action": "delivery_failed",
+            "details": {"delivery_id": f["id"], "error": f.get("last_error"), "produit": f.get("produit")},
+            "user": "system",
+            "created_at": f.get("updated_at")
+        })
+    
+    # Sort all by date
+    activities.sort(key=lambda x: x.get("created_at") or "", reverse=True)
+    
+    return {"activities": activities[:limit], "count": len(activities)}
