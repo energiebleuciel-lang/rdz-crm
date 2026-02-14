@@ -27,6 +27,9 @@ export default function AdminDeliveryDetail() {
   const [rejectModal, setRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [rejectError, setRejectError] = useState('');
+  const [removeModal, setRemoveModal] = useState(false);
+  const [removeReason, setRemoveReason] = useState('autre');
+  const [removeDetail, setRemoveDetail] = useState('');
 
   useEffect(() => { load(); }, [id]);
 
