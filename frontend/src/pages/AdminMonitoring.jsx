@@ -400,6 +400,30 @@ export default function AdminMonitoring() {
               </div>
             )}
           </div>
+
+          {/* Client Overlap Stats */}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4" data-testid="widget-overlap-stats">
+            <h2 className="text-sm font-semibold text-zinc-300 mb-4 flex items-center gap-2">
+              <Shield className="w-4 h-4 text-amber-400" />Client Overlap Protection
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="text-center">
+                <p className="text-[10px] uppercase text-zinc-500">Shared Clients</p>
+                <p className="text-2xl font-bold text-amber-400">{overlap.shared_clients_count || 0}</p>
+                <p className="text-[10px] text-zinc-500">{overlap.shared_clients_rate || 0}% du total</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[10px] uppercase text-zinc-500">Overlap Deliveries</p>
+                <p className="text-2xl font-bold text-red-400">{overlap.shared_client_deliveries_30d_count || 0}</p>
+                <p className="text-[10px] text-zinc-500">{overlap.shared_client_deliveries_30d_rate || 0}% des livraisons</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[10px] uppercase text-zinc-500">Fallback (forced)</p>
+                <p className="text-2xl font-bold text-zinc-300">{overlap.overlap_fallback_deliveries_30d_count || 0}</p>
+                <p className="text-[10px] text-zinc-500">{overlap.overlap_fallback_deliveries_30d_rate || 0}% fallback</p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
