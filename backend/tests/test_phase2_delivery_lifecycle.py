@@ -619,29 +619,42 @@ class TestLeadStatusAfterDelivery:
     
     def test_livre_leads_have_sent_deliveries(self, auth_headers):
         """Verify leads with status=livre have corresponding delivery.status=sent"""
-        # Get livre leads
-        response = requests.get(
-            f"{BASE_URL}/api/leads",
+        # Get a client to check their leads
+        clients_response = requests.get(
+            f"{BASE_URL}/api/clients",
             headers=auth_headers,
-            params={"status": "livre", "limit": 10}
+            params={"entity": "ZR7"}
         )
         
-        if response.status_code == 200:
-            leads = response.json().get("leads", [])
+        if clients_response.status_code == 200:
+            clients = clients_response.json().get("clients", [])
             
-            for lead in leads:
-                delivery_id = lead.get("delivery_id")
-                if delivery_id:
-                    # Check delivery status
-                    delivery_response = requests.get(
-                        f"{BASE_URL}/api/deliveries/{delivery_id}",
-                        headers=auth_headers
-                    )
+            for client in clients[:3]:  # Check first 3 clients
+                client_id = client.get("id")
+                
+                # Get livre leads for this client
+                leads_response = requests.get(
+                    f"{BASE_URL}/api/clients/{client_id}/leads",
+                    headers=auth_headers,
+                    params={"status": "livre", "limit": 5}
+                )
+                
+                if leads_response.status_code == 200:
+                    leads = leads_response.json().get("leads", [])
                     
-                    if delivery_response.status_code == 200:
-                        delivery = delivery_response.json()
-                        assert delivery.get("status") == "sent", \
-                            f"Lead {lead.get('id')} is livre but delivery {delivery_id} is {delivery.get('status')}"
+                    for lead in leads:
+                        delivery_id = lead.get("delivery_id")
+                        if delivery_id:
+                            # Check delivery status
+                            delivery_response = requests.get(
+                                f"{BASE_URL}/api/deliveries/{delivery_id}",
+                                headers=auth_headers
+                            )
+                            
+                            if delivery_response.status_code == 200:
+                                delivery = delivery_response.json()
+                                assert delivery.get("status") == "sent", \
+                                    f"Lead {lead.get('id')} is livre but delivery {delivery_id} is {delivery.get('status')}"
 
 
 if __name__ == "__main__":
