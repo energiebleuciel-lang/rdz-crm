@@ -369,8 +369,8 @@ async def process_commande_delivery(
 
     # Pré-filtrer les leads compatibles
     def filter_leads(leads_list):
-        return [l for l in leads_list if l.get("id") not in used_lead_ids
-                and matches_dept(l) and matches_produit(l)]
+        return [ld for ld in leads_list if ld.get("id") not in used_lead_ids
+                and matches_dept(ld) and matches_produit(ld)]
 
     available_fresh = filter_leads(fresh_leads)
     # LB: séparer en "jamais livré à ce client" et "déjà livré (>30j)"
