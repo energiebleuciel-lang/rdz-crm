@@ -1,40 +1,77 @@
-# RDZ CRM - Product Requirements Document
+# RDZ CRM — Product Requirements Document
 
 ## Original Problem Statement
-Central CRM "RDZ" with strict entity separation (ZR7/MDL). Full lead management, RBAC, billing, and intercompany transfers.
+Build a comprehensive CRM application named "RDZ" to manage leads, orders, and deliveries between two business entities: **ZR7** and **MDL**. The system includes dynamic LB targeting, permission-based RBAC with entity scoping, billing/invoicing, intercompany transfers, and production-ready cron jobs.
 
-## Architecture
-- **Backend:** FastAPI + MongoDB (multi-tenant ZR7/MDL)
-- **Frontend:** React + Shadcn/UI, dark theme
-- **Auth:** JWT, 27 granular permission keys, 4 roles
-- **Crons:** Livraison 09h30 + Intercompany lundi 08h00
+## Core Architecture
+- **Backend**: FastAPI (Python) on port 8001
+- **Frontend**: React with Tailwind CSS on port 3000
+- **Database**: MongoDB (via Motor async driver)
+- **Scheduler**: APScheduler (async, Europe/Paris timezone)
 
-## Key Features
+## What's Been Implemented
 
-### Core: Lead ingestion, routing engine, delivery state machine, LB Target
-### RBAC: 27 permissions, entity isolation, scope switcher, user management
-### Billing v1: Invoice CRUD, TTC auto-computation, overdue dashboard
+### Phase 1: Core CRM
+- Lead ingestion (public API + provider auth)
+- Routing engine (priority, quota, departement, duplicate 30-day rule)
+- Delivery state machine (strict transitions, CSV email)
+- Client CRUD with deliverability checks
+- Commande CRUD with quota management
 
-### Intercompany System (Feb 14, 2026)
-- **lead_owner_entity**: Immutable field on lead ingestion
-- **routing_mode**: "normal" | "fallback_no_orders" on delivery + lead + transfer
-- **Trigger**: delivery becomes billable (sent+accepted) AND owner != target
-- **Anti-double**: UNIQUE(delivery_id) — delivery-based model
-- **Pricing**: intercompany_pricing collection, inline editable in UI
-- **Weekly invoice generation**: Idempotent, groups by (from→to) direction
-- **Cron**: Monday 08:00 Europe/Paris, auto-generates from pending transfers
-- **Frontend**: "Intercompany" tab in Factures page with:
-  - Filters: week_key, direction (ZR7→MDL / MDL→ZR7)
-  - Table: invoice_number, week, direction, transfers count, total HT, status
-  - Detail modal: line items + individual transfer details (delivery_id, lead_id, product, price, routing_mode, date)
-  - Pricing admin panel with inline editing
-  - "Générer factures" button for manual trigger
-- **Separation**: Intercompany invoices excluded from client overdue dashboard
+### Phase 2: Advanced Features
+- Dynamic LB Target (lb_target_pct per commande)
+- Cross-entity fallback routing (ZR7 ↔ MDL)
+- Calendar gating (delivery days per entity)
+- Source gating (blacklist)
+- Prepayment balance system
 
-## Collections
-leads (lead_owner_entity), deliveries (routing_mode, outcome, accepted_at),
-invoices (type: external|intercompany), intercompany_transfers, intercompany_pricing,
-clients, commandes, users, sessions, event_log
+### Phase 3: RBAC & Entity Scoping
+- Granular permission system (40+ permission keys)
+- Role presets: super_admin, admin, ops, viewer
+- Entity isolation (ZR7/MDL strict scoping)
+- Super_admin scope switcher (ZR7/MDL/BOTH)
+- Write blocking in BOTH scope
 
-## Backlog
-### P2: Invoice PDF generation, permissions audit trail
+### Phase 4: Billing & Invoicing
+- External client invoices (draft → sent → paid → overdue)
+- Overdue dashboard with per-client aggregation
+- Billing ledger + records (weekly snapshot)
+- Client pricing engine (per-product, discounts, VAT)
+
+### Phase 5: Intercompany
+- Delivery-based transfer tracking
+- Intercompany pricing management
+- Weekly invoice generation (cron)
+- Fail-open architecture (never blocks deliveries)
+- Health check + retry endpoints
+
+### Phase 6: Production Audit (2026-02-14)
+- **12 issues found and fixed:**
+  - 4 entity scope fixes (leads, deliveries endpoints)
+  - 6 permission guard fixes (settings, providers, billing, departements)
+  - 1 fail-open dashboard (per-widget isolation)
+  - 1 new system health endpoint
+  - DB indexes added (deliveries: 9, invoices: 5, event_log: 3)
+- **15/15 audit tests passed**
+- Comprehensive audit report at `/app/AUDIT_REPORT_PRODUCTION.md`
+
+## Prioritized Backlog
+
+### P1 - Next
+- Invoice PDF generation (client + intercompany)
+- Comprehensive audit trail UI
+
+### P2 - Future
+- Full CRUD interface for intercompany pricing
+- UI/UX improvements
+- Export capabilities (CSV/PDF for reports)
+
+## Test Accounts
+All use password: `RdzTest2026!`
+- superadmin@test.local (super_admin, ZR7)
+- admin_zr7@test.local (admin, ZR7)
+- ops_zr7@test.local (ops, ZR7)
+- viewer_zr7@test.local (viewer, ZR7)
+- admin_mdl@test.local (admin, MDL)
+- ops_mdl@test.local (ops, MDL)
+- viewer_mdl@test.local (viewer, MDL)
