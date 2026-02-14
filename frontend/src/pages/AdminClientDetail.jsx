@@ -7,6 +7,8 @@ import {
   BarChart3, CreditCard, Clock, Send, AlertTriangle, Plus, Save, Tag,
   DollarSign, Gift, Trash2
 } from 'lucide-react';
+import { getCurrentWeekKey, shiftWeekKey, weekKeyToShort, weekKeyToLabel } from '../lib/weekUtils';
+import { WeekNavStandard } from '../components/WeekNav';
 
 const DAY_SHORT = ['L', 'M', 'Me', 'J', 'V', 'S', 'D'];
 const STATUS_COLORS = { VIP: 'text-amber-400 bg-amber-500/10 border-amber-500/30', Normal: 'text-zinc-400 bg-zinc-800 border-zinc-700', Watchlist: 'text-orange-400 bg-orange-500/10 border-orange-500/30', Blocked: 'text-red-400 bg-red-500/10 border-red-500/30' };
