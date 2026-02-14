@@ -115,7 +115,9 @@ class TestPhase25AutoSendIntegration:
     
     def test_03_update_client_auto_send_enabled(self):
         """Test: Update client auto_send_enabled field"""
-        client_name = f"TEST_AutoSendUpdate_{uuid.uuid4().hex[:8]}"
+        unique_id = uuid.uuid4().hex[:8]
+        client_name = f"TEST_AutoSendUpdate_{unique_id}"
+        unique_email = f"test_autosend_update_{unique_id}@testdomain.com"
         
         # Create client with auto_send=true
         resp = self.session.post(
@@ -123,7 +125,7 @@ class TestPhase25AutoSendIntegration:
             json={
                 "entity": "ZR7",
                 "name": client_name,
-                "email": "energiebleuciel@gmail.com",
+                "email": unique_email,
                 "auto_send_enabled": True
             }
         )
